@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
 
 // Dati potenzialmente diversi ad ogni visita (nuovi Slot caricati da un
 // Dirigente) - stesso motivo di slot/page.tsx (Story 2.5).
@@ -29,27 +30,43 @@ export default async function MioOrarioPage() {
     console.error(error);
   }
 
-  // Un'unica query invece di due round-trip sequenziali (Utente poi
-  // Allenatore) - review fix: questa e' la prima pagina che risolve "il
-  // profilo di dominio dell'utente loggato", il pattern qui diventa quello
-  // che le prossime storie (2.7) riprenderanno.
-  const allenatore = user
-    ? await prisma.allenatore.findFirst({
-        where: { utente: { supabaseAuthId: user.id } },
-      })
-    : null;
+  // Le due risoluzioni di identita' (Allenatore/Atleta) non dipendono l'una
+  // dall'altra - eseguite in Promise.all (review fix Story 2.7: il commento
+  // originale di Story 2.6 anticipava che questo pattern sarebbe stato
+  // ripreso da questa storia, non aggiunto come un ulteriore round-trip
+  // sequenziale).
+  const [allenatore, atletaIds] = user
+    ? await Promise.all([
+        prisma.allenatore.findFirst({
+          where: { utente: { supabaseAuthId: user.id } },
+        }),
+        // Story 2.7: GenitoreAtleta riusata deliberatamente anche per
+        // l'aggancio di un'Atleta a se stessa, vedi Dev Notes Story 2.7 -
+        // non protetta da RLS, nessuna lettura di Atleta stessa qui: serve
+        // solo l'id di correlazione. Un Utente puo' avere piu' righe
+        // GenitoreAtleta (es. Ruolo Genitore con piu' figlie) - per questa
+        // vista si prendono tutte, caso limite accettato (vedi Dev Notes)
+        // piuttosto che disambiguare "quale riga sono io".
+        prisma.genitoreAtleta
+          .findMany({
+            where: { utente: { supabaseAuthId: user.id } },
+            select: { atletaId: true },
+          })
+          .then((righe) => righe.map((riga) => riga.atletaId)),
+      ])
+    : [null, []];
 
   let body: ReactNode;
 
-  // AC #2: l'Utente ha il Ruolo ALLENATORE (il route-guard lo ammette) ma
-  // non e' ancora agganciato a un profilo Allenatore (Codice Fiscale non
-  // fornito o non corrispondente in fase di registrazione, Story 1.1/1.4) -
-  // messaggio chiaro, non un redirect ne' una pagina vuota.
-  if (!allenatore) {
+  // AC #2: l'Utente ha il Ruolo ALLENATORE e/o ATLETA (il route-guard lo
+  // ammette) ma non e' ancora agganciato a nessuno dei due profili -
+  // messaggio unico che copre entrambi i casi, non serve distinguere quale
+  // Ruolo specifico manca (vedi Dev Notes Story 2.7).
+  if (!allenatore && atletaIds.length === 0) {
     body = (
       <p>
-        Il tuo account non è ancora collegato a un profilo Allenatore.
-        Contatta la segreteria.
+        Il tuo account non è ancora collegato a un profilo Allenatore o
+        Atleta. Contatta la segreteria.
       </p>
     );
   } else {
@@ -59,18 +76,42 @@ export default async function MioOrarioPage() {
     // (stesso ragionamento di gruppi/page.tsx e slot/page.tsx).
     const annoCorrente = await trovaAnnoAgonisticoCorrente();
 
-    const slot = annoCorrente
-      ? await prisma.slot.findMany({
-          where: {
-            gruppo: {
-              annoAgonisticoId: annoCorrente.id,
-              allenatori: { some: { allenatoreId: allenatore.id } },
-            },
-          },
-          include: { campo: { include: { palestra: true } }, gruppo: true },
-          orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
-        })
-      : [];
+    // Due query separate (Slot non ha una relazione uniforme verso "il
+    // proprietario" - il ramo Allenatore attraversa GruppoAllenatore, il
+    // ramo Atleta attraversa GruppoAtleta, vedi Dev Notes Story 2.7),
+    // eseguite in parallelo poi unite deduplicando per id e riordinate: un
+    // singolo Promise.all non garantisce un ordine coerente tra le due
+    // liste dopo l'unione.
+    const [slotAllenatore, slotAtleta] = annoCorrente
+      ? await Promise.all([
+          allenatore
+            ? prisma.slot.findMany({
+                where: {
+                  gruppo: {
+                    annoAgonisticoId: annoCorrente.id,
+                    allenatori: { some: { allenatoreId: allenatore.id } },
+                  },
+                },
+                include: { campo: { include: { palestra: true } }, gruppo: true },
+                orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+              })
+            : Promise.resolve([]),
+          atletaIds.length > 0
+            ? prisma.slot.findMany({
+                where: {
+                  gruppo: {
+                    annoAgonisticoId: annoCorrente.id,
+                    atlete: { some: { atletaId: { in: atletaIds } } },
+                  },
+                },
+                include: { campo: { include: { palestra: true } }, gruppo: true },
+                orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+              })
+            : Promise.resolve([]),
+        ])
+      : [[], []];
+
+    const slot = unisciESordinaSlot(slotAllenatore, slotAtleta);
 
     body =
       slot.length === 0 ? (

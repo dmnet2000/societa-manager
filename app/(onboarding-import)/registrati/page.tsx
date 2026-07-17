@@ -61,6 +61,17 @@ export default function RegistratiPage() {
             />
           </div>
         )}
+        {ruoliSelezionati.includes("ATLETA") && (
+          <div>
+            <label htmlFor="codiceFiscaleAtleta">Il tuo Codice Fiscale</label>
+            <input
+              id="codiceFiscaleAtleta"
+              name="codiceFiscaleAtleta"
+              type="text"
+              required
+            />
+          </div>
+        )}
         {ruoliSelezionati.includes("GENITORE") && (
           <div>
             <label htmlFor="codiceFiscaleFiglio">

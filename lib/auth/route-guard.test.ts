@@ -139,8 +139,11 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("allows only Allenatore on /mio-orario (Story 2.6, FR-3)", () => {
+  it("allows Allenatore or Atleta on /mio-orario (Story 2.6 FR-3, Story 2.7 FR-4)", () => {
     expect(getRouteDecision("/mio-orario", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/mio-orario", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
@@ -150,7 +153,7 @@ describe("getRouteDecision", () => {
       action: "redirect",
       location: "/non-autorizzato",
     });
-    expect(getRouteDecision("/mio-orario", true, ["ATLETA"])).toEqual({
+    expect(getRouteDecision("/mio-orario", true, ["GENITORE"])).toEqual({
       action: "redirect",
       location: "/non-autorizzato",
     });

@@ -36,6 +36,9 @@ export async function registrati(
   const codiceFiscaleFiglio = String(formData.get("codiceFiscaleFiglio") ?? "")
     .trim()
     .toUpperCase();
+  const codiceFiscaleAtleta = String(formData.get("codiceFiscaleAtleta") ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!email || !password) {
     return {
@@ -110,6 +113,66 @@ export async function registrati(
     }
 
     atletaDaAgganciare = atleta;
+  }
+
+  // Story 2.7: l'Atleta si registra per se stessa. Stesso identico
+  // ragionamento del blocco GENITORE sopra (CF obbligatorio, risolto prima
+  // del signUp, un mismatch blocca l'intera registrazione) - variabile
+  // separata perche' i due blocchi possono coesistere indipendentemente se
+  // un Utente selezionasse sia ATLETA sia GENITORE (es. un'atleta maggiorenne
+  // che e' anche genitore di un'altra atleta - caso raro ma non impedito dal
+  // form). GenitoreAtleta e' riusata deliberatamente qui nonostante il nome:
+  // la sua funzione reale e' "correla un Utente a un'Atleta", non
+  // specificamente un genitore - vedi Dev Notes Story 2.7 per il
+  // ragionamento completo (nessuna migrazione, nessuna nuova policy RLS
+  // necessaria, a differenza di un ipotetico Atleta.utenteId).
+  let atletaPropriaDaAgganciare: { id: string } | null = null;
+  if (ruoli.includes("ATLETA")) {
+    if (!codiceFiscaleAtleta) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Il tuo Codice Fiscale è obbligatorio per il Ruolo Atleta.",
+        },
+      };
+    }
+
+    if (!isCodiceFiscaleValido(codiceFiscaleAtleta)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "Codice Fiscale non valido (deve essere di 16 caratteri alfanumerici).",
+        },
+      };
+    }
+
+    let atletaPropria;
+    try {
+      atletaPropria = await trovaPerCodiceFiscale(
+        createAdminClient(),
+        codiceFiscaleAtleta
+      );
+    } catch {
+      return {
+        error: {
+          code: "INTERNAL",
+          message: "Impossibile completare la registrazione. Riprova.",
+        },
+      };
+    }
+
+    if (!atletaPropria) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "Nessuna Atleta trovata con questo Codice Fiscale. Verifica di aver inserito il tuo Codice Fiscale corretto.",
+        },
+      };
+    }
+
+    atletaPropriaDaAgganciare = atletaPropria;
   }
 
   const supabase = await createClient();
@@ -197,6 +260,14 @@ export async function registrati(
     if (atletaDaAgganciare) {
       await prisma.genitoreAtleta.create({
         data: { utenteId: utente.id, atletaId: atletaDaAgganciare.id },
+      });
+    }
+
+    // Story 2.7: aggancio dell'Atleta a se stessa, indipendente dal blocco
+    // GENITORE sopra.
+    if (atletaPropriaDaAgganciare) {
+      await prisma.genitoreAtleta.create({
+        data: { utenteId: utente.id, atletaId: atletaPropriaDaAgganciare.id },
       });
     }
   } catch {

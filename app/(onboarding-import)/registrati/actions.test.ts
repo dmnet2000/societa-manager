@@ -98,7 +98,7 @@ describe("registrati", () => {
       buildFormData({
         email: "dup@example.com",
         password: "pw123456",
-        ruoli: ["ATLETA"],
+        ruoli: ["DIRIGENTE"],
       })
     );
 
@@ -119,7 +119,7 @@ describe("registrati", () => {
       buildFormData({
         email: "dup@example.com",
         password: "pw123456",
-        ruoli: ["ATLETA"],
+        ruoli: ["DIRIGENTE"],
       })
     );
 
@@ -137,7 +137,7 @@ describe("registrati", () => {
       buildFormData({
         email: "a@example.com",
         password: "pw123456",
-        ruoli: ["ATLETA"],
+        ruoli: ["DIRIGENTE"],
       })
     );
 
@@ -163,7 +163,7 @@ describe("registrati", () => {
         buildFormData({
           email: "dup-ruolo@example.com",
           password: "pw123456",
-          ruoli: ["ATLETA", "ATLETA"],
+          ruoli: ["DIRIGENTE", "DIRIGENTE"],
         })
       )
     ).rejects.toThrow("REDIRECT");
@@ -172,10 +172,10 @@ describe("registrati", () => {
       data: {
         supabaseAuthId: "u3",
         email: "dup-ruolo@example.com",
-        ruoli: { create: [{ ruolo: "ATLETA" }] },
+        ruoli: { create: [{ ruolo: "DIRIGENTE" }] },
       },
     });
-    expect(sincronizzaRuoliMock).toHaveBeenCalledWith("u3", ["ATLETA"]);
+    expect(sincronizzaRuoliMock).toHaveBeenCalledWith("u3", ["DIRIGENTE"]);
   });
 
   it("returns a friendly error, no crash, when the post-signup sync fails (decided: no automatic rollback)", async () => {
@@ -191,7 +191,7 @@ describe("registrati", () => {
       buildFormData({
         email: "orfano@example.com",
         password: "pw123456",
-        ruoli: ["ATLETA"],
+        ruoli: ["DIRIGENTE"],
       })
     );
 
@@ -306,9 +306,9 @@ describe("registrati", () => {
       registrati(
         undefined,
         buildFormData({
-          email: "atleta@example.com",
+          email: "dirigente@example.com",
           password: "pw123456",
-          ruoli: ["ATLETA"],
+          ruoli: ["DIRIGENTE"],
           codiceFiscaleAllenatore: "ABC123",
         })
       )
@@ -633,6 +633,204 @@ describe("registrati", () => {
     expect(genitoreAtletaCreateMock).toHaveBeenNthCalledWith(2, {
       data: { utenteId: "utente-genitore-b", atletaId: "atleta-condivisa" },
     });
+  });
+
+  it("returns a validation error when Ruolo Atleta is selected without a Codice Fiscale (Story 2.7 AC #2)", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-senza-cf@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il tuo Codice Fiscale è obbligatorio per il Ruolo Atleta.",
+      },
+    });
+    expect(signUpMock).not.toHaveBeenCalled();
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Codice Fiscale for Ruolo Atleta has an invalid format", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-formato-invalido@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+        codiceFiscaleAtleta: "123",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Codice Fiscale non valido (deve essere di 16 caratteri alfanumerici).",
+      },
+    });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(signUpMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when the Atleta lookup throws (fail-closed)", async () => {
+    trovaPerCodiceFiscaleMock.mockRejectedValue(new Error("db down"));
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-errore@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+        codiceFiscaleAtleta: "RSSMRA10A41H501Z",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile completare la registrazione. Riprova.",
+      },
+    });
+    expect(signUpMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error and creates no account when the Codice Fiscale for Ruolo Atleta matches no Atleta (Story 2.7 AC #2)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue(null);
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-sconosciuta@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+        codiceFiscaleAtleta: "sconosciuto1234x",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Nessuna Atleta trovata con questo Codice Fiscale. Verifica di aver inserito il tuo Codice Fiscale corretto.",
+      },
+    });
+    expect(createAdminClientMock).toHaveBeenCalled();
+    expect(trovaPerCodiceFiscaleMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "SCONOSCIUTO1234X"
+    );
+    expect(signUpMock).not.toHaveBeenCalled();
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("hooks up the new Utente (Ruolo Atleta) to her own Atleta via GenitoreAtleta (Story 2.7 AC #1)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({
+      id: "atleta-propria",
+      codiceFiscale: "RSSMRA10A41H501Z",
+    });
+    signUpMock.mockResolvedValue({
+      data: { user: { id: "u14", identities: [{ id: "id1" }] } },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({ id: "utente-u14" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+    genitoreAtletaCreateMock.mockResolvedValue({});
+
+    await expect(
+      registrati(
+        undefined,
+        buildFormData({
+          email: "atleta-match@example.com",
+          password: "pw123456",
+          ruoli: ["ATLETA"],
+          codiceFiscaleAtleta: "rssmra10a41h501z",
+        })
+      )
+    ).rejects.toThrow("REDIRECT");
+
+    expect(trovaPerCodiceFiscaleMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "RSSMRA10A41H501Z"
+    );
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
+      data: { utenteId: "utente-u14", atletaId: "atleta-propria" },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the Atleta self-hookup fails (decided: no automatic rollback)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({
+      id: "atleta-propria",
+      codiceFiscale: "RSSMRA10A41H501Z",
+    });
+    signUpMock.mockResolvedValue({
+      data: { user: { id: "u15", identities: [{ id: "id1" }] } },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({ id: "utente-u15" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+    genitoreAtletaCreateMock.mockRejectedValue(new Error("db down"));
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-hookup-fallito@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+        codiceFiscaleAtleta: "RSSMRA10A41H501Z",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile completare la registrazione. Riprova.",
+      },
+    });
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("hooks up both Atleta (self) and Genitore (child) independently when both ruoli are selected", async () => {
+    trovaPerCodiceFiscaleMock.mockImplementation(async (_client, cf: string) => {
+      if (cf === "SELFCF0000000001") {
+        return { id: "atleta-se-stessa", codiceFiscale: cf };
+      }
+      if (cf === "FIGLIOCF00000002") {
+        return { id: "atleta-figlio", codiceFiscale: cf };
+      }
+      return null;
+    });
+    signUpMock.mockResolvedValue({
+      data: { user: { id: "u16", identities: [{ id: "id1" }] } },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({ id: "utente-u16" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+    genitoreAtletaCreateMock.mockResolvedValue({});
+
+    await expect(
+      registrati(
+        undefined,
+        buildFormData({
+          email: "atleta-e-genitore@example.com",
+          password: "pw123456",
+          ruoli: ["ATLETA", "GENITORE"],
+          codiceFiscaleAtleta: "selfcf0000000001",
+          codiceFiscaleFiglio: "figliocf00000002",
+        })
+      )
+    ).rejects.toThrow("REDIRECT");
+
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
+      data: { utenteId: "utente-u16", atletaId: "atleta-se-stessa" },
+    });
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
+      data: { utenteId: "utente-u16", atletaId: "atleta-figlio" },
+    });
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledTimes(2);
   });
 
   it("hooks up both Allenatore and Genitore independently when both ruoli are selected", async () => {
