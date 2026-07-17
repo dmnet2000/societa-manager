@@ -197,6 +197,7 @@ model Campo {
   palestraId String
   palestra   Palestra @relation(fields: [palestraId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
+  slot       Slot[]
 
   @@map("campi")
 }
@@ -218,6 +219,7 @@ model Gruppo {
   createdAt        DateTime           @default(now())
   allenatori       GruppoAllenatore[]
   atlete           GruppoAtleta[]
+  slot             Slot[]
 
   @@map("gruppi")
 }

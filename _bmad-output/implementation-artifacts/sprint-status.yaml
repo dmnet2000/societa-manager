@@ -64,8 +64,8 @@ development_status:
   2-2-creazione-gruppi: done
   2-3-assegnazione-allenatori-a-gruppo: done
   2-4-assegnazione-atlete-a-gruppo: done
-  2-5-caricamento-slot: ready-for-dev
-  2-6-vista-orario-personale-allenatore: backlog
+  2-5-caricamento-slot: done
+  2-6-vista-orario-personale-allenatore: ready-for-dev
   2-7-vista-orario-personale-atleta: backlog
   2-8-vista-orari-trasversale-segreteria: backlog
   epic-2-retrospective: optional
