@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import { NuovoSlotForm } from "./NuovoSlotForm";
+import { SlotTable } from "../SlotTable";
 
 // Dati mutabili in tempo reale (creazione Slot tramite Server Action sulla
 // stessa pagina) - stesso motivo di /admin e /palestre (Story 1.2, 2.1).
@@ -50,30 +50,7 @@ export default async function SlotPage() {
 
       <section>
         <h2>Elenco Slot</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Giorno</th>
-              <th>Orario</th>
-              <th>Palestra / Campo</th>
-              <th>Gruppo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slot.map((s) => (
-              <tr key={s.id}>
-                <td>{ETICHETTA_GIORNO[s.giorno]}</td>
-                <td>
-                  {s.oraInizio}–{s.oraFine}
-                </td>
-                <td>
-                  {s.campo.palestra.nome} - {s.campo.nome}
-                </td>
-                <td>{s.gruppo.nome}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <SlotTable slot={slot} />
       </section>
     </main>
   );

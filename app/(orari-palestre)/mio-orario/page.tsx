@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
-import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
+import { SlotTable } from "../SlotTable";
 
 // Dati potenzialmente diversi ad ogni visita (nuovi Slot caricati da un
 // Dirigente) - stesso motivo di slot/page.tsx (Story 2.5).
@@ -113,35 +113,9 @@ export default async function MioOrarioPage() {
 
     const slot = unisciESordinaSlot(slotAllenatore, slotAtleta);
 
-    body =
-      slot.length === 0 ? (
-        <p>Nessuno Slot ancora assegnato ai tuoi Gruppi.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Giorno</th>
-              <th>Orario</th>
-              <th>Palestra / Campo</th>
-              <th>Gruppo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slot.map((s) => (
-              <tr key={s.id}>
-                <td>{ETICHETTA_GIORNO[s.giorno]}</td>
-                <td>
-                  {s.oraInizio}–{s.oraFine}
-                </td>
-                <td>
-                  {s.campo.palestra.nome} - {s.campo.nome}
-                </td>
-                <td>{s.gruppo.nome}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
+    body = (
+      <SlotTable slot={slot} messaggioVuoto="Nessuno Slot ancora assegnato ai tuoi Gruppi." />
+    );
   }
 
   return (

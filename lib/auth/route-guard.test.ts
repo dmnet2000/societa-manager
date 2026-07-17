@@ -158,4 +158,21 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows only Segreteria on /orari (Story 2.8, FR-5)", () => {
+    expect(getRouteDecision("/orari", true, ["SEGRETERIA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /orari for other roles", () => {
+    expect(getRouteDecision("/orari", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/orari", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
