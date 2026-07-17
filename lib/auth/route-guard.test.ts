@@ -122,4 +122,37 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows either Admin or Dirigente on /slot (Story 2.5, FR-2)", () => {
+    expect(getRouteDecision("/slot", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/slot", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /slot for other roles", () => {
+    expect(getRouteDecision("/slot", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
+  it("allows only Allenatore on /mio-orario (Story 2.6, FR-3)", () => {
+    expect(getRouteDecision("/mio-orario", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /mio-orario for other roles", () => {
+    expect(getRouteDecision("/mio-orario", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/mio-orario", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

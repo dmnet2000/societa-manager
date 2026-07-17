@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
@@ -15,54 +16,64 @@ export default async function MioOrarioPage() {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  const utente = user
-    ? await prisma.utente.findUnique({ where: { supabaseAuthId: user.id } })
+  // Un errore qui (es. Supabase Auth non raggiungibile) va distinto da
+  // "nessuna sessione"/"non collegato" nei log - stessa policy gia'
+  // stabilita in requireRuolo (lib/auth/require-ruolo.ts, review Story 1.3):
+  // un'interruzione del servizio non deve essere indistinguibile da uno
+  // stato applicativo normale. Il comportamento resta fail-closed (messaggio
+  // AC #2) in entrambi i casi.
+  if (error) {
+    console.error(error);
+  }
+
+  // Un'unica query invece di due round-trip sequenziali (Utente poi
+  // Allenatore) - review fix: questa e' la prima pagina che risolve "il
+  // profilo di dominio dell'utente loggato", il pattern qui diventa quello
+  // che le prossime storie (2.7) riprenderanno.
+  const allenatore = user
+    ? await prisma.allenatore.findFirst({
+        where: { utente: { supabaseAuthId: user.id } },
+      })
     : null;
-  const allenatore = utente
-    ? await prisma.allenatore.findUnique({ where: { utenteId: utente.id } })
-    : null;
+
+  let body: ReactNode;
 
   // AC #2: l'Utente ha il Ruolo ALLENATORE (il route-guard lo ammette) ma
   // non e' ancora agganciato a un profilo Allenatore (Codice Fiscale non
   // fornito o non corrispondente in fase di registrazione, Story 1.1/1.4) -
   // messaggio chiaro, non un redirect ne' una pagina vuota.
   if (!allenatore) {
-    return (
-      <main>
-        <h1>Il mio orario</h1>
-        <p>
-          Il tuo account non è ancora collegato a un profilo Allenatore.
-          Contatta la segreteria.
-        </p>
-      </main>
+    body = (
+      <p>
+        Il tuo account non è ancora collegato a un profilo Allenatore.
+        Contatta la segreteria.
+      </p>
     );
-  }
+  } else {
+    // Sola lettura (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente
+    // in una pagina GET - Dev Notes Story 1.6). Se l'Anno Agonistico corrente
+    // non esiste ancora, nessuno Slot puo' comunque esistere per definizione
+    // (stesso ragionamento di gruppi/page.tsx e slot/page.tsx).
+    const annoCorrente = await trovaAnnoAgonisticoCorrente();
 
-  // Sola lettura (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente
-  // in una pagina GET - Dev Notes Story 1.6). Se l'Anno Agonistico corrente
-  // non esiste ancora, nessuno Slot puo' comunque esistere per definizione
-  // (stesso ragionamento di gruppi/page.tsx e slot/page.tsx).
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
-
-  const slot = annoCorrente
-    ? await prisma.slot.findMany({
-        where: {
-          gruppo: {
-            annoAgonisticoId: annoCorrente.id,
-            allenatori: { some: { allenatoreId: allenatore.id } },
+    const slot = annoCorrente
+      ? await prisma.slot.findMany({
+          where: {
+            gruppo: {
+              annoAgonisticoId: annoCorrente.id,
+              allenatori: { some: { allenatoreId: allenatore.id } },
+            },
           },
-        },
-        include: { campo: { include: { palestra: true } }, gruppo: true },
-        orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
-      })
-    : [];
+          include: { campo: { include: { palestra: true } }, gruppo: true },
+          orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+        })
+      : [];
 
-  return (
-    <main>
-      <h1>Il mio orario</h1>
-      {slot.length === 0 ? (
+    body =
+      slot.length === 0 ? (
         <p>Nessuno Slot ancora assegnato ai tuoi Gruppi.</p>
       ) : (
         <table>
@@ -89,7 +100,13 @@ export default async function MioOrarioPage() {
             ))}
           </tbody>
         </table>
-      )}
+      );
+  }
+
+  return (
+    <main>
+      <h1>Il mio orario</h1>
+      {body}
     </main>
   );
 }

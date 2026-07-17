@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 2.6: Vista orario personale — Allenatore
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,10 +34,30 @@ so that so sempre dove e quando allenarmi senza chiedere in segreteria.
 - [x] Task 2: Route guard
   - [x] `lib/auth/route-guard.ts`: aggiungere `{ prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE"] }` — **solo** Allenatore per questa storia (FR-3 è specifico di questo Ruolo). Non includere Admin/Dirigente/altri Ruoli: non sono nell'AC, e un Admin userebbe comunque `/slot` per la vista completa (Story 2.5). Story 2.7 (Atleta) deciderà autonomamente, quando verrà creata, se estendere questa stessa pagina con un ramo per Ruolo ATLETA (allargando `ruoliAmmessi`) o costruire una pagina separata — non anticipare quella decisione qui.
 - [x] Task 3: Nessun Task di test Vitest per questa storia — **decisione deliberata, non un'omissione**: la storia non introduce alcuna Server Action né alcuna logica di business estraibile in un helper `lib/` testabile (a differenza di ogni storia precedente dell'Epic 2). È una pagina di sola lettura che compone query Prisma già stabilite (stesso pattern esatto di `gruppi/page.tsx`, `slot/page.tsx`, `conferma-iscrizioni/page.tsx`), coerente con la convenzione già consolidata in tutto il progetto: nessuna pagina/Server Component ha mai avuto un file di test dedicato. Verificare comunque dal vivo tutti gli AC (Task 4).
-- [ ] Task 4: Verifica dal vivo (manuale, Playwright temporaneo)
-  - [ ] AC #1: login come un Allenatore collegato con Gruppi/Slot assegnati (o crearne uno di test), aprire `/mio-orario`, verificare che compaiano esattamente gli Slot dei propri Gruppi (e **non** quelli di Gruppi a cui non è assegnato), ordinati per giorno.
-  - [ ] AC #2: login come un Utente con Ruolo ALLENATORE ma **senza** un `Allenatore.utenteId` corrispondente (o rimuovere temporaneamente l'aggancio di un Allenatore di test), verificare che compaia il messaggio dedicato invece di un errore o una pagina bianca.
-  - [ ] Verificare che un Admin/Dirigente/Atleta non possa raggiungere `/mio-orario` (redirect a `/non-autorizzato`, route-guard).
+- [x] Task 4: Verifica dal vivo (manuale, Playwright temporaneo)
+  - [x] AC #1: login come un Allenatore collegato con Gruppi/Slot assegnati (o crearne uno di test), aprire `/mio-orario`, verificare che compaiano esattamente gli Slot dei propri Gruppi (e **non** quelli di Gruppi a cui non è assegnato), ordinati per giorno.
+  - [x] AC #2: login come un Utente con Ruolo ALLENATORE ma **senza** un `Allenatore.utenteId` corrispondente (o rimuovere temporaneamente l'aggancio di un Allenatore di test), verificare che compaia il messaggio dedicato invece di un errore o una pagina bianca.
+  - [x] Verificare che un Admin/Dirigente/Atleta non possa raggiungere `/mio-orario` (redirect a `/non-autorizzato`, route-guard).
+
+### Review Findings
+
+Code review 2026-07-17 — 3 layer paralleli (Blind Hunter, Edge Case Hunter, Acceptance Auditor).
+
+- [x] [Review][Patch] `supabase.auth.getUser()` scartava l'`error` restituito — la codebase ha già una policy esplicita per questo caso (`requireRuolo`, `lib/auth/require-ruolo.ts`, review Story 1.3: un'interruzione del servizio deve essere distinguibile da "nessuna sessione" nei log) [app/(orari-palestre)/mio-orario/page.tsx] — Blind Hunter, risolto catturando e loggando `error`, riverificato dal vivo
+- [x] [Review][Patch] `lib/auth/route-guard.test.ts` non copriva le nuove rotte `/slot` (Story 2.5) e `/mio-orario` (questa storia) — ogni aggiunta precedente a `PROTECTED_ROUTES` aveva un test dedicato [lib/auth/route-guard.test.ts] — Blind Hunter, risolto aggiungendo 4 nuovi test (allow/deny per entrambe le rotte), suite verde
+- [x] [Review][Patch] Due round-trip Prisma sequenziali (`Utente` poi `Allenatore`) collassabili in un'unica query — rilevante perché questo è il primo pattern "profilo di dominio dell'utente loggato" della codebase e sarebbe stato copiato tal quale dalla Story 2.7 [app/(orari-palestre)/mio-orario/page.tsx] — Blind Hunter, risolto con `prisma.allenatore.findFirst({ where: { utente: { supabaseAuthId: user.id } } } })`, riverificato dal vivo (nessuna regressione su AC #1/#2); in fase di refactor anche l'`<h1>` duplicato tra i due return è stato accorpato in un unico rendering
+
+- [x] [Review][Defer] Nessun `try/catch` attorno alle chiamate Supabase/Prisma — gap preesistente e trasversale a tutta l'app, già loggato in Story 1.2 [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] `user` nullo o senza riga `Utente` corrispondente mostra lo stesso messaggio pensato per AC #2 — stato dati patologico a bassa probabilità, nessun crash [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] Nessuna stagione corrente configurata mostra lo stesso messaggio di un elenco vuoto — stessa categoria di imprecisione di stato-vuoto già accettata in Story 2.1/2.5 [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] `Utente.attivo` verificato solo al login, non ad ogni richiesta — decisione già esplicita altrove nella codebase (AD-11) [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] Query senza `select` esplicito, colonne non usate recuperate — nessun rischio di esposizione (Server Component, mai passato come prop a un Client Component), solo inefficienza trascurabile alla scala del progetto [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] Markup/query Slot duplicati tra `mio-orario/page.tsx` e `slot/page.tsx` — solo la seconda occorrenza, prematuro astrarre ora [app/(orari-palestre)/mio-orario/page.tsx, app/(orari-palestre)/slot/page.tsx] — deferred
+- [x] [Review][Defer] Messaggio di stato vuoto non distingue le cause (nessuna assegnazione / stagione passata / nessuno Slot ancora caricato) — miglioramento UX, nessun AC lo richiede [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] `trovaAnnoAgonisticoCorrente()` non eseguita in parallelo con la catena identità→Allenatore — micro-ottimizzazione, nessun impatto misurabile [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+- [x] [Review][Defer] `oraInizio`/`oraFine` renderizzati senza validazione in lettura — il percorso di scrittura già valida il formato, nessuno scenario reale produce un valore malformato [app/(orari-palestre)/mio-orario/page.tsx] — deferred
+
+Dismesso come artefatto della review (1): "`/slot` privo di protezione fino a questo diff, corretta come rider non documentato" — falso: `/slot` era già stato aggiunto a `PROTECTED_ROUTES` e revisionato nella Story 2.5; l'artefatto deriva dal diff costruito per questa review, che per errore copriva anche i commit della Story 2.5 (nessun confine di commit puntuale disponibile). Nessuna azione necessaria.
 
 ## Dev Notes
 
@@ -72,6 +92,26 @@ Claude Sonnet 5 (claude-sonnet-5)
 
 ### Debug Log References
 
+- `npx tsc --noEmit`: pulito.
+- `npx vitest run`: 227 test, tutti superati (nessun test nuovo, decisione deliberata — vedi Task 3, nessuna regressione).
+- `npm run lint`: pulito.
+- `npm run build`: build di produzione riuscita, `/mio-orario` confermata come route dinamica (`ƒ`).
+- Verifica live (Playwright temporaneo + Prisma/Supabase diretti per il setup, poi rimossi): come Admin, precaricato un Allenatore di test, creata Palestra→Campo, Gruppo, assegnato l'Allenatore al Gruppo, creato uno Slot. Registrato un utente con Ruolo ALLENATORE e Codice Fiscale corrispondente (aggancio automatico) → login → `/mio-orario` mostra correttamente lo Slot del proprio Gruppo (AC #1). Registrato un secondo utente con Ruolo ALLENATORE senza Codice Fiscale (nessun aggancio) → login → `/mio-orario` mostra il messaggio dedicato invece di un errore (AC #2). Registrato un utente con Ruolo SEGRETERIA → tentativo di accesso a `/mio-orario` → redirect a `/non-autorizzato` (route-guard). Tutti i test superati al primo tentativo. Dati di test rimossi al termine (inclusi gli utenti Supabase Auth).
+
 ### Completion Notes List
 
+- Implementato esattamente come da Dev Notes: prima pagina della codebase a risolvere "il profilo di dominio dell'utente loggato" (Utente → Allenatore via `utenteId`), usando il client Supabase autenticato solo per l'identità di sessione (`user.id`), non per bypassare RLS — tutte le query dati restano Prisma diretto su tabelle non-RLS.
+- AC #2 gestito esplicitamente: un Allenatore non ancora agganciato vede un messaggio chiaro, non un errore o una pagina vuota.
+- Nessuna Server Action, nessun file di test Vitest — decisione deliberata e documentata (Task 3): pagina di sola lettura che compone query Prisma già stabilite nelle storie precedenti, coerente con la convenzione dell'intero progetto (nessuna pagina/Server Component ha mai avuto test dedicati).
+- `route-guard.ts` esteso con `/mio-orario` ristretto al solo Ruolo ALLENATORE (FR-3) — non anticipata la decisione di Story 2.7 (Atleta) su se estendere questa stessa pagina o crearne una separata.
+
 ### File List
+
+- `app/(orari-palestre)/mio-orario/page.tsx` (nuovo, poi modificato in code review)
+- `lib/auth/route-guard.ts` (modificato: aggiunta rotta `/mio-orario`)
+- `lib/auth/route-guard.test.ts` (modificato in code review: aggiunti test per `/slot` e `/mio-orario`)
+
+## Change Log
+
+- 2026-07-17: Implementazione completa Story 2.6 (Task 1-4). Sesta storia dell'Epic 2 — nuova pagina `app/(orari-palestre)/mio-orario/` nello stesso modulo di `palestre/`/`slot/` (AD-2, capability map FR-1..FR-5). Prima pagina della codebase a risolvere il profilo di dominio dell'utente loggato (Utente → Allenatore via `utenteId`), usando il client Supabase autenticato solo per l'identità di sessione, non per RLS. Nessuna Server Action né file di test — decisione deliberata, coerente con la convenzione del progetto (nessuna pagina ha mai avuto test dedicati). Query Slot scopata sia per Anno Agonistico corrente sia per i Gruppi dell'Allenatore tramite un relation filter sulla giunzione `GruppoAllenatore`. AC #2 (Allenatore non ancora agganciato) gestito esplicitamente con un messaggio dedicato. Tutti gli AC verificati dal vivo contro un backend Supabase reale, incluso il rifiuto di accesso per un Ruolo non ammesso. Nessun bug applicativo reale scoperto durante lo sviluppo. Status → review.
+- 2026-07-17: Code review. 3 layer paralleli, 0 decisioni, 3 patch applicate (cattura/log dell'`error` di `getUser()`, prima scartato — stessa policy già stabilita in `requireRuolo`; aggiunti i test mancanti in `route-guard.test.ts` per `/slot` e `/mio-orario`; collassate due query sequenziali Utente→Allenatore in una sola, accorpando anche l'`<h1>` duplicato tra i due rami di rendering), 9 finding deferiti (gap trasversali preesistenti, imprecisioni di messaggistica per stati-limite a bassa probabilità, micro-ottimizzazioni, duplicazione a sola-seconda-occorrenza), 1 scartato come artefatto della review (falso positivo su `/slot` dovuto a un diff che copriva anche i commit della Story 2.5). Tutte le patch riverificate dal vivo, nessuna regressione. Suite completa: 231/231 test, typecheck/lint/build verdi. Status → done.
