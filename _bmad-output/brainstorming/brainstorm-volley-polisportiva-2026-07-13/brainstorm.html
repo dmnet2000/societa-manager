@@ -1,0 +1,592 @@
+<title>Brainstorming Settore Volley — Il sestetto, i time-out, il tabellone</title>
+<style>
+  :root{
+    --ground:#eff1ec;
+    --surface:#ffffff;
+    --surface-soft:#e7e9e2;
+    --ink:#1b2521;
+    --ink-soft:#4b564f;
+    --ink-faint:#7a847c;
+    --line:#d3d6cc;
+    --accent:#d9622c;
+    --accent-ink:#fff8f3;
+
+    --role-coach:#1b3a5c;
+    --role-athlete:#2e7d6b;
+    --role-secretary:#a8781f;
+    --role-director:#7a2e3a;
+    --role-parent:#c0603a;
+    --role-admin:#495564;
+    --role-excluded:#8d8f86;
+
+    --must:#21395b;
+    --should:#b8791f;
+    --could:#3e7a78;
+    --wont:#84867d;
+
+    --shadow: 0 1px 2px rgba(20,25,20,.06), 0 8px 24px -12px rgba(20,25,20,.18);
+    --font-display: "Bahnschrift SemiBold", "Bahnschrift", "Arial Narrow", "Segoe UI Semibold", "Segoe UI", sans-serif;
+    --font-body: "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ground:#14181a;
+      --surface:#1c2224;
+      --surface-soft:#232a2b;
+      --ink:#eceee9;
+      --ink-soft:#b7bdb6;
+      --ink-faint:#828a83;
+      --line:#333b37;
+      --accent:#e97c46;
+      --accent-ink:#1a1210;
+
+      --role-coach:#6e9bc9;
+      --role-athlete:#54b79f;
+      --role-secretary:#dba63f;
+      --role-director:#c06b7c;
+      --role-parent:#e2895f;
+      --role-admin:#98a3b3;
+      --role-excluded:#9a9d93;
+
+      --must:#7c9dcb;
+      --should:#e0aa4f;
+      --could:#71b0ac;
+      --wont:#9a9d93;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#eff1ec; --surface:#ffffff; --surface-soft:#e7e9e2;
+    --ink:#1b2521; --ink-soft:#4b564f; --ink-faint:#7a847c; --line:#d3d6cc;
+    --accent:#d9622c; --accent-ink:#fff8f3;
+    --role-coach:#1b3a5c; --role-athlete:#2e7d6b; --role-secretary:#a8781f;
+    --role-director:#7a2e3a; --role-parent:#c0603a; --role-admin:#495564; --role-excluded:#8d8f86;
+    --must:#21395b; --should:#b8791f; --could:#3e7a78; --wont:#84867d;
+    --shadow: 0 1px 2px rgba(20,25,20,.06), 0 8px 24px -12px rgba(20,25,20,.18);
+  }
+  :root[data-theme="dark"]{
+    --ground:#14181a; --surface:#1c2224; --surface-soft:#232a2b;
+    --ink:#eceee9; --ink-soft:#b7bdb6; --ink-faint:#828a83; --line:#333b37;
+    --accent:#e97c46; --accent-ink:#1a1210;
+    --role-coach:#6e9bc9; --role-athlete:#54b79f; --role-secretary:#dba63f;
+    --role-director:#c06b7c; --role-parent:#e2895f; --role-admin:#98a3b3; --role-excluded:#9a9d93;
+    --must:#7c9dcb; --should:#e0aa4f; --could:#71b0ac; --wont:#9a9d93;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  body{ /* harness wraps content in body; styling here is harmless if ignored */ }
+  .page{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.6;
+    font-size:1rem;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:920px; margin:0 auto; padding:0 1.5rem; }
+  h1,h2,h3,h4{ font-family:var(--font-display); text-wrap:balance; margin:0; letter-spacing:.01em; }
+  p{ margin:0; }
+  ::selection{ background:var(--accent); color:var(--accent-ink); }
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:3px; }
+
+  .eyebrow{
+    font-family:var(--font-display);
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-size:.72rem;
+    color:var(--accent);
+    display:flex; align-items:center; gap:.6em;
+  }
+  .eyebrow::before{ content:""; width:1.6em; height:2px; background:var(--accent); display:inline-block; }
+
+  /* ---------- Court-line texture & divider ---------- */
+  .court-lines{
+    position:absolute; inset:0; pointer-events:none;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 7.4%, color-mix(in srgb, var(--ink) 6%, transparent) 7.4% 7.55%, transparent 7.55% 100%);
+    opacity:.5;
+  }
+  .divider{
+    position:relative; height:2px; margin:3.5rem auto; max-width:920px;
+    background:linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent);
+  }
+  .divider::before{
+    content:""; position:absolute; left:50%; top:50%; width:13px; height:13px;
+    transform:translate(-50%,-50%) rotate(45deg);
+    border:2px solid var(--accent); background:var(--ground);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{ position:relative; padding:4.5rem 0 3rem; overflow:hidden; }
+  .hero .wrap{ position:relative; z-index:1; }
+  .hero h1{ font-size:clamp(2.1rem, 3vw + 1.2rem, 3.4rem); line-height:1.05; margin:.6rem 0 1rem; color:var(--ink); }
+  .hero h1 em{ font-style:normal; color:var(--accent); }
+  .hero .lede{ font-size:1.2rem; color:var(--ink-soft); max-width:56ch; margin-bottom:2rem; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .meta-chip{
+    font-family:var(--font-mono); font-size:.82rem; font-variant-numeric:tabular-nums;
+    border:1px solid var(--line); border-radius:999px; padding:.35rem .9rem;
+    color:var(--ink-soft); background:var(--surface);
+  }
+  .meta-chip b{ color:var(--ink); font-weight:600; }
+  .scoreboard-num{
+    font-family:var(--font-display); font-variant-numeric:tabular-nums;
+    font-size:clamp(2.6rem,5vw,4.2rem); color:var(--surface); background:var(--ink);
+    display:inline-flex; align-items:baseline; gap:.5rem; padding:.2rem 1rem; border-radius:6px;
+    margin-top:1.5rem; letter-spacing:.02em;
+  }
+  .scoreboard-num small{ font-size:.9rem; font-family:var(--font-body); letter-spacing:.08em; text-transform:uppercase; opacity:.75; }
+
+  /* ---------- Section shell ---------- */
+  section.block{ padding:3rem 0; }
+  .block-head{ margin-bottom:2rem; max-width:70ch; }
+  .block-head h2{ font-size:clamp(1.7rem,2vw + 1.1rem,2.3rem); margin:.4rem 0 .7rem; }
+  .block-head p{ color:var(--ink-soft); font-size:1.05rem; }
+  .reveal{ opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  /* ---------- Bench (excluded roles) ---------- */
+  .bench{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:.9rem;
+    margin-bottom:2.2rem;
+  }
+  .bench-card{
+    border:1.5px dashed var(--line); border-radius:10px; padding:1rem 1.1rem;
+    background:color-mix(in srgb, var(--role-excluded) 6%, var(--surface));
+    color:var(--ink-soft);
+  }
+  .bench-card .tag{
+    font-family:var(--font-display); text-transform:uppercase; letter-spacing:.1em; font-size:.68rem;
+    color:var(--role-excluded); display:block; margin-bottom:.35rem;
+  }
+  .bench-card strong{ color:var(--ink); font-family:var(--font-display); font-weight:600; font-size:1rem; }
+  .bench-card p{ margin-top:.35rem; font-size:.92rem; }
+
+  /* ---------- Roster grid ---------- */
+  .roster{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.2rem; }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column;
+  }
+  .card-head{
+    padding:1rem 1.2rem; display:flex; align-items:center; gap:.8rem;
+    color:#fff; --rc: var(--role-coach);
+    background: linear-gradient(135deg, var(--rc), color-mix(in srgb, var(--rc) 70%, black));
+  }
+  .card-num{
+    font-family:var(--font-display); font-size:1.6rem; font-weight:700;
+    width:2.4rem; height:2.4rem; border-radius:50%; background:rgba(255,255,255,.16);
+    display:flex; align-items:center; justify-content:center; flex:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .card-head h3{ font-size:1.15rem; color:#fff; }
+  .card-head span{ display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; opacity:.85; margin-top:.15rem;}
+  .card-body{ padding:1.1rem 1.2rem 1.3rem; display:flex; flex-direction:column; gap:.7rem; flex:1; }
+  .voice-line{
+    font-size:.95rem; font-style:italic; color:var(--ink-soft); padding-left:.8rem;
+    border-left:2px solid var(--line);
+  }
+  .idea-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55rem; }
+  .idea-list li{ font-size:.94rem; display:flex; gap:.55rem; align-items:flex-start; }
+  .tagpill{
+    flex:none; font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:.04em;
+    padding:.1rem .45rem; border-radius:4px; margin-top:.15rem;
+    background:var(--surface-soft); color:var(--ink-faint); border:1px solid var(--line);
+  }
+  .idea-list li[data-k="idea"] .tagpill{ color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  .idea-list li[data-k="decisione"] .tagpill{ color:var(--role-director); border-color:color-mix(in srgb, var(--role-director) 40%, var(--line)); }
+  .idea-list li[data-k="insight"] .tagpill{ color:var(--role-admin); border-color:color-mix(in srgb, var(--role-admin) 40%, var(--line)); }
+  .card-foot-note{ font-size:.85rem; color:var(--ink-faint); }
+
+  /* ---------- Timeouts (How Might We) ---------- */
+  .timeouts{ display:flex; flex-direction:column; gap:1.1rem; position:relative; }
+  .timeouts::before{
+    content:""; position:absolute; left:1.35rem; top:.5rem; bottom:.5rem; width:2px;
+    background:repeating-linear-gradient(180deg, var(--line) 0 6px, transparent 6px 12px);
+  }
+  .timeout{
+    position:relative; padding-left:3.2rem; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding-top:1.1rem; padding-bottom:1.2rem; padding-right:1.2rem; box-shadow:var(--shadow);
+  }
+  .timeout-num{
+    position:absolute; left:.35rem; top:1.1rem; width:2rem; height:2rem; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink); font-family:var(--font-display); font-weight:700;
+    display:flex; align-items:center; justify-content:center; font-size:.95rem;
+  }
+  .timeout h4{ font-size:1.12rem; color:var(--ink); margin-bottom:.15rem; }
+  .timeout .q{ color:var(--ink-soft); font-size:1rem; margin-bottom:.75rem; }
+  .timeout .q::before{ content:"“"; color:var(--accent); font-size:1.3em; line-height:0; }
+  .timeout .q::after{ content:"”"; color:var(--accent); font-size:1.3em; line-height:0; }
+  .decision-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.5rem; }
+  .decision-list li{ font-size:.94rem; padding-left:1.3rem; position:relative; }
+  .decision-list li::before{ content:"✓"; position:absolute; left:0; top:.05em; color:var(--could); font-weight:700; }
+  .timeout.note .q::before, .timeout.note .q::after{ content:""; }
+  .timeout.note .q{ font-style:italic; }
+
+  /* ---------- Scoreboard / MoSCoW ---------- */
+  .scoreboard{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  @media (max-width:640px){ .scoreboard{ grid-template-columns:1fr; } }
+  .panel{
+    border-radius:12px; padding:1.3rem 1.4rem; background:var(--surface);
+    border:1px solid var(--line); box-shadow:var(--shadow);
+    border-top:6px solid var(--pc, var(--must));
+  }
+  .panel.must{ --pc:var(--must); grid-column:1 / -1; }
+  .panel.should{ --pc:var(--should); }
+  .panel.could{ --pc:var(--could); }
+  .panel.wont{ --pc:var(--wont); }
+  .panel-head{ display:flex; align-items:baseline; justify-content:space-between; gap:.8rem; margin-bottom:.9rem; flex-wrap:wrap; }
+  .panel-title{ font-family:var(--font-display); font-size:1.3rem; color:var(--pc); text-transform:uppercase; letter-spacing:.03em; }
+  .panel-sub{ font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); }
+  .panel ul{ list-style:none; margin:0; padding:0; display:grid; gap:.55rem; }
+  .panel.must ul{ grid-template-columns:1fr 1fr; }
+  @media (max-width:720px){ .panel.must ul{ grid-template-columns:1fr; } }
+  .panel li{ font-size:.95rem; padding-left:1.15rem; position:relative; }
+  .panel.must li::before{ content:""; position:absolute; left:0; top:.5em; width:6px; height:6px; border-radius:50%; background:var(--must); }
+  .panel.should li::before{ content:""; position:absolute; left:0; top:.5em; width:6px; height:6px; border-radius:50%; background:var(--should); }
+  .panel.could li::before{ content:""; position:absolute; left:0; top:.5em; width:6px; height:6px; border-radius:50%; background:var(--could); }
+  .panel.wont{ opacity:.85; }
+  .panel.wont li{ text-decoration:line-through; text-decoration-color:var(--wont); text-decoration-thickness:1.5px; color:var(--ink-faint); }
+  .panel.wont li::before{ content:"×"; position:absolute; left:0; top:.15em; color:var(--wont); font-weight:700; }
+  .panel-pair{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem; }
+  @media (max-width:640px){ .panel-pair{ grid-template-columns:1fr; } }
+
+  /* ---------- Synthesis / final whistle ---------- */
+  .whistle{
+    background:linear-gradient(160deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));
+    border:1px solid var(--line); border-radius:16px; padding:2.2rem clamp(1.2rem,4vw,2.6rem);
+    margin:2rem 0; box-shadow:var(--shadow);
+  }
+  .whistle h2{ color:var(--ink); }
+  .plays{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1.2rem; margin-top:1.6rem; }
+  .play{ display:flex; flex-direction:column; gap:.5rem; }
+  .play .num{
+    font-family:var(--font-display); font-size:2.4rem; color:var(--accent); line-height:1;
+  }
+  .play h4{ font-size:1.05rem; color:var(--ink); }
+  .play p{ font-size:.94rem; color:var(--ink-soft); }
+
+  footer.colophon{
+    border-top:1px solid var(--line); margin-top:2rem; padding:2rem 0 3rem; color:var(--ink-faint); font-size:.85rem;
+  }
+  footer.colophon .wrap{ display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; align-items:center; justify-content:space-between; }
+  footer.colophon .stamp{ font-family:var(--font-mono); }
+
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="court-lines" aria-hidden="true"></div>
+    <div class="wrap">
+      <span class="eyebrow">Sessione di brainstorming · modalità partner</span>
+      <h1>Il settore volley della polisportiva:<br><em>sestetto, time-out e tabellone finale</em></h1>
+      <p class="lede">Come organizzare orari palestre, gruppi di allenamento e allenatori, presenze delle atlete e scadenze delle visite mediche — costruito a due voci, tecnica per tecnica.</p>
+      <div class="meta-row">
+        <span class="meta-chip"><b>Obiettivo</b> · orari, gruppi/allenatori, presenze, visite mediche</span>
+        <span class="meta-chip"><b>Tecniche</b> · Role Playing → How Might We → Convergenza MoSCoW</span>
+        <span class="meta-chip"><b>Stato</b> · completata</span>
+      </div>
+      <div class="scoreboard-num">13.07.26 <small>ore 16:57 — fine sessione</small></div>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+    <!-- ROLE PLAYING -->
+    <section class="block reveal" id="roleplay">
+      <div class="block-head">
+        <span class="eyebrow">Tecnica 1</span>
+        <h2>Role Playing — il sestetto titolare</h2>
+        <p>In volley scendono in campo in sei. Prima di giocare, la squadra ha scelto chi sta in campo e chi resta fuori rosa: due ruoli sono stati lasciati in panchina, un ruolo è stato aggiunto ex novo, poi la parola è passata a turno a ciascuno dei sei ruoli in campo.</p>
+      </div>
+
+      <div class="bench">
+        <div class="bench-card">
+          <span class="tag">Fuori rosa</span>
+          <strong>Gestore palestra/impianto</strong>
+          <p>Escluso: gli slot orari delle palestre sono già assegnati e dati, non decisi dalla polisportiva. Resta però l'idea guida: il lavoro sugli orari è un incastro — si prendono gli slot disponibili e si adattano alla disponibilità degli allenatori.</p>
+        </div>
+        <div class="bench-card">
+          <span class="tag">Fuori rosa</span>
+          <strong>Medico sportivo / Staff sanitario</strong>
+          <p>Escluso: al momento non esiste nessuno che ricopra questo ruolo nella polisportiva.</p>
+        </div>
+      </div>
+      <p class="card-foot-note" style="margin-bottom:1.4rem;">Un ruolo è stato aggiunto in corsa: <strong style="color:var(--ink)">Admin di sistema</strong>, tenuto distinto dalla Segreteria/Amministrazione — gestisce utenti, permessi e configurazioni tecniche dell'app, non le pratiche del settore.</p>
+
+      <div class="roster">
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-coach)">
+            <span class="card-num">1</span>
+            <div><h3>Allenatore</h3><span>voce tecnica del campo</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Voglio guardare lo storico presenze di ogni atleta — e capire, non solo contare."</p>
+            <ul class="idea-list">
+              <li data-k="idea"><span class="tagpill">idea</span> Vedere lo storico presenze per singola atleta.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Storico presenze con indicatore di trend/percentuale, per aiutare le scelte di formazione in vista delle partite.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Una sezione per atleta con dati antropometrici e misurazioni dei test fisici nel tempo.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-athlete)">
+            <span class="card-num">2</span>
+            <div><h3>Atleta</h3><span>voce di chi gioca</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Il turno è passato a me senza nuove richieste a verbale — ma i miei numeri sono già in ballo."</p>
+            <p class="card-foot-note">Nessuna nuova idea distinta è stata registrata durante questo turno: il tema resta legato alla visibilità sui propri dati (storico presenze, misurazioni fisiche) già emersa nel turno dell'Allenatore.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-secretary)">
+            <span class="card-num">3</span>
+            <div><h3>Segreteria / Amministrazione</h3><span>voce delle pratiche</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Il gestionale della polisportiva lo abbiamo già: qui mi serve il minimo indispensabile."</p>
+            <ul class="idea-list">
+              <li data-k="insight"><span class="tagpill">insight</span> La segreteria ha già un gestionale per tutta la polisportiva: la sezione Segreteria di questa app potrebbe avere un uso limitato.</li>
+              <li data-k="decisione"><span class="tagpill">decisione</span> Funzioni minime necessarie: inserimento visite mediche e conferma di avvenuta iscrizione.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Vista degli orari degli allenamenti nelle varie palestre.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-director)">
+            <span class="card-num">4</span>
+            <div><h3>Dirigente / Responsabile settore</h3><span>voce di chi decide la stagione</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Gli orari, una volta fissati, restano fissi per tutto l'anno agonistico."</p>
+            <ul class="idea-list">
+              <li data-k="insight"><span class="tagpill">insight</span> Gli orari dei gruppi, una volta definiti, restano fissi per l'intero anno agonistico: non serve rilevazione conflitti in continuo, è una definizione iniziale.</li>
+              <li data-k="decisione"><span class="tagpill">decisione</span> Tutto il sistema deve essere strutturato per anno agonistico: dal 1 agosto al 30 giugno dell'anno successivo.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-parent)">
+            <span class="card-num">5</span>
+            <div><h3>Genitore</h3><span>voce di casa</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Il certificato nuovo lo carico io dall'app — e che arrivi a chi deve saperlo, subito."</p>
+            <ul class="idea-list">
+              <li data-k="idea"><span class="tagpill">idea</span> Upload del nuovo certificato medico dall'app, con notifica automatica ad allenatore/dirigente e mail alla segreteria con il file allegato.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Estendere la funzionalità di upload del certificato medico anche all'Atleta, non solo al Genitore.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head" style="--rc:var(--role-admin)">
+            <span class="card-num">6</span>
+            <div><h3>Admin di sistema</h3><span>voce di chi imposta l'impianto</span></div>
+          </div>
+          <div class="card-body">
+            <p class="voice-line">"Il codice fiscale è la chiave: aggancia atlete, allenatori e genitori senza doppio lavoro."</p>
+            <ul class="idea-list">
+              <li data-k="idea"><span class="tagpill">idea</span> Ogni ruolo può registrarsi autonomamente nel sistema.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Import iniziale delle atlete da file Excel esportato dal portale federale volley.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Allenatori precaricati con dati minimi (es. codice fiscale come chiave di aggancio per la loro registrazione).</li>
+              <li data-k="idea"><span class="tagpill">idea</span> Dirigente e Admin possono associare gli allenatori ai gruppi.</li>
+              <li data-k="idea"><span class="tagpill">idea</span> I genitori si registrano da zero e si agganciano alle atlete indicando il codice fiscale del figlio/a.</li>
+            </ul>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <div class="divider" role="presentation"></div>
+
+    <!-- HOW MIGHT WE -->
+    <section class="block reveal" id="hmw">
+      <div class="block-head">
+        <span class="eyebrow">Tecnica 2</span>
+        <h2>How Might We — i time-out tattici</h2>
+        <p>Quattro fermate a bordo campo per mettere a fuoco un problema alla volta e uscire con una decisione concreta.</p>
+      </div>
+
+      <div class="timeouts">
+        <div class="timeout note">
+          <span class="timeout-num">·</span>
+          <h4>Punto di partenza — prima della prima domanda</h4>
+          <p class="q">Come impostare orari e palestre senza che l'app debba risolvere l'incastro al posto delle persone?</p>
+          <ul class="decision-list">
+            <li>L'incastro/griglia di assegnazione slot-allenatore non serve nell'app: viene preparato a parte con l'aiuto dell'AI. L'app deve solo permettere di caricare le Palestre e direttamente gli slot orari degli allenamenti già definiti.</li>
+            <li>Alcune palestre hanno più campi (es. due campi): possono ospitare due gruppi in contemporanea nello stesso slot orario. Serve modellare Palestra con uno o più Campi.</li>
+          </ul>
+        </div>
+
+        <div class="timeout">
+          <span class="timeout-num">2</span>
+          <h4>Time-out 2 — visite mediche in regola</h4>
+          <p class="q">Come possiamo garantire che nessuna atleta scenda in campo con la visita medica scaduta, senza appesantire il lavoro di segreteria?</p>
+          <ul class="decision-list">
+            <li>Alert visivo su visita medica scaduta non bloccante: solo informativo, non impedisce di segnare la presenza.</li>
+            <li>Promemoria scadenza visita medica inviati a Genitore, Atleta, Allenatore e Dirigente, un mese prima e una settimana prima della scadenza.</li>
+          </ul>
+        </div>
+
+        <div class="timeout">
+          <span class="timeout-num">3</span>
+          <h4>Time-out 3 — cambio stagione</h4>
+          <p class="q">Come possiamo minimizzare lo sforzo di ricostruzione nel passaggio da una stagione agonistica all'altra?</p>
+          <ul class="decision-list">
+            <li>Il certificato medico segue l'anno solare, non l'anno agonistico. Nell'import: se la data del certificato nell'export Excel è più recente di quella a sistema si aggiorna, altrimenti resta quella a sistema.</li>
+            <li>Le atlete Under 13 possono non comparire nell'export Excel della nuova stagione (tesserino annuale non sempre presente). Devono comunque essere riportate di default nella nuova stagione, con possibilità di escluderle manualmente a inizio anno.</li>
+          </ul>
+        </div>
+
+        <div class="timeout">
+          <span class="timeout-num">4</span>
+          <h4>Time-out 4 — informati, non sommersi</h4>
+          <p class="q">Come possiamo dare a genitori e atlete la sensazione di essere sempre informati senza sommergerli di notifiche inutili?</p>
+          <ul class="decision-list">
+            <li>Priorità: evitare l'effetto gruppo WhatsApp (rumore/notifiche continue), non aggiungere nuovi tipi di notifica.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider" role="presentation"></div>
+
+    <!-- MOSCOW SCOREBOARD -->
+    <section class="block reveal" id="moscow">
+      <div class="block-head">
+        <span class="eyebrow">Convergenza</span>
+        <h2>Il tabellone finale — chi scende in campo</h2>
+        <p>La convergenza MoSCoW, letta come una distinta di formazione: chi è titolare, chi è pronto in panchina, chi è ancora in allenamento e chi è stato lasciato fuori rosa.</p>
+      </div>
+
+      <div class="scoreboard">
+        <div class="panel must">
+          <div class="panel-head">
+            <span class="panel-title">In campo</span>
+            <span class="panel-sub">Must have</span>
+          </div>
+          <ul>
+            <li>Sei ruoli attivi: Allenatore, Atleta, Genitore, Segreteria, Dirigente, Admin.</li>
+            <li>Struttura dati per anno agonistico (1 agosto → 30 giugno).</li>
+            <li>Gerarchia Palestra → Campo → Slot, senza algoritmo di assegnazione.</li>
+            <li>Vista orario personale per allenatore e atleta.</li>
+            <li>Presenze con storico.</li>
+            <li>Ciclo completo delle visite mediche: upload, notifica, conferma, alert, promemoria.</li>
+            <li>Conferma di avvenuta iscrizione.</li>
+            <li>Onboarding via codice fiscale: registrazione per ruolo, import Excel, precaricamento allenatori, aggancio genitore-figlia.</li>
+            <li>Regole di rollover stagionale: merge del certificato medico, riporto automatico delle U13.</li>
+          </ul>
+        </div>
+
+        <div class="panel-pair" style="grid-column:1/-1">
+          <div class="panel should">
+            <div class="panel-head">
+              <span class="panel-title">In panchina</span>
+              <span class="panel-sub">Should have</span>
+            </div>
+            <ul>
+              <li>Dati antropometrici e test fisici dell'atleta.</li>
+              <li>Vista orari trasversale per la Segreteria.</li>
+              <li>Permessi granulari sui dati sanitari.</li>
+            </ul>
+          </div>
+
+          <div class="panel could">
+            <div class="panel-head">
+              <span class="panel-title">In allenamento</span>
+              <span class="panel-sub">Could have</span>
+            </div>
+            <ul>
+              <li>Trend/percentuale presenze e grafico progressi dei test fisici.</li>
+              <li>Wizard nuova stagione con copia automatica delle assegnazioni.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel wont" style="grid-column:1/-1">
+          <div class="panel-head">
+            <span class="panel-title">Fuori rosa</span>
+            <span class="panel-sub">Won't have — fuori scope</span>
+          </div>
+          <ul>
+            <li>Algoritmo/griglia di assegnazione slot-allenatore.</li>
+            <li>Ruolo Gestore palestra.</li>
+            <li>Ruolo Medico sportivo / Staff sanitario.</li>
+            <li>Funzioni gestionali complete di Segreteria (pagamenti, iscrizioni federali).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SYNTHESIS -->
+    <section class="block reveal" id="synthesis">
+      <div class="whistle">
+        <span class="eyebrow">Fischio finale</span>
+        <h2>Tre giocate che hanno deciso la partita</h2>
+        <div class="plays">
+          <div class="play">
+            <span class="num">01</span>
+            <h4>Il codice fiscale come motore unico</h4>
+            <p>Una sola chiave di matching e merge, riusata ovunque: import delle atlete, precaricamento degli allenatori, aggancio dei genitori alle figlie, rollover da una stagione all'altra.</p>
+          </div>
+          <div class="play">
+            <span class="num">02</span>
+            <h4>Un'identità trovata per esclusione</h4>
+            <p>Togliendo il Gestore palestra, il Medico sportivo e le funzioni gestionali complete della Segreteria, l'app ha trovato il suo nucleo: compliance sanitaria, presenze, visibilità degli orari per ruolo — non un gestionale generale.</p>
+          </div>
+          <div class="play">
+            <span class="num">03</span>
+            <h4>Il principio "niente rumore"</h4>
+            <p>Alert non bloccanti, nessun effetto gruppo WhatsApp: non è solo una regola per le notifiche, è la filosofia di design che attraversa tutta la sessione.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="colophon">
+    <div class="wrap">
+      <span class="stamp">Tema · Gestione settore volley di una polisportiva</span>
+      <span class="stamp">Modalità · Creative Partner</span>
+      <span class="stamp">Chiusa il 13/07/2026, ore 16:57 — stato: completata</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var els = document.querySelectorAll('.reveal');
+  if(reduce || !('IntersectionObserver' in window)){
+    els.forEach(function(el){ el.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  els.forEach(function(el){ io.observe(el); });
+})();
+</script>

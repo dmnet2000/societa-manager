@@ -1,0 +1,12 @@
+-- Story 1.8: "attiva" rappresenta se un'Iscrizione (riportata automaticamente
+-- o confermata manualmente, Story 1.6) e' ancora valida. Un UPDATE, non un
+-- DELETE - Story 1.6 ha deliberatamente rimosso ogni policy/GRANT DELETE su
+-- "iscrizioni" in code review, questa colonna evita di doverli reintrodurre.
+-- Nessuna nuova policy RLS necessaria per la sola aggiunta della colonna;
+-- la policy/GRANT UPDATE su "iscrizioni" viene pero' ripristinata (dopo
+-- essere stata rimossa in Story 1.6 code review) dalla migrazione
+-- successiva 20260717130000_iscrizioni_restore_update_for_esclusione,
+-- necessaria prima che disattivaIscrizione/escludiIscrizione funzionino
+-- (review fix: il commento originale affermava erroneamente che quella
+-- policy esistesse gia' a questo punto).
+ALTER TABLE "iscrizioni" ADD COLUMN "attiva" BOOLEAN NOT NULL DEFAULT true;

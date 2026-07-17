@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: niente url qui - la connessione a runtime passa dall'adapter
+// (lib/prisma.ts), quella per Migrate/CLI da prisma.config.ts (DIRECT_URL).
+datasource db {
+  provider = "postgresql"
+}
+
+enum Ruolo {
+  ALLENATORE
+  ATLETA
+  GENITORE
+  SEGRETERIA
+  DIRIGENTE
+  ADMIN
+}
+
+// Non protetto da RLS (AD-9): gestibile via Prisma con connessione diretta.
+// I Ruoli sono anche specchiati in app_metadata di Supabase Auth (AD-11) —
+// Prisma resta la fonte di verita', app_metadata e' una cache per il Proxy.
+model Utente {
+  id             String           @id @default(uuid())
+  supabaseAuthId String           @unique
+  email          String           @unique
+  attivo         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  ruoli          UtenteRuolo[]
+  allenatore     Allenatore?
+  genitoriAtlete GenitoreAtleta[]
+
+  @@map("utenti")
+}
+
+// Tabella di giunzione molti-a-molti: un Utente puo' avere piu' Ruoli
+// (es. un Dirigente che allena anche) - vedi ARCHITECTURE-SPINE.md ERD.
+model UtenteRuolo {
+  id       String @id @default(uuid())
+  utenteId String
+  utente   Utente @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+  ruolo    Ruolo
+
+  @@unique([utenteId, ruolo])
+  @@map("utente_ruoli")
+}
+
+enum Sesso {
+  M
+  F
+}
+
+// Protetta da RLS (AD-4/AD-9): letta/scritta a runtime tramite client
+// Supabase autenticato (lib/db-rls/), mai con una query Prisma diretta - a
+// differenza di Utente/UtenteRuolo. Onboarding-Import e' l'unico proprietario
+// dei campi identitari (AD-10) - nessun altro modulo scrive su queste colonne.
+model Atleta {
+  id                    String             @id @default(uuid())
+  codiceFiscale         String             @unique
+  nome                  String
+  sesso                 Sesso
+  dataNascita           DateTime
+  luogoNascita          String?
+  provinciaNascita      String?
+  indirizzo             String?
+  cap                   String?
+  localitaResidenza     String?
+  provinciaResidenza    String?
+  categoria             String?
+  matricola             String?
+  dataPrimoTesseramento DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  genitori              GenitoreAtleta[]
+  iscrizioni            Iscrizione[]
+  certificatoMedico     CertificatoMedico?
+
+  @@map("atlete")
+}
+
+// Non protetta da RLS (AD-9, elencata esplicitamente insieme a Palestra,
+// Campo, Slot, Gruppo, Utente, UtenteRuolo) - gestibile via Prisma diretto,
+// a differenza di Atleta. `utenteId` e' null finche' la persona non si
+// registra con lo stesso Codice Fiscale (Story 1.1 registrati/actions.ts) -
+// l'aggancio lo valorizza, nessun record duplicato.
+model Allenatore {
+  id            String             @id @default(uuid())
+  nome          String
+  codiceFiscale String             @unique
+  utenteId      String?            @unique
+  utente        Utente?            @relation(fields: [utenteId], references: [id], onDelete: SetNull)
+  createdAt     DateTime           @default(now())
+  gruppi        GruppoAllenatore[]
+
+  @@map("allenatori")
+}
+
+// Tabella di giunzione molti-a-molti (ERD: GENITORE }o--o{ ATLETA). Non
+// protetta da RLS (non nel bind-list di AD-4) - gestita via Prisma diretto
+// come UtenteRuolo/Allenatore (AD-9), anche se ha una FK verso Atleta
+// (RLS-protetta): il vincolo di integrita' referenziale e' una garanzia
+// Postgres indipendente dalla RLS/PostgREST.
+model GenitoreAtleta {
+  id        String   @id @default(uuid())
+  utenteId  String
+  atletaId  String
+  utente    Utente   @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+  atleta    Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([utenteId, atletaId])
+  @@map("genitori_atlete")
+}
+
+// Non protetta da RLS: non e' nel bind-list di AD-4, e' dato puramente
+// strutturale (intervallo di date), non personale/sensibile - stesso
+// trattamento di Palestra/Campo/Slot/Gruppo (AD-9). Gestita via Prisma
+// diretto tramite lib/anno-agonistico/ (Structural Seed).
+model AnnoAgonistico {
+  id         String       @id @default(uuid())
+  dataInizio DateTime
+  dataFine   DateTime
+  createdAt  DateTime     @default(now())
+  iscrizioni Iscrizione[]
+  gruppi     Gruppo[]
+
+  @@unique([dataInizio, dataFine])
+  @@map("anni_agonistici")
+}
+
+// Protetta da RLS (AD-4/AD-9, esplicitamente nel bind-list): letta/scritta a
+// runtime tramite client Supabase autenticato (lib/db-rls/iscrizione.ts),
+// mai con una query Prisma diretta - come Atleta (Story 1.3). Una sola
+// Iscrizione per Atleta per Anno Agonistico (non un vincolo su atletaId da
+// solo: un'Atleta ha un'Iscrizione per ogni stagione in cui si iscrive).
+model Iscrizione {
+  id               String         @id @default(uuid())
+  atletaId         String
+  annoAgonisticoId String
+  atleta           Atleta         @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id], onDelete: Cascade)
+  confermataIl     DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  // Story 1.8: false = esclusa manualmente (o mai confermata) - non
+  // eliminata, per non riaprire la rimozione del DELETE decisa in Story 1.6.
+  attiva           Boolean        @default(true)
+
+  @@unique([atletaId, annoAgonisticoId])
+  @@map("iscrizioni")
+}
+
+// Protetta da RLS (AD-4/AD-9, esplicitamente nel bind-list): letta/scritta a
+// runtime tramite client Supabase autenticato (lib/db-rls/certificato-medico.ts),
+// mai con una query Prisma diretta - come Atleta/Iscrizione. Un solo
+// Certificato "corrente" per Atleta (non uno storico multi-riga per import -
+// vedi Dev Notes Story 1.7): atletaId univoco. `dataFineValidita` e'
+// obbligatoria - e' l'unico campo su cui si basa il confronto "vince la data
+// piu' recente" (FR-22, unisciCertificato) - un record senza questo valore
+// non viene mai creato.
+model CertificatoMedico {
+  id                 String    @id @default(uuid())
+  atletaId           String    @unique
+  atleta             Atleta    @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  dataInizioValidita DateTime?
+  dataFineValidita   DateTime
+  mesiValidita       Int?
+  modulo             String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("certificati_medici")
+}
+
+// Non protetta da RLS (AD-9, elencata esplicitamente insieme a Campo/Slot/
+// Gruppo/Allenatore) - gestibile via Prisma diretto, come Allenatore
+// (Story 1.4) e AnnoAgonistico (Story 1.6). Struttura permanente, nessun
+// riferimento all'Anno Agonistico (a differenza di Gruppo/Iscrizione, AD-8).
+model Palestra {
+  id        String   @id @default(uuid())
+  nome      String
+  indirizzo String?
+  createdAt DateTime @default(now())
+  campi     Campo[]
+
+  @@map("palestre")
+}
+
+// Non protetta da RLS (AD-9), stesso trattamento di Palestra. Una palestra
+// con piu' Campi puo' ospitare due Gruppi in contemporanea sullo stesso
+// orario, su Campi diversi (AC #4) - nessun vincolo qui lo impedisce; la
+// gestione dei conflitti sugli Slot e' fuori scope (Story 2.5).
+model Campo {
+  id         String   @id @default(uuid())
+  nome       String
+  palestraId String
+  palestra   Palestra @relation(fields: [palestraId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("campi")
+}
+
+// Non protetto da RLS (AD-9, elencato esplicitamente insieme a Palestra/
+// Campo/Slot/Allenatore) - gestibile via Prisma diretto. AD-8: FK diretta
+// verso AnnoAgonistico (nessun onDelete esplicito diverso dal default
+// Restrict di Prisma - nessuna UI di eliminazione Anno Agonistico esiste).
+// Nessuna relazione con Palestra/Campo/Atleta in questa storia: quei
+// collegamenti sono proprieta' di storie successive (2.4, 2.5). La
+// relazione con Allenatore (molti-a-molti, tramite GruppoAllenatore) e'
+// stata aggiunta in Story 2.3.
+model Gruppo {
+  id               String              @id @default(uuid())
+  nome             String
+  categoria        String
+  annoAgonisticoId String
+  annoAgonistico   AnnoAgonistico      @relation(fields: [annoAgonisticoId], references: [id])
+  createdAt        DateTime            @default(now())
+  allenatori       GruppoAllenatore[]
+
+  @@map("gruppi")
+}
+
+// Tabella di giunzione molti-a-molti (ERD: GRUPPO }o--o{ ALLENATORE). Non
+// protetta da RLS (AD-9: ne' Gruppo ne' Allenatore sono nel bind-list di
+// AD-4) - gestita via Prisma diretto, stesso pattern di GenitoreAtleta
+// (Story 1.5) e UtenteRuolo (Story 1.1). @@unique rende l'assegnazione
+// idempotente (AC #3, Story 2.3): un tentativo di duplicato viola il
+// vincolo (Prisma P2002), trattato come successo invece di un
+// check-then-insert che lascerebbe una finestra di race.
+model GruppoAllenatore {
+  id           String     @id @default(uuid())
+  gruppoId     String
+  allenatoreId String
+  gruppo       Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  allenatore   Allenatore @relation(fields: [allenatoreId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([gruppoId, allenatoreId])
+  @@map("gruppo_allenatori")
+}

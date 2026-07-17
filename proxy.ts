@@ -1,0 +1,61 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { getRouteDecision } from "@/lib/auth/route-guard";
+import { parseRuoli } from "@/lib/ruoli";
+
+// Next.js 16: "middleware.ts" e' stato rinominato "proxy.ts" (funzione
+// esportata "proxy", non piu' "middleware"). Gira su runtime Node.js di
+// default. Usa getUser() (non getSession()) perche' rivalida il JWT.
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Fail-closed: un errore imprevisto (es. Supabase Auth non raggiungibile)
+  // e' trattato come utente non autenticato, non come crash del Proxy.
+  let user = null;
+  try {
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
+
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+  const decision = getRouteDecision(
+    request.nextUrl.pathname,
+    !!user,
+    ruoli
+  );
+
+  if (decision.action === "redirect") {
+    return NextResponse.redirect(new URL(decision.location, request.url));
+  }
+
+  return response;
+}
+
+// Esclude asset statici e ottimizzazione immagini dal Proxy.
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
