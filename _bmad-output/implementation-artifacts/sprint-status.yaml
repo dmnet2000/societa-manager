@@ -62,9 +62,9 @@ development_status:
   epic-2: in-progress
   2-1-anagrafica-palestre-e-campi: done
   2-2-creazione-gruppi: done
-  2-3-assegnazione-allenatori-a-gruppo: review
-  2-4-assegnazione-atlete-a-gruppo: backlog
-  2-5-caricamento-slot: backlog
+  2-3-assegnazione-allenatori-a-gruppo: done
+  2-4-assegnazione-atlete-a-gruppo: done
+  2-5-caricamento-slot: ready-for-dev
   2-6-vista-orario-personale-allenatore: backlog
   2-7-vista-orario-personale-atleta: backlog
   2-8-vista-orari-trasversale-segreteria: backlog

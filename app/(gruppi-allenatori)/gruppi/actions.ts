@@ -96,3 +96,70 @@ export async function assegnaAllenatore(
   revalidatePath("/gruppi");
   return { success: true };
 }
+
+// AC #1/#2/#3: FR-30 ammette Dirigente o Admin, analogo a FR-7. GruppoAtleta
+// non e' protetta da RLS (AD-9) nonostante la FK verso Atleta (RLS-protetta,
+// AD-4) - stesso principio di GenitoreAtleta (Story 1.5): la FK e' solo un
+// vincolo di integrita' referenziale, non un permesso di lettura.
+export async function assegnaAtleta(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  const atletaId = String(formData.get("atletaId") ?? "");
+
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  if (!atletaId) {
+    return { error: { code: "VALIDATION", message: "Atleta non specificata." } };
+  }
+
+  let gruppo: { annoAgonisticoId: string } | null;
+  try {
+    // Serve l'annoAgonisticoId del Gruppo target (impostato alla sua
+    // creazione, Story 2.2) - non risolviAnnoAgonisticoCorrente(): il Gruppo
+    // esiste gia' e porta con se' la propria stagione. Dentro il try: un
+    // errore di connessione qui non deve mai propagarsi come eccezione non
+    // gestita (review fix - prima era fuori dal blocco try/catch).
+    gruppo = await prisma.gruppo.findUnique({
+      where: { id: gruppoId },
+      select: { annoAgonisticoId: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
+    };
+  }
+  if (!gruppo) {
+    return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+  }
+
+  try {
+    // AC #2/#3: upsert sulla chiave composita (atletaId, annoAgonisticoId) -
+    // un'Atleta ha un solo Gruppo per Anno Agonistico (invariante, non solo
+    // una regola di inserimento). Riassegnare allo stesso Gruppo aggiorna
+    // gruppoId con lo stesso valore (no-op, AC #3); riassegnare a un Gruppo
+    // diverso sostituisce l'assegnazione precedente (AC #2) - un unico passo
+    // atomico, non un check-then-write con una finestra di race.
+    await prisma.gruppoAtleta.upsert({
+      where: {
+        atletaId_annoAgonisticoId: { atletaId, annoAgonisticoId: gruppo.annoAgonisticoId },
+      },
+      create: { atletaId, gruppoId, annoAgonisticoId: gruppo.annoAgonisticoId },
+      update: { gruppoId },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
+    };
+  }
+
+  revalidatePath("/gruppi");
+  return { success: true };
+}

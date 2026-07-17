@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 2.3: Assegnazione Allenatori a Gruppo
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -45,8 +45,8 @@ so that ogni gruppo ha chi lo segue.
 
 Code review 2026-07-17 — 3 layer paralleli (Blind Hunter, Edge Case Hunter, Acceptance Auditor).
 
-- [ ] [Review][Patch] `GruppoRow.tsx` non resetta il `<select>` dopo un'assegnazione riuscita, a differenza di `NuovoGruppoForm.tsx`/`NuovoCampoForm.tsx` che resettano il form al successo [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx] — Blind Hunter
-- [ ] [Review][Patch] L'elenco degli Allenatori già assegnati (`include: { allenatori: ... }`) non ha `orderBy`, mentre il menu "disponibili" è ordinato per nome — incoerenza tra i due elenchi nella stessa riga [app/(gruppi-allenatori)/gruppi/page.tsx] — Edge Case Hunter
+- [x] [Review][Patch] `GruppoRow.tsx` non resetta il `<select>` dopo un'assegnazione riuscita, a differenza di `NuovoGruppoForm.tsx`/`NuovoCampoForm.tsx` che resettano il form al successo [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx] — Blind Hunter, risolto con lo stesso pattern `formRef`/`useEffect`, riverificato dal vivo
+- [x] [Review][Patch] L'elenco degli Allenatori già assegnati (`include: { allenatori: ... }`) non ha `orderBy`, mentre il menu "disponibili" è ordinato per nome — incoerenza tra i due elenchi nella stessa riga [app/(gruppi-allenatori)/gruppi/page.tsx] — Edge Case Hunter, risolto aggiungendo `orderBy: { allenatore: { nome: "asc" } }`
 
 - [x] [Review][Defer] Il percorso di scrittura (`assegnaAllenatore`) non verifica che il `gruppoId` appartenga all'Anno Agonistico corrente — solo la lettura (`page.tsx`) è filtrata; una tab del browser rimasta aperta a cavallo del cambio stagione potrebbe assegnare un Allenatore a un Gruppo di una stagione passata [app/(gruppi-allenatori)/gruppi/actions.ts] — deferred, stessa categoria di rischio a bassa probabilità già accettata per i confini di data dell'Anno Agonistico (Story 1.6)
 - [x] [Review][Defer] Nessun indice sulla sola colonna `allenatoreId` (solo l'indice univoco composito `(gruppoId, allenatoreId)`) [prisma/migrations/20260717160000_add_gruppo_allenatore/migration.sql] — deferred, stesso gap ricorrente già presente su `campi.palestraId` (Story 2.1) e `gruppi.annoAgonisticoId` (Story 2.2), scala ridotta
@@ -94,6 +94,7 @@ Claude Sonnet 5 (claude-sonnet-5)
 - Verifiche eseguite e passate: `npx vitest run` (202/202 test), `npx tsc --noEmit` (nessun errore), `npm run lint` (nessun errore), `npm run build` (build completata, `/gruppi` correttamente dinamica).
 - **Verifica end-to-end reale eseguita** (Playwright, contro il backend Supabase locale non mockato): login Admin → creazione Gruppo di test → assegnazione di un Allenatore (AC #1, verificato nella riga del Gruppo) → riassegnazione dello stesso Allenatore allo stesso Gruppo (AC #3, nessun errore mostrato, confermato via query diretta al DB che esiste una sola riga `GruppoAllenatore` nonostante il doppio tentativo — idempotenza reale, non solo simulata dal mock). Dati di test ripuliti dal DB al termine, Playwright disinstallato.
 - Nessun bug applicativo reale scoperto durante la verifica dal vivo.
+- **Code review (2026-07-17)**: 3 layer paralleli (Blind Hunter, Edge Case Hunter, Acceptance Auditor). 0 `decision-needed`, 2 `patch`, 2 `defer`, 10 scartati come rumore/già gestiti — la maggior parte dei finding scartati erano decisioni deliberate già esplicite nelle Dev Notes (nessuna azione di rimozione, violazioni FK con errore generico) o pattern coerenti con l'intero progetto (type guard su P2002 identico a Story 1.6, nessun test per componenti UI). Patch applicate: (1) `GruppoRow.tsx` non resettava il `<select>` dopo un'assegnazione riuscita — risolto con lo stesso pattern `formRef`/`useEffect` di `NuovoGruppoForm`/`NuovoCampoForm`; (2) l'elenco degli Allenatori già assegnati non era ordinato mentre il menu "disponibili" sì — risolto con `orderBy` sulla relazione annidata. Entrambe riverificate dal vivo. Suite completa: 202/202 test, typecheck/lint/build verdi.
 
 ### Completion Notes List
 
@@ -102,6 +103,7 @@ Claude Sonnet 5 (claude-sonnet-5)
 - **Nessuna nuova route/pagina**: estesi `actions.ts`/`page.tsx` esistenti (Story 2.2), coerente con AD-2 ("Gruppi-Allenatori possiede sia la creazione del Gruppo sia l'assegnazione degli Allenatori").
 - **Messaggi di validazione distinti fin dall'inizio**: applicata proattivamente la lezione delle code review di Story 2.1/2.2 (due controlli separati per `gruppoId`/`allenatoreId` mancanti), non riscoperta in un secondo momento.
 - Nessun elemento bloccato da vincoli ambientali; nessun bug applicativo reale scoperto durante la dev-story.
+- **Post-review**: `GruppoRow.tsx` ora resetta il `<select>` dopo un'assegnazione riuscita; l'elenco degli Allenatori già assegnati è ora ordinato per nome, coerente con il menu "disponibili".
 
 ### File List
 
@@ -118,3 +120,4 @@ Claude Sonnet 5 (claude-sonnet-5)
 ## Change Log
 
 - 2026-07-17: Implementazione completa Story 2.3 (Task 1-4). Terza storia dell'Epic 2, seconda del modulo Gruppi-Allenatori — estende `app/(gruppi-allenatori)/gruppi/` esistente (Story 2.2), nessuna nuova route (AD-2: "Gruppi-Allenatori possiede sia la creazione del Gruppo sia l'assegnazione degli Allenatori"). `GruppoAllenatore` come tabella di giunzione non-RLS (AD-9), stesso pattern di `GenitoreAtleta` (Story 1.5). Assegnazione idempotente via cattura del vincolo univoco (Prisma P2002), stesso pattern di `inserisciIscrizione` (Story 1.6) — nessun check-then-insert. Lezione delle code review precedenti (messaggi di validazione distinti per campo) applicata proattivamente, non riscoperta. Tutti gli AC verificati anche dal vivo contro un backend Supabase reale, inclusa l'idempotenza confermata via query diretta al DB (una sola riga dopo due tentativi di assegnazione). Nessun bug applicativo reale scoperto. Status → review.
+- 2026-07-17: Code review. 3 layer paralleli, 0 decisioni, 2 patch applicate (reset del form di assegnazione dopo il successo; ordinamento dell'elenco Allenatori già assegnati), 2 findings deferiti (stessa categoria di rischio a bassa probabilità dei confini di data già accettata, e gap ricorrente di indicizzazione già presente in Story 2.1/2.2), 10 scartati come rumore/già gestiti — la maggioranza erano decisioni deliberate già esplicite nelle Dev Notes o pattern coerenti con il resto del progetto. Entrambe le patch riverificate dal vivo. Suite completa: 202/202 test, typecheck/lint/build verdi. Status → done.

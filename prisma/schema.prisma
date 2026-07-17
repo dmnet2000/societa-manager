@@ -74,6 +74,7 @@ model Atleta {
   genitori              GenitoreAtleta[]
   iscrizioni            Iscrizione[]
   certificatoMedico     CertificatoMedico?
+  gruppi                GruppoAtleta[]
 
   @@map("atlete")
 }
@@ -117,12 +118,13 @@ model GenitoreAtleta {
 // trattamento di Palestra/Campo/Slot/Gruppo (AD-9). Gestita via Prisma
 // diretto tramite lib/anno-agonistico/ (Structural Seed).
 model AnnoAgonistico {
-  id         String       @id @default(uuid())
-  dataInizio DateTime
-  dataFine   DateTime
-  createdAt  DateTime     @default(now())
-  iscrizioni Iscrizione[]
-  gruppi     Gruppo[]
+  id           String         @id @default(uuid())
+  dataInizio   DateTime
+  dataFine     DateTime
+  createdAt    DateTime       @default(now())
+  iscrizioni   Iscrizione[]
+  gruppi       Gruppo[]
+  gruppoAtlete GruppoAtleta[]
 
   @@unique([dataInizio, dataFine])
   @@map("anni_agonistici")
@@ -208,13 +210,14 @@ model Campo {
 // relazione con Allenatore (molti-a-molti, tramite GruppoAllenatore) e'
 // stata aggiunta in Story 2.3.
 model Gruppo {
-  id               String              @id @default(uuid())
+  id               String             @id @default(uuid())
   nome             String
   categoria        String
   annoAgonisticoId String
-  annoAgonistico   AnnoAgonistico      @relation(fields: [annoAgonisticoId], references: [id])
-  createdAt        DateTime            @default(now())
+  annoAgonistico   AnnoAgonistico     @relation(fields: [annoAgonisticoId], references: [id])
+  createdAt        DateTime           @default(now())
   allenatori       GruppoAllenatore[]
+  atlete           GruppoAtleta[]
 
   @@map("gruppi")
 }
@@ -236,4 +239,67 @@ model GruppoAllenatore {
 
   @@unique([gruppoId, allenatoreId])
   @@map("gruppo_allenatori")
+}
+
+// Tabella di giunzione (ERD: GRUPPO ||--o{ ATLETA). Non protetta da RLS
+// (AD-9), stesso principio di GenitoreAtleta (Story 1.5): la FK verso
+// Atleta (RLS-protetta, AD-4) e' solo un vincolo di integrita' referenziale
+// Postgres, indipendente da RLS/PostgREST - nessuna lettura delle colonne
+// di Atleta deve mai passare da qui (vedi Dev Notes Story 2.4, usare
+// elencaAtlete via client Supabase autenticato, mai un include Prisma).
+// annoAgonisticoId e' denormalizzato dal Gruppo assegnato (non risolto
+// autonomamente) - e' l'unico modo per esprimere a livello DB il vincolo
+// "un'Atleta ha un solo Gruppo per Anno Agonistico" (AC #2): un @@unique
+// non puo' riferirsi a una colonna di Gruppo. Stesso principio di
+// Iscrizione (FK diretta a AnnoAgonistico sulla stessa riga), non il
+// pattern transitivo di Slot/Presenza.
+model GruppoAtleta {
+  id               String         @id @default(uuid())
+  atletaId         String
+  gruppoId         String
+  annoAgonisticoId String
+  gruppo           Gruppo         @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  atleta           Atleta         @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
+  createdAt        DateTime       @default(now())
+
+  @@unique([atletaId, annoAgonisticoId])
+  @@map("gruppo_atlete")
+}
+
+enum GiornoSettimana {
+  LUNEDI
+  MARTEDI
+  MERCOLEDI
+  GIOVEDI
+  VENERDI
+  SABATO
+  DOMENICA
+}
+
+// Non protetto da RLS (AD-9, elencato esplicitamente insieme a Palestra/
+// Campo/Gruppo/Allenatore) - gestibile via Prisma diretto, come Campo/Gruppo.
+// AD-2: Orari-Palestre e' l'unico proprietario della mutazione di Slot,
+// incluso il suo FK verso Gruppo - Gruppi-Allenatori lo legge (per popolare
+// i propri form) ma non lo scrive mai. AD-8: nessuna colonna
+// annoAgonisticoId propria - a differenza di Iscrizione/GruppoAtleta (FK
+// diretta, serviva un vincolo di unicita' reale), Slot eredita l'Anno
+// Agonistico transitivamente tramite Gruppo (nessun vincolo di unicita'
+// analogo da esprimere qui). oraInizio/oraFine sono String ("HH:MM"), non
+// DateTime/@db.Time: nessuna aritmetica su orari richiesta in questa storia
+// (AC #1, "nessuna rilevazione conflitti in continuo richiesta") - un tipo
+// data/ora introdurrebbe solo l'ambiguita' di fuso orario gia' incontrata
+// con AnnoAgonistico (Story 1.6) senza alcun beneficio.
+model Slot {
+  id        String          @id @default(uuid())
+  giorno    GiornoSettimana
+  oraInizio String
+  oraFine   String
+  campoId   String
+  campo     Campo           @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  gruppoId  String
+  gruppo    Gruppo          @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+
+  @@map("slot")
 }

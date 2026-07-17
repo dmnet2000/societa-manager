@@ -1,9 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { assegnaAllenatore } from "./actions";
+import { assegnaAllenatore, assegnaAtleta } from "./actions";
 
 type Allenatore = {
+  id: string;
+  nome: string;
+};
+
+type Atleta = {
   id: string;
   nome: string;
 };
@@ -13,29 +18,43 @@ type Gruppo = {
   nome: string;
   categoria: string;
   allenatori: Allenatore[];
+  atlete: Atleta[];
 };
 
 export function GruppoRow({
   gruppo,
   allenatoriDisponibili,
+  atleteDisponibili,
 }: {
   gruppo: Gruppo;
   allenatoriDisponibili: Allenatore[];
+  atleteDisponibili: Atleta[];
 }) {
-  const [state, formAction, pending] = useActionState(
-    assegnaAllenatore,
+  const [allenatoreState, allenatoreFormAction, allenatorePending] =
+    useActionState(assegnaAllenatore, undefined);
+  const allenatoreFormRef = useRef<HTMLFormElement>(null);
+
+  const [atletaState, atletaFormAction, atletaPending] = useActionState(
+    assegnaAtleta,
     undefined
   );
-  const formRef = useRef<HTMLFormElement>(null);
+  const atletaFormRef = useRef<HTMLFormElement>(null);
 
   // Review fix: senza il reset, il <select> restava sull'ultimo Allenatore
   // scelto dopo un'assegnazione riuscita, a differenza di NuovoGruppoForm/
   // NuovoCampoForm (Story 2.1/2.2) che resettano il form al successo.
   useEffect(() => {
-    if (state && "success" in state) {
-      formRef.current?.reset();
+    if (allenatoreState && "success" in allenatoreState) {
+      allenatoreFormRef.current?.reset();
     }
-  }, [state]);
+  }, [allenatoreState]);
+
+  // Stesso pattern di reset applicato al form Atlete (Story 2.4).
+  useEffect(() => {
+    if (atletaState && "success" in atletaState) {
+      atletaFormRef.current?.reset();
+    }
+  }, [atletaState]);
 
   return (
     <tr>
@@ -47,7 +66,7 @@ export function GruppoRow({
             <li key={allenatore.id}>{allenatore.nome}</li>
           ))}
         </ul>
-        <form ref={formRef} action={formAction}>
+        <form ref={allenatoreFormRef} action={allenatoreFormAction}>
           <input type="hidden" name="gruppoId" value={gruppo.id} />
           <label htmlFor={`assegna-allenatore-${gruppo.id}`}>
             Assegna Allenatore
@@ -60,8 +79,35 @@ export function GruppoRow({
               </option>
             ))}
           </select>
-          {state && "error" in state && <p role="alert">{state.error.message}</p>}
-          <button disabled={pending} type="submit">
+          {allenatoreState && "error" in allenatoreState && (
+            <p role="alert">{allenatoreState.error.message}</p>
+          )}
+          <button disabled={allenatorePending} type="submit">
+            Assegna
+          </button>
+        </form>
+      </td>
+      <td>
+        <ul>
+          {gruppo.atlete.map((atleta) => (
+            <li key={atleta.id}>{atleta.nome}</li>
+          ))}
+        </ul>
+        <form ref={atletaFormRef} action={atletaFormAction}>
+          <input type="hidden" name="gruppoId" value={gruppo.id} />
+          <label htmlFor={`assegna-atleta-${gruppo.id}`}>Assegna Atleta</label>
+          <select id={`assegna-atleta-${gruppo.id}`} name="atletaId" required>
+            <option value="">Seleziona...</option>
+            {atleteDisponibili.map((atleta) => (
+              <option key={atleta.id} value={atleta.id}>
+                {atleta.nome}
+              </option>
+            ))}
+          </select>
+          {atletaState && "error" in atletaState && (
+            <p role="alert">{atletaState.error.message}</p>
+          )}
+          <button disabled={atletaPending} type="submit">
             Assegna
           </button>
         </form>

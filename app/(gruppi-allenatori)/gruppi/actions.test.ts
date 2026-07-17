@@ -3,7 +3,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const requireRuoloMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const gruppoCreateMock = vi.fn();
+const gruppoFindUniqueMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
+const gruppoAtletaUpsertMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -16,8 +18,9 @@ vi.mock("@/lib/anno-agonistico", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    gruppo: { create: gruppoCreateMock },
+    gruppo: { create: gruppoCreateMock, findUnique: gruppoFindUniqueMock },
     gruppoAllenatore: { create: gruppoAllenatoreCreateMock },
+    gruppoAtleta: { upsert: gruppoAtletaUpsertMock },
   },
 }));
 
@@ -25,7 +28,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaGruppo, assegnaAllenatore } = await import("./actions");
+const { creaGruppo, assegnaAllenatore, assegnaAtleta } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -40,7 +43,9 @@ beforeEach(() => {
   requireRuoloMock.mockResolvedValue(null);
   risolviAnnoAgonisticoCorrenteMock.mockReset();
   gruppoCreateMock.mockReset();
+  gruppoFindUniqueMock.mockReset();
   gruppoAllenatoreCreateMock.mockReset();
+  gruppoAtletaUpsertMock.mockReset();
   revalidatePathMock.mockReset();
 });
 
@@ -213,6 +218,116 @@ describe("assegnaAllenatore", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile assegnare l'Allenatore. Riprova." },
+    });
+  });
+});
+
+describe("assegnaAtleta", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error naming gruppoId when it is missing", async () => {
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error naming atletaId when it is missing", async () => {
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when finding the Gruppo throws (e.g. connection error)", async () => {
+    gruppoFindUniqueMock.mockRejectedValue(new Error("connection lost"));
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
+    });
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Gruppo does not exist", async () => {
+    gruppoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "non-esiste", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
+    });
+    expect(gruppoFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: "non-esiste" },
+      select: { annoAgonisticoId: true },
+    });
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("upserts on (atletaId, annoAgonisticoId) using the Gruppo's own season (AC #1, #2, #3)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat1" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAtletaUpsertMock).toHaveBeenCalledWith({
+      where: { atletaId_annoAgonisticoId: { atletaId: "at1", annoAgonisticoId: "anno-1" } },
+      create: { atletaId: "at1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
+      update: { gruppoId: "g1" },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+  });
+
+  it("returns a friendly error, no crash, when the upsert fails (e.g. FK violation on atletaId)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpsertMock.mockRejectedValue(new Error("foreign key constraint"));
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "non-esiste" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
     });
   });
 });
