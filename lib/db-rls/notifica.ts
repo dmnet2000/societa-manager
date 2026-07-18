@@ -31,14 +31,19 @@ export type NotificaElenco = {
 
 // RLS decide cosa e' visibile (Allenatore: proprio Gruppo; Dirigente:
 // ampio) - nessun filtro applicativo aggiuntivo, stesso principio di
-// elencaAtlete.
+// elencaAtlete. Review fix: colonne esplicite (mai select("*"), stesso
+// principio di elencaAtlete) e limite a 50 righe - la tabella cresce senza
+// limite (nessuna deduplicazione/stato "letta", scelta deliberata di questa
+// storia, vedi Dev Notes), un tetto ragionevole evita che la lista rallenti
+// indefinitamente.
 export async function elencaNotifiche(
   supabase: SupabaseClient
 ): Promise<NotificaElenco[]> {
   const { data, error } = await supabase
     .from("notifiche")
-    .select("*")
-    .order("createdAt", { ascending: false });
+    .select("id, atletaId, createdAt")
+    .order("createdAt", { ascending: false })
+    .limit(50);
 
   if (error) {
     throw new Error(error.message);

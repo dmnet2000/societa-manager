@@ -3,7 +3,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const insertMock = vi.fn();
-const orderMock = vi.fn();
+const limitMock = vi.fn();
+const orderMock = vi.fn(() => ({ limit: limitMock }));
 const selectQueryMock = vi.fn(() => ({ order: orderMock }));
 const fromMock = vi.fn(() => ({
   insert: insertMock,
@@ -51,26 +52,35 @@ describe("elencaNotifiche", () => {
   beforeEach(() => {
     fromMock.mockClear();
     selectQueryMock.mockClear();
-    orderMock.mockReset();
+    orderMock.mockClear();
+    limitMock.mockReset();
   });
 
-  it("elenca le notifiche ordinate per data decrescente (AC #1, #5)", async () => {
+  it("elenca le notifiche ordinate per data decrescente, colonne esplicite, limitate (AC #1, #5, review fix)", async () => {
     const righe = [
       { id: "n2", atletaId: "atleta-2", createdAt: "2026-07-18T10:00:00.000Z" },
       { id: "n1", atletaId: "atleta-1", createdAt: "2026-07-17T10:00:00.000Z" },
     ];
-    orderMock.mockResolvedValue({ data: righe, error: null });
+    limitMock.mockResolvedValue({ data: righe, error: null });
 
     const risultato = await elencaNotifiche(supabase);
 
     expect(fromMock).toHaveBeenCalledWith("notifiche");
-    expect(selectQueryMock).toHaveBeenCalledWith("*");
+    // review fix: colonne esplicite (mai select("*") - stesso principio di
+    // ogni altra funzione di lettura in lib/db-rls/, es. elencaAtlete), cosi'
+    // un futuro campo aggiunto alla tabella non viene esposto al client senza
+    // una decisione consapevole in code review.
+    expect(selectQueryMock).toHaveBeenCalledWith("id, atletaId, createdAt");
     expect(orderMock).toHaveBeenCalledWith("createdAt", { ascending: false });
+    // review fix: limite alla lista - la tabella cresce senza limite (nessuna
+    // deduplicazione/stato "letta", scelta deliberata di questa storia), un
+    // tetto ragionevole evita che la pagina rallenti indefinitamente.
+    expect(limitMock).toHaveBeenCalledWith(50);
     expect(risultato).toEqual(righe);
   });
 
   it("restituisce un array vuoto quando non ci sono notifiche visibili (RLS-scoped, AC #2)", async () => {
-    orderMock.mockResolvedValue({ data: null, error: null });
+    limitMock.mockResolvedValue({ data: null, error: null });
 
     const risultato = await elencaNotifiche(supabase);
 
@@ -78,7 +88,7 @@ describe("elencaNotifiche", () => {
   });
 
   it("throws when the query fails", async () => {
-    orderMock.mockResolvedValue({ data: null, error: { message: "not found" } });
+    limitMock.mockResolvedValue({ data: null, error: { message: "not found" } });
 
     await expect(elencaNotifiche(supabase)).rejects.toThrow("not found");
   });
