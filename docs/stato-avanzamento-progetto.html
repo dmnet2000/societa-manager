@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Società Manager — Stato Avanzamento Progetto</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --text-muted: #5b6270;
+    --accent: #3b5bdb;
+    --done: #2f9e44;
+    --done-bg: #ebfbee;
+    --progress: #f08c00;
+    --progress-bg: #fff4e6;
+    --backlog: #868e96;
+    --backlog-bg: #f1f3f5;
+    --shadow: 0 1px 2px rgba(20,20,30,0.04), 0 4px 12px rgba(20,20,30,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1c1f26;
+      --surface-2: #23262f;
+      --border: #2d3138;
+      --text: #e8e9ec;
+      --text-muted: #9aa1ad;
+      --accent: #7f9bff;
+      --done: #4fce6a;
+      --done-bg: #16321f;
+      --progress: #ffa94d;
+      --progress-bg: #3a2a12;
+      --backlog: #8890a0;
+      --backlog-bg: #24272f;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1c1f26; --surface-2: #23262f; --border: #2d3138;
+    --text: #e8e9ec; --text-muted: #9aa1ad; --accent: #7f9bff;
+    --done: #4fce6a; --done-bg: #16321f; --progress: #ffa94d; --progress-bg: #3a2a12;
+    --backlog: #8890a0; --backlog-bg: #24272f;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --border: #e2e5ea;
+    --text: #1a1d23; --text-muted: #5b6270; --accent: #3b5bdb;
+    --done: #2f9e44; --done-bg: #ebfbee; --progress: #f08c00; --progress-bg: #fff4e6;
+    --backlog: #868e96; --backlog-bg: #f1f3f5;
+    --shadow: 0 1px 2px rgba(20,20,30,0.04), 0 4px 12px rgba(20,20,30,0.04);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  header.page-header {
+    margin-bottom: 2rem;
+  }
+  header.page-header .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 0.4rem;
+  }
+  header.page-header h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+  header.page-header .meta {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.9rem;
+    margin: 1.75rem 0 2.25rem;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow);
+  }
+  .summary-card .value {
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .summary-card .label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+  }
+  .summary-card.done .value { color: var(--done); }
+  .summary-card.progress .value { color: var(--progress); }
+  .summary-card.backlog .value { color: var(--backlog); }
+
+  .overall-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 2.25rem;
+    box-shadow: var(--shadow);
+  }
+  .overall-bar-wrap .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .overall-bar-wrap .bar-label strong { color: var(--text); }
+  .bar-track {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--done), #37b24d);
+  }
+
+  h2.section-title {
+    font-size: 1.05rem;
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .epic {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    margin-bottom: 1.1rem;
+    box-shadow: var(--shadow);
+  }
+  .epic-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+  .epic-head .epic-title {
+    font-weight: 700;
+    font-size: 1.02rem;
+  }
+  .epic-head .epic-title .epic-num {
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-right: 0.4rem;
+  }
+  .epic-progress-text {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .epic-bar-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin-bottom: 0.9rem;
+  }
+  .epic-bar-fill { height: 100%; border-radius: 999px; }
+
+  .story-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .story-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+  }
+  .story-row:hover { background: var(--surface-2); }
+  .story-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    width: 2.6rem;
+    flex-shrink: 0;
+  }
+  .story-name {
+    flex: 1;
+    font-size: 0.92rem;
+  }
+  .story-note {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-style: italic;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .badge.done { background: var(--done-bg); color: var(--done); }
+  .badge.progress { background: var(--progress-bg); color: var(--progress); }
+  .badge.backlog { background: var(--backlog-bg); color: var(--backlog); }
+
+  .callout {
+    background: var(--progress-bg);
+    border: 1px solid color-mix(in srgb, var(--progress) 35%, transparent);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin: 2rem 0;
+    font-size: 0.9rem;
+  }
+  .callout strong { color: var(--progress); }
+
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 480px) {
+    .story-row { flex-wrap: wrap; }
+    .story-name { flex-basis: 100%; order: 3; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-header">
+    <p class="eyebrow">Società Manager — Gestione Settore Volley</p>
+    <h1>Stato avanzamento del progetto</h1>
+    <p class="meta">Aggiornato al 19 luglio 2026 — fonte: <code>sprint-status.yaml</code> e story file in <code>_bmad-output/implementation-artifacts/</code></p>
+  </header>
+
+  <div class="overall-bar-wrap">
+    <div class="bar-label">
+      <span>Avanzamento complessivo storie</span>
+      <strong>23 / 32 completate (72%)</strong>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:72%"></div></div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card done">
+      <div class="value">4 / 7</div>
+      <div class="label">Epic completati</div>
+    </div>
+    <div class="summary-card done">
+      <div class="value">23</div>
+      <div class="label">Storie completate</div>
+    </div>
+    <div class="summary-card progress">
+      <div class="value">1</div>
+      <div class="label">Storia in lavorazione</div>
+    </div>
+    <div class="summary-card backlog">
+      <div class="value">8</div>
+      <div class="label">Storie in backlog</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Dettaglio per Epic</h2>
+
+  <!-- Epic 1 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 1</span>Accesso, Popolamento e Iscrizioni</span>
+      <span class="badge done">Completato</span>
+    </div>
+    <div class="epic-progress-text">8 / 8 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:100%; background:var(--done)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">1.1</span><span class="story-name">Registrazione e login per ruolo</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.2</span><span class="story-name">Gestione utenti e ruoli — Admin</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.3</span><span class="story-name">Import archivio Atlete da export federale</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.4</span><span class="story-name">Precaricamento Allenatori</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.5</span><span class="story-name">Aggancio Genitore-Atleta in registrazione</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.6</span><span class="story-name">Conferma iscrizione</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.7</span><span class="story-name">Merge certificato in import</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">1.8</span><span class="story-name">Riporto Under 13 nel rollover</span><span class="badge done">Done</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 2 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 2</span>Palestre, Gruppi e Orari</span>
+      <span class="badge done">Completato</span>
+    </div>
+    <div class="epic-progress-text">8 / 8 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:100%; background:var(--done)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">2.1</span><span class="story-name">Anagrafica Palestre e Campi</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.2</span><span class="story-name">Creazione Gruppi</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.3</span><span class="story-name">Assegnazione Allenatori a Gruppo</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.4</span><span class="story-name">Assegnazione Atlete a Gruppo</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.5</span><span class="story-name">Caricamento Slot</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.6</span><span class="story-name">Vista orario personale — Allenatore</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.7</span><span class="story-name">Vista orario personale — Atleta</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">2.8</span><span class="story-name">Vista orari trasversale — Segreteria</span><span class="badge done">Done</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 3 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 3</span>Presenze</span>
+      <span class="badge done">Completato</span>
+    </div>
+    <div class="epic-progress-text">3 / 3 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:100%; background:var(--done)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">3.1</span><span class="story-name">Registrazione presenze</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">3.2</span><span class="story-name">Storico presenze per Atleta</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">3.3</span><span class="story-name">Storico presenze con trend/percentuale</span><span class="badge done">Done</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 7 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 7</span>Configurazione Applicazione <span class="story-note">(inserito fuori sequenza il 18/07 per sbloccare la Story 4.3)</span></span>
+      <span class="badge done">Completato</span>
+    </div>
+    <div class="epic-progress-text">2 / 2 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:100%; background:var(--done)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">7.1</span><span class="story-name">Configurazione SMTP</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">7.2</span><span class="story-name">Configurazione logo applicazione</span><span class="badge done">Done</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 4 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 4</span>Compliance Visite Mediche</span>
+      <span class="badge progress">In lavorazione</span>
+    </div>
+    <div class="epic-progress-text">2 / 6 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:33%; background:var(--progress)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">4.1</span><span class="story-name">Upload certificato medico</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">4.2</span><span class="story-name">Notifica automatica upload</span><span class="badge done">Done</span></div>
+      <div class="story-row"><span class="story-num">4.3</span><span class="story-name">Mail automatica alla Segreteria</span><span class="badge progress">In lavorazione</span></div>
+      <div class="story-row"><span class="story-num">4.4</span><span class="story-name">Conferma/validazione certificato</span><span class="badge backlog">Backlog</span></div>
+      <div class="story-row"><span class="story-num">4.5</span><span class="story-name">Alert scadenza non bloccante</span><span class="badge backlog">Backlog</span></div>
+      <div class="story-row"><span class="story-num">4.6</span><span class="story-name">Promemoria scadenza</span><span class="badge backlog">Backlog</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 5 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 5</span>Vista Dirigente e Amministrazione Avanzata</span>
+      <span class="badge backlog">Backlog</span>
+    </div>
+    <div class="epic-progress-text">0 / 2 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:0%; background:var(--backlog)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">5.1</span><span class="story-name">Vista d'insieme Dirigente</span><span class="badge backlog">Backlog</span></div>
+      <div class="story-row"><span class="story-num">5.2</span><span class="story-name">Permessi granulari su dati sanitari</span><span class="badge backlog">Backlog</span></div>
+    </div>
+  </section>
+
+  <!-- Epic 6 -->
+  <section class="epic">
+    <div class="epic-head">
+      <span class="epic-title"><span class="epic-num">Epic 6</span>Dati Atleta e Miglioramenti</span>
+      <span class="badge backlog">Backlog</span>
+    </div>
+    <div class="epic-progress-text">0 / 3 storie completate</div>
+    <div class="epic-bar-track"><div class="epic-bar-fill" style="width:0%; background:var(--backlog)"></div></div>
+    <div class="story-list">
+      <div class="story-row"><span class="story-num">6.1</span><span class="story-name">Dati antropometrici e test fisici</span><span class="badge backlog">Backlog</span></div>
+      <div class="story-row"><span class="story-num">6.2</span><span class="story-name">Grafico progresso test fisici</span><span class="badge backlog">Backlog</span></div>
+      <div class="story-row"><span class="story-num">6.3</span><span class="story-name">Wizard nuova stagione</span><span class="badge backlog">Backlog</span></div>
+    </div>
+  </section>
+
+  <div class="callout">
+    <strong>In corso ora:</strong> Story 4.3 "Mail automatica alla Segreteria" — implementazione e test automatici completi (Task 1-5), resta da eseguire il Task 6 (verifica dal vivo manuale con invio email reale/controllato).
+  </div>
+
+  <footer>
+    Generato a partire da <code>_bmad-output/implementation-artifacts/sprint-status.yaml</code> ed <code>epics.md</code>. Documento statico: rigenerare dopo ogni story completata o cambio di sprint status per mantenerlo allineato.
+  </footer>
+
+</div>
+</body>
+</html>

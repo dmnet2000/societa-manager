@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiStoricoPresenzePerAtleta } from "@/lib/db-rls/presenza";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import {
+  calcolaStatistichePresenza,
+  ETICHETTA_TREND,
+} from "./calcola-statistiche-presenza";
 
 // Dati potenzialmente diversi ad ogni visita (nuove Presenze registrate da
 // un Allenatore, Story 3.1) - stesso motivo di /mio-orario, /presenze.
@@ -36,25 +40,44 @@ async function StoricoTable({
   });
   const slotPerId = new Map(slotRows.map((s) => [s.id, s]));
 
+  // Righe effettivamente renderizzate (Slot risolvibile) - le statistiche
+  // FR-10 sono calcolate sullo stesso sottoinsieme visibile nella tabella,
+  // cosi' restano sempre coerenti con cio' che l'Allenatore/Atleta vede
+  // (review fix: prima venivano calcolate sull'intero storico non filtrato).
+  const righeVisibili = storico
+    .map((riga) => ({ riga, slot: slotPerId.get(riga.slotId) }))
+    .filter(
+      (r): r is { riga: (typeof storico)[number]; slot: NonNullable<(typeof r)["slot"]> } =>
+        r.slot !== undefined
+    );
+
+  // FR-10: percentuale + trend calcolati sullo storico gia' caricato sopra,
+  // nessuna query aggiuntiva. Componente condiviso Atleta/Allenatore (Dev
+  // Notes Story 3.3) - compare identico in entrambe le sezioni.
+  const statistiche = calcolaStatistichePresenza(
+    righeVisibili.map((r) => r.riga)
+  );
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Giorno</th>
-          <th>Orario</th>
-          <th>Gruppo</th>
-          <th>Presenza</th>
-        </tr>
-      </thead>
-      <tbody>
-        {storico
-          .map((riga) => ({ riga, slot: slotPerId.get(riga.slotId) }))
-          .filter(
-            (r): r is { riga: (typeof storico)[number]; slot: NonNullable<(typeof r)["slot"]> } =>
-              r.slot !== undefined
-          )
-          .map(({ riga, slot }) => (
+    <>
+      {statistiche && (
+        <p>
+          Percentuale presenza: {statistiche.percentuale}% — Trend:{" "}
+          {ETICHETTA_TREND[statistiche.trend]}
+        </p>
+      )}
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Giorno</th>
+            <th>Orario</th>
+            <th>Gruppo</th>
+            <th>Presenza</th>
+          </tr>
+        </thead>
+        <tbody>
+          {righeVisibili.map(({ riga, slot }) => (
             <tr key={riga.id}>
               <td>{riga.data}</td>
               <td>{ETICHETTA_GIORNO[slot.giorno]}</td>
@@ -65,8 +88,9 @@ async function StoricoTable({
               <td>{riga.presente ? "Presente" : "Assente"}</td>
             </tr>
           ))}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </>
   );
 }
 

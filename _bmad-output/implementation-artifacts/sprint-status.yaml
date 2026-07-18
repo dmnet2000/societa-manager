@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-18 (correzione di rotta: Epic 7 aggiunto)
+# last_updated: 2026-07-19 (storia 3.3 completata, code review superata con 2 patch applicate — Epic 3 chiuso)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -70,10 +70,10 @@ development_status:
   2-8-vista-orari-trasversale-segreteria: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-registrazione-presenze: done
   3-2-storico-presenze-per-atleta: done
-  3-3-storico-presenze-con-trend-percentuale: backlog
+  3-3-storico-presenze-con-trend-percentuale: done
   epic-3-retrospective: optional
 
   epic-4: in-progress
