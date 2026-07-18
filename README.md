@@ -70,7 +70,7 @@ Ogni modulo (`app/(nome-modulo)/`) possiede in esclusiva la mutazione delle prop
 
 ## Stato di avanzamento
 
-16/30 storie completate su 6 Epic. Epic 1 (Accesso, Popolamento e Iscrizioni) ed Epic 2 (Palestre, Gruppi e Orari) completate; Epic 3 (Presenze) avviato. Stato dettagliato in [`_bmad-output/implementation-artifacts/sprint-status.yaml`](_bmad-output/implementation-artifacts/sprint-status.yaml), roadmap discorsiva in [`docs/panoramica-prodotto.md`](docs/panoramica-prodotto.md).
+18/30 storie completate su 6 Epic. Epic 1 (Accesso, Popolamento e Iscrizioni) ed Epic 2 (Palestre, Gruppi e Orari) completati; Epic 3 (Presenze) completo per il perimetro v1 (2/3 — la terza storia, trend/percentuale, è "Could" e fuori perimetro v1 per PRD); Epic 4 (Compliance Visite Mediche) avviato. Stato dettagliato in [`_bmad-output/implementation-artifacts/sprint-status.yaml`](_bmad-output/implementation-artifacts/sprint-status.yaml), roadmap discorsiva in [`docs/panoramica-prodotto.md`](docs/panoramica-prodotto.md).
 
 ## Convenzioni di sviluppo
 
