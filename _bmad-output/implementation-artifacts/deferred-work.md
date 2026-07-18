@@ -172,3 +172,13 @@
 
 - Nessun indice esplicito su `notifiche.createdAt` per il carico di `ORDER BY` su una tabella che cresce senza limite (nessuna deduplicazione/stato "letta", scelta deliberata). Nessuna migrazione di questo progetto ha mai aggiunto un indice non-unique esplicito — aggiungerne uno qui sarebbe una deviazione isolata dalla convenzione del progetto, non richiesta da alcun AC. Da rivalutare se/quando la tabella raggiungerà una scala reale (NFR PRD §8: nessuna preoccupazione di volume alla scala attuale di un singolo club). [prisma/migrations/20260718050000_add_notifica/migration.sql]
 - Nessun campo che registri **chi** (Genitore vs Atleta stessa) ha innescato l'upload che ha generato la notifica — informazione non recuperabile retroattivamente se una storia futura volesse distinguerlo nel messaggio mostrato. Speculativo, nessun AC attuale lo richiede. [lib/db-rls/notifica.ts, prisma/schema.prisma]
+
+## Deferred from: code review of 7-1-configurazione-smtp (2026-07-18)
+
+- Nessuna coercizione difensiva se un campo del `FormData` atteso come testo arriva come `File` (`String(File)` produce `"[object File]"`, salvato/usato silenziosamente) — rischio reale ma basso: solo un Admin autenticato potrebbe auto-infliggerselo con una richiesta manomessa, nessun bypass di sicurezza, solo dati corrotti auto-inflitti. [app/(configurazione)/smtp/actions.ts]
+- Nessun audit trail (chi ha modificato la configurazione SMTP, quando, valore precedente) — speculativo, nessun AC lo richiede, da valutare se una storia futura di compliance/audit lo richiedesse esplicitamente. [prisma/schema.prisma]
+- Nessun rate limiting su `inviaEmailDiProva` — Admin-only, rischio speculativo di abuso di un account già fidato (uso ripetuto potrebbe far scattare anti-abuso lato provider SMTP, es. Aruba). [app/(configurazione)/smtp/actions.ts]
+
+## Deferred from: code review of 7-2-configurazione-logo-applicazione (2026-07-18)
+
+- Nessuna pre-validazione lato client in `LogoForm.tsx` oltre il filtro nativo `accept` dell'`<input type="file">` (banalmente aggirabile) — miglioramento UX (feedback immediato invece di un round-trip al server), non richiesto da alcun AC, la validazione server-side (bucket + applicativa) resta comunque l'unica autorità. [app/(configurazione)/logo/LogoForm.tsx]

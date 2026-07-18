@@ -5,16 +5,22 @@ vi.mock("server-only", () => ({}));
 const uploadMock = vi.fn();
 const createSignedUrlMock = vi.fn();
 const removeMock = vi.fn();
+const downloadMock = vi.fn();
 const fromMock = vi.fn(() => ({
   upload: uploadMock,
   createSignedUrl: createSignedUrlMock,
   remove: removeMock,
+  download: downloadMock,
 }));
 
 const supabase = { storage: { from: fromMock } } as never;
 
-const { caricaFileCertificato, generaUrlFirmato, rimuoviFileCertificato } =
-  await import("./certificati");
+const {
+  caricaFileCertificato,
+  generaUrlFirmato,
+  rimuoviFileCertificato,
+  scaricaFileCertificato,
+} = await import("./certificati");
 
 function fileFinto(nome: string) {
   return { name: nome } as File;
@@ -140,6 +146,40 @@ describe("generaUrlFirmato", () => {
 
     await expect(
       generaUrlFirmato(supabase, "atleta-1/file.pdf")
+    ).rejects.toThrow("not found");
+  });
+});
+
+// Story 4.3: scarica i byte del file (non un URL) - serve per allegarlo
+// all'email alla Segreteria. Stessa sessione Genitore/Atleta che ha appena
+// caricato il file, gia' autorizzata dalla policy RLS SELECT esistente
+// (Story 4.1, utente_possiede_atleta) - nessun controllo applicativo
+// aggiuntivo, nessuna nuova policy.
+describe("scaricaFileCertificato", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    downloadMock.mockReset();
+  });
+
+  it("scarica il contenuto del file al path indicato (AC #1, Story 4.3)", async () => {
+    const blobFinto = new Blob(["contenuto pdf finto"]);
+    downloadMock.mockResolvedValue({ data: blobFinto, error: null });
+
+    const risultato = await scaricaFileCertificato(supabase, "atleta-1/file.pdf");
+
+    expect(fromMock).toHaveBeenCalledWith("certificati-medici");
+    expect(downloadMock).toHaveBeenCalledWith("atleta-1/file.pdf");
+    expect(risultato).toBe(blobFinto);
+  });
+
+  it("throws when the download fails (incluso un rifiuto RLS, AC #3)", async () => {
+    downloadMock.mockResolvedValue({
+      data: null,
+      error: { message: "not found" },
+    });
+
+    await expect(
+      scaricaFileCertificato(supabase, "atleta-1/file.pdf")
     ).rejects.toThrow("not found");
   });
 });

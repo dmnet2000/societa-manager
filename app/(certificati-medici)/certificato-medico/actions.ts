@@ -8,12 +8,16 @@ import {
   caricaFileCertificato,
   generaUrlFirmato,
   rimuoviFileCertificato,
+  scaricaFileCertificato,
 } from "@/lib/storage/certificati";
 import {
   collegaFileCertificato,
   trovaCertificatoPerAtleta,
 } from "@/lib/db-rls/certificato-medico";
 import { creaNotifica } from "@/lib/db-rls/notifica";
+import { elencaAtlete } from "@/lib/db-rls/atleta";
+import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
+import { inviaEmail } from "@/lib/email/invia-email";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -127,6 +131,36 @@ export async function caricaCertificato(
     // riuscito, sia primo sia ri-caricamento (nessuna distinzione).
     try {
       await creaNotifica(supabase, atletaId);
+    } catch (err) {
+      console.error(err);
+    }
+
+    // Story 4.3 (FR-13), AC #4: effetto collaterale non bloccante,
+    // parallelo e indipendente dal blocco creaNotifica sopra - un
+    // fallimento qui non deve mai impedire il tentativo dell'altro, ne'
+    // far fallire l'upload. AC #5: nessun tentativo di invio se non ci
+    // sono destinatari, non e' un errore.
+    try {
+      const destinatari = await elencaEmailPerRuolo("SEGRETERIA");
+      if (destinatari.length > 0) {
+        const atlete = await elencaAtlete(supabase);
+        const atleta = atlete.find((a) => a.id === atletaId);
+        const fileScaricato = await scaricaFileCertificato(supabase, filePath);
+        const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
+
+        await inviaEmail(supabase, {
+          destinatario: destinatari,
+          oggetto: "Nuovo Certificato Medico caricato",
+          testo: `È stato caricato un nuovo Certificato Medico per ${atleta?.nome ?? "un'Atleta"}.`,
+          allegati: [
+            {
+              nomeFile: file.name,
+              contenuto,
+              tipoMime: file.type,
+            },
+          ],
+        });
+      }
     } catch (err) {
       console.error(err);
     }

@@ -8,6 +8,10 @@ const rimuoviFileCertificatoMock = vi.fn();
 const collegaFileCertificatoMock = vi.fn();
 const trovaCertificatoPerAtletaMock = vi.fn();
 const creaNotificaMock = vi.fn();
+const elencaEmailPerRuoloMock = vi.fn();
+const scaricaFileCertificatoMock = vi.fn();
+const inviaEmailMock = vi.fn();
+const elencaAtleteMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`);
@@ -25,6 +29,7 @@ vi.mock("@/lib/storage/certificati", () => ({
   caricaFileCertificato: caricaFileCertificatoMock,
   generaUrlFirmato: generaUrlFirmatoMock,
   rimuoviFileCertificato: rimuoviFileCertificatoMock,
+  scaricaFileCertificato: scaricaFileCertificatoMock,
 }));
 
 vi.mock("@/lib/db-rls/certificato-medico", () => ({
@@ -34,6 +39,18 @@ vi.mock("@/lib/db-rls/certificato-medico", () => ({
 
 vi.mock("@/lib/db-rls/notifica", () => ({
   creaNotifica: creaNotificaMock,
+}));
+
+vi.mock("@/lib/db-rls/atleta", () => ({
+  elencaAtlete: elencaAtleteMock,
+}));
+
+vi.mock("@/lib/utenti/email-per-ruolo", () => ({
+  elencaEmailPerRuolo: elencaEmailPerRuoloMock,
+}));
+
+vi.mock("@/lib/email/invia-email", () => ({
+  inviaEmail: inviaEmailMock,
 }));
 
 vi.mock("next/cache", () => ({
@@ -100,6 +117,16 @@ beforeEach(() => {
   trovaCertificatoPerAtletaMock.mockResolvedValue(null);
   creaNotificaMock.mockReset();
   creaNotificaMock.mockResolvedValue(undefined);
+  elencaEmailPerRuoloMock.mockReset();
+  elencaEmailPerRuoloMock.mockResolvedValue([]);
+  scaricaFileCertificatoMock.mockReset();
+  scaricaFileCertificatoMock.mockResolvedValue(new Blob(["contenuto finto"]));
+  inviaEmailMock.mockReset();
+  inviaEmailMock.mockResolvedValue(undefined);
+  elencaAtleteMock.mockReset();
+  elencaAtleteMock.mockResolvedValue([
+    { id: "atleta-1", nome: "Verifica Atleta", codiceFiscale: "CF", categoria: null },
+  ]);
   revalidatePathMock.mockReset();
   redirectMock.mockClear();
 });
@@ -377,6 +404,90 @@ describe("caricaCertificato (Server Action)", () => {
     );
 
     expect(result).toEqual({ success: true });
+  });
+
+  it("invia un'email alla Segreteria con l'allegato dopo un caricamento riuscito (Story 4.3 AC #1/#2)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue([
+      "segreteria1@esempio.it",
+      "segreteria2@esempio.it",
+    ]);
+    const file = fileValido("certificato.pdf", "application/pdf");
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("SEGRETERIA");
+    expect(scaricaFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1/file.pdf"
+    );
+    expect(inviaEmailMock).toHaveBeenCalledWith(supabaseFinto, {
+      destinatario: ["segreteria1@esempio.it", "segreteria2@esempio.it"],
+      oggetto: expect.any(String),
+      testo: expect.stringContaining("Verifica Atleta"),
+      allegati: [
+        {
+          nomeFile: "certificato.pdf",
+          contenuto: expect.any(Buffer),
+          tipoMime: "application/pdf",
+        },
+      ],
+    });
+  });
+
+  it("non invia alcuna email quando nessun Utente ha Ruolo Segreteria (Story 4.3 AC #5)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue([]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(scaricaFileCertificatoMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("il caricamento riesce comunque se elencaEmailPerRuolo lancia (non bloccante, Story 4.3 AC #4)", async () => {
+    elencaEmailPerRuoloMock.mockRejectedValue(new Error("db down"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("il caricamento riesce comunque se inviaEmail lancia, es. configurazione SMTP mancante (non bloccante, Story 4.3 AC #4)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+    inviaEmailMock.mockRejectedValue(
+      new Error("CONFIGURAZIONE_SMTP_MANCANTE: nessuna configurazione.")
+    );
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("invia comunque l'email quando l'Atleta non e' risolvibile nell'elenco, senza il nome (Story 4.3, caso limite difensivo)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+    elencaAtleteMock.mockResolvedValue([]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).toHaveBeenCalled();
   });
 });
 

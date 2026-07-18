@@ -108,6 +108,8 @@ FR-27: Epic 5 - Permessi granulari su dati sanitari
 FR-28: Epic 6 - Wizard nuova stagione
 FR-29: Epic 5 - Vista d'insieme Dirigente
 FR-30: Epic 2 - Assegnazione Atlete a Gruppo (aggiunta in fase di story-writing)
+FR-31: Epic 7 - Configurazione SMTP per invio email (aggiunta in corso d'opera, correzione di rotta 2026-07-18)
+FR-32: Epic 7 - Configurazione logo applicazione (aggiunta in corso d'opera, correzione di rotta 2026-07-18)
 
 ## Epic List
 
@@ -134,6 +136,10 @@ Il Dirigente ha una vista d'insieme aggregata su gruppi, orari e stato dei certi
 ### Epic 6: Dati Atleta e Miglioramenti
 Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un wizard riduce il lavoro di ricostruzione a inizio nuova stagione.
 **FRs covered:** FR-24, FR-25, FR-28
+
+### Epic 7: Configurazione Applicazione
+*(Aggiunto in corso d'opera — correzione di rotta 2026-07-18, vedi `sprint-change-proposal-2026-07-18.md`.)* L'Admin configura i parametri tecnici e di branding dell'applicazione (invio email, logo) da un'interfaccia dedicata, senza intervento diretto su codice/infrastruttura. **Precede Story 4.3** in ordine di esecuzione (dipendenza: FR-13 richiede FR-31), pur restando numerato per ultimo nel documento per non alterare la numerazione degli epic già completati.
+**FRs covered:** FR-31, FR-32
 
 ## Epic 1: Accesso, Popolamento e Iscrizioni
 
@@ -546,3 +552,36 @@ So that non ricostruisco tutto da zero a ogni 1° agosto.
 **Then** il sistema propone una bozza di Gruppi e assegnazioni Allenatori basata sull'anno precedente, che posso correggere prima di confermare
 
 **Note:** Could — utile dal secondo rollover in poi, non per il primo lancio
+
+## Epic 7: Configurazione Applicazione
+
+*(Aggiunto in corso d'opera — correzione di rotta 2026-07-18, vedi `sprint-change-proposal-2026-07-18.md`. Precede Story 4.3 in ordine di esecuzione: FR-13 richiede FR-31.)*
+
+L'Admin configura i parametri tecnici e di branding dell'applicazione (invio email, logo) da un'interfaccia dedicata, senza intervento diretto su codice/infrastruttura.
+
+### Story 7.1: Configurazione SMTP
+
+As a Admin,
+I want configurare i parametri del server SMTP per l'invio email dall'app,
+So that il sistema può inviare le email transazionali (es. alla Segreteria) usando la mia casella email esistente, senza dipendere da un provider terzo.
+
+**Acceptance Criteria:**
+
+**Given** sono autenticato come Admin
+**When** apro la sezione di configurazione email e inserisco host/porta/utente/password/mittente
+**Then** i parametri vengono salvati e usati dal sistema per i successivi invii email
+**And** se i parametri non sono ancora configurati, ogni funzionalità che dipende dall'invio email lo segnala chiaramente invece di fallire silenziosamente
+
+### Story 7.2: Configurazione logo applicazione
+
+As a Admin,
+I want caricare/aggiornare il logo dell'applicazione,
+So that l'app riflette l'identità visiva della società.
+
+**Acceptance Criteria:**
+
+**Given** sono autenticato come Admin
+**When** carico un'immagine come logo dall'interfaccia di configurazione
+**Then** il logo viene salvato e sostituisce quello precedente (se esistente)
+
+**Note:** Could — branding non bloccante per il lancio, rimandabile a v1.1 (FR-32 fuori perimetro v1, PRD §6.2)

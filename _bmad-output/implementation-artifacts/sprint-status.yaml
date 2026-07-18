@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-18
+# last_updated: 2026-07-18 (correzione di rotta: Epic 7 aggiunto)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -79,7 +79,19 @@ development_status:
   epic-4: in-progress
   4-1-upload-certificato-medico: done
   4-2-notifica-automatica-upload: done
-  4-3-mail-automatica-alla-segreteria: backlog
+
+  # Epic 7 (Configurazione Applicazione) inserito qui, fuori dalla sua
+  # posizione numerica, per correzione di rotta del 2026-07-18 (vedi
+  # sprint-change-proposal-2026-07-18.md): Story 4.3 (mail alla Segreteria,
+  # FR-13) dipende da Story 7.1 (configurazione SMTP, FR-31) - va completata
+  # prima. Story 7.2 (logo) non e' bloccante ma viene fatta nello stesso
+  # passaggio per efficienza.
+  epic-7: done
+  7-1-configurazione-smtp: done
+  7-2-configurazione-logo-applicazione: done
+  epic-7-retrospective: optional
+
+  4-3-mail-automatica-alla-segreteria: in-progress
   4-4-conferma-validazione-certificato: backlog
   4-5-alert-scadenza-non-bloccante: backlog
   4-6-promemoria-scadenza: backlog

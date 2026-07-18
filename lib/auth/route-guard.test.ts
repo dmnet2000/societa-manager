@@ -260,4 +260,38 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows only Admin on /smtp (Story 7.1, FR-31 - route group (configurazione) non compare nell'URL)", () => {
+    expect(getRouteDecision("/smtp", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /smtp for other roles", () => {
+    expect(getRouteDecision("/smtp", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/smtp", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
+  it("allows only Admin on /logo (Story 7.2, FR-32)", () => {
+    expect(getRouteDecision("/logo", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /logo for other roles", () => {
+    expect(getRouteDecision("/logo", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/logo", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

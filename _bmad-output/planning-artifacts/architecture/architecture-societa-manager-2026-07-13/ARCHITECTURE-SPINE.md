@@ -7,8 +7,8 @@ paradigm: 'Moduli verticali per feature dentro un monolite Next.js App Router, c
 scope: 'Intero sistema di gestione del settore volley della polisportiva, come da PRD'
 status: final
 created: '2026-07-13'
-updated: '2026-07-15'
-binds: ['FR-1..FR-30']
+updated: '2026-07-18'
+binds: ['FR-1..FR-32']
 sources: ['_bmad-output/planning-artifacts/prds/prd-societa-manager-2026-07-13/prd.md']
 companions: []
 ---
@@ -72,7 +72,7 @@ Servizi condivisi trasversali (Auth, Email, Storage, Motore Matching Codice Fisc
 - **Rule:** una sola entità AnnoAgonistico (inizio/fine, 1 agosto – 30 giugno) è referenziata da FK diretta da Gruppo e Iscrizione; Slot e Presenza non hanno un proprio riferimento di stagione — ereditano l'Anno Agonistico transitivamente tramite Gruppo. La "stagione corrente" è risolta da un solo helper condiviso, mai da calcoli di date ripetuti per modulo.
 
 ### AD-9 — Split di accesso ai dati: client Supabase per le tabelle protette da RLS, Prisma per lo schema
-- **Binds:** CertificatoMedico, Atleta, Presenza, Iscrizione (lette/scritte a runtime via client Supabase autenticato); tutte le tabelle (schema/migrazioni via Prisma)
+- **Binds:** CertificatoMedico, Atleta, Presenza, Iscrizione, Notifica, ConfigurazioneSmtp (lette/scritte a runtime via client Supabase autenticato); tutte le tabelle (schema/migrazioni via Prisma)
 - **Prevents:** Prisma, connesso direttamente a Postgres, bypassa PostgREST — i claim del JWT (AD-4) non sono automaticamente nella sessione, quindi le policy RLS rischiano di essere valutate senza il contesto utente corretto
 - **Rule:** le query a runtime sulle tabelle protette da RLS passano dal client Supabase (`supabase-js`) con la sessione dell'utente autenticato, così PostgREST inoltra i claim e le policy si applicano correttamente; Prisma resta il proprietario dello schema/migrazioni (AD-3) per tutte le tabelle e viene usato a runtime, con connessione privilegiata, solo per le tabelle non protette da RLS (Palestra, Campo, Slot, Gruppo, Allenatore, Utente, UtenteRuolo).
 
@@ -85,6 +85,11 @@ Servizi condivisi trasversali (Auth, Email, Storage, Motore Matching Codice Fisc
 - **Binds:** Utente, UtenteRuolo (relazione molti-a-molti, un Utente può avere più Ruoli)
 - **Prevents:** due percorsi di lettura dei ruoli (query Prisma diretta vs JWT) che divergono, o una query Prisma nel middleware su un runtime edge (Cloudflare) dove il supporto a connessioni dirette non è verificato
 - **Rule:** i Ruoli vivono in `UtenteRuolo` via Prisma (fonte di verità, AD-3); ogni scrittura dei Ruoli li specchia anche in `app_metadata` dell'utente Supabase Auth, tramite chiamata service-role (mai `user_metadata`, modificabile lato client). Il middleware e ogni route guard leggono i Ruoli solo da `app_metadata` (già nel JWT validato da `getUser()`), mai con una query diretta al database. Se la scrittura su `app_metadata` fallisce dopo che quella su `UtenteRuolo` è riuscita, l'operazione è considerata fallita nel suo complesso (retry, non "successo parziale") — i due scritture sono trattate come un'unica unità logica; la staleness del JWT tra un aggiornamento ruoli e il prossimo refresh del token è accettata (non richiede invalidazione forzata della sessione).
+
+### AD-12 — Configurazione applicativa gestita da Admin, persistita in DB `[ADOPTED, 2026-07-18]`
+- **Binds:** Configurazione Email (SMTP), Logo Applicazione
+- **Prevents:** credenziali/branding hardcoded in variabili d'ambiente, che richiederebbero un redeploy per essere cambiati e sarebbero visibili a chiunque avesse accesso al repository/ambiente di deploy
+- **Rule:** una riga di configurazione (tabella dedicata, RLS **solo ADMIN**, nessun accesso per altri Ruoli) contiene i parametri SMTP; il logo è un file in un bucket Storage **pubblico** (a differenza del bucket privato dei certificati medici, AD-6 — il logo va mostrato pubblicamente nell'UI, non è un dato sensibile). La password SMTP è salvata in chiaro, protetta esclusivamente da RLS ADMIN-only — stesso livello di garanzia già usato per ogni altro dato sensibile di questo progetto (Codice Fiscale, email personali), nessuna cifratura applicativa aggiuntiva: scelta deliberata, coerente col modello di sicurezza esistente e la scala del progetto (non un KMS enterprise per un singolo club). `lib/email/` legge questa configurazione **a runtime** ad ogni invio, mai una variabile d'ambiente — se la configurazione non esiste ancora, l'invio fallisce esplicitamente con un errore chiaro, mai un tentativo silenzioso. *(Origine: correzione di rotta 2026-07-18 — sostituisce la scelta iniziale di Resend con SMTP generico, per riusare una casella email già esistente della polisportiva invece di richiedere un nuovo account/provider terzo.)*
 
 ```mermaid
 graph TD
@@ -102,7 +107,7 @@ graph TD
 | --- | --- |
 | Naming (entità, file, interfacce) | Modelli Prisma in italiano, PascalCase singolare (Atleta, Gruppo, CertificatoMedico); route e file kebab-case; Server Action con verbo esplicito (es. `confermaCertificato`) |
 | Data & formati | Id come UUID; date persistite in ISO 8601 (l'import normalizza il formato gg/mm/aaaa dell'export federale prima della persistenza); errori dei Server Action come `{ error: { code, message } }`, con `code: 'FORBIDDEN'` riservato esclusivamente ai rifiuti di autorizzazione (mai `NOT_FOUND` per un dato esistente ma non accessibile — vedi AD-4) |
-| Stato & trasversali | Tutte le mutazioni passano da Server Action, mai scritture dirette dal client; autenticazione via Supabase Auth con guardia a livello di route group per ruolo, ruoli letti da `app_metadata` nel middleware (AD-11); configurazione via variabili d'ambiente (Cloudflare Pages project settings) |
+| Stato & trasversali | Tutte le mutazioni passano da Server Action, mai scritture dirette dal client; autenticazione via Supabase Auth con guardia a livello di route group per ruolo, ruoli letti da `app_metadata` nel middleware (AD-11); configurazione via variabili d'ambiente (Cloudflare Pages project settings), **eccetto** i parametri SMTP e il logo, gestiti dall'Admin a runtime via DB/Storage (AD-12, 2026-07-18) proprio per non richiedere un redeploy |
 
 ## Stack
 
@@ -113,7 +118,7 @@ graph TD
 | TypeScript | 6.x (7.0 appena rilasciato luglio 2026, riscrittura nativa Go: non ancora pinnato per prudenza sull'ecosistema Next.js/React; upgrade previsto quando maturo) |
 | Supabase (Postgres, Auth, Storage) | piano Free — attenzione: auto-pausa dopo 7 giorni di inattività (vedi Deferred) |
 | Prisma | 7.x — richiede driver adapter esplicito (`@prisma/adapter-pg`) e `prisma.config.ts`, cambio rispetto alle guide Prisma 6 |
-| Resend (email transazionali) | piano Free |
+| Nodemailer (SMTP generico) | 9.x — sostituisce Resend (AD-12, 2026-07-18): riusa una casella email SMTP esistente della polisportiva invece di un nuovo account/provider terzo, parametri configurabili a runtime dall'Admin |
 | Cloudflare Pages/Workers (hosting + Cron Trigger) | piano Free — deploy Next.js 16 via adapter `@opennextjs/cloudflare` (percorso ufficialmente supportato); Cron Trigger incluso nel piano gratuito; a differenza di Vercel Hobby, il piano Free permette esplicitamente uso commerciale/organizzativo |
 
 ## Structural Seed
@@ -147,11 +152,12 @@ app/
   (rollover-stagionale)/       # FR-22, FR-23
   (dati-atleta)/               # FR-24, FR-25
   (amministrazione)/           # FR-26, FR-27, FR-29 (Vista Dirigente)
+  (configurazione)/            # FR-31, FR-32 - parametri SMTP e logo, solo Admin (AD-12)
   api/cron/promemoria-certificati/   # AD-7 (raddoppia da keep-alive per Supabase, vedi Deferred)
 lib/
   auth/                      # wrapper Supabase Auth (client utente), guardie per ruolo che leggono app_metadata (AD-11)
   auth-admin/                # client Supabase service-role, scrive app_metadata dopo ogni scrittura Ruoli (AD-11) - mai esposto al client
-  email/                     # wrapper Resend
+  email/                     # wrapper Nodemailer (SMTP), legge configurazione da DB a runtime (AD-12)
   storage/                   # wrapper Supabase Storage, URL firmati (AD-6)
   matching-codice-fiscale/   # motore condiviso: trovaPerCodiceFiscale, unisciCertificato (AD-5)
   anno-agonistico/           # helper stagione corrente, risoluzione transitiva Slot/Presenza (AD-8)
@@ -167,9 +173,10 @@ prisma/
 | Orari, Palestre, Campi, Slot (FR-1..FR-5) | `app/(orari-palestre)/` | AD-2, AD-8 |
 | Gruppi e Allenatori (FR-6, FR-7) | `app/(gruppi-allenatori)/` | AD-2, AD-8 |
 | Presenze (FR-8..FR-10) | `app/(presenze)/`, `lib/db-rls/` | AD-2, AD-4, AD-9 |
-| Certificati Medici (FR-11..FR-16) | `app/(certificati-medici)/`, `lib/storage/`, `lib/email/`, `lib/db-rls/` | AD-2, AD-4, AD-6, AD-7, AD-9, AD-10 |
+| Certificati Medici (FR-11..FR-16) | `app/(certificati-medici)/`, `lib/storage/`, `lib/email/`, `lib/db-rls/` | AD-2, AD-4, AD-6, AD-7, AD-9, AD-10, AD-12 |
 | Iscrizioni (FR-17) | `app/(iscrizioni)/`, `lib/db-rls/` | AD-2, AD-4, AD-9 |
 | Onboarding e Import (FR-18..FR-21) | `app/(onboarding-import)/`, `lib/matching-codice-fiscale/`, `lib/db-rls/` | AD-2, AD-4, AD-5, AD-9, AD-10 |
+| Configurazione Applicazione (FR-31, FR-32) | `app/(configurazione)/`, `lib/email/`, `lib/db-rls/` (FR-31, SMTP: tabella `configurazione_smtp`), `lib/storage/` (FR-32, logo: bucket pubblico, nessuna tabella DB) | AD-2, AD-9, AD-12 |
 | Rollover Stagionale (FR-22, FR-23) | `app/(rollover-stagionale)/`, `lib/matching-codice-fiscale/` | AD-2, AD-5, AD-8, AD-10 |
 | Dati Atleta (FR-24, FR-25) | `app/(dati-atleta)/` | AD-2 |
 | Amministrazione e Vista Dirigente (FR-26, FR-27, FR-29) | `app/(amministrazione)/` | AD-2, AD-4 |

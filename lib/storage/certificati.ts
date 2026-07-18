@@ -59,6 +59,24 @@ export async function rimuoviFileCertificato(
   }
 }
 
+// Story 4.3: scarica i byte del file (non un URL) - serve per allegarlo
+// all'email inviata alla Segreteria (lib/email/invia-email.ts). RLS su
+// storage.objects verifica i permessi al momento della chiamata, stessa
+// policy SELECT gia' usata per generaUrlFirmato - nessun controllo
+// applicativo duplicato, nessuna nuova policy.
+export async function scaricaFileCertificato(
+  supabase: SupabaseClient,
+  filePath: string
+): Promise<Blob> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(filePath);
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Impossibile scaricare il Certificato.");
+  }
+
+  return data;
+}
+
 // AC #2: URL a scadenza breve (5 minuti di default), generato on-demand -
 // mai pre-generato e persistito, che ne vanificherebbe la scadenza. RLS su
 // storage.objects verifica i permessi al momento della chiamata.

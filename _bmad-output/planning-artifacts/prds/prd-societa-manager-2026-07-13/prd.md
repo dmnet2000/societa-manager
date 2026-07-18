@@ -202,6 +202,19 @@ Un wizard copia/adatta Gruppi e assegnazioni Allenatori dall'Anno Agonistico pre
 #### FR-29: Vista d'insieme Dirigente
 Il Dirigente vede in un'unica vista i Gruppi, gli Slot assegnati e lo stato aggregato dei Certificati Medici per gruppo.
 
+### 4.12 Configurazione Applicazione
+
+**Descrizione:** *(Sezione aggiunta in fase di sviluppo — correzione di rotta: l'architettura iniziale prevedeva Resend per l'invio email, FR-13/FR-16; la polisportiva dispone invece di una casella email propria (Aruba, SMTP) da riutilizzare, e i parametri devono essere configurabili dall'Admin senza intervento sul codice.)*
+
+#### FR-31: Configurazione SMTP per invio email
+L'Admin può configurare i parametri del server SMTP (host, porta, utente, password, indirizzo/nome mittente) usati dal sistema per inviare le email transazionali (es. FR-13, FR-16).
+**Consequences:**
+- Il sistema non ha più una dipendenza hardcoded da un provider email specifico: qualunque server SMTP standard (inclusi provider come Aruba) è supportato.
+- Finché la configurazione non è impostata, l'invio email non è possibile — le funzionalità che ne dipendono (FR-13, FR-16) devono gestire questo stato esplicitamente.
+
+#### FR-32: Configurazione logo applicazione
+L'Admin può caricare/aggiornare il logo dell'applicazione dall'interfaccia di configurazione.
+
 ## 5. Non-Obiettivi (Espliciti)
 
 - Il sistema non calcola l'incastro ottimale slot-allenatore: resta un lavoro umano, svolto fuori dall'app.
@@ -213,7 +226,9 @@ Il Dirigente vede in un'unica vista i Gruppi, gli Slot assegnati e lo stato aggr
 ## 6. Perimetro MVP
 
 ### 6.1 In Perimetro (v1)
-FR-1, FR-2, FR-3, FR-4, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-26, FR-29, FR-30.
+FR-1, FR-2, FR-3, FR-4, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-26, FR-29, FR-30, FR-31.
+
+**FR-31 in perimetro v1** (aggiunto in corso d'opera): FR-13/FR-16 dipendono dall'invio email, che a sua volta dipende dalla configurazione SMTP — bloccante per lo stesso motivo per cui FR-13/FR-16 lo sono.
 
 **Vincolo di consegna:** la v1 (elenco sopra) deve essere pronta per il 1° agosto, avvio del prossimo Anno Agonistico — un vincolo di consegna distinto dal meccanismo di rollover ricorrente descritto in §4.7.
 
@@ -223,6 +238,7 @@ FR-1, FR-2, FR-3, FR-4, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12, FR-13, FR-14, FR-1
 - **FR-24, FR-25** (dati atleta e grafico test fisici) — funzionalità aggiuntiva, non critica per il lancio.
 - **FR-27** (permessi granulari sanitari) — `[NOTE FOR PM]` rivalutare priorità in architettura data la sensibilità del dato.
 - **FR-28** (wizard nuova stagione) — utile solo dal secondo rollover in poi, non per il primo lancio.
+- **FR-32** (configurazione logo applicazione) — branding non bloccante per il lancio, rimandabile a v1.1.
 
 ## 7. Metriche di Successo
 

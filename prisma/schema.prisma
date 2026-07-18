@@ -211,6 +211,30 @@ model Notifica {
   @@map("notifiche")
 }
 
+// Story 7.1 (FR-31, AD-12): riga singola (nessuna business key naturale -
+// il modulo dati legge "la prima riga esistente" e fa update-se-esiste/
+// insert-se-assente). Protetta da RLS (AD-9 esteso), ADMIN-only per ogni
+// operazione - contiene una password SMTP salvata in chiaro, scelta
+// deliberata coerente col resto del progetto (nessuna cifratura
+// applicativa, protezione solo RLS, vedi AD-12). `sicura` distingue SSL
+// implicito (tipicamente porta 465) da STARTTLS (tipicamente porta 587) -
+// necessario perche' Nodemailer lo richiede esplicitamente per creare il
+// transporter corretto.
+model ConfigurazioneSmtp {
+  id           String   @id @default(uuid())
+  host         String
+  porta        Int
+  sicura       Boolean  @default(true)
+  utente       String
+  password     String
+  mittente     String
+  nomeMittente String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("configurazione_smtp")
+}
+
 // Non protetta da RLS (AD-9, elencata esplicitamente insieme a Campo/Slot/
 // Gruppo/Allenatore) - gestibile via Prisma diretto, come Allenatore
 // (Story 1.4) e AnnoAgonistico (Story 1.6). Struttura permanente, nessun
