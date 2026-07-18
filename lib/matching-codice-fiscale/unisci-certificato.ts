@@ -26,9 +26,16 @@ export async function unisciCertificato(
 
   // AC #1: aggiorna solo se la nuova data e' strettamente piu' recente di
   // quella esistente - altrimenti mantiene quella esistente, silenziosamente
-  // (nessun errore, non e' una riga scartata).
-  const dataEsistente = new Date(esistente.dataFineValidita as string);
-  if (datiCertificato.dataFineValidita > dataEsistente) {
+  // (nessun errore, non e' una riga scartata). Review fix: dataFineValidita
+  // e' nullable dalla Story 4.1 (una riga puo' esistere con solo un file
+  // collegato, senza ancora dati di validita') - un controllo esplicito
+  // invece di `new Date(null)`, che coercerebbe silenziosamente a epoch
+  // (1970) e funzionerebbe per coincidenza, non per garanzia del contratto
+  // di tipo.
+  const dataEsistente = esistente.dataFineValidita
+    ? new Date(esistente.dataFineValidita as string)
+    : null;
+  if (!dataEsistente || datiCertificato.dataFineValidita > dataEsistente) {
     // Merge per-campo, non sovrascrittura totale (review fix): una riga
     // dell'export più recente ma con modulo/mesiValidita/dataInizioValidita
     // vuoti per quella riga non deve azzerare valori corretti già salvati

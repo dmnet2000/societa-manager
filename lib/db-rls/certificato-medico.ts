@@ -86,3 +86,35 @@ export async function aggiornaCertificato(
     );
   }
 }
+
+// Story 4.1: collega il file appena caricato (lib/storage/certificati.ts)
+// alla riga CertificatoMedico dell'Atleta, senza toccare i campi di
+// validita'. Upsert su atletaId (chiave unica esistente): il payload
+// include DELIBERATAMENTE solo id/atletaId/filePath/updatedAt - mai
+// dataFineValidita/dataInizioValidita/mesiValidita/modulo, cosi' su un
+// conflitto (AC #4, ri-caricamento) i valori di validita' esistenti restano
+// intatti (semantica standard di upsert PostgREST: solo le colonne presenti
+// nel payload vengono aggiornate); se la riga non esiste ancora, viene
+// creata con dataFineValidita implicitamente NULL (colonna nullable dalla
+// migrazione di questa storia) - "in attesa di validazione" (Story 4.4).
+// Stesso "churn" accettato dell'id sull'upsert gia' documentato per
+// Presenza (Story 3.1): nessuna FK punta a CertificatoMedico.id.
+export async function collegaFileCertificato(
+  supabase: SupabaseClient,
+  atletaId: string,
+  filePath: string
+): Promise<void> {
+  const { error } = await supabase.from("certificati_medici").upsert(
+    {
+      id: randomUUID(),
+      atletaId,
+      filePath,
+      updatedAt: new Date().toISOString(),
+    },
+    { onConflict: "atletaId" }
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}

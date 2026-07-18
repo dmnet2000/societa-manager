@@ -76,6 +76,7 @@ model Atleta {
   certificatoMedico     CertificatoMedico?
   gruppi                GruppoAtleta[]
   presenze              Presenza[]
+  notifiche             Notifica[]
 
   @@map("atlete")
 }
@@ -167,22 +168,47 @@ model Iscrizione {
 // runtime tramite client Supabase autenticato (lib/db-rls/certificato-medico.ts),
 // mai con una query Prisma diretta - come Atleta/Iscrizione. Un solo
 // Certificato "corrente" per Atleta (non uno storico multi-riga per import -
-// vedi Dev Notes Story 1.7): atletaId univoco. `dataFineValidita` e'
-// obbligatoria - e' l'unico campo su cui si basa il confronto "vince la data
-// piu' recente" (FR-22, unisciCertificato) - un record senza questo valore
-// non viene mai creato.
+// vedi Dev Notes Story 1.7): atletaId univoco.
+// `dataFineValidita` (Story 4.1: da obbligatoria a opzionale) - il flusso di
+// import (Story 1.7, unisciCertificato) continua a fornirla sempre; il nuovo
+// flusso di upload (Story 4.1) crea/aggiorna solo `filePath`, lasciando la
+// validazione della data alla Segreteria (Story 4.4) - un Certificato
+// caricato ma non ancora confermato ha quindi `dataFineValidita = null`
+// ("in attesa di validazione" implicito, nessun enum di stato introdotto qui,
+// prematuro prima di Story 4.4).
+// `filePath` (Story 4.1): percorso nel bucket Storage privato
+// "certificati-medici" (AD-6), mai un URL - l'accesso avviene solo tramite
+// URL firmati a scadenza breve generati on-demand (lib/storage/certificati.ts),
+// mai un valore pre-generato e persistito.
 model CertificatoMedico {
   id                 String    @id @default(uuid())
   atletaId           String    @unique
   atleta             Atleta    @relation(fields: [atletaId], references: [id], onDelete: Cascade)
   dataInizioValidita DateTime?
-  dataFineValidita   DateTime
+  dataFineValidita   DateTime?
   mesiValidita       Int?
   modulo             String?
+  filePath           String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@map("certificati_medici")
+}
+
+// Story 4.2 (FR-12): protetta da RLS - rivela quale Atleta ha avuto un
+// evento di caricamento certificato, visibile solo ad Allenatore (proprio
+// Gruppo) e Dirigente (accesso ampio). Deliberatamente minimale: nessun
+// campo "letta"/stato (nessun AC lo richiede) e nessun campo "messaggio"/
+// "tipo" (un solo evento possibile oggi - nome Atleta e data si ricavano a
+// lettura via join applicativo, mai un `include` Prisma diretto su questa
+// tabella RLS-protetta).
+model Notifica {
+  id        String   @id @default(uuid())
+  atletaId  String
+  atleta    Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("notifiche")
 }
 
 // Non protetta da RLS (AD-9, elencata esplicitamente insieme a Campo/Slot/

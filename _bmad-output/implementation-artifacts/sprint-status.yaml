@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-15
+# last_updated: 2026-07-18
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -76,9 +76,9 @@ development_status:
   3-3-storico-presenze-con-trend-percentuale: backlog
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-upload-certificato-medico: backlog
-  4-2-notifica-automatica-upload: backlog
+  epic-4: in-progress
+  4-1-upload-certificato-medico: done
+  4-2-notifica-automatica-upload: review
   4-3-mail-automatica-alla-segreteria: backlog
   4-4-conferma-validazione-certificato: backlog
   4-5-alert-scadenza-non-bloccante: backlog

@@ -11,10 +11,12 @@ const updateEqMock = vi.fn(() => ({ select: updateSelectMock }));
 const updateMock = vi.fn<
   (payload: Record<string, unknown>) => { eq: typeof updateEqMock }
 >(() => ({ eq: updateEqMock }));
+const upsertMock = vi.fn();
 const fromMock = vi.fn(() => ({
   select: selectQueryMock,
   insert: insertMock,
   update: updateMock,
+  upsert: upsertMock,
 }));
 
 const supabase = { from: fromMock } as never;
@@ -23,6 +25,7 @@ const {
   trovaCertificatoPerAtleta,
   creaCertificato,
   aggiornaCertificato,
+  collegaFileCertificato,
 } = await import("./certificato-medico");
 
 const datiEsempio = {
@@ -133,5 +136,39 @@ describe("aggiornaCertificato", () => {
     await expect(aggiornaCertificato(supabase, "c1", datiEsempio)).rejects.toThrow(
       /nessuna riga/i
     );
+  });
+});
+
+describe("collegaFileCertificato", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    upsertMock.mockReset();
+  });
+
+  it("upserts solo id/atletaId/filePath/updatedAt, mai i campi di validita' (Story 4.1 AC #4)", async () => {
+    upsertMock.mockResolvedValue({ error: null });
+
+    await collegaFileCertificato(supabase, "a1", "a1/file.pdf");
+
+    expect(fromMock).toHaveBeenCalledWith("certificati_medici");
+    const [payload, opzioni] = upsertMock.mock.calls[0];
+    expect(payload.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(payload.atletaId).toBe("a1");
+    expect(payload.filePath).toBe("a1/file.pdf");
+    expect(typeof payload.updatedAt).toBe("string");
+    expect(Object.keys(payload).sort()).toEqual(
+      ["atletaId", "filePath", "id", "updatedAt"].sort()
+    );
+    expect(opzioni).toEqual({ onConflict: "atletaId" });
+  });
+
+  it("throws when the upsert fails (incluso un rifiuto RLS per un'Atleta non propria, AC #3)", async () => {
+    upsertMock.mockResolvedValue({
+      error: { message: "new row violates row-level security policy" },
+    });
+
+    await expect(
+      collegaFileCertificato(supabase, "a1", "a1/file.pdf")
+    ).rejects.toThrow("row-level security");
   });
 });

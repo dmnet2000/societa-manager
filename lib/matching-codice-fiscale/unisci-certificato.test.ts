@@ -117,6 +117,23 @@ describe("unisciCertificato", () => {
     );
   });
 
+  it("updates when the existing CertificatoMedico has no dataFineValidita yet (review fix, Story 4.1: campo diventato nullable)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "cert-1",
+      dataFineValidita: null,
+    });
+    aggiornaCertificatoMock.mockResolvedValue(undefined);
+
+    await unisciCertificato(supabase, "atleta-1", nuovoCertificato);
+
+    expect(aggiornaCertificatoMock).toHaveBeenCalledWith(
+      supabase,
+      "cert-1",
+      nuovoCertificato
+    );
+    expect(creaCertificatoMock).not.toHaveBeenCalled();
+  });
+
   it("does nothing when the new date equals the existing one (AC #1)", async () => {
     trovaCertificatoPerAtletaMock.mockResolvedValue({
       id: "cert-1",

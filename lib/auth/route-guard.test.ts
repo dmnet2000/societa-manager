@@ -212,4 +212,52 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Genitore or Atleta on /certificato-medico (Story 4.1, FR-11)", () => {
+    expect(getRouteDecision("/certificato-medico", true, ["GENITORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/certificato-medico", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /certificato-medico for other roles", () => {
+    expect(getRouteDecision("/certificato-medico", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/certificato-medico", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
+  it("allows Allenatore or Dirigente on /notifiche (Story 4.2, FR-12)", () => {
+    expect(getRouteDecision("/notifiche", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/notifiche", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /notifiche for other roles", () => {
+    expect(getRouteDecision("/notifiche", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/notifiche", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/notifiche", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/notifiche", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
