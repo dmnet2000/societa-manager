@@ -22,6 +22,7 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[] }[] = [
   { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
   { prefix: "/orari", ruoliAmmessi: ["SEGRETERIA"] },
   { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"] },
+  { prefix: "/storico-presenze", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
 ];
 
 export type RouteDecision =

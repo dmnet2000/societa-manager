@@ -4,7 +4,12 @@ vi.mock("server-only", () => ({}));
 
 const upsertMock = vi.fn();
 const eqDataMock = vi.fn();
-const eqSlotMock = vi.fn(() => ({ eq: eqDataMock }));
+const orderMock = vi.fn();
+// Il primo .eq() e' condiviso da entrambe le funzioni di lettura: restituisce
+// un oggetto che supporta sia un secondo .eq() (leggiPresenzePerSlotEData:
+// .eq("slotId").eq("data")) sia .order() (leggiStoricoPresenzePerAtleta:
+// .eq("atletaId").order("data")).
+const eqSlotMock = vi.fn(() => ({ eq: eqDataMock, order: orderMock }));
 const selectMock = vi.fn(() => ({ eq: eqSlotMock }));
 
 const fromMock = vi.fn(() => ({
@@ -14,9 +19,11 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock } as never;
 
-const { registraPresenze, leggiPresenzePerSlotEData } = await import(
-  "./presenza"
-);
+const {
+  registraPresenze,
+  leggiPresenzePerSlotEData,
+  leggiStoricoPresenzePerAtleta,
+} = await import("./presenza");
 
 describe("registraPresenze", () => {
   beforeEach(() => {
@@ -98,6 +105,44 @@ describe("leggiPresenzePerSlotEData", () => {
 
     await expect(
       leggiPresenzePerSlotEData(supabase, "s1", "2026-07-13")
+    ).rejects.toThrow("boom");
+  });
+});
+
+describe("leggiStoricoPresenzePerAtleta", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    selectMock.mockClear();
+    eqSlotMock.mockClear();
+    orderMock.mockReset();
+  });
+
+  it("returns lo storico presenze dell'Atleta in ordine cronologico (AC #1)", async () => {
+    orderMock.mockResolvedValue({
+      data: [
+        { id: "p1", slotId: "s1", data: "2026-07-06", presente: true },
+        { id: "p2", slotId: "s1", data: "2026-07-13", presente: false },
+      ],
+      error: null,
+    });
+
+    const result = await leggiStoricoPresenzePerAtleta(supabase, "a1");
+
+    expect(fromMock).toHaveBeenCalledWith("presenze");
+    expect(selectMock).toHaveBeenCalledWith("id, slotId, data, presente");
+    expect(eqSlotMock).toHaveBeenCalledWith("atletaId", "a1");
+    expect(orderMock).toHaveBeenCalledWith("data", { ascending: true });
+    expect(result).toEqual([
+      { id: "p1", slotId: "s1", data: "2026-07-06", presente: true },
+      { id: "p2", slotId: "s1", data: "2026-07-13", presente: false },
+    ]);
+  });
+
+  it("throws when the query fails", async () => {
+    orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(
+      leggiStoricoPresenzePerAtleta(supabase, "a1")
     ).rejects.toThrow("boom");
   });
 });

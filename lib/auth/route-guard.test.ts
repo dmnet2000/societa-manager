@@ -192,4 +192,24 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Allenatore or Atleta on /storico-presenze (Story 3.2, FR-9)", () => {
+    expect(getRouteDecision("/storico-presenze", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/storico-presenze", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /storico-presenze for other roles (AC #4: Genitore escluso)", () => {
+    expect(getRouteDecision("/storico-presenze", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/storico-presenze", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
