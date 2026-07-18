@@ -75,6 +75,7 @@ model Atleta {
   iscrizioni            Iscrizione[]
   certificatoMedico     CertificatoMedico?
   gruppi                GruppoAtleta[]
+  presenze              Presenza[]
 
   @@map("atlete")
 }
@@ -302,6 +303,35 @@ model Slot {
   gruppoId  String
   gruppo    Gruppo          @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
   createdAt DateTime        @default(now())
+  presenze  Presenza[]
 
   @@map("slot")
+}
+
+// Protetta da RLS (AD-4/AD-9, esplicitamente nel bind-list): letta/scritta a
+// runtime tramite client Supabase autenticato (lib/db-rls/presenza.ts), mai
+// con una query Prisma diretta - come Atleta/Iscrizione/CertificatoMedico.
+// AD-8: nessuna colonna annoAgonisticoId propria, eredita la stagione
+// transitivamente tramite Slot -> Gruppo (stesso principio di Slot stesso).
+// `data` e' String "YYYY-MM-DD" (non DateTime/@db.Date), stesso motivo di
+// Slot.oraInizio/oraFine (Story 2.5): nessuna aritmetica sulle date
+// richiesta da questa storia, un tipo data/ora introdurrebbe solo
+// l'ambiguita' di fuso orario gia' incontrata con AnnoAgonistico.
+// Prima policy RLS di questa codebase con scoping relazionale (non solo per
+// Ruolo): l'Allenatore puo' scrivere/leggere solo per i Gruppi di cui e'
+// allenatore (AC #4, Story 3.1) - vedi la migrazione per il dettaglio SQL.
+// @@unique rende la registrazione idempotente (AC #3): un upsert su questa
+// chiave aggiorna la riga esistente invece di duplicarla.
+model Presenza {
+  id        String   @id @default(uuid())
+  atletaId  String
+  slotId    String
+  data      String
+  presente  Boolean
+  atleta    Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  slot      Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([atletaId, slotId, data])
+  @@map("presenze")
 }

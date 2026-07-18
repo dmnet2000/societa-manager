@@ -175,4 +175,21 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows only Allenatore on /presenze (Story 3.1, FR-8)", () => {
+    expect(getRouteDecision("/presenze", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /presenze for other roles", () => {
+    expect(getRouteDecision("/presenze", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/presenze", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

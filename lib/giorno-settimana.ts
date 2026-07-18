@@ -26,3 +26,25 @@ const GIORNI_VALIDI_SET = new Set<string>(GIORNI_SETTIMANA.map((g) => g.value));
 export function isGiornoSettimanaValido(value: string): value is GiornoSettimana {
   return GIORNI_VALIDI_SET.has(value);
 }
+
+// Story 3.1: mappa l'indice restituito da Date.prototype.getUTCDay()
+// (0=Domenica..6=Sabato) a GiornoSettimana. Deliberatamente NON riordina
+// GIORNI_SETTIMANA (che resta Lunedi->Domenica per la UI) - questa e' solo
+// una tabella di conversione, non una seconda fonte di verita' sull'ordine.
+const GIORNO_DA_INDICE_UTC: Record<number, GiornoSettimana> = {
+  0: "DOMENICA",
+  1: "LUNEDI",
+  2: "MARTEDI",
+  3: "MERCOLEDI",
+  4: "GIOVEDI",
+  5: "VENERDI",
+  6: "SABATO",
+};
+
+// `data` e' una stringa "YYYY-MM-DD" senza componente orario, interpretata
+// come UTC mezzanotte dalle specifiche ECMAScript - getUTCDay() (non
+// getDay(), che reinterpreta nel fuso orario locale del processo Node) evita
+// lo scivolamento di un giorno gia' incontrato con AnnoAgonistico (Story 1.6).
+export function giornoSettimanaDaData(data: string): GiornoSettimana {
+  return GIORNO_DA_INDICE_UTC[new Date(data).getUTCDay()];
+}
