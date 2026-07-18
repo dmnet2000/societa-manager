@@ -264,10 +264,18 @@ export async function registrati(
     }
 
     // Story 2.7: aggancio dell'Atleta a se stessa, indipendente dal blocco
-    // GENITORE sopra.
+    // GENITORE sopra. autoAggancio: true (Story 3.2 review fix) - distingue
+    // questo aggancio da quello Genitore<->figlia sopra: la policy RLS
+    // "atleta_propria_select" su "presenze" (Story 3.2) verifica questo
+    // flag per concedere lettura SOLO per la propria Atleta, mai per una
+    // figlia, anche quando lo stesso Utente ha entrambi i Ruoli.
     if (atletaPropriaDaAgganciare) {
       await prisma.genitoreAtleta.create({
-        data: { utenteId: utente.id, atletaId: atletaPropriaDaAgganciare.id },
+        data: {
+          utenteId: utente.id,
+          atletaId: atletaPropriaDaAgganciare.id,
+          autoAggancio: true,
+        },
       });
     }
   } catch {

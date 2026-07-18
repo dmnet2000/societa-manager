@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 3.2: Storico presenze per Atleta
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -79,6 +79,16 @@ seguita da una policy `atleta_propria_select` gated sia dal Ruolo (`(auth.jwt() 
   - [x] AC #4: verificare che un Genitore (agganciato a un'Atleta ma senza Ruolo Allenatore/Atleta) non possa raggiungere `/storico-presenze` (redirect `/non-autorizzato`, route-guard) — e che, anche bypassando la UI, RLS non gli conceda comunque righe `presenze` per un'Atleta figlia (verifica diretta della policy `atleta_propria_select`, gated sul Ruolo).
   - [x] Verificare che un Admin/Dirigente/Segreteria non possa raggiungere `/storico-presenze` (route-guard) — le loro policy RLS ampie su `presenze` restano comunque attive per un futuro uso (fuori scope qui, stesso trattamento già dato in Story 3.1).
 
+### Review Findings
+
+- [x] [Review][Patch] **(Sicurezza)** La policy RLS `atleta_propria_select` concedeva lettura per *qualsiasi* riga `genitori_atlete` dell'Utente, non solo per il proprio aggancio "a se stessa" — un Utente con doppio Ruolo Atleta+Genitore (caso esplicitamente supportato dalla registrazione, Story 2.7, già testato in `registrati/actions.test.ts`) otteneva quindi accesso allo storico presenze di una figlia tramite il proprio aggancio Genitore, violazione reale di AC #3 [prisma/migrations/20260718000000_presenze_atleta_select/migration.sql] — risolto aggiungendo la colonna `GenitoreAtleta.autoAggancio` (migrazione `20260718010000_genitori_atlete_auto_aggancio`), valorizzata `true` solo per l'aggancio a se stessa (Story 2.7) e richiesta esplicitamente dalla funzione RLS; riverificato dal vivo con uno scenario doppio-ruolo end-to-end (DB, REST diretto, UI)
+- [x] [Review][Patch] Ordinamento per `data` non deterministico per righe con la stessa data (due Slot diversi possono cadere nello stesso giorno) [lib/db-rls/presenza.ts] — risolto con un secondo `.order("id", { ascending: true })` come spareggio
+- [x] [Review][Defer] Il ramo Allenatore risolve il roster (`gruppoAtleteRows`) solo per l'Anno Agonistico corrente — un coach perde l'accesso UI allo storico di un'Atleta passata a un altro Gruppo/Allenatore in una stagione successiva, anche se lo storico esiste ancora — stessa scelta di scoping già applicata al selettore Slot di `/presenze` (Story 3.1) [app/(presenze)/storico-presenze/page.tsx] — deferred, consistente con la convenzione esistente
+- [x] [Review][Defer] La colonna "Giorno" è derivata dal `Slot.giorno` corrente, non dal giorno della settimana calcolato dalla `data` storica della Presenza — se in futuro esistesse una funzionalità di modifica dello Slot, lo storico potrebbe retroattivamente mostrare un giorno errato per righe passate — nessuna funzionalità di modifica Slot esiste oggi (stessa assenza già accettata in Story 2.5) [app/(presenze)/storico-presenze/page.tsx] — deferred, non raggiungibile allo stato attuale
+- [x] [Review][Defer] Nessuna paginazione su `leggiStoricoPresenzePerAtleta` (elenco illimitato) — alla scala attuale (una stagione = poche decine di Slot per Atleta) non rilevante; da riconsiderare se lo storico dovesse estendersi su più stagioni [lib/db-rls/presenza.ts] — deferred, non rilevante alla scala attuale
+- [x] [Review][Defer] Query duplicata se lo stesso Utente compare in entrambe le sezioni (es. un'Allenatore che allena anche se stessa) — nessuna memoizzazione tra `sezioneAtleta` e `sezioneAllenatore` [app/(presenze)/storico-presenze/page.tsx] — deferred, caso raro, nessun impatto di correttezza
+- [x] [Review][Dismiss] Deviazione dalla query Slot letterale del Task 3 (`include: { campo: {...}, gruppo: true }` vs `include: { gruppo: true }` implementato) — semplificazione corretta: Palestra/Campo non sono mai renderizzati nella tabella (Data/Giorno/Orario/Gruppo/Presenza), includerli avrebbe solo aggiunto una query superflua
+
 ## Dev Notes
 
 - **Il prerequisito architetturale sopra è la parte più delicata di questa storia** — leggerlo per intero prima di scrivere la migrazione. Non improvvisare una policy diversa.
@@ -111,19 +121,27 @@ Claude Sonnet 5 (claude-sonnet-5)
 - **Falso allarme nello script di verifica (non un bug applicativo)**: il primo run mostrava lo storico dell'Allenatore corretto ma poi, dopo il login come Atleta, sembrava restituire ancora la sessione dell'Allenatore (`haSelettore=true` inatteso). Causa reale: i Codici Fiscali fittizi generati per lo script avevano 17 caratteri invece di 16 (`isCodiceFiscaleValido` li rifiutava silenziosamente), quindi le registrazioni Atleta/Genitore fallivano senza creare l'utente, il login successivo falliva con "Credenziali non valide", e la sessione restava quella dell'Allenatore precedente. Risolto correggendo la lunghezza dei CF di test — nessuna modifica al codice applicativo necessaria.
 - **Robustezza dello script di verifica**: un primo run era stato interrotto da un fallimento di setup, lasciando dati di test residui che hanno fatto collidere l'unique constraint su `codiceFiscale` al run successivo. Risolto con una pulizia per pattern (nome/CF/email, non per id memorizzati) eseguita sia prima del setup sia nel blocco finale — resiliente a run interrotti in qualsiasi punto.
 - Confermata via verifica dal vivo (incluso un controllo diretto via REST, non solo route-guard) l'assenza di accesso RLS per un Genitore non-Atleta: il gate esplicito sul Ruolo dentro `atleta_propria_select` (non solo la relazione `genitori_atlete`) è ciò che rende AC #4 un vincolo di sicurezza reale, non solo di UI — coerente con quanto anticipato nei Prerequisiti architetturali.
+- **Vulnerabilità di sicurezza individuata in code review (Blind Hunter, non anticipata nel Prerequisito architetturale della storia)**: il Prerequisito aveva ragionato correttamente sul gate del Ruolo per escludere un Genitore-senza-Ruolo-Atleta (AC #4), ma non aveva considerato la direzione opposta — un Utente con **entrambi** i Ruoli Atleta e Genitore (caso esplicitamente supportato dalla registrazione fin da Story 2.7, con tanto di test dedicato "hooks up both Atleta (self) and Genitore (child) independently") soddisfa comunque `(ruoli) ? 'ATLETA'`, e la funzione `atleta_possiede_presenza` non distingueva QUALE riga `genitori_atlete` fosse l'aggancio a se stessa. Un simile Utente poteva quindi leggere lo storico presenze di una figlia — violazione reale di AC #3, non solo teorica (il test esistente dimostra che lo scenario è realmente raggiungibile con la UI di registrazione attuale). Risolto aggiungendo `GenitoreAtleta.autoAggancio` (Boolean, default false, valorizzato `true` solo dal blocco di auto-aggancio Atleta in `registrati/actions.ts`) e richiedendolo esplicitamente nella funzione RLS. Riverificato dal vivo con uno scenario end-to-end dedicato: registrazione doppio-ruolo, verifica DB (`autoAggancio` corretto su entrambe le righe), verifica REST diretta (lettura negata per la figlia, concessa per sé), verifica UI (`/storico-presenze` mostra solo il proprio storico). Nessuna regressione: tutti i 270 test + i 29 test di `registrati/actions.test.ts` restano verdi.
+- **Correzione minore insieme al fix di sicurezza**: `leggiStoricoPresenzePerAtleta` ordinava solo per `data`, non deterministico per righe con la stessa data (due Slot diversi nello stesso giorno) — aggiunto un secondo `.order("id", { ascending: true })` come spareggio (Edge Case Hunter).
 
 ### Completion Notes List
 
 - Tutti i 5 Task completati con TDD (RED confermato prima di ogni implementazione: `lib/db-rls/presenza.ts`, route-guard).
 - Suite completa verde: `npx vitest run` (270 test, 28 file), `npx tsc --noEmit` (nessun errore), `npm run lint` (pulito), `npm run build` (produzione, `/storico-presenze` generata come route dinamica).
 - Verifica dal vivo eseguita con successo su tutti gli scenari (AC #1-#4: storico Allenatore con selettore, storico Atleta automatico, rifiuto Atleta estranea, esclusione Genitore sia via route-guard sia via RLS diretta). Dati di test rimossi interamente al termine (Palestra/Campo/Gruppi/Slot/Atlete/Allenatore/Presenze di test, utenti Supabase Auth).
-- Nessuna deviazione dal design descritto nel Prerequisito architetturale della storia.
+- **Code review (Blind Hunter): individuata e risolta una vulnerabilità di sicurezza reale** — la policy RLS `atleta_propria_select` non distingueva un aggancio "a se stessa" (Story 2.7) da un aggancio Genitore↔figlia, concedendo a un Utente con doppio Ruolo Atleta+Genitore (caso già esplicitamente supportato e testato nella registrazione) accesso in lettura allo storico presenze di una figlia — violazione reale di AC #3. Risolto con una nuova colonna `GenitoreAtleta.autoAggancio`, valorizzata solo per l'aggancio a se stessa e richiesta dalla funzione RLS. Riverificato dal vivo con uno scenario doppio-ruolo end-to-end (DB, REST diretto, UI) — vedi Review Findings e Debug Log per il dettaglio.
+- 2 patch aggiuntive applicate (ordinamento deterministico per date uguali), 4 findings differiti (nessuno bloccante), 1 scartato come falso positivo (semplificazione corretta della query Slot).
+- Nessuna deviazione dal design descritto nel Prerequisito architetturale della storia, ad eccezione del fix di sicurezza sopra (non anticipato in fase di creazione della storia, scoperto in code review).
 
 ### File List
 
+- `prisma/schema.prisma` (modificato: + `GenitoreAtleta.autoAggancio`, review fix)
 - `prisma/migrations/20260718000000_presenze_atleta_select/migration.sql` (nuovo)
-- `lib/db-rls/presenza.ts` (modificato: + `leggiStoricoPresenzePerAtleta`)
-- `lib/db-rls/presenza.test.ts` (modificato)
+- `prisma/migrations/20260718010000_genitori_atlete_auto_aggancio/migration.sql` (nuovo, review fix — vulnerabilità di sicurezza)
+- `lib/db-rls/presenza.ts` (modificato: + `leggiStoricoPresenzePerAtleta`, esteso in review fix)
+- `lib/db-rls/presenza.test.ts` (modificato, esteso in review fix)
 - `lib/auth/route-guard.ts` (modificato)
 - `lib/auth/route-guard.test.ts` (modificato)
-- `app/(presenze)/storico-presenze/page.tsx` (nuovo)
+- `app/(presenze)/storico-presenze/page.tsx` (nuovo, esteso in review fix)
+- `app/(onboarding-import)/registrati/actions.ts` (modificato in review fix — `autoAggancio: true` sull'aggancio a se stessa)
+- `app/(onboarding-import)/registrati/actions.test.ts` (modificato in review fix)

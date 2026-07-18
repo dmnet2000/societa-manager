@@ -104,9 +104,16 @@ export default async function StoricoPresenzePage({
         prisma.allenatore.findFirst({
           where: { utente: { supabaseAuthId: user.id } },
         }),
+        // autoAggancio: true (Story 3.2 review fix, AC #3) - questa sezione
+        // mostra "Il mio storico": deve risolvere SOLO l'aggancio a se
+        // stessa, mai un aggancio Genitore<->figlia (un Utente con doppio
+        // Ruolo Atleta+Genitore avrebbe altrimenti potuto vedere lo storico
+        // di una figlia sotto la propria identita' - stessa distinzione
+        // ora imposta anche a livello RLS, vedi migrazione
+        // 20260718010000_genitori_atlete_auto_aggancio).
         prisma.genitoreAtleta
           .findMany({
-            where: { utente: { supabaseAuthId: user.id } },
+            where: { utente: { supabaseAuthId: user.id }, autoAggancio: true },
             select: { atletaId: true },
           })
           .then((righe) => righe.map((riga) => riga.atletaId)),

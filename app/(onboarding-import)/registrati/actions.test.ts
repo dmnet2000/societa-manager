@@ -757,7 +757,11 @@ describe("registrati", () => {
       "RSSMRA10A41H501Z"
     );
     expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
-      data: { utenteId: "utente-u14", atletaId: "atleta-propria" },
+      data: {
+        utenteId: "utente-u14",
+        atletaId: "atleta-propria",
+        autoAggancio: true,
+      },
     });
   });
 
@@ -825,8 +829,16 @@ describe("registrati", () => {
     ).rejects.toThrow("REDIRECT");
 
     expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
-      data: { utenteId: "utente-u16", atletaId: "atleta-se-stessa" },
+      data: {
+        utenteId: "utente-u16",
+        atletaId: "atleta-se-stessa",
+        autoAggancio: true,
+      },
     });
+    // Review fix (Story 3.2): l'aggancio Genitore<->figlia NON deve mai
+    // avere autoAggancio true - e' esattamente cio' che impediva ad AC #3 di
+    // essere rispettato (un Genitore poteva altrimenti leggere lo storico
+    // presenze della figlia tramite la policy RLS pensata per l'Atleta).
     expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
       data: { utenteId: "utente-u16", atletaId: "atleta-figlio" },
     });

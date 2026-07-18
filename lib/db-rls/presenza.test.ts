@@ -4,11 +4,15 @@ vi.mock("server-only", () => ({}));
 
 const upsertMock = vi.fn();
 const eqDataMock = vi.fn();
-const orderMock = vi.fn();
+const orderIdMock = vi.fn();
+// leggiStoricoPresenzePerAtleta ordina per data, con un secondo .order()
+// come spareggio deterministico per righe con la stessa data (Slot diversi
+// nello stesso giorno) - senza, l'ordine tra quelle righe sarebbe arbitrario.
+const orderMock = vi.fn(() => ({ order: orderIdMock }));
 // Il primo .eq() e' condiviso da entrambe le funzioni di lettura: restituisce
 // un oggetto che supporta sia un secondo .eq() (leggiPresenzePerSlotEData:
 // .eq("slotId").eq("data")) sia .order() (leggiStoricoPresenzePerAtleta:
-// .eq("atletaId").order("data")).
+// .eq("atletaId").order("data").order("id")).
 const eqSlotMock = vi.fn(() => ({ eq: eqDataMock, order: orderMock }));
 const selectMock = vi.fn(() => ({ eq: eqSlotMock }));
 
@@ -114,11 +118,12 @@ describe("leggiStoricoPresenzePerAtleta", () => {
     fromMock.mockClear();
     selectMock.mockClear();
     eqSlotMock.mockClear();
-    orderMock.mockReset();
+    orderMock.mockClear();
+    orderIdMock.mockReset();
   });
 
-  it("returns lo storico presenze dell'Atleta in ordine cronologico (AC #1)", async () => {
-    orderMock.mockResolvedValue({
+  it("returns lo storico presenze dell'Atleta in ordine cronologico, con spareggio deterministico per data uguale (AC #1)", async () => {
+    orderIdMock.mockResolvedValue({
       data: [
         { id: "p1", slotId: "s1", data: "2026-07-06", presente: true },
         { id: "p2", slotId: "s1", data: "2026-07-13", presente: false },
@@ -132,6 +137,7 @@ describe("leggiStoricoPresenzePerAtleta", () => {
     expect(selectMock).toHaveBeenCalledWith("id, slotId, data, presente");
     expect(eqSlotMock).toHaveBeenCalledWith("atletaId", "a1");
     expect(orderMock).toHaveBeenCalledWith("data", { ascending: true });
+    expect(orderIdMock).toHaveBeenCalledWith("id", { ascending: true });
     expect(result).toEqual([
       { id: "p1", slotId: "s1", data: "2026-07-06", presente: true },
       { id: "p2", slotId: "s1", data: "2026-07-13", presente: false },
@@ -139,7 +145,7 @@ describe("leggiStoricoPresenzePerAtleta", () => {
   });
 
   it("throws when the query fails", async () => {
-    orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+    orderIdMock.mockResolvedValue({ data: null, error: { message: "boom" } });
 
     await expect(
       leggiStoricoPresenzePerAtleta(supabase, "a1")

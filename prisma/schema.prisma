@@ -102,13 +102,24 @@ model Allenatore {
 // come UtenteRuolo/Allenatore (AD-9), anche se ha una FK verso Atleta
 // (RLS-protetta): il vincolo di integrita' referenziale e' una garanzia
 // Postgres indipendente dalla RLS/PostgREST.
+// `autoAggancio` (Story 3.2, review fix): distingue un aggancio "a se
+// stessa" (Story 2.7, Ruolo Atleta che si registra) da un aggancio
+// Genitore<->figlia - una riga con lo stesso utenteId puo' essere di
+// entrambi i tipi (es. un'atleta maggiorenne che e' anche genitore di
+// un'altra atleta, gia' testato in registrati/actions.test.ts) e nulla
+// prima d'ora distingueva le due relazioni. Necessario perche' la policy
+// RLS `atleta_propria_select` su "presenze" (Story 3.2) deve concedere
+// lettura SOLO per l'Atleta a cui l'Utente e' agganciato come se stessa,
+// mai per una figlia - senza questa colonna, un Utente con doppio Ruolo
+// Atleta+Genitore otterrebbe accesso allo storico presenze della figlia.
 model GenitoreAtleta {
-  id        String   @id @default(uuid())
-  utenteId  String
-  atletaId  String
-  utente    Utente   @relation(fields: [utenteId], references: [id], onDelete: Cascade)
-  atleta    Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  utenteId      String
+  atletaId      String
+  autoAggancio  Boolean  @default(false)
+  utente        Utente   @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+  atleta        Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
 
   @@unique([utenteId, atletaId])
   @@map("genitori_atlete")

@@ -73,7 +73,11 @@ export async function leggiPresenzePerSlotEData(
 // autonomamente le righe visibili a seconda del Ruolo del chiamante
 // (Allenatore: solo le proprie Atlete/Gruppi via allenatore_proprio_gruppo_select,
 // Story 3.1; Atleta: solo se stessa via atleta_propria_select, Story 3.2) -
-// nessun filtro aggiuntivo va applicato qui.
+// nessun filtro aggiuntivo va applicato qui. Secondo `.order("id")` come
+// spareggio deterministico (review fix): `data` non e' univoca da sola (due
+// Slot diversi possono cadere nello stesso giorno), senza un secondo campo
+// di ordinamento le righe con la stessa data avrebbero un ordine arbitrario
+// tra una richiesta e l'altra.
 export async function leggiStoricoPresenzePerAtleta(
   supabase: SupabaseClient,
   atletaId: string
@@ -82,7 +86,8 @@ export async function leggiStoricoPresenzePerAtleta(
     .from("presenze")
     .select("id, slotId, data, presente")
     .eq("atletaId", atletaId)
-    .order("data", { ascending: true });
+    .order("data", { ascending: true })
+    .order("id", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
