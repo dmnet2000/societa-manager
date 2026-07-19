@@ -148,7 +148,7 @@ export async function caricaCertificato(
         const fileScaricato = await scaricaFileCertificato(supabase, filePath);
         const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
 
-        await inviaEmail(supabase, {
+        await inviaEmail({
           destinatario: destinatari,
           oggetto: "Nuovo Certificato Medico caricato",
           testo: `È stato caricato un nuovo Certificato Medico per ${atleta?.nome ?? "un'Atleta"}.`,

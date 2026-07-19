@@ -424,7 +424,7 @@ describe("caricaCertificato (Server Action)", () => {
       supabaseFinto,
       "atleta-1/file.pdf"
     );
-    expect(inviaEmailMock).toHaveBeenCalledWith(supabaseFinto, {
+    expect(inviaEmailMock).toHaveBeenCalledWith({
       destinatario: ["segreteria1@esempio.it", "segreteria2@esempio.it"],
       oggetto: expect.any(String),
       testo: expect.stringContaining("Verifica Atleta"),

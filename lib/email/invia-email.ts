@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiConfigurazioneSmtp } from "@/lib/db-rls/configurazione-smtp";
+import { createAdminClient } from "@/lib/auth-admin/client";
 
 // Story 4.3: un allegato con i byte gia' letti (non un path/riferimento) -
 // il chiamante scarica il contenuto dal proprio storage prima di invocare
@@ -31,11 +31,19 @@ export type DatiEmail = {
 // riconoscibile, AC #4) cosi' il chiamante puo' distinguere questo caso da
 // un fallimento di invio vero e proprio (credenziali rifiutate, host
 // irraggiungibile) e mostrare un messaggio diverso.
-export async function inviaEmail(
-  supabase: SupabaseClient,
-  dati: DatiEmail
-): Promise<void> {
-  const configurazione = await leggiConfigurazioneSmtp(supabase);
+//
+// Review fix (Story 4.3, scoperto in verifica dal vivo): la lettura usa il
+// client service-role (createAdminClient, AD-11), MAI la sessione di chi
+// ha innescato l'invio - "configurazione_smtp" ha RLS ADMIN-only (AD-12),
+// ma l'invio email e' una capacita' di sistema richiamata anche da Ruoli
+// non-Admin (Genitore/Atleta su upload certificato, Story 4.3; futuri
+// promemoria, Story 4.6): con la sessione del chiamante, leggiConfigurazioneSmtp
+// avrebbe sempre restituito null per RLS, facendo fallire OGNI invio non
+// innescato da un Admin - AC #1 di questa storia non avrebbe mai funzionato
+// in pratica. La configurazione non viene comunque mai restituita al
+// chiamante, resta interna a questa funzione.
+export async function inviaEmail(dati: DatiEmail): Promise<void> {
+  const configurazione = await leggiConfigurazioneSmtp(createAdminClient());
 
   if (!configurazione) {
     throw new Error("CONFIGURAZIONE_SMTP_MANCANTE: nessuna configurazione email impostata.");

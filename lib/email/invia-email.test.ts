@@ -13,9 +13,13 @@ vi.mock("@/lib/db-rls/configurazione-smtp", () => ({
   leggiConfigurazioneSmtp: leggiConfigurazioneSmtpMock,
 }));
 
-const { inviaEmail } = await import("./invia-email");
+const adminClientFinto = { admin: "client" };
+const createAdminClientMock = vi.fn(() => adminClientFinto);
+vi.mock("@/lib/auth-admin/client", () => ({
+  createAdminClient: createAdminClientMock,
+}));
 
-const supabase = {} as never;
+const { inviaEmail } = await import("./invia-email");
 
 const configurazioneEsempio = {
   id: "c1",
@@ -33,13 +37,30 @@ describe("inviaEmail", () => {
     createTransportMock.mockClear();
     sendMailMock.mockReset();
     leggiConfigurazioneSmtpMock.mockReset();
+    createAdminClientMock.mockClear();
+  });
+
+  // Review fix (Story 4.3, scoperto in verifica dal vivo): la configurazione
+  // deve essere letta col client service-role, mai con la sessione di chi
+  // ha innescato l'invio - "configurazione_smtp" ha RLS ADMIN-only (AD-12);
+  // un Genitore/Atleta che carica un Certificato avrebbe altrimenti sempre
+  // ricevuto null e l'invio sarebbe fallito silenziosamente (AC #1 mai
+  // soddisfatto in pratica per un invio innescato da un Ruolo non-Admin).
+  it("legge la configurazione SMTP col client service-role, non con la sessione del chiamante", async () => {
+    leggiConfigurazioneSmtpMock.mockResolvedValue(configurazioneEsempio);
+    sendMailMock.mockResolvedValue({ messageId: "abc" });
+
+    await inviaEmail({ destinatario: "a@b.it", oggetto: "Test", testo: "Ciao" });
+
+    expect(createAdminClientMock).toHaveBeenCalled();
+    expect(leggiConfigurazioneSmtpMock).toHaveBeenCalledWith(adminClientFinto);
   });
 
   it("throws con messaggio riconoscibile quando la configurazione non esiste (AC #4)", async () => {
     leggiConfigurazioneSmtpMock.mockResolvedValue(null);
 
     await expect(
-      inviaEmail(supabase, {
+      inviaEmail({
         destinatario: "a@b.it",
         oggetto: "Test",
         testo: "Ciao",
@@ -52,7 +73,7 @@ describe("inviaEmail", () => {
     leggiConfigurazioneSmtpMock.mockResolvedValue(configurazioneEsempio);
     sendMailMock.mockResolvedValue({ messageId: "abc" });
 
-    await inviaEmail(supabase, {
+    await inviaEmail({
       destinatario: "a@b.it",
       oggetto: "Test",
       testo: "Ciao",
@@ -83,7 +104,7 @@ describe("inviaEmail", () => {
     });
     sendMailMock.mockResolvedValue({ messageId: "abc" });
 
-    await inviaEmail(supabase, {
+    await inviaEmail({
       destinatario: "a@b.it",
       oggetto: "Test",
       testo: "Ciao",
@@ -99,7 +120,7 @@ describe("inviaEmail", () => {
     sendMailMock.mockRejectedValue(new Error("Invalid login"));
 
     await expect(
-      inviaEmail(supabase, {
+      inviaEmail({
         destinatario: "a@b.it",
         oggetto: "Test",
         testo: "Ciao",
@@ -115,7 +136,7 @@ describe("inviaEmail", () => {
     sendMailMock.mockResolvedValue({ messageId: "abc" });
     const contenutoFinto = Buffer.from("contenuto PDF finto");
 
-    await inviaEmail(supabase, {
+    await inviaEmail({
       destinatario: "segreteria@esempio.it",
       oggetto: "Nuovo certificato",
       testo: "Certificato per Mario Rossi",
@@ -145,7 +166,7 @@ describe("inviaEmail", () => {
     leggiConfigurazioneSmtpMock.mockResolvedValue(configurazioneEsempio);
     sendMailMock.mockResolvedValue({ messageId: "abc" });
 
-    await inviaEmail(supabase, {
+    await inviaEmail({
       destinatario: ["segreteria1@esempio.it", "segreteria2@esempio.it"],
       oggetto: "Test",
       testo: "Ciao",

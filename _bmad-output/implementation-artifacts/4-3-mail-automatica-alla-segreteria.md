@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 4.3: Mail automatica alla Segreteria
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -88,12 +88,13 @@ export async function elencaEmailPerRuolo(ruolo: Ruolo): Promise<string[]> {
 - [x] Task 5: Test (Vitest)
   - [x] Come elencato nei Task 1-4 sopra.
   - [x] Nessuna nuova pagina UI in questa storia (FR-13 è un effetto collaterale server-side, nessun AC richiede un'interfaccia).
-- [ ] Task 6: Verifica dal vivo (manuale, Playwright temporaneo)
-  - [ ] Setup: impostare una configurazione SMTP di test (Story 7.1, `/smtp`) — se non disponibile una casella reale, usare parametri che falliscono in modo controllato (stesso approccio già usato in Story 7.1) per verificare il percorso non bloccante; se l'utente fornisce credenziali reali, verificare anche la ricezione effettiva con l'allegato.
-  - [ ] AC #1/#2: come Genitore/Atleta, caricare un Certificato; verificare (via log server o ricezione reale) che ogni Utente Segreteria attivo riceva un'email con il nome dell'Atleta e l'allegato.
-  - [ ] AC #4: con una configurazione SMTP che fa fallire l'invio (host non raggiungibile, stesso pattern di Story 7.1), verificare che l'upload del Certificato abbia comunque successo (AC #1 di Story 4.1 intatto).
-  - [ ] AC #5: con zero Utenti Segreteria attivi (es. tutti disattivati), verificare che l'upload riesca comunque e che non ci sia alcun tentativo di invio nei log.
-  - [ ] Verificare che un Ricaricamento (Story 4.1 AC #4) generi comunque un nuovo invio (nessuna deduplicazione, stesso principio già stabilito per le notifiche in-app, Story 4.2).
+- [x] Task 6: Verifica dal vivo (manuale, Playwright temporaneo)
+  - [x] Setup: server SMTP finto locale (socket TCP raw, cattura envelope/DATA) invece di una casella reale — permette di verificare realmente destinatari/corpo/allegato, non solo il percorso non bloccante. Configurazione scritta nella riga `configurazione_smtp` reale via Prisma (stesso id fisso `ID_CONFIGURAZIONE_SMTP`).
+  - [x] AC #1/#2: come Genitore, caricato un Certificato per un'Atleta di test; verificato che l'Utente Segreteria attivo riceva un'email con nome dell'Atleta nel corpo e allegato con il filename corretto nel MIME.
+  - [x] AC #4: con SMTP configurato su una porta senza listener (connessione rifiutata), verificato che l'upload abbia comunque successo (AC #1 di Story 4.1 intatto) e che nessuna email risulti catturata.
+  - [x] AC #5: con zero Utenti Segreteria attivi, verificato che l'upload riesca comunque e che non ci sia alcun tentativo di invio.
+  - [x] Verificato che un Ricaricamento genera comunque un nuovo invio (nessuna deduplicazione).
+  - [x] **Bug reale scoperto e risolto** (non anticipato nel Prerequisito architetturale della storia): `leggiConfigurazioneSmtp` veniva chiamata con la sessione di chi ha innescato l'upload (Genitore/Atleta) — ma `configurazione_smtp` ha RLS **ADMIN-only** (AD-12), quindi la lettura restituiva sempre `null` e ogni invio falliva con `CONFIGURAZIONE_SMTP_MANCANTE`, per qualunque Ruolo diverso da Admin. AC #1 non avrebbe mai funzionato in produzione. Vedi Dev Agent Record per il fix.
 
 ## Dev Notes
 
@@ -120,8 +121,34 @@ export async function elencaEmailPerRuolo(ruolo: Ruolo): Promise<string[]> {
 
 ### Agent Model Used
 
+Claude Sonnet 5 (claude-sonnet-5)
+
 ### Debug Log References
+
+- **Ambiente locale non attivo a inizio sessione (ripreso da sessione precedente)**: Docker Desktop e lo stack Supabase CLI locale erano già stati avviati in una sessione precedente per la verifica di Story 3.3 e sono rimasti attivi; il dev server Next.js era ancora in esecuzione in background dalla stessa sessione.
+- **Bug reale scoperto in verifica dal vivo**: `inviaEmail` (`lib/email/invia-email.ts`) leggeva `configurazione_smtp` con `leggiConfigurazioneSmtp(supabase)`, passando la sessione di chi aveva innescato l'invio. Questo funzionava per `inviaEmailDiProva` (Story 7.1, chiamata sempre da un Admin autenticato), ma `configurazione_smtp` ha RLS **ADMIN-only** (AD-12) — con la sessione di un Genitore/Atleta (Story 4.3) la query restituiva sempre `null`, e `inviaEmail` falliva sempre con `CONFIGURAZIONE_SMTP_MANCANTE`, catturato dal blocco try/catch non bloccante (quindi silenzioso, l'upload risultava comunque riuscito) — AC #1 non avrebbe mai funzionato in pratica, ma nessun test mockato lo rilevava (i mock bypassano la RLS reale). **Fix**: `inviaEmail` ora legge la configurazione con `createAdminClient()` (client service-role, già esistente per AD-11, `lib/auth-admin/client.ts`) invece della sessione del chiamante — la configurazione non attraversa comunque mai il confine verso il chiamante, resta interna alla funzione. Il parametro `supabase` è stato rimosso dalla firma di `inviaEmail` (non più necessario), aggiornati entrambi i call site (`certificato-medico/actions.ts`, `smtp/actions.ts`) e tutti i test.
+- **Secondo bug correlato, stessa causa radice**: dopo il fix sopra, la verifica dal vivo ha rivelato `permission denied for table configurazione_smtp` — il client service-role bypassa la RLS ma non i GRANT di base (stesso identico gap già scoperto in Story 1.5 per `atlete`, `prisma/migrations/20260716120000_grant_atlete_service_role`). Risolto con una nuova migrazione (`20260719000000_grant_configurazione_smtp_service_role`, solo `GRANT SELECT ... TO service_role`).
+- **Dato residuo scoperto durante la verifica** (non introdotto da questa storia): un Utente con Ruolo Segreteria di una sessione precedente (`postpatch-ly1xvi@example.com`) era presente nel DB locale. Non eliminato (dato non mio) — disattivato solo temporaneamente per lo scenario AC #5 (zero Segreteria attivi) e riattivato subito dopo, stato originale confermato ripristinato a fine verifica.
+- Verificato dal vivo con un server SMTP finto locale (socket TCP raw, non un mock) — permette di ispezionare realmente destinatari/corpo/allegato inviati da Nodemailer, non solo il percorso non bloccante.
 
 ### Completion Notes List
 
+- Tutti i 6 Task completati con TDD dove applicabile (RED confermato prima di ogni implementazione nei Task 1-4).
+- Suite completa verde: `npx vitest run` (384 test, 38 file — 383 pre-esistenti + 1 nuovo test di regressione), `npx tsc --noEmit` (nessun errore), `npm run lint` (nessun nuovo errore), `npm run build` (produzione, nessuna regressione sulle altre route).
+- **Verifica dal vivo (Task 6) ha scoperto e fatto risolvere un bug bloccante reale** per AC #1 (lettura configurazione SMTP con la sessione del chiamante invece del client service-role, mai rilevabile dai test mockati) e un gap di GRANT correlato (stesso pattern già noto da Story 1.5) — entrambi corretti, riverificati dal vivo con successo su tutti e 5 gli scenari (AC #1/#2, AC #4, AC #5, ricaricamento senza deduplicazione).
+- Nessuna deviazione dal design dei Prerequisiti architetturali della storia per quanto riguarda Task 1-5; i due fix sopra erano necessari per far funzionare quel design nella pratica (RLS ADMIN-only su una tabella letta da un contesto non-Admin) e non erano anticipabili senza una verifica dal vivo contro RLS reale.
+
 ### File List
+
+- `lib/email/invia-email.ts` (modificato: allegati/destinatari multipli, Task 1; +review fix, legge la configurazione col client service-role)
+- `lib/email/invia-email.test.ts` (modificato)
+- `lib/storage/certificati.ts` (modificato: + `scaricaFileCertificato`, Task 2)
+- `lib/storage/certificati.test.ts` (modificato)
+- `lib/utenti/email-per-ruolo.ts` (nuovo, Task 3)
+- `lib/utenti/email-per-ruolo.test.ts` (nuovo)
+- `lib/auth-admin/client.ts` (modificato: solo commento, riuso chiarito)
+- `app/(certificati-medici)/certificato-medico/actions.ts` (modificato: hook non bloccante, Task 4; +review fix, chiamata `inviaEmail` aggiornata)
+- `app/(certificati-medici)/certificato-medico/actions.test.ts` (modificato)
+- `app/(configurazione)/smtp/actions.ts` (modificato: chiamata `inviaEmail` aggiornata, review fix)
+- `app/(configurazione)/smtp/actions.test.ts` (modificato)
+- `prisma/migrations/20260719000000_grant_configurazione_smtp_service_role/migration.sql` (nuovo, review fix)

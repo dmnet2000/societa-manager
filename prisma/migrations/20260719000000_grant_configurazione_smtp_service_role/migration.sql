@@ -1,0 +1,11 @@
+-- Story 4.3: l'invio email (lib/email/invia-email.ts) usa il client
+-- service-role per leggere "configurazione_smtp" indipendentemente dal
+-- Ruolo di chi ha innescato l'invio (Genitore/Atleta su upload certificato,
+-- non solo l'Admin che la configura) - vedi Dev Agent Record Story 4.3.
+-- Stesso identico gap gia' scoperto in Story 1.5 per "atlete": "service_role"
+-- bypassa la RLS ma non i GRANT di base, serve comunque il privilegio
+-- esplicito (le tabelle create via migrazione diretta non hanno GRANT di
+-- default per nessun ruolo Postgres, auto_expose_new_tables non attivo).
+-- Solo SELECT: il servizio invia email non scrive mai la configurazione,
+-- solo l'Admin la salva tramite la propria sessione (AD-12).
+GRANT SELECT ON "configurazione_smtp" TO service_role;

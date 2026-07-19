@@ -284,7 +284,7 @@ describe("inviaEmailDiProva (Server Action)", () => {
     const result = await inviaEmailDiProva(undefined, buildFormDataProva("a@b.it"));
 
     expect(result).toEqual({ success: true });
-    expect(inviaEmailMock).toHaveBeenCalledWith(supabaseFinto, {
+    expect(inviaEmailMock).toHaveBeenCalledWith({
       destinatario: "a@b.it",
       oggetto: expect.any(String),
       testo: expect.any(String),

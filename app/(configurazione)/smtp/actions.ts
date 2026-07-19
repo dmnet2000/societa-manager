@@ -145,10 +145,8 @@ export async function inviaEmailDiProva(
     };
   }
 
-  const supabase = await createClient();
-
   try {
-    await inviaEmail(supabase, {
+    await inviaEmail({
       destinatario,
       oggetto: "Email di prova",
       testo: "Questa è un'email di prova per verificare la configurazione SMTP.",

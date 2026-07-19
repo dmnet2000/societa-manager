@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-19 (storia 3.3 completata, code review superata con 2 patch applicate — Epic 3 chiuso)
+# last_updated: 2026-07-19 (storia 4.3 implementata, verifica dal vivo ha scoperto e risolto un bug bloccante RLS su configurazione_smtp — pronta per code review)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -91,7 +91,7 @@ development_status:
   7-2-configurazione-logo-applicazione: done
   epic-7-retrospective: optional
 
-  4-3-mail-automatica-alla-segreteria: in-progress
+  4-3-mail-automatica-alla-segreteria: review
   4-4-conferma-validazione-certificato: backlog
   4-5-alert-scadenza-non-bloccante: backlog
   4-6-promemoria-scadenza: backlog
