@@ -426,7 +426,7 @@ describe("caricaCertificato (Server Action)", () => {
     );
     expect(inviaEmailMock).toHaveBeenCalledWith({
       destinatario: ["segreteria1@esempio.it", "segreteria2@esempio.it"],
-      oggetto: expect.any(String),
+      oggetto: "Nuovo Certificato Medico caricato",
       testo: expect.stringContaining("Verifica Atleta"),
       allegati: [
         {
@@ -460,6 +460,8 @@ describe("caricaCertificato (Server Action)", () => {
     );
 
     expect(result).toEqual({ success: true });
+    expect(elencaAtleteMock).not.toHaveBeenCalled();
+    expect(scaricaFileCertificatoMock).not.toHaveBeenCalled();
     expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
@@ -487,7 +489,28 @@ describe("caricaCertificato (Server Action)", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(inviaEmailMock).toHaveBeenCalled();
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ testo: expect.stringContaining("un'Atleta") })
+    );
+  });
+
+  it("invia l'email alla Segreteria anche su un ri-caricamento (Story 4.3 AC #1, esplicitamente 'sia primo caricamento sia ri-caricamento')", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/vecchio.pdf",
+    });
+    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destinatario: ["segreteria@esempio.it"] })
+    );
   });
 });
 

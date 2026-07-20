@@ -84,6 +84,9 @@ describe("inviaEmail", () => {
       port: 465,
       secure: true,
       auth: { user: "info@esempio.it", pass: "segreta123" },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
     });
     // Review fix: oggetto strutturato { name, address }, mai una stringa
     // costruita a mano - Nodemailer si occupa dell'escaping corretto

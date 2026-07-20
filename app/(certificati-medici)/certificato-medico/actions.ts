@@ -145,6 +145,15 @@ export async function caricaCertificato(
       if (destinatari.length > 0) {
         const atlete = await elencaAtlete(supabase);
         const atleta = atlete.find((a) => a.id === atletaId);
+        if (!atleta) {
+          // Review fix: caso limite difensivo (mai osservato in pratica) -
+          // l'email parte comunque (fallback "un'Atleta" sotto) ma un log
+          // distintivo rende questo percorso diverso dal successo pieno,
+          // altrimenti indistinguibili in produzione.
+          console.warn(
+            `Story 4.3: Atleta ${atletaId} non risolvibile nell'elenco al momento dell'invio email alla Segreteria.`
+          );
+        }
         const fileScaricato = await scaricaFileCertificato(supabase, filePath);
         const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
 

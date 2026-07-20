@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 4.3: Mail automatica alla Segreteria
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -95,6 +95,16 @@ export async function elencaEmailPerRuolo(ruolo: Ruolo): Promise<string[]> {
   - [x] AC #5: con zero Utenti Segreteria attivi, verificato che l'upload riesca comunque e che non ci sia alcun tentativo di invio.
   - [x] Verificato che un Ricaricamento genera comunque un nuovo invio (nessuna deduplicazione).
   - [x] **Bug reale scoperto e risolto** (non anticipato nel Prerequisito architetturale della storia): `leggiConfigurazioneSmtp` veniva chiamata con la sessione di chi ha innescato l'upload (Genitore/Atleta) — ma `configurazione_smtp` ha RLS **ADMIN-only** (AD-12), quindi la lettura restituiva sempre `null` e ogni invio falliva con `CONFIGURAZIONE_SMTP_MANCANTE`, per qualunque Ruolo diverso da Admin. AC #1 non avrebbe mai funzionato in produzione. Vedi Dev Agent Record per il fix.
+
+### Review Findings
+
+- [x] [Review][Patch] Nessun timeout sul transporter Nodemailer: un host SMTP lento/irraggiungibile fa attendere la risposta dell'upload per l'intera durata dei timeout di default della libreria, anche se il fallimento non blocca comunque l'esito [lib/email/invia-email.ts]
+- [x] [Review][Patch] Risoluzione silenziosa del nome Atleta senza log distintivo: se `atlete.find` non trova la riga, l'email parte comunque con "un'Atleta" indistinguibile nei log dal percorso di successo [app/(certificati-medici)/certificato-medico/actions.ts:147]
+- [x] [Review][Patch] Asserzioni di test deboli: il test del percorso felice non verifica il valore letterale di `oggetto`, e il test "Atleta non risolvibile" non verifica `testo` [app/(certificati-medici)/certificato-medico/actions.test.ts]
+- [x] [Review][Patch] Nessun test verifica che `scaricaFileCertificato`/`elencaAtlete` non vengano invocate quando `elencaEmailPerRuolo` lancia [app/(certificati-medici)/certificato-medico/actions.test.ts]
+- [x] [Review][Patch] Manca un test di regressione automatico per lo scenario esplicito dell'AC #1 "ri-caricamento" combinato con l'invio email alla Segreteria (verificato solo manualmente, Task 6) [app/(certificati-medici)/certificato-medico/actions.test.ts]
+- [x] [Review][Defer] Nessuna verifica che la cifratura SMTP (`sicura`) corrisponda realmente a host/porta configurati [lib/db-rls/configurazione-smtp.ts] — deferred, pre-existing (Story 7.1)
+- [x] [Review][Defer] `nodemailer.createTransport` ricreato ad ogni chiamata senza pooling, rilevante per i futuri invii multipli (Story 4.6) [lib/email/invia-email.ts] — deferred, pre-existing (Story 7.1)
 
 ## Dev Notes
 

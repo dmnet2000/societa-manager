@@ -183,6 +183,11 @@
 
 - Nessuna pre-validazione lato client in `LogoForm.tsx` oltre il filtro nativo `accept` dell'`<input type="file">` (banalmente aggirabile) — miglioramento UX (feedback immediato invece di un round-trip al server), non richiesto da alcun AC, la validazione server-side (bucket + applicativa) resta comunque l'unica autorità. [app/(configurazione)/logo/LogoForm.tsx]
 
+## Deferred from: code review of 4-3-mail-automatica-alla-segreteria (2026-07-20)
+
+- Nessuna verifica che la cifratura SMTP (`sicura`) corrisponda realmente a host/porta configurati (un Admin potrebbe impostare la porta 25 con `sicura: false`, trasmettendo il Certificato in chiaro) — superficie di configurazione preesistente da Story 7.1, non introdotta da questa storia. [lib/db-rls/configurazione-smtp.ts]
+- `nodemailer.createTransport` viene ricreato ad ogni chiamata a `inviaEmail`, senza pooling di connessione — pattern preesistente da Story 7.1 (questa storia lo consuma per la prima volta con un vero allegato), diventerà più rilevante con gli invii multipli di Story 4.6 (promemoria scadenza a più Ruoli). [lib/email/invia-email.ts]
+
 ## Deferred from: code review of 3-3-storico-presenze-con-trend-percentuale (2026-07-18)
 
 - Il trend può cambiare a seguito di un semplice ri-invio (correzione) di una Presenza sulla stessa data, non di un cambio reale di presenza: `leggiStoricoPresenzePerAtleta` usa `id` come spareggio d'ordinamento per righe con la stessa `data`, ma `Presenza.id` viene rigenerato ad ogni upsert (Story 3.1) — se due Slot cadono nello stesso giorno per la stessa Atleta e una correzione tardiva sposta la posizione relativa di una riga vicino al punto di taglio a metà, il trend visualizzato può cambiare senza che sia cambiato nulla di sostanza. Scenario raro, fix richiederebbe allargare la firma di `calcolaStatistichePresenza` oltre `{ presente: boolean }[]` per ordinare esplicitamente per data — fuori dal footprint minimo di questa storia. [app/(presenze)/storico-presenze/calcola-statistiche-presenza.ts]

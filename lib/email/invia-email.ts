@@ -49,6 +49,11 @@ export async function inviaEmail(dati: DatiEmail): Promise<void> {
     throw new Error("CONFIGURAZIONE_SMTP_MANCANTE: nessuna configurazione email impostata.");
   }
 
+  // Review fix (Story 4.3): timeout espliciti - senza, un host SMTP
+  // irraggiungibile o che non risponde farebbe attendere la risposta della
+  // Server Action chiamante (es. caricaCertificato) per l'intera durata dei
+  // timeout di default di Nodemailer, anche se il fallimento non blocca
+  // comunque l'esito dell'operazione primaria.
   const transporter = nodemailer.createTransport({
     host: configurazione.host,
     port: configurazione.porta,
@@ -57,6 +62,9 @@ export async function inviaEmail(dati: DatiEmail): Promise<void> {
       user: configurazione.utente,
       pass: configurazione.password,
     },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 10_000,
   });
 
   // Review fix: oggetto strutturato { name, address } invece di una
