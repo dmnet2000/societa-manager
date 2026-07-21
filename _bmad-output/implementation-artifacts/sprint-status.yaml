@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-20 (storia 4.3 in review: nessun decision-needed, 5 patch applicate — timeout SMTP, log su Atleta non risolvibile, asserzioni di test rinforzate, copertura ricaricamento; 2 item pre-esistenti da Story 7.1 deferiti — storia done)
+# last_updated: 2026-07-21 (storia 4.4 in sviluppo — introduce enum StatoCertificato/IN_ATTESA/CONFERMATO su CertificatoMedico)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: 2026-07-20
+last_updated: 2026-07-21
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -92,7 +92,7 @@ development_status:
   epic-7-retrospective: optional
 
   4-3-mail-automatica-alla-segreteria: done
-  4-4-conferma-validazione-certificato: backlog
+  4-4-conferma-validazione-certificato: in-progress
   4-5-alert-scadenza-non-bloccante: backlog
   4-6-promemoria-scadenza: backlog
   epic-4-retrospective: optional

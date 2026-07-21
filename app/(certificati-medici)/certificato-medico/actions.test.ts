@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const requireRuoloMock = vi.fn();
 const createClientMock = vi.fn();
 const caricaFileCertificatoMock = vi.fn();
@@ -25,12 +27,21 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: createClientMock,
 }));
 
-vi.mock("@/lib/storage/certificati", () => ({
-  caricaFileCertificato: caricaFileCertificatoMock,
-  generaUrlFirmato: generaUrlFirmatoMock,
-  rimuoviFileCertificato: rimuoviFileCertificatoMock,
-  scaricaFileCertificato: scaricaFileCertificatoMock,
-}));
+// Story 4.4: mock parziale - MIME_AMMESSI/DIMENSIONE_MASSIMA_BYTE/
+// contenutoCorrispondeAlMimeDichiarato restano l'implementazione reale
+// (spostati qui da Story 4.1, condivisi con conferma-certificati/actions.ts),
+// solo le funzioni di I/O sul bucket sono mockate.
+vi.mock("@/lib/storage/certificati", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/storage/certificati")>();
+  return {
+    ...actual,
+    caricaFileCertificato: caricaFileCertificatoMock,
+    generaUrlFirmato: generaUrlFirmatoMock,
+    rimuoviFileCertificato: rimuoviFileCertificatoMock,
+    scaricaFileCertificato: scaricaFileCertificatoMock,
+  };
+});
 
 vi.mock("@/lib/db-rls/certificato-medico", () => ({
   collegaFileCertificato: collegaFileCertificatoMock,

@@ -20,6 +20,9 @@ const {
   generaUrlFirmato,
   rimuoviFileCertificato,
   scaricaFileCertificato,
+  contenutoCorrispondeAlMimeDichiarato,
+  MIME_AMMESSI,
+  DIMENSIONE_MASSIMA_BYTE,
 } = await import("./certificati");
 
 function fileFinto(nome: string) {
@@ -181,5 +184,39 @@ describe("scaricaFileCertificato", () => {
     await expect(
       scaricaFileCertificato(supabase, "atleta-1/file.pdf")
     ).rejects.toThrow("not found");
+  });
+});
+
+// Story 4.4: spostati qui da certificato-medico/actions.ts, ora condivisi
+// anche da conferma-certificati/actions.ts - test diretti sulla funzione,
+// prima coperta solo indirettamente tramite la Server Action di Story 4.1.
+describe("contenutoCorrispondeAlMimeDichiarato", () => {
+  it("espone l'allowlist MIME condivisa", () => {
+    expect(MIME_AMMESSI).toEqual(["application/pdf", "image/jpeg", "image/png"]);
+    expect(DIMENSIONE_MASSIMA_BYTE).toBe(10 * 1024 * 1024);
+  });
+
+  it("ritorna true quando le magic byte corrispondono al MIME dichiarato", async () => {
+    const bytes = new Uint8Array(1024);
+    bytes.set([0x25, 0x50, 0x44, 0x46], 0);
+    const file = new File([bytes], "certificato.pdf", { type: "application/pdf" });
+
+    expect(await contenutoCorrispondeAlMimeDichiarato(file)).toBe(true);
+  });
+
+  it("ritorna false quando le magic byte non corrispondono (MIME contraffatto)", async () => {
+    const file = new File([new Uint8Array(1024)], "falso.pdf", {
+      type: "application/pdf",
+    });
+
+    expect(await contenutoCorrispondeAlMimeDichiarato(file)).toBe(false);
+  });
+
+  it("ritorna false per un tipo MIME non nell'allowlist", async () => {
+    const file = new File([new Uint8Array(1024)], "virus.exe", {
+      type: "application/x-msdownload",
+    });
+
+    expect(await contenutoCorrispondeAlMimeDichiarato(file)).toBe(false);
   });
 });

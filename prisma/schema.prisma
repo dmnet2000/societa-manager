@@ -181,18 +181,32 @@ model Iscrizione {
 // URL firmati a scadenza breve generati on-demand (lib/storage/certificati.ts),
 // mai un valore pre-generato e persistito.
 model CertificatoMedico {
-  id                 String    @id @default(uuid())
-  atletaId           String    @unique
-  atleta             Atleta    @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  atletaId           String           @unique
+  atleta             Atleta           @relation(fields: [atletaId], references: [id], onDelete: Cascade)
   dataInizioValidita DateTime?
   dataFineValidita   DateTime?
   mesiValidita       Int?
   modulo             String?
   filePath           String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  stato              StatoCertificato @default(CONFERMATO)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@map("certificati_medici")
+}
+
+// Story 4.4 (FR-14): IN_ATTESA quando caricato da Genitore/Atleta e non
+// ancora verificato da un umano (Story 4.1, nessuna data di validita'
+// ancora); CONFERMATO quando la Segreteria/Admin/Dirigente ha verificato le
+// date (o le ha inserite manualmente per un certificato ricevuto fuori app).
+// Default CONFERMATO a livello di colonna: corretto per le righe che
+// arrivano dall'import federale (Story 1.3/1.7, gia' dati fidati) - il
+// percorso di solo upload (Story 4.1, collegaFileCertificato) sovrascrive
+// esplicitamente con IN_ATTESA ad ogni caricamento.
+enum StatoCertificato {
+  IN_ATTESA
+  CONFERMATO
 }
 
 // Story 4.2 (FR-12): protetta da RLS - rivela quale Atleta ha avuto un

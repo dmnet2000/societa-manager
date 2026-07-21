@@ -25,6 +25,10 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[] }[] = [
   { prefix: "/storico-presenze", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
   { prefix: "/certificato-medico", ruoliAmmessi: ["GENITORE", "ATLETA"] },
   { prefix: "/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"] },
+  {
+    prefix: "/conferma-certificati",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+  },
   { prefix: "/smtp", ruoliAmmessi: ["ADMIN"] },
   { prefix: "/logo", ruoliAmmessi: ["ADMIN"] },
 ];

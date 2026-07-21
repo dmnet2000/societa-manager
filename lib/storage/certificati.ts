@@ -4,6 +4,35 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET = "certificati-medici";
 
+// Story 4.1, spostato qui in Story 4.4: allowlist/verifica condivisa tra
+// caricaCertificato (Genitore/Atleta) e confermaCertificato (Segreteria/
+// Admin/Dirigente, inserimento manuale con scansione allegata) - duplicare
+// un controllo di sicurezza (magic byte) tra due punti rischierebbe una
+// divergenza silenziosa, non solo ripetizione innocua.
+export const MIME_AMMESSI = ["application/pdf", "image/jpeg", "image/png"];
+export const DIMENSIONE_MASSIMA_BYTE = 10 * 1024 * 1024;
+
+const MAGIC_BYTES: Record<string, number[]> = {
+  "application/pdf": [0x25, 0x50, 0x44, 0x46],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+};
+
+// Review fix (Story 4.1): file.type e' un'attestazione del client, non una
+// garanzia sul contenuto reale - un file rinominato con estensione/MIME
+// contraffatti supererebbe l'allowlist sopra. Verifica le magic byte
+// iniziali del contenuto effettivo per ciascun formato ammesso.
+export async function contenutoCorrispondeAlMimeDichiarato(
+  file: File
+): Promise<boolean> {
+  const magic = MAGIC_BYTES[file.type];
+  if (!magic) return false;
+  const intestazione = new Uint8Array(
+    await file.slice(0, magic.length).arrayBuffer()
+  );
+  return magic.every((byte, i) => intestazione[i] === byte);
+}
+
 // Review fix: file.name arriva dal client senza alcuna garanzia sul
 // contenuto - senza sanitizzazione, slash/".." produrrebbero percorsi
 // annidati imprevedibili nel bucket (il primo segmento del percorso deve

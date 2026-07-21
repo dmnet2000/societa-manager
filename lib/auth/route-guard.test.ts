@@ -294,4 +294,28 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Admin, Dirigente or Segreteria on /conferma-certificati (Story 4.4, FR-14)", () => {
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["ADMIN"])
+    ).toEqual({ action: "allow" });
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["DIRIGENTE"])
+    ).toEqual({ action: "allow" });
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["SEGRETERIA"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects to /non-autorizzato on /conferma-certificati for other roles", () => {
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["ALLENATORE"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["GENITORE"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+    expect(
+      getRouteDecision("/conferma-certificati", true, ["ATLETA"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+  });
 });

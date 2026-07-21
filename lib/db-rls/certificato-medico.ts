@@ -38,6 +38,21 @@ export async function trovaCertificatoPerAtleta(
   return data;
 }
 
+// Story 4.4: un'unica lettura di tutti i Certificati visibili al Ruolo
+// (RLS-filtrati) - evita un ciclo di N chiamate a trovaCertificatoPerAtleta
+// (N+1) nella pagina di elenco della Segreteria (fino a ~200 Atlete, NFR5);
+// il join con le Atlete resta applicativo, in memoria, stesso pattern gia'
+// usato in notifiche/page.tsx e storico-presenze/page.tsx.
+export async function elencaCertificati(supabase: SupabaseClient) {
+  const { data, error } = await supabase.from("certificati_medici").select("*");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 // `id`/`updatedAt` generati esplicitamente: i default Prisma
 // (@default(uuid()), @updatedAt) sono lato Prisma Client, non colonne con
 // default a livello Postgres - non si applicano quando si scrive tramite
@@ -109,6 +124,43 @@ export async function collegaFileCertificato(
       id: randomUUID(),
       atletaId,
       filePath,
+      // Story 4.4: ogni upload (primo o ri-caricamento) forza IN_ATTESA -
+      // un Certificato appena caricato non e' mai gia' verificato da un
+      // umano; un ri-caricamento di uno gia' CONFERMATO richiede una nuova
+      // conferma (AC #3), le vecchie date restano a sistema ma non sono
+      // piu' garantite valide per il nuovo documento.
+      stato: "IN_ATTESA",
+      updatedAt: new Date().toISOString(),
+    },
+    { onConflict: "atletaId" }
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export type DatiConferma = DatiCertificato & { filePath?: string | null };
+
+// Story 4.4 (FR-14): un solo upsert copre sia la conferma di un Certificato
+// gia' caricato (AC #1, filePath omesso: non sostituisce il file esistente)
+// sia l'inserimento manuale ex-novo (AC #2, filePath opzionale se la
+// Segreteria allega una scansione del documento cartaceo) - stessa chiave
+// unica (atletaId) gia' usata da collegaFileCertificato. Sempre stato
+// CONFERMATO: chi chiama questa funzione (Segreteria/Admin/Dirigente,
+// requireRuolo a monte) ha gia' verificato i dati.
+export async function confermaCertificato(
+  supabase: SupabaseClient,
+  atletaId: string,
+  dati: DatiConferma
+): Promise<void> {
+  const { error } = await supabase.from("certificati_medici").upsert(
+    {
+      id: randomUUID(),
+      atletaId,
+      ...serializza(dati),
+      ...(dati.filePath !== undefined ? { filePath: dati.filePath } : {}),
+      stato: "CONFERMATO",
       updatedAt: new Date().toISOString(),
     },
     { onConflict: "atletaId" }
