@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-22 (storia 4.5 done dopo code review — trovato e corretto un bug reale UTC-vs-Europe/Rome nel calcolo scadenza, oltre a un uso scorretto di role="alert"; resta solo 4.6 in epic-4)
+# last_updated: 2026-07-22 (storia 4.6 done - epic-4 completato. Code review ha trovato e corretto 8 finding (patch), incluso restringere lo scope del bypass Proxy da /api/* a /api/cron/ e ri-verificare dal vivo l'AC #6 zero-destinatari, insufficientemente testato alla prima verifica)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -76,7 +76,7 @@ development_status:
   3-3-storico-presenze-con-trend-percentuale: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-upload-certificato-medico: done
   4-2-notifica-automatica-upload: done
 
@@ -94,7 +94,7 @@ development_status:
   4-3-mail-automatica-alla-segreteria: done
   4-4-conferma-validazione-certificato: done
   4-5-alert-scadenza-non-bloccante: done
-  4-6-promemoria-scadenza: backlog
+  4-6-promemoria-scadenza: done
   epic-4-retrospective: optional
 
   epic-5: backlog

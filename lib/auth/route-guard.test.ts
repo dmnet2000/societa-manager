@@ -295,6 +295,22 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows any Route Handler under /api/cron/ regardless of session (Story 4.6): il Cron non ha mai una sessione, l'autorizzazione e' interna al Route Handler", () => {
+    expect(
+      getRouteDecision("/api/cron/promemoria-certificati", false, [])
+    ).toEqual({ action: "allow" });
+    expect(
+      getRouteDecision("/api/cron/promemoria-certificati", true, ["ATLETA"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("does NOT exempt /api/ routes outside /api/cron/ - a future authenticated API must still pass session/Ruolo checks (review fix, Story 4.6: scope was too broad)", () => {
+    expect(getRouteDecision("/api/qualcosa", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+  });
+
   it("allows Admin, Dirigente or Segreteria on /conferma-certificati (Story 4.4, FR-14)", () => {
     expect(
       getRouteDecision("/conferma-certificati", true, ["ADMIN"])

@@ -43,6 +43,25 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
+// Story 4.6: le rotte "/api/cron/*" sono Route Handler invocati da uno
+// scheduler esterno (Cloudflare Cron Trigger), non pagine - un redirect
+// verso /accedi non ha senso per un chiamante non-browser (es.
+// app/api/cron/promemoria-certificati, che non ha mai una sessione Supabase
+// Auth) e romperebbe l'endpoint (risposta 307 invece di JSON, scoperto in
+// verifica dal vivo di questa storia). Ogni Route Handler sotto "/api/cron/"
+// applica la propria autorizzazione internamente (qui: il segreto
+// CRON_SECRET) - il Proxy non deve applicarvi la logica di sessione/Ruolo
+// pensata per le pagine.
+// Review fix: limitato a "/api/cron/" (non l'intero "/api/") - un'esenzione
+// piu' ampia farebbe passare senza sessione anche un futuro Route Handler
+// pensato per essere autenticato via Supabase Auth (es. una API JSON per il
+// frontend), che dimenticasse di reimplementare da solo il controllo di
+// Ruolo. Solo le rotte Cron, machine-to-machine per natura, hanno bisogno di
+// questa esenzione.
+function isRouteHandlerCron(pathname: string): boolean {
+  return pathname.startsWith("/api/cron/");
+}
+
 function matchProtectedRoute(pathname: string) {
   return PROTECTED_ROUTES.find(
     (route) =>
@@ -58,7 +77,7 @@ export function getRouteDecision(
   isAuthenticated: boolean,
   ruoli: Ruolo[]
 ): RouteDecision {
-  if (isPublicRoute(pathname)) {
+  if (isPublicRoute(pathname) || isRouteHandlerCron(pathname)) {
     return { action: "allow" };
   }
 
