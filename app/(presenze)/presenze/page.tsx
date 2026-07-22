@@ -4,7 +4,9 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiPresenzePerSlotEData } from "@/lib/db-rls/presenza";
+import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { ETICHETTA_GIORNO, giornoSettimanaDaData } from "@/lib/giorno-settimana";
+import { certificatoScaduto } from "./certificato-scaduto";
 import { PresenzeForm } from "./PresenzeForm";
 
 // Dati mutabili ad ogni visita (registrazione presenze tramite Server
@@ -93,7 +95,7 @@ export default async function PresenzePage({
           </p>
         );
       } else {
-        const [gruppoAtleteRows, atlete, presenzeEsistenti] =
+        const [gruppoAtleteRows, atlete, presenzeEsistenti, certificati] =
           await Promise.all([
             prisma.gruppoAtleta.findMany({
               where: {
@@ -107,14 +109,33 @@ export default async function PresenzePage({
             // GruppoAtleta.atleta (vedi Dev Notes Story 2.4).
             elencaAtlete(supabase),
             leggiPresenzePerSlotEData(supabase, slotId, data),
+            // Story 4.5: RLS-filtrata sulle sole Atlete dei propri Gruppi
+            // (migrazione 20260722000000_certificati_allenatore_select) -
+            // join applicativo in memoria per atletaId, stesso pattern di
+            // notifiche/page.tsx, mai un `include` Prisma diretto su
+            // "certificati_medici" (RLS-protetta, AD-4).
+            elencaCertificati(supabase),
           ]);
 
         const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
+        const certificatoPerAtleta = new Map(
+          certificati.map((c) => [c.atletaId as string, c])
+        );
+        const oggi = new Date();
         const roster = gruppoAtleteRows
           .map((r) => atletaPerId.get(r.atletaId))
           .filter((a): a is (typeof atlete)[number] => a !== undefined)
           .sort((a, b) => a.nome.localeCompare(b.nome))
-          .map(({ id, nome }) => ({ id, nome }));
+          .map(({ id, nome }) => ({
+            id,
+            nome,
+            certificatoScaduto: certificatoScaduto(
+              (certificatoPerAtleta.get(id)?.dataFineValidita as
+                | string
+                | undefined) ?? null,
+              oggi
+            ),
+          }));
 
         const presentiIniziali = presenzeEsistenti
           .filter((p) => p.presente)

@@ -188,6 +188,11 @@
 - Nessuna verifica che la cifratura SMTP (`sicura`) corrisponda realmente a host/porta configurati (un Admin potrebbe impostare la porta 25 con `sicura: false`, trasmettendo il Certificato in chiaro) — superficie di configurazione preesistente da Story 7.1, non introdotta da questa storia. [lib/db-rls/configurazione-smtp.ts]
 - `nodemailer.createTransport` viene ricreato ad ogni chiamata a `inviaEmail`, senza pooling di connessione — pattern preesistente da Story 7.1 (questa storia lo consuma per la prima volta con un vero allegato), diventerà più rilevante con gli invii multipli di Story 4.6 (promemoria scadenza a più Ruoli). [lib/email/invia-email.ts]
 
+## Deferred from: code review of 4-5-alert-scadenza-non-bloccante (2026-07-22)
+
+- Nessun test automatico end-to-end verifica dal vivo che la nuova policy RLS su `certificati_medici` isoli davvero un Allenatore dalle Atlete di un Gruppo non proprio (AC #5) — stessa categoria già accettata più volte in questo progetto (nessuna infrastruttura di test di integrazione contro Postgres reale), rischio basso perché la stessa funzione `allenatore_possiede_atleta` è già in produzione senza problemi di isolamento dalla Story 3.1. [prisma/migrations/20260722000000_certificati_allenatore_select/migration.sql]
+- Nessun indicatore distinto per un Certificato `IN_ATTESA` (ri-caricato, in attesa di riconferma della Segreteria, Story 4.4) rispetto a uno realmente `CONFERMATO` — l'Allenatore vede lo stesso "non scaduto" in entrambi i casi se la vecchia data non è ancora passata. Scelta architetturale deliberata di questa storia (separazione di responsabilità da Story 4.4, vedi Dev Notes), non un difetto — possibile idea di prodotto per una storia futura se si rivelasse un problema reale in pratica. [app/(presenze)/presenze/certificato-scaduto.ts]
+
 ## Deferred from: code review of 4-4-conferma-validazione-certificato (2026-07-22)
 
 - Nessuna rimozione del vecchio file dal bucket quando la Segreteria sostituisce lo scan allegato durante una conferma (a differenza del ri-caricamento Genitore/Atleta, Story 4.1 review fix, che rimuove esplicitamente il vecchio file) — decisione già esplicita nei Dev Notes della storia stessa, nessun AC la richiede. [app/(certificati-medici)/conferma-certificati/actions.ts]

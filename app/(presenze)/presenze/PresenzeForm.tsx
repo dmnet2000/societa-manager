@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { registraPresenze } from "./actions";
 
-type AtletaMinima = { id: string; nome: string };
+type AtletaMinima = { id: string; nome: string; certificatoScaduto: boolean };
 
 // Story 3.1: un hidden input "rosterAtletaId" per ogni Atleta del roster
 // (non solo quelle spuntate) - la Server Action deve sapere quali Atlete
@@ -43,6 +43,16 @@ export function PresenzeForm({
               />
               {atleta.nome}
             </label>
+            {/* FR-15: puramente informativo - nessun attributo disabled/
+                required collegato, non deve mai impedire la registrazione
+                della presenza (AC #4). Review fix: niente role="alert" -
+                quel ruolo e' una live region per annunci dinamici (vedi
+                state.error sotto, che appare dopo il submit), non per
+                contenuto gia' presente al render iniziale; su piu' Atlete
+                scadute produrrebbe annunci simultanei e non verrebbe
+                ri-annunciato spostando il focus sulla riga in un secondo
+                momento. */}
+            {atleta.certificatoScaduto && <span> Certificato scaduto</span>}
           </li>
         ))}
       </ul>
