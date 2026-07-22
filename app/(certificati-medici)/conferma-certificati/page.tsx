@@ -57,6 +57,26 @@ export default async function ConfermaCertificatiPage() {
                 key={atleta.id}
                 atleta={atleta}
                 filePath={(certificato?.filePath as string | undefined) ?? null}
+                // Review fix: precompila con i dati gia' a sistema (es. un
+                // Certificato gia' CONFERMATO in passato, tornato IN_ATTESA
+                // per un ri-caricamento, AC #3) - senza questo, confermare
+                // senza ridigitare i campi opzionali li azzererebbe
+                // silenziosamente (confermaCertificato scrive sempre i
+                // valori del form, mai un merge per-campo).
+                dataInizioValidita={
+                  (certificato?.dataInizioValidita as string | undefined)?.slice(
+                    0,
+                    10
+                  ) ?? ""
+                }
+                dataFineValidita={
+                  (certificato?.dataFineValidita as string | undefined)?.slice(
+                    0,
+                    10
+                  ) ?? ""
+                }
+                mesiValidita={certificato?.mesiValidita as number | null | undefined}
+                modulo={certificato?.modulo as string | null | undefined}
               />
             ))}
           </ul>

@@ -15,9 +15,17 @@ type Atleta = {
 export function ConfermaCertificatoRow({
   atleta,
   filePath,
+  dataInizioValidita = "",
+  dataFineValidita = "",
+  mesiValidita,
+  modulo,
 }: {
   atleta: Atleta;
   filePath: string | null;
+  dataInizioValidita?: string;
+  dataFineValidita?: string;
+  mesiValidita?: number | null;
+  modulo?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(
     confermaCertificato,
@@ -38,19 +46,33 @@ export function ConfermaCertificatoRow({
         <input type="hidden" name="atletaId" value={atleta.id} />
         <label>
           Data inizio validità
-          <input type="date" name="dataInizioValidita" />
+          <input
+            type="date"
+            name="dataInizioValidita"
+            defaultValue={dataInizioValidita}
+          />
         </label>
         <label>
           Data fine validità
-          <input type="date" name="dataFineValidita" required />
+          <input
+            type="date"
+            name="dataFineValidita"
+            defaultValue={dataFineValidita}
+            required
+          />
         </label>
         <label>
           Mesi validità
-          <input type="number" name="mesiValidita" min="1" />
+          <input
+            type="number"
+            name="mesiValidita"
+            min="1"
+            defaultValue={mesiValidita ?? ""}
+          />
         </label>
         <label>
           Modulo
-          <input type="text" name="modulo" />
+          <input type="text" name="modulo" defaultValue={modulo ?? ""} />
         </label>
         <label>
           {filePath

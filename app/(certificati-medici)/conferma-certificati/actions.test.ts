@@ -152,6 +152,84 @@ describe("confermaCertificato (Server Action)", () => {
     });
   });
 
+  it("returns VALIDATION for a calendar-invalid dataFineValidita (es. 30 febbraio)", async () => {
+    const result = await confermaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", dataFineValidita: "2026-02-30" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data di fine validità non valida." },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for a malformed dataInizioValidita", async () => {
+    const result = await confermaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        dataInizioValidita: "non-una-data",
+        dataFineValidita: "2027-01-01",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data di inizio validità non valida." },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataInizioValidita e' successiva a dataFineValidita", async () => {
+    const result = await confermaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        dataInizioValidita: "2027-06-01",
+        dataFineValidita: "2027-01-01",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La data di inizio validità non può essere successiva alla data di fine.",
+      },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when mesiValidita non e' un intero positivo", async () => {
+    const result = await confermaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        dataFineValidita: "2027-01-01",
+        mesiValidita: "0",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Mesi di validità non validi." },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando mesiValidita e' un decimale", async () => {
+    const result = await confermaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        dataFineValidita: "2027-01-01",
+        mesiValidita: "1.5",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Mesi di validità non validi." },
+    });
+  });
+
   it("conferma con successo senza file allegato (AC #1)", async () => {
     const result = await confermaCertificato(
       undefined,

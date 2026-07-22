@@ -249,7 +249,9 @@ describe("elencaCertificati", () => {
     const risultato = await elencaCertificati(supabase);
 
     expect(fromMock).toHaveBeenCalledWith("certificati_medici");
-    expect(selectAllMock).toHaveBeenCalledWith("*");
+    expect(selectAllMock).toHaveBeenCalledWith(
+      "id, atletaId, stato, filePath, dataInizioValidita, dataFineValidita, mesiValidita, modulo"
+    );
     expect(risultato).toEqual(righe);
   });
 

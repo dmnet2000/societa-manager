@@ -43,8 +43,16 @@ export async function trovaCertificatoPerAtleta(
 // (N+1) nella pagina di elenco della Segreteria (fino a ~200 Atlete, NFR5);
 // il join con le Atlete resta applicativo, in memoria, stesso pattern gia'
 // usato in notifiche/page.tsx e storico-presenze/page.tsx.
+// Review fix: colonne esplicite invece di `select("*")` (stesso principio
+// gia' corretto per elencaNotifiche in Story 4.2 - un futuro campo aggiunto
+// alla tabella non deve raggiungere il chiamante senza una decisione
+// consapevole in review).
 export async function elencaCertificati(supabase: SupabaseClient) {
-  const { data, error } = await supabase.from("certificati_medici").select("*");
+  const { data, error } = await supabase
+    .from("certificati_medici")
+    .select(
+      "id, atletaId, stato, filePath, dataInizioValidita, dataFineValidita, mesiValidita, modulo"
+    );
 
   if (error) {
     throw new Error(error.message);

@@ -23,6 +23,18 @@ export type ConfermaCertificatoActionState =
 
 const FORMATO_DATA = /^\d{4}-\d{2}-\d{2}$/;
 
+// Review fix: `new Date("2026-02-30")` non produce un Invalid Date - JS
+// normalizza silenziosamente al 2 marzo. Il round-trip verso ISO (stesso
+// giorno/mese/anno) e' l'unico modo affidabile per rifiutare una data
+// calendarialmente inesistente, il solo controllo di formato/regex non basta.
+function parseDataValida(raw: string): Date | null {
+  const data = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== raw) {
+    return null;
+  }
+  return data;
+}
+
 // FR-14, AC #1/#2: un solo Server Action copre sia la conferma di un
 // Certificato gia' caricato (Story 4.1) sia l'inserimento manuale ex-novo
 // (file allegato opzionale - un certificato ricevuto cartaceo puo' non
@@ -61,6 +73,12 @@ export async function confermaCertificato(
       error: { code: "VALIDATION", message: "Data di fine validità non valida." },
     };
   }
+  const dataFineValidita = parseDataValida(dataFineValiditaRaw);
+  if (!dataFineValidita) {
+    return {
+      error: { code: "VALIDATION", message: "Data di fine validità non valida." },
+    };
+  }
 
   let dataInizioValidita: Date | null = null;
   if (dataInizioValiditaRaw) {
@@ -72,13 +90,30 @@ export async function confermaCertificato(
         },
       };
     }
-    dataInizioValidita = new Date(dataInizioValiditaRaw);
+    dataInizioValidita = parseDataValida(dataInizioValiditaRaw);
+    if (!dataInizioValidita) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Data di inizio validità non valida.",
+        },
+      };
+    }
+    if (dataInizioValidita > dataFineValidita) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "La data di inizio validità non può essere successiva alla data di fine.",
+        },
+      };
+    }
   }
 
   let mesiValidita: number | null = null;
   if (mesiValiditaRaw) {
     const parsed = Number(mesiValiditaRaw);
-    if (!Number.isFinite(parsed)) {
+    if (!Number.isInteger(parsed) || parsed < 1) {
       return {
         error: { code: "VALIDATION", message: "Mesi di validità non validi." },
       };
@@ -127,7 +162,7 @@ export async function confermaCertificato(
 
     await salvaCertificatoConfermato(supabase, atletaId, {
       dataInizioValidita,
-      dataFineValidita: new Date(dataFineValiditaRaw),
+      dataFineValidita,
       mesiValidita,
       modulo,
       ...(filePath !== undefined ? { filePath } : {}),
