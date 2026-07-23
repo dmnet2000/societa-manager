@@ -5,7 +5,9 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiMisurazioniPerAtleta } from "@/lib/db-rls/misurazione-atleta";
+import { raggruppaPerTipo } from "@/lib/misurazioni";
 import { MisurazioneForm } from "./MisurazioneForm";
+import { GraficoMisurazione } from "./GraficoMisurazione";
 
 // Dati potenzialmente diversi ad ogni visita (nuove misurazioni inserite) -
 // stesso motivo di /storico-presenze.
@@ -19,10 +21,22 @@ async function SezioneMisurazioni({
   atletaId: string;
 }) {
   const misurazioni = await leggiMisurazioniPerAtleta(supabase, atletaId);
+  // Story 6.2 (AC #1/#2/#3/#4): nessuna nuova lettura RLS, opera sullo stesso
+  // array gia' caricato per la tabella storico sotto. Array vuoto (nessun
+  // tipo con >= 2 punti) -> nessun grafico renderizzato, coerente con AC #4.
+  const gruppiGrafico = raggruppaPerTipo(misurazioni);
 
   return (
     <>
       <MisurazioneForm atletaId={atletaId} />
+      {gruppiGrafico.map((gruppo) => (
+        <GraficoMisurazione
+          key={gruppo.tipo}
+          tipo={gruppo.tipo}
+          unitaMisura={gruppo.unitaMisura}
+          punti={gruppo.punti}
+        />
+      ))}
       {misurazioni.length === 0 ? (
         <p>Nessuna misurazione registrata.</p>
       ) : (

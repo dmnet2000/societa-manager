@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-23 (Story 6.1 completata: 7/7 AC verificati dal vivo, code review con 3 patch applicate e verificate, 7 findings deferred - done)
+# last_updated: 2026-07-23 (Story 6.2 completata: 6/6 AC verificati dal vivo, code review con 4 patch applicate e verificate, 3 findings deferred - done. Epic 6: manca solo Story 6.3)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -104,6 +104,6 @@ development_status:
 
   epic-6: in-progress
   6-1-dati-antropometrici-e-test-fisici: done
-  6-2-grafico-progresso-test-fisici: backlog
+  6-2-grafico-progresso-test-fisici: done
   6-3-wizard-nuova-stagione: backlog
   epic-6-retrospective: optional

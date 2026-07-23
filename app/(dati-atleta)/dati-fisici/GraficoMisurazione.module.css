@@ -1,0 +1,33 @@
+/* Story 6.2 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22)
+   solo a questo componente: il resto di /dati-fisici (Story 6.1) resta nello
+   stile precedente all'UX spec, per decisione esplicita presa in fase di
+   creazione di questa storia (debito noto, non risolto qui). */
+
+.grafico {
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-width: 320px;
+}
+
+.titolo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.linea {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.etichetteAsse {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
