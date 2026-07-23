@@ -426,4 +426,32 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Admin or Dirigente on /wizard-nuova-stagione (Story 6.3, FR-28)", () => {
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /wizard-nuova-stagione for other roles", () => {
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/wizard-nuova-stagione", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
