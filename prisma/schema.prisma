@@ -77,8 +77,32 @@ model Atleta {
   gruppi                GruppoAtleta[]
   presenze              Presenza[]
   notifiche             Notifica[]
+  misurazioni           MisurazioneAtleta[]
 
   @@map("atlete")
+}
+
+// Story 6.1 (FR-24): protetta da RLS (dato personale nel tempo) - bind-list
+// deliberatamente piu' stretto delle altre tabelle RLS di questo progetto:
+// solo ALLENATORE (proprie Atlete) e ATLETA (se stessa), nessun accesso
+// Admin/Dirigente/Segreteria (fedele al testo letterale di FR-24, decisione
+// deliberata vedi Dev Notes Story 6.1). Log append-only: nessun AC richiede
+// modifica/eliminazione di una misurazione passata. `data` come stringa
+// "YYYY-MM-DD" (non DateTime) - stesso principio di Presenza.data/
+// Slot.oraInizio, nessuna aritmetica di date richiesta. `tipo`/`unitaMisura`
+// stringhe libere (es. "Altezza"/"cm"), non un enum chiuso - FR-24 parla di
+// esempi, non di un elenco esaustivo.
+model MisurazioneAtleta {
+  id          String   @id @default(uuid())
+  atletaId    String
+  atleta      Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  tipo        String
+  valore      Float
+  unitaMisura String
+  data        String
+  createdAt   DateTime @default(now())
+
+  @@map("misurazioni_atleta")
 }
 
 // Non protetta da RLS (AD-9, elencata esplicitamente insieme a Palestra,

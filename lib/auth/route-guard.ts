@@ -33,6 +33,7 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[] }[] = [
   { prefix: "/logo", ruoliAmmessi: ["ADMIN"] },
   { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"] },
   { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"] },
+  { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
 ];
 
 export type RouteDecision =

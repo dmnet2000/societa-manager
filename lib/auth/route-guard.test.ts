@@ -398,4 +398,32 @@ describe("getRouteDecision", () => {
       getRouteDecision("/conferma-certificati", true, ["ATLETA"])
     ).toEqual({ action: "redirect", location: "/non-autorizzato" });
   });
+
+  it("allows Allenatore or Atleta on /dati-fisici (Story 6.1, FR-24)", () => {
+    expect(getRouteDecision("/dati-fisici", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/dati-fisici", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /dati-fisici for other roles (AC #5: Genitore esplicitamente escluso, a differenza di /certificato-medico)", () => {
+    expect(getRouteDecision("/dati-fisici", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/dati-fisici", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/dati-fisici", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/dati-fisici", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
