@@ -74,7 +74,7 @@ NFR6: Vincolo di sviluppo — progetto personale, sviluppo in solitaria con assi
 
 ### UX Design Requirements
 
-Nessun documento UX prodotto per questo progetto (scelta esplicita: si è passati direttamente da PRD ad Architettura). Nessun UX-DR da estrarre.
+Documento UX prodotto in corso d'opera tra Epic 4 ed Epic 5 (`ux-designs/ux-societa-manager-2026-07-22/DESIGN.md`/`EXPERIENCE.md`) — non presente alla stesura originale di questo documento. Applicato alle pagine nuove create da Epic 5 in poi (Story 5.1, 5.2, e il componente grafico di Story 6.2); il retrofit sulle pagine preesistenti è oggetto dell'Epic 8 (correzione di rotta 2026-07-23, vedi `sprint-change-proposal-2026-07-23.md`).
 
 ### FR Coverage Map
 
@@ -140,6 +140,10 @@ Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un
 ### Epic 7: Configurazione Applicazione
 *(Aggiunto in corso d'opera — correzione di rotta 2026-07-18, vedi `sprint-change-proposal-2026-07-18.md`.)* L'Admin configura i parametri tecnici e di branding dell'applicazione (invio email, logo) da un'interfaccia dedicata, senza intervento diretto su codice/infrastruttura. **Precede Story 4.3** in ordine di esecuzione (dipendenza: FR-13 richiede FR-31), pur restando numerato per ultimo nel documento per non alterare la numerazione degli epic già completati.
 **FRs covered:** FR-31, FR-32
+
+### Epic 8: Applicazione del Design System
+*(Aggiunto in corso d'opera — correzione di rotta 2026-07-23, vedi `sprint-change-proposal-2026-07-23.md`.)* Il sistema di design (`DESIGN.md`/`EXPERIENCE.md`, prodotto tra Epic 4 ed Epic 5) è stato applicato solo alle pagine nuove da allora in poi — questo epic lo retrofitta sulle 20 pagine preesistenti rimaste allo stile precedente. Puramente presentazionale: nessuna nuova tabella, RLS, Server Action o comportamento in nessuna delle sue storie — solo CSS module + markup sopra le pagine esistenti, stesso pattern già stabilito in Story 5.1/5.2. Tutti i test Vitest esistenti devono continuare a passare invariati.
+**FRs covered:** nessuno (opera su NFR3, "applicazione web responsive... mobile-first", già esistente — nessun nuovo comportamento)
 
 ## Epic 1: Accesso, Popolamento e Iscrizioni
 
@@ -585,3 +589,126 @@ So that l'app riflette l'identità visiva della società.
 **Then** il logo viene salvato e sostituisce quello precedente (se esistente)
 
 **Note:** Could — branding non bloccante per il lancio, rimandabile a v1.1 (FR-32 fuori perimetro v1, PRD §6.2)
+
+## Epic 8: Applicazione del Design System
+
+*(Aggiunto in corso d'opera — correzione di rotta 2026-07-23, vedi `sprint-change-proposal-2026-07-23.md`.)*
+
+Il sistema di design (`ux-designs/ux-societa-manager-2026-07-22/DESIGN.md`/`EXPERIENCE.md`) è stato applicato solo alle pagine costruite da Epic 5 in poi. Questo epic lo retrofitta sulle 20 pagine preesistenti, una storia per gruppo di pagine correlate (stessi confini di modulo di AD-2), più una storia fondativa (8.1) per il layout globale/barra di navigazione che finora non è mai esistita in nessuna forma. **Vincolo trasversale alle storie 8.2-8.7**: restyle puro — nessuna modifica a Server Action, query Prisma, RLS, comportamento o struttura dati; solo `className`/CSS module aggiunti sopra il markup esistente. La suite Vitest esistente deve continuare a passare invariata (nessun test verifica classi CSS).
+
+### Story 8.1: Layout Globale e Barra di Navigazione
+
+As a Utente autenticato di qualunque Ruolo,
+I want una barra di navigazione unica coerente con l'identità visiva della società, con le voci pertinenti al mio Ruolo,
+so that posso spostarmi tra le pagine che mi riguardano senza conoscere o digitare gli URL a memoria.
+
+**Note aggiuntive (scoperto durante la pianificazione di questo epic, non un requisito originale del PRD):** `app/layout.tsx` è ancora lo scaffold grezzo di `create-next-app` (titolo "Create Next App", `lang="en"`, font Google Geist/Geist_Mono caricati via `next/font/google`) — nessuna barra di navigazione esiste in nessuna pagina dell'app, nonostante `EXPERIENCE.md` (righe 60-69) la specifichi in dettaglio ("un'unica barra orizzontale, sfondo `{colors.navy}`, voci visibili in base al Ruolo dell'utente autenticato, guardia di ruolo per pagina/route-group non un menu che nasconde voci lato client") e `DESIGN.md` (sezione Componenti → `nav-bar`) ne definisca i token visivi. Questa storia precede le altre 6 di questo epic: una volta montata nel root layout, ogni pagina la eredita automaticamente — le storie successive si occupano solo dello stile del contenuto di pagina, non della navigazione.
+
+**Acceptance Criteria:**
+
+**Given** `app/layout.tsx`
+**When** l'app viene visualizzata
+**Then** il `<title>`/metadata riflettono il nome del prodotto (non più "Create Next App"), `lang="it"`, e nessun font viene caricato da Google Fonts (rimossi `Geist`/`Geist_Mono` da `next/font/google` — `--font-system` già definito in `app/globals.css` da Story 5.1 resta l'unico stack tipografico)
+
+**Given** un Utente autenticato con un Ruolo che ha accesso ad almeno una superficie (tabella IA di `EXPERIENCE.md`, righe 29-58)
+**When** naviga una pagina qualsiasi dell'app
+**Then** vede una barra di navigazione orizzontale (sfondo `{colors.navy}`, componente `nav-bar` di `DESIGN.md`) con solo le voci delle superfici a cui il suo Ruolo (o i suoi Ruoli) ha accesso — la stessa lista che il route guard (`lib/auth/route-guard.ts`) già applica per l'autorizzazione, non una lista di voci duplicata e mantenuta a mano separatamente
+
+**Given** un Utente con più Ruoli (es. Allenatore e Dirigente)
+**When** visualizza la barra di navigazione
+**Then** vede l'unione delle voci di entrambi i Ruoli, senza duplicati
+
+**Given** le pagine di sistema/pre-autenticazione (`/accedi`, `/registrati`, `/non-autorizzato`)
+**When** vengono visualizzate
+**Then** non mostrano la barra di navigazione (nessuna voce ha senso senza una sessione autenticata)
+
+**Given** il logo applicazione configurabile dall'Admin (Story 7.2, bucket pubblico)
+**When** la barra di navigazione viene renderizzata
+**Then** mostra il logo caricato (se presente), coerente con `DESIGN.md` ("il componente mostra qualunque immagine sia stata caricata... non hardcoded")
+
+**Given** la navigazione da tastiera
+**When** un Utente sposta il focus su una voce della barra
+**Then** è visibile un contorno di focus (`{colors.focus-ring-on-navy}`, bianco, coerente con `DESIGN.md` — sfondo navy richiede un ring bianco, non lo stesso usato altrove su sfondo chiaro)
+
+### Story 8.2: Onboarding e Autenticazione
+
+As a nuovo Utente di qualunque Ruolo,
+I want vedere le pagine di accesso/registrazione/import/precaricamento con l'identità visiva della società,
+so that la prima impressione dell'app sia curata quanto il resto, non un modulo grezzo.
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/accedi`, `/registrati`, `/import-atlete`, `/precaricamento-allenatori`
+**When** vengono visualizzate
+**Then** applicano i token di colore/tipografia/spaziatura/forma di `DESIGN.md` (nessun colore hardcoded fuori da `var(--color-*)`) tramite un CSS module dedicato
+**And** il comportamento (validazione, Server Action, redirect, messaggi di errore) resta identico a prima — nessuna regressione, suite Vitest invariata
+
+### Story 8.3: Orari e Palestre
+
+As a Allenatore, Atleta, Segreteria, Dirigente o Admin,
+I want vedere le pagine di palestre/slot/orari con l'identità visiva della società,
+so that consultare/gestire l'orario sia un'esperienza coerente col resto dell'app, specialmente da smartphone in palestra (NFR3).
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/palestre`, `/slot`, `/orari`, `/mio-orario`
+**When** vengono visualizzate
+**Then** applicano i token di `DESIGN.md` tramite un CSS module dedicato
+**And** `/mio-orario` segue il mockup key-screen già approvato (`ux-designs/ux-societa-manager-2026-07-22/mockups/key-mio-orario.html`)
+**And** il comportamento resta identico a prima — nessuna regressione, suite Vitest invariata
+
+### Story 8.4: Presenze
+
+As a Allenatore o Atleta,
+I want vedere le pagine di registrazione/storico presenze con l'identità visiva della società,
+so that il Key Flow più usato dell'app (registrazione presenze a fine allenamento) sia curato quanto gli altri.
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/presenze`, `/storico-presenze`
+**When** vengono visualizzate
+**Then** applicano i token di `DESIGN.md` tramite un CSS module dedicato
+**And** `/presenze` segue il mockup key-screen già approvato (`ux-designs/ux-societa-manager-2026-07-22/mockups/key-presenze.html`)
+**And** il comportamento (salvataggio esplicito, alert certificato scaduto non bloccante FR-15) resta identico a prima — nessuna regressione, suite Vitest invariata
+
+### Story 8.5: Certificati Medici
+
+As a Genitore, Atleta, Allenatore, Dirigente o Segreteria,
+I want vedere le pagine legate al certificato medico con l'identità visiva della società,
+so that un flusso che riguarda dati sanitari sensibili trasmetta la stessa cura del resto dell'app.
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/certificato-medico`, `/conferma-certificati`, `/notifiche`
+**When** vengono visualizzate
+**Then** applicano i token di `DESIGN.md` tramite un CSS module dedicato
+**And** `/certificato-medico` segue il mockup key-screen già approvato (`ux-designs/ux-societa-manager-2026-07-22/mockups/key-certificato-medico.html`)
+**And** il comportamento resta identico a prima — nessuna regressione, suite Vitest invariata
+
+### Story 8.6: Gruppi, Dati Atleta e Iscrizioni
+
+As a Admin, Dirigente, Allenatore o Atleta,
+I want vedere le pagine di gestione Gruppi, dati fisici, wizard nuova stagione e conferma iscrizioni con l'identità visiva della società,
+so that anche le pagine più recenti (Epic 6) rimaste allo stile precedente siano allineate al resto.
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/gruppi`, `/wizard-nuova-stagione`, `/dati-fisici`, `/conferma-iscrizioni`
+**When** vengono visualizzate
+**Then** applicano i token di `DESIGN.md` tramite un CSS module dedicato (per `/dati-fisici`, coerente con `GraficoMisurazione.module.css` già esistente da Story 6.2)
+**And** il comportamento resta identico a prima — nessuna regressione, suite Vitest invariata
+
+### Story 8.7: Amministrazione, Configurazione e Pagine Condivise
+
+As a Admin,
+I want vedere le pagine di amministrazione utenti/configurazione, oltre alla home e alla pagina di accesso negato, con l'identità visiva della società,
+so that anche le pagine a minor traffico (solo-Admin, di sistema) siano coerenti col resto dell'app.
+
+**Acceptance Criteria:**
+
+**Given** le pagine `/admin`, `/smtp`, `/logo`, la home (`/`) e `/non-autorizzato`
+**When** vengono visualizzate
+**Then** applicano i token di `DESIGN.md` tramite un CSS module dedicato
+**And** il comportamento resta identico a prima — nessuna regressione, suite Vitest invariata
+
+**Note:** ultima storia dell'epic — priorità visiva più bassa (pagine solo-Admin o di sistema, traffico minore rispetto alle altre).

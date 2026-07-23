@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-23 (Story 6.3 completata: code review con 4 patch applicate e verificate, 3 findings deferred - done. Epic 6 completo)
+# last_updated: 2026-07-23 (Story 8.1 completata: code review con 2 patch fail-closed applicate e verificate, 11 findings deferred - done. Il finding piu' severo del review (x-pathname "rotto") e' stato riverificato dal vivo 3 volte e confermato funzionante. Prossima: Story 8.2 Onboarding e Autenticazione)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -107,3 +107,19 @@ development_status:
   6-2-grafico-progresso-test-fisici: done
   6-3-wizard-nuova-stagione: done
   epic-6-retrospective: optional
+
+  # Epic 8 (Applicazione del Design System) inserito qui, correzione di rotta
+  # del 2026-07-23 (vedi sprint-change-proposal-2026-07-23.md): il sistema di
+  # design (DESIGN.md/EXPERIENCE.md) e' stato applicato solo alle pagine nuove
+  # da Epic 5 in poi - questo epic lo retrofitta sulle 20 pagine preesistenti
+  # rimaste allo stile precedente. Nessun FR proprio (opera su NFR3), restyle
+  # puro senza impatto su Server Action/RLS/comportamento.
+  epic-8: in-progress
+  8-1-layout-globale-e-barra-di-navigazione: done
+  8-2-onboarding-e-autenticazione: backlog
+  8-3-orari-e-palestre: backlog
+  8-4-presenze: backlog
+  8-5-certificati-medici: backlog
+  8-6-gruppi-dati-atleta-e-iscrizioni: backlog
+  8-7-amministrazione-configurazione-e-pagine-condivise: backlog
+  epic-8-retrospective: optional

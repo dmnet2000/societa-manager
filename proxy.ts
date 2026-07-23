@@ -52,6 +52,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(decision.location, request.url));
   }
 
+  // Story 8.1: espone il pathname corrente ai Server Component (es.
+  // app/NavBar.tsx) via header di risposta - la root layout di Next.js App
+  // Router non ha altrimenti accesso diretto al pathname lato server senza
+  // attraversare il bordo client/server solo per questo scopo.
+  response.headers.set("x-pathname", request.nextUrl.pathname);
+
   return response;
 }
 

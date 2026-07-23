@@ -8,33 +8,55 @@ export const PUBLIC_ROUTES = ["/accedi", "/registrati"];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte
 // dalle prossime storie (Story 1.2+ estendera' con altri prefissi).
-export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[] }[] = [
-  { prefix: "/admin", ruoliAmmessi: ["ADMIN"] },
-  { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
-  { prefix: "/precaricamento-allenatori", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
+// "navLabel" (Story 8.1): stessa fonte di verita' usata sia per
+// l'autorizzazione sia per le voci della barra di navigazione
+// (lib/auth/voci-navigazione.ts) - evita una lista di voci duplicata e
+// mantenuta a mano separatamente da questa.
+export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel: string }[] = [
+  { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
+  { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
+  {
+    prefix: "/precaricamento-allenatori",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Precaricamento allenatori",
+  },
   {
     prefix: "/conferma-iscrizioni",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    navLabel: "Conferma iscrizioni",
   },
-  { prefix: "/palestre", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
-  { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
-  { prefix: "/slot", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
-  { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
-  { prefix: "/orari", ruoliAmmessi: ["SEGRETERIA"] },
-  { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"] },
-  { prefix: "/storico-presenze", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
-  { prefix: "/certificato-medico", ruoliAmmessi: ["GENITORE", "ATLETA"] },
-  { prefix: "/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"] },
+  { prefix: "/palestre", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Palestre" },
+  { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
+  { prefix: "/slot", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Slot" },
+  { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
+  { prefix: "/orari", ruoliAmmessi: ["SEGRETERIA"], navLabel: "Orari" },
+  { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
+  {
+    prefix: "/storico-presenze",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    navLabel: "Storico presenze",
+  },
+  {
+    prefix: "/certificato-medico",
+    ruoliAmmessi: ["GENITORE", "ATLETA"],
+    navLabel: "Certificato medico",
+  },
+  { prefix: "/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"], navLabel: "Notifiche" },
   {
     prefix: "/conferma-certificati",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    navLabel: "Conferma certificati",
   },
-  { prefix: "/smtp", ruoliAmmessi: ["ADMIN"] },
-  { prefix: "/logo", ruoliAmmessi: ["ADMIN"] },
-  { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"] },
-  { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"] },
-  { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"] },
-  { prefix: "/wizard-nuova-stagione", ruoliAmmessi: ["ADMIN", "DIRIGENTE"] },
+  { prefix: "/smtp", ruoliAmmessi: ["ADMIN"], navLabel: "Configurazione SMTP" },
+  { prefix: "/logo", ruoliAmmessi: ["ADMIN"], navLabel: "Configurazione logo" },
+  { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"], navLabel: "Vista d'insieme" },
+  { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"], navLabel: "Permessi certificati" },
+  { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },
+  {
+    prefix: "/wizard-nuova-stagione",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Wizard nuova stagione",
+  },
 ];
 
 export type RouteDecision =

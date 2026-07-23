@@ -1,0 +1,62 @@
+/* Story 8.1 - applica il componente nav-bar di DESIGN.md
+   (ux-designs/ux-societa-manager-2026-07-22): sfondo navy a piena
+   larghezza, unico punto del sistema in cui il navy occupa un'area larga
+   (mai come sfondo di un'intera pagina/area di contenuto). */
+
+.navBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-navy);
+  padding: var(--space-2) var(--space-4);
+  overflow-x: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.logo {
+  height: 28px;
+  width: auto;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+.voci {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  overflow-x: auto;
+}
+
+.voce {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-surface-alt);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.voce:focus-visible {
+  outline: 2px solid var(--color-focus-ring-on-navy);
+  outline-offset: 2px;
+}
+
+.voceAttiva {
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+}
