@@ -311,6 +311,41 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows only Dirigente on /vista-dirigente (Story 5.1, FR-29)", () => {
+    expect(getRouteDecision("/vista-dirigente", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("allows a multi-role user who also has Dirigente on /vista-dirigente (Story 5.1, AC #8: un Utente puo' avere piu' Ruoli)", () => {
+    expect(
+      getRouteDecision("/vista-dirigente", true, ["ALLENATORE", "DIRIGENTE"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects to /non-autorizzato on /vista-dirigente for other roles", () => {
+    expect(getRouteDecision("/vista-dirigente", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/vista-dirigente", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/vista-dirigente", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/vista-dirigente", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/vista-dirigente", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
   it("allows Admin, Dirigente or Segreteria on /conferma-certificati (Story 4.4, FR-14)", () => {
     expect(
       getRouteDecision("/conferma-certificati", true, ["ADMIN"])

@@ -1,0 +1,273 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Screen — Registrazione presenze</title>
+<style>
+/*
+  =====================================================================
+  KEY SCREEN — Registrazione presenze (/presenze, FR-8) — UJ-2 (Marco)
+  =====================================================================
+  Fonti applicate:
+  - DESIGN.md → Componenti: nav-bar, badge (regola non negoziabile:
+    "Certificato scaduto" a livello di singola atleta = variante WARNING,
+    mai danger), attendance-row, button-primary (uppercase, button-bg)
+  - EXPERIENCE.md → Pattern dei Componenti: "Alert non bloccante (badge
+    stato certificato)" — non blocca mai un'azione in corso; "Riga
+    presenza con checkbox" — tocco su checkbox/riga alterna presente/
+    assente, nessuna conferma per riga, salvataggio esplicito a fine lista
+  - EXPERIENCE.md → Voce e Tono: "Certificato scaduto" (non "ATTENZIONE!!
+    Certificato scaduto!!"), niente esclamativi
+  - EXPERIENCE.md → Key Flow UJ-2 (Marco, allenatore di due gruppi):
+    step 4-5, registra presenze di uno slot passato (giovedì scorso),
+    nessun blocco per il ritardo
+  - EXPERIENCE.md → Primitive di Interazione: target di tocco generosi,
+    salvataggio esplicito non ottimistico
+  - CSS riusato fedelmente da .working/color-themes-1.html variante 3
+    "Energico e Deciso" (nav-bar navy, athlete-row, badge-warning,
+    primary-btn uppercase)
+
+  Nota di annotazione (non UI finta, vedi didascalia fuori dal frame
+  telefono): il pulsante "Salva presenze" resta SEMPRE abilitato anche
+  con il badge "Certificato scaduto" presente in lista — principio
+  "l'alert non blocca mai" (FR-15), reso qui come nota editoriale
+  esplicita e non come parte del finto prodotto, per non inventare un
+  pattern di disabling che non esiste nello spine.
+  =====================================================================
+*/
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #EEF2F5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #101820;
+}
+
+.page-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.page-wrap > h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  color: #14213D;
+}
+.page-wrap > p.caption {
+  font-size: 13.5px;
+  color: #46586B;
+  line-height: 1.5;
+  max-width: 640px;
+  margin: 0 0 28px;
+}
+
+/* --- phone device frame --- */
+.phone-frame {
+  width: 390px;
+  margin: 0 auto;
+  border: 10px solid #1c1c1e;
+  border-radius: 36px;
+  background: #1c1c1e;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.phone-notch {
+  height: 22px;
+  background: #1c1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-notch::after {
+  content: "";
+  width: 90px;
+  height: 6px;
+  border-radius: 4px;
+  background: #000;
+}
+.phone-screen {
+  background: #FFFFFF;
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- nav bar (DESIGN.md Componenti → nav-bar) --- */
+.nav-bar {
+  background: #312682;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.nav-appname {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  margin-right: auto;
+}
+.nav-item {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #E4F5FD;
+  white-space: nowrap;
+}
+.nav-item.active {
+  /* Corretto in revisione: #00A3E0 con testo bianco dava contrasto ~2.87:1 (fallisce AA) */
+  background: #006DA6;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+/* --- slot header --- */
+.slot-header {
+  padding: 16px 16px 4px;
+}
+.slot-header .section-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #46586B;
+  margin: 0 0 4px;
+}
+.slot-header .slot-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101820;
+  margin: 0;
+}
+
+/* --- attendance list (DESIGN.md → attendance-row) --- */
+.attendance-list {
+  padding: 12px 16px 4px;
+  flex: 1;
+}
+.attendance-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #E4F5FD;
+  border-radius: 6px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+}
+.attendance-row input[type=checkbox] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #006DA6;
+}
+.athlete-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #101820;
+  margin-right: auto;
+}
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.badge-warning {
+  background: #FCE9CE;
+  color: #9A4A08;
+}
+
+/* --- footer / save action --- */
+.save-footer {
+  padding: 12px 16px 20px;
+  border-top: 1px solid #BFE4F5;
+}
+.primary-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 13px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #006DA6;
+  color: #FFFFFF;
+}
+
+.annotation {
+  max-width: 390px;
+  margin: 16px auto 0;
+  font-size: 12.5px;
+  color: #46586B;
+  line-height: 1.5;
+  background: #FFFFFF;
+  border: 1px solid #BFE4F5;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.annotation strong { color: #101820; }
+</style>
+
+<div class="page-wrap">
+  <h1>Key Screen — Registrazione presenze</h1>
+  <p class="caption">/presenze (FR-8) — flusso UJ-2 di Marco, allenatore di due gruppi, la domenica sera dal telefono, presenze di uno slot passato (giovedì scorso) mai registrate.</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="nav-bar">
+        <div class="nav-appname">Società Manager</div>
+        <div class="nav-item">Il mio orario</div>
+        <div class="nav-item active">Presenze</div>
+        <div class="nav-item">Certificati</div>
+      </div>
+
+      <div class="slot-header">
+        <p class="section-label">Slot passato</p>
+        <p class="slot-title">Giovedì 16/07 · 18:00–19:30 · Under 15 Femminile</p>
+      </div>
+
+      <div class="attendance-list">
+        <div class="attendance-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="attendance-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="attendance-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+        <div class="attendance-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Chiara Bergamasco</span>
+        </div>
+        <div class="attendance-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Martina Furlan</span>
+        </div>
+        <div class="attendance-row">
+          <input type="checkbox">
+          <span class="athlete-name">Elisa Trentin</span>
+        </div>
+      </div>
+
+      <div class="save-footer">
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Nota di annotazione (non parte della UI finta):</strong> il pulsante "Salva presenze" resta sempre abilitato, indipendentemente dal badge "Certificato scaduto" mostrato sopra — l'alert è puramente informativo e non blocca mai la registrazione della presenza (FR-15, DESIGN.md → regola non negoziabile sul badge a livello di singola atleta: variante warning, mai danger).
+  </div>
+</div>

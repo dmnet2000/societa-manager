@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-22 (storia 4.6 done - epic-4 completato. Code review ha trovato e corretto 8 finding (patch), incluso restringere lo scope del bypass Proxy da /api/* a /api/cron/ e ri-verificare dal vivo l'AC #6 zero-destinatari, insufficientemente testato alla prima verifica)
+# last_updated: 2026-07-23 (Story 5.1 done - prima pagina costruita sul design system finalizzato. Code review ha trovato e corretto un bug funzionale reale: la categorizzazione ignorava lo stato IN_ATTESA del certificato, in contraddizione con AC #2/#3)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -97,8 +97,8 @@ development_status:
   4-6-promemoria-scadenza: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-vista-d-insieme-dirigente: backlog
+  epic-5: in-progress
+  5-1-vista-d-insieme-dirigente: done
   5-2-permessi-granulari-su-dati-sanitari: backlog
   epic-5-retrospective: optional
 

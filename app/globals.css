@@ -1,13 +1,44 @@
+/* Token da DESIGN.md (ux-designs/ux-societa-manager-2026-07-22) - solo
+   light mode (decisione esplicita di discovery, nessun blocco dark qui a
+   differenza dello scaffold precedente): un solo look curato, niente
+   doppia manutenzione di palette. Introdotti da Story 5.1, prima pagina
+   costruita direttamente sul design system - il retrofit delle pagine
+   esistenti (Epic 1-4/7) resta un passaggio successivo separato. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --color-surface: #ffffff;
+  --color-surface-alt: #e4f5fd;
+  --color-primary: #00a3e0;
+  --color-primary-hover: #0086bd;
+  --color-button-bg: #006da6;
+  --color-navy: #312682;
+  --color-magenta: #e6007c;
+  --color-text-primary: #101820;
+  --color-text-secondary: #46586b;
+  --color-border: #bfe4f5;
+  --color-success: #256029;
+  --color-success-bg: #dff2e1;
+  --color-warning: #9a4a08;
+  --color-warning-bg: #fce9ce;
+  --color-danger: #a81818;
+  --color-danger-bg: #fbe3e3;
+  --color-focus-ring: #006da6;
+  --color-focus-ring-on-navy: #ffffff;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --background: var(--color-surface);
+  --foreground: var(--color-text-primary);
 }
 
 html {
@@ -26,7 +57,7 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-system);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -40,10 +71,4 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
 }

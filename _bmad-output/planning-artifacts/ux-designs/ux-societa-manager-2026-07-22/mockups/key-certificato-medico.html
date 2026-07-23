@@ -1,0 +1,343 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Screen — Certificato medico</title>
+<style>
+/*
+  =====================================================================
+  KEY SCREEN — Certificato medico (/certificato-medico, FR-11) — UJ-1 (Elena)
+  =====================================================================
+  Fonti applicate:
+  - DESIGN.md → Componenti: nav-bar, button-primary (uppercase),
+    badge (success/warning/danger — vedi nota IN_ATTESA sotto)
+  - EXPERIENCE.md → Pattern di Stato: riga IN_ATTESA — "[NOTA UX APERTA]:
+    la variante badge (success/warning/danger) non copre esplicitamente
+    questo stato in corso — nessuna delle tre gli è stata assegnata in
+    discovery. Non forzare warning/danger per questo stato senza una
+    decisione dedicata." Applicato qui: testo semplice, NON badge colorato.
+  - EXPERIENCE.md → Pattern di Stato: riga CONFERMATO con data futura
+    oltre 30gg → "Badge/conteggio success" — qui scelto il badge success
+    pieno (non solo testo) perché lo stato "in regola" è comunque un
+    esito informativo di primo piano su questa scheda personale, e lo
+    spine assegna esplicitamente la variante success a questo caso
+    (a differenza di IN_ATTESA, che è un genuino "non assegnato").
+  - EXPERIENCE.md → Voce e Tono: "Certificato in attesa di conferma" (non
+    "In sospeso ⏳"), niente icone al posto del testo, niente esclamativi
+  - EXPERIENCE.md → Key Flow UJ-1 (Elena, genitore): step 1-3, upload dal
+    telefono la sera, stato aggiornato a IN_ATTESA
+  - CSS riusato fedelmente da .working/color-themes-1.html variante 3
+    "Energico e Deciso"
+  =====================================================================
+*/
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #EEF2F5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #101820;
+}
+
+.page-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+.page-wrap > h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  color: #14213D;
+}
+.page-wrap > p.caption {
+  font-size: 13.5px;
+  color: #46586B;
+  line-height: 1.5;
+  max-width: 640px;
+  margin: 0 0 20px;
+}
+
+.frames-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  justify-content: center;
+}
+
+.frame-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.frame-col .state-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #46586B;
+  margin-bottom: 10px;
+}
+
+/* --- phone device frame --- */
+.phone-frame {
+  width: 390px;
+  border: 10px solid #1c1c1e;
+  border-radius: 36px;
+  background: #1c1c1e;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.phone-notch {
+  height: 22px;
+  background: #1c1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-notch::after {
+  content: "";
+  width: 90px;
+  height: 6px;
+  border-radius: 4px;
+  background: #000;
+}
+.phone-screen {
+  background: #FFFFFF;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- nav bar --- */
+.nav-bar {
+  background: #312682;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.nav-appname {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  margin-right: auto;
+}
+.nav-item {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #E4F5FD;
+  white-space: nowrap;
+}
+.nav-item.active {
+  /* Corretto in revisione: #00A3E0 con testo bianco dava contrasto ~2.87:1 (fallisce AA) */
+  background: #006DA6;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.body-pad {
+  padding: 16px;
+  flex: 1;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #46586B;
+  margin: 0 0 8px;
+}
+
+/* --- athlete/card --- */
+.cert-card {
+  border: 1px solid #BFE4F5;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.athlete-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101820;
+  margin: 0 0 8px;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* IN_ATTESA — deliberately unstyled plain text, not a colored badge */
+.status-plain-text {
+  font-size: 13.5px;
+  color: #46586B;
+}
+
+/* CONFERMATO — success badge (justified in style-block comment above) */
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.badge-success {
+  background: #DFF2E1;
+  color: #256029;
+}
+.validity-text {
+  font-size: 13.5px;
+  color: #46586B;
+}
+
+/* --- upload control --- */
+.upload-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #101820;
+  margin: 4px 0 8px;
+}
+.dropzone {
+  border: 1.5px dashed #BFE4F5;
+  border-radius: 8px;
+  background: #E4F5FD;
+  padding: 20px 14px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.dropzone .dz-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #101820;
+  margin: 0 0 4px;
+}
+.dropzone .dz-sub {
+  font-size: 12px;
+  color: #46586B;
+  margin: 0;
+}
+
+.primary-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 13px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #006DA6;
+  color: #FFFFFF;
+}
+
+.annotation {
+  width: 390px;
+  margin: 16px auto 0;
+  font-size: 12.5px;
+  color: #46586B;
+  line-height: 1.5;
+  background: #FFFFFF;
+  border: 1px solid #BFE4F5;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.annotation strong { color: #101820; }
+</style>
+
+<div class="page-wrap">
+  <h1>Key Screen — Certificato medico</h1>
+  <p class="caption">/certificato-medico (FR-11) — flusso UJ-1 di Elena, che carica il certificato della figlia dal telefono la sera prima della scadenza. Due stati mostrati fianco a fianco: appena dopo l'upload (IN_ATTESA) e dopo la conferma della Segreteria (CONFERMATO).</p>
+
+  <div class="frames-row">
+
+    <!-- STATO A: IN_ATTESA, subito dopo l'upload -->
+    <div class="frame-col">
+      <div class="state-label">Stato A · appena caricato</div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="nav-bar">
+            <div class="nav-appname">Società Manager</div>
+            <div class="nav-item">Il mio orario</div>
+            <div class="nav-item active">Certificato medico</div>
+          </div>
+          <div class="body-pad">
+            <p class="section-label">Certificato medico</p>
+            <div class="cert-card">
+              <p class="athlete-name">Sofia Marchetto</p>
+              <!--
+                [NOTA UX APERTA — DESIGN.md/EXPERIENCE.md]: lo stato IN_ATTESA
+                non ha una variante badge assegnata in discovery (nessuna
+                delle tre varianti success/warning/danger gli è stata
+                attribuita). Reso qui deliberatamente come semplice testo
+                piano, senza badge colorato, in attesa di una decisione
+                dedicata — non si inventa qui una variante badge.
+              -->
+              <div class="status-line">
+                <span class="status-plain-text">Certificato in attesa di conferma</span>
+              </div>
+            </div>
+
+            <p class="upload-label">Carica un nuovo certificato</p>
+            <div class="dropzone">
+              <p class="dz-title">certificato-sofia-2026.pdf</p>
+              <p class="dz-sub">File caricato — 412 KB</p>
+            </div>
+            <button class="primary-btn">Carica certificato</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATO B: CONFERMATO, validita' futura -->
+    <div class="frame-col">
+      <div class="state-label">Stato B · confermato dalla segreteria</div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="nav-bar">
+            <div class="nav-appname">Società Manager</div>
+            <div class="nav-item">Il mio orario</div>
+            <div class="nav-item active">Certificato medico</div>
+          </div>
+          <div class="body-pad">
+            <p class="section-label">Certificato medico</p>
+            <div class="cert-card">
+              <p class="athlete-name">Sofia Marchetto</p>
+              <!--
+                CONFERMATO con validita' futura oltre 30gg: EXPERIENCE.md
+                assegna esplicitamente la variante badge "success" a
+                questo stato (a differenza di IN_ATTESA, che è un genuino
+                punto aperto). Scelto qui il badge pieno invece del solo
+                testo perché è l'esito positivo che chiude il flusso di
+                Elena ed è coerente con la variante assegnata dallo spine.
+              -->
+              <div class="status-line">
+                <span class="badge badge-success">Certificato in regola</span>
+              </div>
+              <span class="validity-text">Valido fino al 12/03/2027</span>
+            </div>
+
+            <p class="upload-label">Carica un nuovo certificato</p>
+            <div class="dropzone">
+              <p class="dz-title">Trascina il file qui</p>
+              <p class="dz-sub">oppure scegli dal telefono — PDF o foto</p>
+            </div>
+            <button class="primary-btn">Carica certificato</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="annotation">
+    <strong>Nota di annotazione:</strong> lo stato IN_ATTESA è mostrato senza badge colorato per scelta conservativa — è un punto aperto nello spine (EXPERIENCE.md → Pattern di Stato), non un'omissione di questo mock.
+  </div>
+</div>

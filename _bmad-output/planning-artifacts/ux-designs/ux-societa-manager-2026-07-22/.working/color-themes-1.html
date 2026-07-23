@@ -1,0 +1,761 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Società Manager — Esplorazione temi colore</title>
+<style>
+/*
+  =====================================================================
+  SOCIETÀ MANAGER — ESPLORAZIONE TEMI COLORE (light mode only)
+  =====================================================================
+  Vincoli fissi rispettati in ogni variazione:
+  - Colori prevalenti: bianco + azzurro (colori sociali reali del club)
+  - Navy #312682 e magenta #E6007C: SOLO accenti riservati (logo/dettagli),
+    mai come sfondo dominante
+  - Solo light mode
+  - Contrasto minimo WCAG AA su tutte le coppie testo/sfondo (verificato
+    con la formula di luminanza relativa WCAG; i pulsanti primari usano
+    una tonalità di azzurro leggermente più profonda per garantire >=4.5:1
+    con testo bianco, mentre le superfici chiare usano testo scuro)
+  - Registro: "sportivo ed energico, ma anche familiare" — mai il tono
+    da poster marketing di un sito tifosi pubblico
+
+  Le 5 variazioni cambiano REGISTRO (mood/energia), non la palette di base.
+  =====================================================================
+*/
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #eef2f5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1a1a1a;
+  overflow-x: hidden;
+}
+
+.page-intro {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 8px;
+}
+.page-intro h1 {
+  font-size: 22px;
+  margin: 0 0 6px;
+  color: #14213D;
+}
+.page-intro p {
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
+.variations {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 20px 60px;
+}
+
+.variation-card {
+  border-radius: 16px;
+  padding: 22px 22px 26px;
+  box-shadow: 0 1px 3px rgba(20,33,61,0.12), 0 8px 24px rgba(20,33,61,0.06);
+}
+
+.variation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.variation-head .v-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.variation-head .v-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.variation-desc {
+  font-size: 13.5px;
+  margin: 2px 0 18px;
+  line-height: 1.5;
+}
+
+/* --- token chip row --- */
+.tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 999px;
+  padding: 4px 10px 4px 4px;
+  font-size: 11px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+.chip .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+.chip .label {
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin-right: 2px;
+}
+
+/* --- UI snippet mock --- */
+.mock {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.mock-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+}
+.mock-crest {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.mock-appname {
+  font-weight: 800;
+  font-size: 14px;
+  margin-right: auto;
+}
+.mock-navitem {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.mock-body {
+  padding: 16px;
+}
+
+.mock-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+
+.athlete-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+.athlete-row input[type=checkbox] {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.athlete-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-right: auto;
+}
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.stat-tiles {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 16px;
+  flex-wrap: wrap;
+}
+.stat-tile {
+  flex: 1 1 90px;
+  min-width: 90px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.stat-tile .num {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.1;
+  display: block;
+}
+.stat-tile .lbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  display: block;
+  margin-top: 2px;
+}
+
+.primary-btn {
+  display: inline-block;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: default;
+}
+
+@media (max-width: 480px) {
+  .mock-navitem:nth-child(3) { display: none; } /* drop one nav item on very narrow widths, keep it uncluttered */
+  .variation-card { padding: 16px 14px 20px; border-radius: 12px; }
+}
+
+/* =====================================================================
+   VARIAZIONE 1 — "Pulito e Sportivo" (crisp clean sporty)
+   Azzurro brillante, tanto bianco, tipografia sans decisa ma ariosa.
+   Registro: il più "da app moderna e pulita", energico ma silenzioso.
+   -----------------------------------------------------------------
+   surface:        #FFFFFF
+   surface-alt:    #F1F9FE
+   primary:        #29B6F6  (azzurro vivo, sfondi/badge/nav)
+   primary-hover:  #039BE5
+   button-bg:      #0277BD  (contrasto testo bianco ~4.8:1, verificato AA)
+   secondary/navy: #312682  (accento, solo dettagli/icone)
+   tertiary/magenta:#E6007C (accento singolo, es. pallino highlight)
+   text-primary:   #14213D
+   text-secondary: #5C6B7A
+   border:         #D8ECF8
+   success:        #2E7D32 su #E8F5E9 (~4.6:1)
+   warning:        #B45309 su #FEF3E0 (~4.6:1)
+   danger:         #B91C1C su #FCEAEA (informativo, non allarmistico)
+   ===================================================================== */
+.v1 { background: #FFFFFF; border: 1px solid #D8ECF8; }
+.v1 .v-name { color: #14213D; }
+.v1 .v-tag { background: #E6007C; color: #FFFFFF; }
+.v1 .variation-desc { color: #5C6B7A; }
+.v1 .mock { border-color: #D8ECF8; background: #FFFFFF; }
+.v1 .mock-nav { background: #F1F9FE; border-bottom: 1px solid #D8ECF8; }
+.v1 .mock-crest { background: #312682; color: #fff; }
+.v1 .mock-appname { color: #14213D; }
+.v1 .mock-navitem { color: #0277BD; }
+.v1 .mock-navitem.active { background: #29B6F6; color: #fff; }
+.v1 .mock-body { background: #FFFFFF; }
+.v1 .mock-section-title { color: #5C6B7A; }
+.v1 .athlete-row { background: #F1F9FE; }
+.v1 .athlete-name { color: #14213D; }
+.v1 .badge-warning { background: #FEF3E0; color: #B45309; }
+.v1 .badge-success { background: #E8F5E9; color: #2E7D32; }
+.v1 .badge-danger { background: #FCEAEA; color: #B91C1C; }
+.v1 .stat-tile.success { background: #E8F5E9; color: #2E7D32; }
+.v1 .stat-tile.warning { background: #FEF3E0; color: #B45309; }
+.v1 .stat-tile.danger { background: #FCEAEA; color: #B91C1C; }
+.v1 .primary-btn { background: #0277BD; color: #FFFFFF; }
+.v1 .highlight-dot { background: #E6007C; }
+
+/* =====================================================================
+   VARIAZIONE 2 — "Familiare e Caldo" (warm & approachable)
+   Bianco leggermente caldo, azzurro più morbido/desaturato, angoli più
+   arrotondati, più respiro. Il registro più "accogliente da spogliatoio".
+   -----------------------------------------------------------------
+   surface:        #FFFDF9  (bianco caldo)
+   surface-alt:    #EFF7FC
+   primary:        #4FB8E8  (azzurro morbido)
+   primary-hover:  #2E9FD6
+   button-bg:      #14688F  (contrasto testo bianco ~6.2:1)
+   secondary/navy: #3A2E86  (variante calda del navy di brand)
+   tertiary/magenta:#E6007C
+   text-primary:   #2A2420  (quasi-nero caldo)
+   text-secondary: #746B62  (grigio caldo)
+   border:         #E7DFD2  (beige-grigio caldo)
+   success:        #2F7A3D su #EAF6EA (~4.7:1)
+   warning:        #B0570A su #FCF0DD (~4.5:1)
+   danger:         #BC2A2A su #FBEAEA
+   ===================================================================== */
+.v2 { background: #FFFDF9; border: 1px solid #E7DFD2; }
+.v2 .v-name { color: #2A2420; }
+.v2 .v-tag { background: #4FB8E8; color: #FFFFFF; }
+.v2 .variation-desc { color: #746B62; }
+.v2 .mock { border-color: #E7DFD2; background: #FFFDF9; border-radius: 16px; }
+.v2 .mock-nav { background: #EFF7FC; border-bottom: 1px solid #E7DFD2; }
+.v2 .mock-crest { background: #3A2E86; color: #fff; border-radius: 40%; }
+.v2 .mock-appname { color: #2A2420; }
+.v2 .mock-navitem { color: #14688F; border-radius: 999px; }
+.v2 .mock-navitem.active { background: #4FB8E8; color: #fff; border-radius: 999px; }
+.v2 .mock-body { background: #FFFDF9; }
+.v2 .mock-section-title { color: #746B62; }
+.v2 .athlete-row { background: #EFF7FC; border-radius: 14px; }
+.v2 .athlete-name { color: #2A2420; }
+.v2 .badge-warning { background: #FCF0DD; color: #B0570A; border-radius: 999px; }
+.v2 .badge-success { background: #EAF6EA; color: #2F7A3D; }
+.v2 .badge-danger { background: #FBEAEA; color: #BC2A2A; }
+.v2 .stat-tile.success { background: #EAF6EA; color: #2F7A3D; border-radius: 14px; }
+.v2 .stat-tile.warning { background: #FCF0DD; color: #B0570A; border-radius: 14px; }
+.v2 .stat-tile.danger { background: #FBEAEA; color: #BC2A2A; border-radius: 14px; }
+.v2 .primary-btn { background: #14688F; color: #FFFFFF; border-radius: 999px; }
+.v2 .highlight-dot { background: #E6007C; }
+
+/* =====================================================================
+   VARIAZIONE 3 — "Energico e Deciso" (bold energetic)
+   Azzurro molto saturo, navy usato in modo più assertivo come sfondo di
+   header/sezione secondaria, tipografia più pesante, meno arrotondato.
+   Resta comunque "strumento di lavoro", non poster da tifoseria.
+   -----------------------------------------------------------------
+   surface:        #FFFFFF
+   surface-alt:    #E4F5FD  (tinta azzurro più marcata)
+   primary:        #00A3E0  (azzurro molto saturo)
+   primary-hover:  #0086BD
+   button-bg:      #006DA6  (contrasto testo bianco ~5.6:1)
+   secondary/navy: #312682  (usato per header di sezione, badge deciso)
+   tertiary/magenta:#E6007C (singolo accento su stat tile)
+   text-primary:   #101820  (quasi nero, alto contrasto)
+   text-secondary: #46586B
+   border:         #BFE4F5
+   success:        #256029 su #DFF2E1 (~5.3:1)
+   warning:        #9A4A08 su #FCE9CE (~5.2:1)
+   danger:         #A81818 su #FBE3E3
+   ===================================================================== */
+.v3 { background: #FFFFFF; border: 1px solid #BFE4F5; }
+.v3 .v-name { color: #101820; font-weight: 900; }
+.v3 .v-tag { background: #312682; color: #FFFFFF; }
+.v3 .variation-desc { color: #46586B; }
+.v3 .mock { border-color: #BFE4F5; background: #FFFFFF; border-radius: 8px; }
+.v3 .mock-nav { background: #312682; border-bottom: none; }
+.v3 .mock-crest { background: #FFFFFF; color: #312682; font-weight: 900; }
+.v3 .mock-appname { color: #FFFFFF; font-weight: 900; letter-spacing: -0.01em; }
+.v3 .mock-navitem { color: #E4F5FD; }
+.v3 .mock-navitem.active { background: #00A3E0; color: #fff; }
+.v3 .mock-body { background: #FFFFFF; }
+.v3 .mock-section-title { color: #46586B; font-weight: 900; }
+.v3 .athlete-row { background: #E4F5FD; border-radius: 6px; }
+.v3 .athlete-name { color: #101820; font-weight: 700; }
+.v3 .badge-warning { background: #FCE9CE; color: #9A4A08; border-radius: 6px; }
+.v3 .badge-success { background: #DFF2E1; color: #256029; border-radius: 6px; }
+.v3 .badge-danger { background: #FBE3E3; color: #A81818; border-radius: 6px; }
+.v3 .stat-tile.success { background: #DFF2E1; color: #256029; border-radius: 6px; border-left: 4px solid #256029; }
+.v3 .stat-tile.warning { background: #FCE9CE; color: #9A4A08; border-radius: 6px; border-left: 4px solid #9A4A08; }
+.v3 .stat-tile.danger { background: #FBE3E3; color: #A81818; border-radius: 6px; border-left: 4px solid #E6007C; }
+.v3 .primary-btn { background: #006DA6; color: #FFFFFF; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.03em; font-size: 12.5px; }
+.v3 .highlight-dot { background: #E6007C; }
+
+/* =====================================================================
+   VARIAZIONE 4 — "Istituzionale Calmo" (calm institutional-lite)
+   Azzurro più smorzato, grigi neutri, navy usato come colore del testo
+   principale (non nero). Il registro più "quieto", da consultare senza
+   distrazioni — pensato per la Vista Dirigente / consiglio direttivo.
+   -----------------------------------------------------------------
+   surface:        #FFFFFF
+   surface-alt:    #F4F6F8  (grigio neutro, tinta azzurro minima)
+   primary:        #6FA8C7  (azzurro smorzato)
+   primary-hover:  #3F7A9E
+   button-bg:      #2C6690  (contrasto testo bianco ~6.2:1)
+   secondary/navy: #312682  (qui: colore del TESTO principale, non solo accento)
+   tertiary/magenta:#E6007C (accento minimo)
+   text-primary:   #312682  (navy come testo, contrasto su bianco ~12:1)
+   text-secondary: #5B5A73
+   border:         #DDE3E8
+   success:        #3D6B41 su #E7EEE7 (~4.6:1, desaturato)
+   warning:        #8A5A23 su #F2E9DC (~4.5:1, desaturato)
+   danger:         #8E3A3A su #F1E3E3 (desaturato, mai acceso)
+   ===================================================================== */
+.v4 { background: #FFFFFF; border: 1px solid #DDE3E8; }
+.v4 .v-name { color: #312682; }
+.v4 .v-tag { background: #F4F6F8; color: #312682; border: 1px solid #DDE3E8; }
+.v4 .variation-desc { color: #5B5A73; }
+.v4 .mock { border-color: #DDE3E8; background: #FFFFFF; border-radius: 8px; }
+.v4 .mock-nav { background: #F4F6F8; border-bottom: 1px solid #DDE3E8; }
+.v4 .mock-crest { background: #312682; color: #fff; }
+.v4 .mock-appname { color: #312682; }
+.v4 .mock-navitem { color: #5B5A73; }
+.v4 .mock-navitem.active { background: #FFFFFF; color: #312682; border: 1px solid #6FA8C7; }
+.v4 .mock-body { background: #FFFFFF; }
+.v4 .mock-section-title { color: #5B5A73; }
+.v4 .athlete-row { background: #F4F6F8; border-radius: 8px; }
+.v4 .athlete-name { color: #312682; }
+.v4 .badge-warning { background: #F2E9DC; color: #8A5A23; border-radius: 6px; }
+.v4 .badge-success { background: #E7EEE7; color: #3D6B41; border-radius: 6px; }
+.v4 .badge-danger { background: #F1E3E3; color: #8E3A3A; border-radius: 6px; }
+.v4 .stat-tile.success { background: #E7EEE7; color: #3D6B41; border-radius: 8px; }
+.v4 .stat-tile.warning { background: #F2E9DC; color: #8A5A23; border-radius: 8px; }
+.v4 .stat-tile.danger { background: #F1E3E3; color: #8E3A3A; border-radius: 8px; }
+.v4 .primary-btn { background: #2C6690; color: #FFFFFF; border-radius: 6px; }
+.v4 .highlight-dot { background: #E6007C; }
+
+/* =====================================================================
+   VARIAZIONE 5 — "Fresco e Minimale" (fresh minimal)
+   Il registro più silenzioso: azzurro usato quasi solo in accenti sottili
+   (bordi attivi, link, icone), non come fondo pieno. Molto bianco, molto
+   respiro, badge "outline" invece che pieni. Tipografia regular/leggera.
+   -----------------------------------------------------------------
+   surface:        #FFFFFF
+   surface-alt:    #FAFEFF  (tinta quasi impercettibile)
+   primary:        #3FA9E0  (usato per link/icone/bordi attivi)
+   primary-hover:  #1E8CC7
+   button-bg:      #146E9E  (contrasto testo bianco ~5.6:1)
+   secondary/navy: #312682  (minimo, solo dettaglio crest)
+   tertiary/magenta:#E6007C (un solo pallino, nessun'altra ricorrenza)
+   text-primary:   #1A1A1A
+   text-secondary: #6B7280
+   border:         #E5E9EC
+   success:        #2E7D32 (testo su bg bianco con bordo, non riempito)
+   warning:        #A15C09 (testo su bg bianco con bordo)
+   danger:         #B23B3B (testo su bg bianco con bordo)
+   ===================================================================== */
+.v5 { background: #FFFFFF; border: 1px solid #E5E9EC; }
+.v5 .v-name { color: #1A1A1A; font-weight: 700; }
+.v5 .v-tag { background: #FFFFFF; color: #3FA9E0; border: 1px solid #3FA9E0; }
+.v5 .variation-desc { color: #6B7280; }
+.v5 .mock { border-color: #E5E9EC; background: #FFFFFF; border-radius: 10px; }
+.v5 .mock-nav { background: #FFFFFF; border-bottom: 1px solid #E5E9EC; }
+.v5 .mock-crest { background: #FAFEFF; color: #312682; border: 1.5px solid #312682; }
+.v5 .mock-appname { color: #1A1A1A; font-weight: 700; }
+.v5 .mock-navitem { color: #6B7280; }
+.v5 .mock-navitem.active { color: #146E9E; border-bottom: 2px solid #3FA9E0; border-radius: 0; }
+.v5 .mock-body { background: #FFFFFF; }
+.v5 .mock-section-title { color: #6B7280; }
+.v5 .athlete-row { background: #FAFEFF; border: 1px solid #E5E9EC; }
+.v5 .athlete-name { color: #1A1A1A; }
+.v5 .badge-warning { background: #FFFFFF; color: #A15C09; border: 1px solid #A15C09; }
+.v5 .badge-success { background: #FFFFFF; color: #2E7D32; border: 1px solid #2E7D32; }
+.v5 .badge-danger { background: #FFFFFF; color: #B23B3B; border: 1px solid #B23B3B; }
+.v5 .stat-tile.success { background: #FAFEFF; color: #2E7D32; border: 1px solid #E5E9EC; border-top: 3px solid #2E7D32; }
+.v5 .stat-tile.warning { background: #FAFEFF; color: #A15C09; border: 1px solid #E5E9EC; border-top: 3px solid #A15C09; }
+.v5 .stat-tile.danger { background: #FAFEFF; color: #B23B3B; border: 1px solid #E5E9EC; border-top: 3px solid #B23B3B; }
+.v5 .primary-btn { background: #146E9E; color: #FFFFFF; border-radius: 8px; font-weight: 600; }
+.v5 .highlight-dot { background: #E6007C; }
+
+.highlight-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+</style>
+
+<div class="page-intro">
+  <h1>Società Manager — Esplorazione temi colore</h1>
+  <p>5 variazioni di registro sulla stessa base bianco + azzurro (colori sociali del Mogliano Volley). Navy #312682 e magenta #E6007C restano accenti riservati (logo/dettagli), mai sfondo dominante. Solo light mode — nessuna variante dark in ambito.</p>
+  <p>Ogni scheda: token semantici con hex, poi uno snippet UI reale (nav con crest, badge non bloccante "Certificato scaduto", righe presenze con checkbox, tile aggregati per Vista Dirigente, pulsante primario).</p>
+</div>
+
+<div class="variations">
+
+  <!-- ============================= VARIAZIONE 1 ============================= -->
+  <section class="variation-card v1">
+    <div class="variation-head">
+      <span class="v-name">1 · Pulito e Sportivo</span>
+      <span class="v-tag">crisp / clean</span>
+    </div>
+    <p class="variation-desc">Azzurro vivo, tanto bianco, tipografia decisa ma ariosa — il registro più "app moderna", energico ma silenzioso. Nessuna nota calda o istituzionale, solo pulizia.</p>
+
+    <div class="tokens">
+      <span class="chip"><span class="swatch" style="background:#FFFFFF"></span><span class="label">surface</span>#FFFFFF</span>
+      <span class="chip"><span class="swatch" style="background:#F1F9FE"></span><span class="label">surface-alt</span>#F1F9FE</span>
+      <span class="chip"><span class="swatch" style="background:#29B6F6"></span><span class="label">primary</span>#29B6F6</span>
+      <span class="chip"><span class="swatch" style="background:#039BE5"></span><span class="label">primary-hover</span>#039BE5</span>
+      <span class="chip"><span class="swatch" style="background:#312682"></span><span class="label">secondary/navy</span>#312682</span>
+      <span class="chip"><span class="swatch" style="background:#E6007C"></span><span class="label">tertiary/magenta</span>#E6007C</span>
+      <span class="chip"><span class="swatch" style="background:#14213D"></span><span class="label">text-primary</span>#14213D</span>
+      <span class="chip"><span class="swatch" style="background:#5C6B7A"></span><span class="label">text-secondary</span>#5C6B7A</span>
+      <span class="chip"><span class="swatch" style="background:#D8ECF8"></span><span class="label">border</span>#D8ECF8</span>
+      <span class="chip"><span class="swatch" style="background:#2E7D32"></span><span class="label">success</span>#2E7D32</span>
+      <span class="chip"><span class="swatch" style="background:#B45309"></span><span class="label">warning</span>#B45309</span>
+      <span class="chip"><span class="swatch" style="background:#B91C1C"></span><span class="label">danger</span>#B91C1C</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-nav">
+        <div class="mock-crest">🏐</div>
+        <div class="mock-appname">Società Manager</div>
+        <div class="mock-navitem active">Presenze</div>
+        <div class="mock-navitem">Certificati</div>
+        <div class="mock-navitem">Orari</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-section-title">Allenamento Under 16 · giovedì 20:00</div>
+
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+
+        <div class="stat-tiles">
+          <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+          <div class="stat-tile warning"><span class="num">3</span><span class="lbl">in scadenza</span></div>
+          <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+        </div>
+
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= VARIAZIONE 2 ============================= -->
+  <section class="variation-card v2">
+    <div class="variation-head">
+      <span class="v-name">2 · Familiare e Caldo</span>
+      <span class="v-tag">warm / approachable</span>
+    </div>
+    <p class="variation-desc">Bianco leggermente caldo, azzurro più morbido, angoli arrotondati, più respiro tra gli elementi — il registro più "accogliente da spogliatoio", pensato per genitori che aprono l'app la sera.</p>
+
+    <div class="tokens">
+      <span class="chip"><span class="swatch" style="background:#FFFDF9"></span><span class="label">surface</span>#FFFDF9</span>
+      <span class="chip"><span class="swatch" style="background:#EFF7FC"></span><span class="label">surface-alt</span>#EFF7FC</span>
+      <span class="chip"><span class="swatch" style="background:#4FB8E8"></span><span class="label">primary</span>#4FB8E8</span>
+      <span class="chip"><span class="swatch" style="background:#2E9FD6"></span><span class="label">primary-hover</span>#2E9FD6</span>
+      <span class="chip"><span class="swatch" style="background:#3A2E86"></span><span class="label">secondary/navy</span>#3A2E86</span>
+      <span class="chip"><span class="swatch" style="background:#E6007C"></span><span class="label">tertiary/magenta</span>#E6007C</span>
+      <span class="chip"><span class="swatch" style="background:#2A2420"></span><span class="label">text-primary</span>#2A2420</span>
+      <span class="chip"><span class="swatch" style="background:#746B62"></span><span class="label">text-secondary</span>#746B62</span>
+      <span class="chip"><span class="swatch" style="background:#E7DFD2"></span><span class="label">border</span>#E7DFD2</span>
+      <span class="chip"><span class="swatch" style="background:#2F7A3D"></span><span class="label">success</span>#2F7A3D</span>
+      <span class="chip"><span class="swatch" style="background:#B0570A"></span><span class="label">warning</span>#B0570A</span>
+      <span class="chip"><span class="swatch" style="background:#BC2A2A"></span><span class="label">danger</span>#BC2A2A</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-nav">
+        <div class="mock-crest">🏐</div>
+        <div class="mock-appname">Società Manager</div>
+        <div class="mock-navitem active">Presenze</div>
+        <div class="mock-navitem">Certificati</div>
+        <div class="mock-navitem">Orari</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-section-title">Allenamento Under 16 · giovedì 20:00</div>
+
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+
+        <div class="stat-tiles">
+          <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+          <div class="stat-tile warning"><span class="num">3</span><span class="lbl">in scadenza</span></div>
+          <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+        </div>
+
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= VARIAZIONE 3 ============================= -->
+  <section class="variation-card v3">
+    <div class="variation-head">
+      <span class="v-name">3 · Energico e Deciso</span>
+      <span class="v-tag">bold / energetic</span>
+    </div>
+    <p class="variation-desc">Azzurro molto saturo, navy usato in modo assertivo come sfondo dell'header, tipografia più pesante e squadrata. Il registro con più carattere — resta però uno strumento di lavoro, non un poster da tifoseria.</p>
+
+    <div class="tokens">
+      <span class="chip"><span class="swatch" style="background:#FFFFFF"></span><span class="label">surface</span>#FFFFFF</span>
+      <span class="chip"><span class="swatch" style="background:#E4F5FD"></span><span class="label">surface-alt</span>#E4F5FD</span>
+      <span class="chip"><span class="swatch" style="background:#00A3E0"></span><span class="label">primary</span>#00A3E0</span>
+      <span class="chip"><span class="swatch" style="background:#0086BD"></span><span class="label">primary-hover</span>#0086BD</span>
+      <span class="chip"><span class="swatch" style="background:#312682"></span><span class="label">secondary/navy</span>#312682</span>
+      <span class="chip"><span class="swatch" style="background:#E6007C"></span><span class="label">tertiary/magenta</span>#E6007C</span>
+      <span class="chip"><span class="swatch" style="background:#101820"></span><span class="label">text-primary</span>#101820</span>
+      <span class="chip"><span class="swatch" style="background:#46586B"></span><span class="label">text-secondary</span>#46586B</span>
+      <span class="chip"><span class="swatch" style="background:#BFE4F5"></span><span class="label">border</span>#BFE4F5</span>
+      <span class="chip"><span class="swatch" style="background:#256029"></span><span class="label">success</span>#256029</span>
+      <span class="chip"><span class="swatch" style="background:#9A4A08"></span><span class="label">warning</span>#9A4A08</span>
+      <span class="chip"><span class="swatch" style="background:#A81818"></span><span class="label">danger</span>#A81818</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-nav">
+        <div class="mock-crest">🏐</div>
+        <div class="mock-appname">Società Manager</div>
+        <div class="mock-navitem active">Presenze</div>
+        <div class="mock-navitem">Certificati</div>
+        <div class="mock-navitem">Orari</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-section-title">Allenamento Under 16 · giovedì 20:00</div>
+
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+
+        <div class="stat-tiles">
+          <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+          <div class="stat-tile warning"><span class="num">3</span><span class="lbl">in scadenza</span></div>
+          <div class="stat-tile danger"><span class="highlight-dot"></span><span class="num" style="display:inline">1</span><span class="lbl">scaduto</span></div>
+        </div>
+
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= VARIAZIONE 4 ============================= -->
+  <section class="variation-card v4">
+    <div class="variation-head">
+      <span class="v-name">4 · Istituzionale Calmo</span>
+      <span class="v-tag">calm / institutional-lite</span>
+    </div>
+    <p class="variation-desc">Azzurro smorzato, grigi neutri, navy come colore del testo principale invece del quasi-nero. Il registro più quieto e "da consiglio direttivo" — adatto a una futura Vista Dirigente consultata senza fretta.</p>
+
+    <div class="tokens">
+      <span class="chip"><span class="swatch" style="background:#FFFFFF"></span><span class="label">surface</span>#FFFFFF</span>
+      <span class="chip"><span class="swatch" style="background:#F4F6F8"></span><span class="label">surface-alt</span>#F4F6F8</span>
+      <span class="chip"><span class="swatch" style="background:#6FA8C7"></span><span class="label">primary</span>#6FA8C7</span>
+      <span class="chip"><span class="swatch" style="background:#3F7A9E"></span><span class="label">primary-hover</span>#3F7A9E</span>
+      <span class="chip"><span class="swatch" style="background:#312682"></span><span class="label">secondary/navy (= text)</span>#312682</span>
+      <span class="chip"><span class="swatch" style="background:#E6007C"></span><span class="label">tertiary/magenta</span>#E6007C</span>
+      <span class="chip"><span class="swatch" style="background:#312682"></span><span class="label">text-primary</span>#312682</span>
+      <span class="chip"><span class="swatch" style="background:#5B5A73"></span><span class="label">text-secondary</span>#5B5A73</span>
+      <span class="chip"><span class="swatch" style="background:#DDE3E8"></span><span class="label">border</span>#DDE3E8</span>
+      <span class="chip"><span class="swatch" style="background:#3D6B41"></span><span class="label">success</span>#3D6B41</span>
+      <span class="chip"><span class="swatch" style="background:#8A5A23"></span><span class="label">warning</span>#8A5A23</span>
+      <span class="chip"><span class="swatch" style="background:#8E3A3A"></span><span class="label">danger</span>#8E3A3A</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-nav">
+        <div class="mock-crest">🏐</div>
+        <div class="mock-appname">Società Manager</div>
+        <div class="mock-navitem active">Presenze</div>
+        <div class="mock-navitem">Certificati</div>
+        <div class="mock-navitem">Orari</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-section-title">Allenamento Under 16 · giovedì 20:00</div>
+
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+
+        <div class="stat-tiles">
+          <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+          <div class="stat-tile warning"><span class="num">3</span><span class="lbl">in scadenza</span></div>
+          <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+        </div>
+
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= VARIAZIONE 5 ============================= -->
+  <section class="variation-card v5">
+    <div class="variation-head">
+      <span class="v-name">5 · Fresco e Minimale</span>
+      <span class="v-tag">fresh / minimal</span>
+    </div>
+    <p class="variation-desc">Azzurro usato quasi solo come accento sottile (link, bordi attivi, contorni badge), non come sfondo pieno. Moltissimo bianco, tipografia regular, badge a contorno. Il registro più silenzioso di tutti.</p>
+
+    <div class="tokens">
+      <span class="chip"><span class="swatch" style="background:#FFFFFF"></span><span class="label">surface</span>#FFFFFF</span>
+      <span class="chip"><span class="swatch" style="background:#FAFEFF"></span><span class="label">surface-alt</span>#FAFEFF</span>
+      <span class="chip"><span class="swatch" style="background:#3FA9E0"></span><span class="label">primary</span>#3FA9E0</span>
+      <span class="chip"><span class="swatch" style="background:#1E8CC7"></span><span class="label">primary-hover</span>#1E8CC7</span>
+      <span class="chip"><span class="swatch" style="background:#312682"></span><span class="label">secondary/navy</span>#312682</span>
+      <span class="chip"><span class="swatch" style="background:#E6007C"></span><span class="label">tertiary/magenta</span>#E6007C</span>
+      <span class="chip"><span class="swatch" style="background:#1A1A1A"></span><span class="label">text-primary</span>#1A1A1A</span>
+      <span class="chip"><span class="swatch" style="background:#6B7280"></span><span class="label">text-secondary</span>#6B7280</span>
+      <span class="chip"><span class="swatch" style="background:#E5E9EC"></span><span class="label">border</span>#E5E9EC</span>
+      <span class="chip"><span class="swatch" style="background:#2E7D32"></span><span class="label">success</span>#2E7D32</span>
+      <span class="chip"><span class="swatch" style="background:#A15C09"></span><span class="label">warning</span>#A15C09</span>
+      <span class="chip"><span class="swatch" style="background:#B23B3B"></span><span class="label">danger</span>#B23B3B</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-nav">
+        <div class="mock-crest">🏐</div>
+        <div class="mock-appname">Società Manager</div>
+        <div class="mock-navitem active">Presenze</div>
+        <div class="mock-navitem">Certificati</div>
+        <div class="mock-navitem">Orari</div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-section-title">Allenamento Under 16 · giovedì 20:00</div>
+
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Giulia Bortolato</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox" checked>
+          <span class="athlete-name">Sofia Marchetto</span>
+          <span class="badge badge-warning">Certificato scaduto</span>
+        </div>
+        <div class="athlete-row">
+          <input type="checkbox">
+          <span class="athlete-name">Anna Zanetti</span>
+        </div>
+
+        <div class="stat-tiles">
+          <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+          <div class="stat-tile warning"><span class="num">3</span><span class="lbl">in scadenza</span></div>
+          <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+        </div>
+
+        <button class="primary-btn">Salva presenze</button>
+      </div>
+    </div>
+  </section>
+
+</div>

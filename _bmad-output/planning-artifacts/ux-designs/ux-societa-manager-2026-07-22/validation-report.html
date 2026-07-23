@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: Mogliano Volley — Società Manager</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+  .dim-judgment ul { margin: 0 0 10px; padding-left: 20px; }
+  .dim-judgment li { margin-bottom: 4px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>Mogliano Volley — Società Manager — UX Design Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-societa-manager-2026-07-22/</div>
+      </div>
+    </header>
+
+    <div class="synthesis">
+      <p>The spine pair is disciplined on inheritance — UJ text is verbatim from the PRD, glossary terms and FR citations resolve cleanly, and the <em>Pattern di Stato</em> table's claims about <code>StatoCertificato</code>/<code>dataFineValidita</code> were checked against the live <code>prisma/schema.prisma</code> and are accurate. Canonical section shape and order are correct in both files. However, one <strong>critical</strong>, self-contradicting accessibility defect sits in the nav-bar's active-state color combination, and a cluster of <strong>high/medium</strong> coverage gaps (no focus state anywhere, no generic technical-error state for the write-heavy flows, an orphaned logo asset, thin behavioral rows for two DESIGN.md components) mean a downstream builder will hit real, unresolved questions on the very first pages built (nav bar, first save action). Fixable without restructuring either document — this is a punch list, not a redo.</p>
+      <p>The dedicated accessibility pass confirms and deepens this picture: it independently found two more <strong>high</strong>-severity gaps not caught by the rubric walk — no numeric touch-target minimum for the mobile-first, tired-parent-at-night audience, and no accessible-error-handling guidance for the form-heavy, sensitive-data flows (medical certificate uploads, bulk imports) — plus three medium and two low findings, including one contrast-number correction. Its touch-target finding describes the same underlying gap as the rubric's own (lower-severity) touch-target finding and the two have been merged below into a single entry governed by the higher severity.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">1. Flow coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">2. Token completeness</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate (one critical defect)</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">3. Component coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">4. State coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">5. Visual reference coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin (one real orphan)</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">6. Bloat &amp; overspecification</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">7. Inheritance discipline</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">8. Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong (one judgment call)</div>
+      </div>
+    </div>
+
+    <!-- 1. Flow coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>1. Flow coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Checked: PRD §2.2 lists UJ-1/UJ-2/UJ-3 verbatim; EXPERIENCE.md's Key Flows carries all three plus a new UJ-4 (Roberto/Vista Dirigente, transparently labeled as tied to not-yet-built Story 5.1). All four flows have a named protagonist and numbered steps with a marked Climax.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">UJ-2 has no failure path</h3>
+              <span class="finding-location">EXPERIENCE.md, Key Flows, ~lines 162–171</span>
+            </header>
+            <div class="finding-note">Unlike UJ-1 (explicit "Nota di fallimento") and UJ-4 (explicit "nessuno stato di fallimento narrato... per una ragione dichiarata"), UJ-2 (Marco) has no failure branch at all.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a one-line failure branch (e.g., conflicting/duplicate save for the same past slot) or an explicit justification matching UJ-4's pattern.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">UJ-3 (Dirigente import) has no failure path</h3>
+              <span class="finding-location">EXPERIENCE.md, Key Flows, ~lines 173–182</span>
+            </header>
+            <div class="finding-note">No failure path is narrated despite bulk import being the most error-prone operation in the system (malformed file, Codice Fiscale collisions).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a failure branch or explicit justification.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Scoping decision for Segreteria/Admin/Atleta flows is undocumented in the spine pair</h3>
+              <span class="finding-location">.memlog.md (not in EXPERIENCE.md)</span>
+            </header>
+            <div class="finding-note">The decision that Segreteria/Admin/Atleta get no dedicated Key Flow narrative exists only in <code>.memlog.md</code> ("Segreteria/Admin/Atleta trattati come flussi diretti senza journey narrata dedicata"), not in EXPERIENCE.md itself. A consumer reading only the spine pair can't tell this is deliberate scope, not an oversight.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One sentence at the top of Key Flows stating the scoping decision.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">UJ-4 is not sourced from the PRD's UJ list</h3>
+              <span class="finding-location">EXPERIENCE.md, Key Flows</span>
+            </header>
+            <div class="finding-note">UJ-4 is coined during UX discovery, not present in the PRD's UJ-1..UJ-3 list — fine since it's transparently marked as new and tied to Story 5.1, but worth noting for anyone doing strict source-verbatim checks.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None required; disclosure is already adequate.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 2. Token completeness -->
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>2. Token completeness</h2>
+          <span class="verdict-pill verdict-adequate">adequate (one critical defect)</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Checked: all 16 <code>colors</code>, 8 <code>typography</code>, 2 <code>rounded</code>, 7 <code>spacing</code>, and 5 <code>components</code> frontmatter tokens have hex/values and every <code>{path.to.token}</code> reference in prose resolves to a defined key, with one exception noted below. Contrast ratios are stated numerically for <code>button-bg</code> (~4.5:1), <code>success</code> (~5.3:1), <code>warning</code> (~5.2:1), plus a blanket closing claim that every listed pair meets AA.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Nav-bar active-item color combination fails contrast, contradicting the document's own stated rationale</h3>
+              <span class="finding-location">DESIGN.md → Componenti → Barra di navigazione; Colori</span>
+            </header>
+            <div class="finding-note"><code>nav-bar</code>'s active item uses <code>{colors.primary}</code> (<code>#00A3E0</code>) as background with white text ("voce attiva con sfondo <code>{colors.primary}</code> e testo bianco"). Computed contrast ratio ≈ <strong>2.87:1</strong> — fails both the 4.5:1 normal-text threshold and the 3:1 large-text/UI threshold. This directly contradicts Colori's own rationale, which created <code>{colors.button-bg}</code> specifically because <code>{colors.primary}</code> alone "non garantirebbe altrettanto comodamente... testo bianco piccolo" — the same problem was solved for buttons but reintroduced here with the identical failing combination. Traced to <code>.working/color-themes-1.html</code> (<code>.v3 .mock-navitem.active { background: #00A3E0; color: #fff; }</code>), where — unlike the adjacent button-bg line, annotated "contrasto testo bianco ~5.6:1" — no contrast check was ever run on this pairing before it was carried into DESIGN.md unchanged.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give the active nav item <code>{colors.button-bg}</code> (or an equally dark accent) as background, or use a non-fill treatment (underline/left-border) instead of white-on-primary.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">danger/danger-bg pair has no stated contrast number</h3>
+              <span class="finding-location">DESIGN.md → Colori</span>
+            </header>
+            <div class="finding-note"><code>{colors.danger}</code>/<code>{colors.danger-bg}</code> is the only semantic pair in Colori without its own stated contrast number (success and warning both get one). Covered only by the blanket closing statement.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add the number for consistency.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">rounded.full referenced as a token-style path but not defined in frontmatter</h3>
+              <span class="finding-location">DESIGN.md → Forme</span>
+            </header>
+            <div class="finding-note"><code>rounded.full</code> is referenced in Forme ("Nessuna forma a pillola (<code>rounded.full</code>)") as a <code>{path.to.token}</code>-style reference to a token that doesn't exist in the frontmatter <code>rounded</code> object. Intent (documenting deliberate absence) is clear, but the backticked-token syntax implies it should resolve.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Drop the token-reference formatting for this mention.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. Component coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>3. Component coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Checked: every component in DESIGN.md's frontmatter (<code>nav-bar</code>, <code>button-primary</code>, <code>badge</code>, <code>stat-tile</code>, <code>attendance-row</code>) has a matching prose row in DESIGN.md → Componenti. Every row in EXPERIENCE.md → Pattern dei Componenti maps to a DESIGN.md component by name or clear parenthetical.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Nav-item link text has no assigned typography</h3>
+              <span class="finding-location">DESIGN.md → Componenti → Barra di navigazione; frontmatter components.nav-bar</span>
+            </header>
+            <div class="finding-note">DESIGN.md specifies <code>{typography.nav-title}</code> only for the brand/app-name text, not for the clickable items themselves ("Il mio orario", "Presenze", etc.), and no <code>nav-item</code> token exists in the frontmatter <code>components.nav-bar</code> object either.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an explicit typography assignment for nav items.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">nav-bar has no Pattern dei Componenti row</h3>
+              <span class="finding-location">EXPERIENCE.md → Pattern dei Componenti</span>
+            </header>
+            <div class="finding-note"><code>nav-bar</code> (a DESIGN.md component) has no row in EXPERIENCE.md's Pattern dei Componenti table — its behavior (role-based item visibility, single-level nav, no drawer) is described instead under Architettura dell'Informazione. A consumer scanning Component Patterns specifically will miss it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a nav-bar row, or a cross-reference from that table.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">button-primary has no dedicated Component Patterns row</h3>
+              <span class="finding-location">EXPERIENCE.md → Pattern dei Componenti</span>
+            </header>
+            <div class="finding-note">Its one behavioral rule ("azione esplicita a fine lista") is only implied inside the <code>attendance-row</code> row and in Primitive di Interazione.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short button-primary row.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Two EXPERIENCE.md component patterns have no DESIGN.md visual-spec counterpart</h3>
+              <span class="finding-location">EXPERIENCE.md → Pattern dei Componenti ("Wizard bozza-revisione-conferma", "Grafico progresso multi-serie")</span>
+            </header>
+            <div class="finding-note">Both are explicitly <code>[NOTA UX APERTA]</code> and tied to not-yet-built Stories 6.3/6.2, so the gap is disclosed, not silent — flagged so it isn't forgotten when those stories start.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None required now; revisit when Stories 6.2/6.3 start.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Component naming form differs between files</h3>
+              <span class="finding-location">DESIGN.md (kebab-case keys) vs. EXPERIENCE.md (descriptive labels)</span>
+            </header>
+            <div class="finding-note">DESIGN.md's kebab-case keys (<code>badge</code>, <code>stat-tile</code>, <code>attendance-row</code>) vs. EXPERIENCE.md's descriptive labels ("Alert non bloccante (badge stato certificato)", "Cluster stat-tile aggregato", "Riga presenza con checkbox"). Human-traceable via the parenthetical/naming overlap, but not verbatim-identical, so a literal string match across files would miss the pairing.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None required; cosmetic only.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. State coverage -->
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>4. State coverage</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Checked every IA surface against empty / cold-load / focus / error / offline / permission-denied. Certificate-status coverage (Pattern di Stato) is thorough and correctly derived from the real <code>StatoCertificato</code> enum. Empty-state coverage (Stati vuoti) covers 4 surfaces reasonably. Offline is correctly and deliberately out of scope (NFR3).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No focus-visible state is specified anywhere</h3>
+              <span class="finding-location">EXPERIENCE.md → Soglia di Accessibilità</span>
+            </header>
+            <div class="finding-note">No color/outline token, no behavioral rule, despite Soglia di Accessibilità committing to WCAG AA sitewide — which requires a visible keyboard-focus indicator (SC 2.4.7) regardless of this being a "touch/click-first, not keyboard-first" product.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a focus token (ring/outline color) and a one-line rule.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No generic technical-error state for write-heavy flows</h3>
+              <span class="finding-location">EXPERIENCE.md → Pattern di Stato (absence, across registrazione presenze, upload certificato, import atlete)</span>
+            </header>
+            <div class="finding-note">No generic technical-error state (network/server failure, as opposed to a data-quality issue) is defined for any of the write-heavy flows. The only narrated failure (UJ-1) is a Segreteria data-quality catch, not a save/upload failure.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one Pattern di Stato row for save/upload failure + retry.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Accessibility Floor's touch-target rule is qualitative only, no concrete minimum</h3>
+              <span class="finding-location">EXPERIENCE.md → Soglia di Accessibilità ("Target di tocco dimensionati per l'uso mobile-first")</span>
+            </header>
+            <div class="finding-note">Unlike comparable spines (44pt/48dp), the rule states no concrete minimum. <em>Note: the accessibility reviewer independently flagged this same underlying gap as <strong>high</strong> (see Accessibility review section below) — the two are the same defect at different assigned severities; the combined severity tally in validation-report.md treats them as one finding governed by the higher (high) severity.</em></div>
+            <div class="finding-fix"><strong>Fix:</strong> Commit to a number.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No cold-load/loading-skeleton state defined for any surface</h3>
+              <span class="finding-location">EXPERIENCE.md → Pattern di Stato (absence, e.g. /mio-orario, /presenze)</span>
+            </header>
+            <div class="finding-note">Lower stakes given the small dataset (~200 atlete, always-short lists), but currently undecided for every surface at once.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Decide and document a minimal loading treatment, even if "instant, no skeleton needed."</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">/non-autorizzato route has no state/content spec</h3>
+              <span class="finding-location">EXPERIENCE.md → Architettura dell'Informazione (IA route table)</span>
+            </header>
+            <div class="finding-note">Named as a route in the IA table but has no corresponding state/content spec (what it says, what if anything the user can do next).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short content spec for the route.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 5. Visual reference coverage -->
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>5. Visual reference coverage</h2>
+          <span class="verdict-pill verdict-thin">thin (one real orphan)</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Files present: <code>imports/logo-mogliano-volley.png</code>, <code>.working/color-themes-1.html</code> (no <code>mockups/</code>/<code>wireframes/</code> folders yet — expected, key-screen mocks arrive in a later Finalize step, not a finding).</p>
+            <p><em>Not a finding:</em> no explicit "spines win on conflict" statement exists, but none is needed yet since there are no mockups to conflict with — DESIGN.md's own tokens are already the source of truth.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Logo asset is never referenced by path or placement in either spine file</h3>
+              <span class="finding-location">imports/logo-mogliano-volley.png; DESIGN.md → Componenti → Barra di navigazione</span>
+            </header>
+            <div class="finding-note"><code>imports/logo-mogliano-volley.png</code> is never referenced by path or named as an asset in either DESIGN.md or EXPERIENCE.md, even though <code>reconcile-logo-mogliano-volley.md</code> explicitly confirms it as "confermata come asset da mostrare nell'app (probabile posizione: nav-bar)" and its colors were sampled directly into the palette. DESIGN.md's nav-bar component spec describes only text (<code>{typography.nav-title}</code>) with no mention of the crest image — a builder has no instruction to place the actual logo anywhere.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a line to the nav-bar entry placing the logo asset (or explicitly state it's deferred until Story 7.2's logo-config feature is used).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">color-themes-1.html referenced by description only, no path</h3>
+              <span class="finding-location">DESIGN.md → Layout e Spaziatura; EXPERIENCE.md → Responsive &amp; Piattaforma</span>
+            </header>
+            <div class="finding-note"><code>.working/color-themes-1.html</code> is referenced twice by description only ("il mockup di esplorazione colore") with no path/link, unlike the linking convention shown in the reference examples ("→ Composition reference: <code>mockups/today.html</code>").</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add the relative path on first mention in each file.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 6. Bloat & overspecification -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>6. Bloat &amp; overspecification</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>No material bloat. DESIGN.md's editorial voice (discovery narrative, discarded variants) is proportionate and matches the editorial-example shape; hex/px restatement in prose mirrors the reference examples' own pattern rather than padding. EXPERIENCE.md prose stays clinical/behavioral throughout, as required. One low-grade redundancy exists (the imocovolley.it rejection is restated three times) — logged under Shape fit (§8) rather than repeated here.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+        </div>
+      </details>
+    </section>
+
+    <!-- 7. Inheritance discipline -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>7. Inheritance discipline</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <ul>
+              <li>UJ-1/UJ-2/UJ-3 verified verbatim-identical to PRD §2.2, character for character.</li>
+              <li>Glossary terms (Anno Agonistico, Gruppo, Slot, Certificato Medico, Codice Fiscale, Palestra, Campo, Iscrizione) used identically to PRD §3 throughout both spines.</li>
+              <li>~20 of 32 FR citations spot-checked against PRD numbering; all resolve correctly, including the less obvious ones (FR-30 addition, FR-31/32 Epic 7 addendum).</li>
+              <li><code>StatoCertificato</code> enum values (<code>IN_ATTESA</code>, <code>CONFERMATO</code>) and the <code>dataFineValidita</code> field name, cited in EXPERIENCE.md's Pattern di Stato, were checked against the live <code>prisma/schema.prisma</code> and match exactly — a real code-level cross-reference that resolves cleanly, not just a planning-doc citation.</li>
+              <li>EXPERIENCE.md's <code>sources</code> frontmatter resolves to all three listed files. DESIGN.md carries no <code>sources</code> field, consistent with both reference DESIGN.md examples (not part of that file's contract).</li>
+              <li>Component-name form mismatch and the UJ-4 sourcing note are the only frictions found; both logged under Flow coverage (§1) and Component coverage (§3) rather than repeated here.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="findings-list">
+        </div>
+      </details>
+    </section>
+
+    <!-- 8. Shape fit -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>8. Shape fit</h2>
+          <span class="verdict-pill verdict-strong">strong (one judgment call)</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <ul>
+              <li>DESIGN.md's 8 sections map 1:1 in canonical order: Marchio e Stile → Colori → Tipografia → Layout e Spaziatura → Elevazione e Profondità → Forme → Componenti → Cose da fare e da evitare.</li>
+              <li>EXPERIENCE.md's 8 required sections plus the correctly-triggered Responsive &amp; Piattaforma are present in canonical order: Fondamenta, Architettura dell'Informazione, Voce e Tono, Pattern dei Componenti, Pattern di Stato, Primitive di Interazione, Soglia di Accessibilità, Responsive &amp; Piattaforma, Key Flows.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No "Inspiration &amp; Anti-patterns" section; imocovolley.it rejection restated three times instead</h3>
+              <span class="finding-location">DESIGN.md → Marchio e Stile; → Cose da fare e da evitare; EXPERIENCE.md → Voce e Tono</span>
+            </header>
+            <div class="finding-note">Judgment: the omission itself is defensible — there's exactly one rejected reference and zero "lifted-from" positive references, versus 3+ substantive bullets each in the reference examples that earned the section. But the same rejection is independently restated three separate times with no single canonical home, rather than stated once and cross-referenced.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either add a minimal 2–3 line Inspiration &amp; Anti-patterns section consolidating the imocovolley.it call, or keep one canonical mention (recommend DESIGN.md → Marchio e Stile, since it's the register decision) and have the other two spots cross-reference it instead of re-narrating it.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- Accessibility reviewer section -->
+    <section class="reviewer-section">
+      <details open>
+        <summary>
+          <h2>Accessibility review</h2>
+          <span class="reviewer-source">review-accessibility.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Ad-hoc review, accessibility focus, for the DESIGN.md + EXPERIENCE.md pair. Declared baseline: WCAG AA as a guiding constraint, not a formal certified audit. Closed discovery decisions (system-font, light mode only, minimal motion, uppercase button text) are not reopened — only the accessibility consequences of those decisions are checked. Severity summary from the source review: critical 0, high 2, medium 3, low 2 (7 findings total; the touch-target finding below is merged with a rubric finding in the combined tally under State coverage §4).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Declared success/success-bg contrast ratio is imprecise (understated)</h3>
+              <span class="finding-location">DESIGN.md → Colori → {colors.success} on {colors.success-bg} (#256029 on #DFF2E1), "Contrasto verificato ~5.3:1"</span>
+            </header>
+            <div class="finding-note">Recomputing WCAG relative luminance for #256029/#DFF2E1 gives ≈6.4:1, not ~5.3:1. Not a safety issue (the real value is higher than the AA threshold, not lower), but it is an inaccuracy in a number stated as "verified" — it undermines trust in the other listed figures (e.g. warning ~5.2:1, which recomputes correctly, confirming the method isn't systematically wrong, just that this one number wasn't carefully rechecked).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Recompute the success/success-bg pair and correct the figure (or replace point values with thresholds like "≥5:1" to avoid false precision), before a future contributor blindly trusts an unverified number for a new color pair.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">"Never color/icon alone" rule is not codified at the stat-tile component level</h3>
+              <span class="finding-location">DESIGN.md → Componenti → stat-tile; EXPERIENCE.md → Soglia di Accessibilità</span>
+            </header>
+            <div class="finding-note">The hard rule "every alert state... must remain understandable without color alone" (EXPERIENCE.md, Soglia di Accessibilità) is textually scoped only to the "badge certificato". It is not repeated in the DESIGN.md <code>stat-tile</code> component definition, nor does it appear as an entry in the "Cose da fare e da evitare" table. stat-tile distinguishes three states (in regola/in scadenza/scaduto) via background + colored border; the textual category label is described in prose but not imposed as a non-negotiable requirement of the component — a dev could implement the tile with color + number only, with no status label, while remaining "faithful" to the spec as written.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an entry to DESIGN.md's "Cose da fare e da evitare" table requiring the textual status label (in regola/in scadenza/scaduto) always present alongside color in the stat-tile; extend EXPERIENCE.md's rule from "badge certificato" to "every component using semantic color (badge, stat-tile)".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No numeric minimum for touch targets, qualitative language only</h3>
+              <span class="finding-location">EXPERIENCE.md → Primitive di Interazione ("Target di tocco generosi"); → Soglia di Accessibilità ("Target di tocco dimensionati per l'uso mobile-first")</span>
+            </header>
+            <div class="finding-note">Neither document specifies a concrete minimum size (e.g. 44×44px, or 24×24px per WCAG 2.2 SC 2.5.8 "Target Size Minimum", AA) for checkbox di presenza, righe elenco, pulsanti primari — language stays entirely open to implementation interpretation ("generosi"/"dimensionati per l'uso mobile-first"). This matters because the two canonical Key Flows (UJ-1, UJ-2) both happen on a phone, in the evening, for an explicitly non-power-user audience (parents, tired coaches after training) — an undersized touch target in a list of 15–25 atlete produces real, repeated mis-taps (checking the wrong row), not just an aesthetic gap. <em>Note: the rubric walker independently flagged this same underlying gap as <strong>medium</strong> under State coverage (§4) — the two are the same defect at different assigned severities; the combined severity tally in validation-report.md treats them as one finding governed by the higher (high) severity.</em></div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an explicit numeric minimum in EXPERIENCE.md (Primitive di Interazione or Soglia di Accessibilità), e.g.: "area di tocco minima 44×44px per checkbox/riga/pulsante primario su viewport mobile, coerente con WCAG 2.5.8 e le linee guida delle piattaforme mobile."</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Uppercase button CSS mechanism is correct, but no explicit ban on hardcoded uppercase text</h3>
+              <span class="finding-location">DESIGN.md → frontmatter components.button-primary (text-transform: uppercase); → Componenti → pulsante primario</span>
+            </header>
+            <div class="finding-note">The token correctly specifies <code>text-transform: uppercase</code> as a CSS property applied to a normal-case source string — the right approach for accessibility (screen readers/braille displays read the underlying string, not the visual rendering). However, neither DESIGN.md nor EXPERIENCE.md contains an explicit instruction forbidding a dev/copywriter from writing the button text already in uppercase (e.g. hardcoding "SALVA" instead of "Salva" + CSS). Nothing in the spec today prevents this mistake, which would negate the token's accessibility benefit.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a sentence to DESIGN.md's button-primary entry: source text stays in natural case (e.g. "Salva"); uppercase rendering is delegated exclusively to CSS <code>text-transform</code>, never written in uppercase in the string — so as not to penalize screen readers and braille displays set to character-by-character verbosity.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No minimum readability floor or 200% zoom/reflow mention for the smallest text sizes</h3>
+              <span class="finding-location">DESIGN.md → Tipografia (stat-label 10.5px/600, badge-label 10.5px/700, section-label 11px/900); EXPERIENCE.md → Soglia di Accessibilità</span>
+            </header>
+            <div class="finding-note">The declared audience explicitly includes non-tech-savvy (plausibly also older) parents, but there is no discussion of a minimum readability floor for the system's smallest text, nor any reference to 200% browser-zoom/reflow behavior (WCAG 1.4.4, 1.4.10) in either document. The heavy type weight (600/700/900) partially mitigates readability at 10.5–11px, but is not equivalent to a tested reflow requirement.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a note in EXPERIENCE.md → Soglia di Accessibilità committing to verify that the layout (single column on mobile, already planned) holds up without horizontal scroll or text clipping at 200% zoom, and evaluate raising the stat-label/badge-label floor to 11–12px.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No accessible way to surface form validation errors</h3>
+              <span class="finding-location">EXPERIENCE.md → Primitive di Interazione; → Pattern di Stato (absence)</span>
+            </header>
+            <div class="finding-note">The document treats non-blocking status alerts (badge/tile) in depth but is silent on how form validation errors are signaled: no mention of error-text/field association (e.g. <code>aria-describedby</code>), no mention that errors must not be conveyed by border color alone, no mention of focus management or announcement (<code>aria-live</code>) on a failed save. The product includes uploads of minors' medical certificates and several management forms (Excel import, SMTP config, group assignment) — an error communicated only visually/by color would be a real barrier for a screen-reader user, on a flow that handles sensitive health data.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a new sub-section to EXPERIENCE.md (under Primitive di Interazione or Soglia di Accessibilità) with base rules: every validation error is text associated with the field (not just color), focus moves to the first errored field on failed submit (or a summary is announced via <code>aria-live</code>), consistent with the "no noise" principle but applied to errors too, not only routine notifications.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Same real-world state ("certificato scaduto") changes color/severity between individual and aggregate views with no on-screen explanation</h3>
+              <span class="finding-location">DESIGN.md → badge/stat-tile rule ("Regola specifica e non negoziabile"); EXPERIENCE.md → Pattern di Stato (certificate status table)</span>
+            </header>
+            <div class="finding-note">The same "scaduto" state is <strong>warning</strong> at the individual-athlete level and <strong>danger</strong> at the aggregate count level (Vista Dirigente) — a well-motivated and consistent choice in the spec (FR-15, different audience). The risk is for a user who sees both views, as explicitly anticipated in UJ-4: Roberto is "dirigente, spesso anche allenatore" — the same person can see the same athlete X's state in a different color across two different screens of the same product, on the same day. The shared text label ("scaduto") currently softens the confusion, but it is not enforced as a permanent constraint (no non-negotiable rule protects it from future changes), and there is no on-screen microcopy explaining the intentional severity difference to a first-time user — relevant for low-vision users or users with cognitive differences who rely more on color than contextual reasoning.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a non-negotiable rule analogous to the badge one requiring parity of the status word ("scaduto") between individual and aggregate views even when color changes; consider brief help text in Vista Dirigente (e.g. "the color here reflects urgency for whoever must act, not medical severity") to reduce first-encounter confusion.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>No broken frontmatter or cross-refs found: all <code>{colors.*}</code>/<code>{typography.*}</code>/<code>{rounded.*}</code> references in both files resolve to defined frontmatter keys, except the <code>rounded.full</code> mention noted in Token completeness (§2) (documents an intentional absence, not a broken link).</li>
+        <li>EXPERIENCE.md's IA route table (<code>/mio-orario</code>, <code>/presenze</code>, <code>/palestre</code>, etc.) correctly nests under the Architecture Spine's route groups (<code>(orari-palestre)</code>, <code>(presenze)</code>, <code>(amministrazione)</code>, <code>(rollover-stagionale)</code>, <code>(dati-atleta)</code>, <code>(configurazione)</code>) with no contradictions found against the Capability → Architecture Map.</li>
+        <li>No Mermaid diagrams appear in either file — none to validate.</li>
+        <li>Spacing scale keys (<code>1,2,3,4,5,6,8</code>, skipping <code>7</code>) is a minor naming quirk, not an error — all listed keys have values and are referenced generically via <code>{spacing}</code> in Layout e Spaziatura.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: _bmad-output/planning-artifacts/ux-designs/ux-societa-manager-2026-07-22/review-rubric.md</span>
+        <span>Generated: 2026-07-22</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

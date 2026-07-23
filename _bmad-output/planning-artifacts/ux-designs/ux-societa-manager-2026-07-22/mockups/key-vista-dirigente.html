@@ -1,0 +1,465 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Screen — Vista d'insieme Dirigente</title>
+<style>
+/*
+  =====================================================================
+  KEY SCREEN — Vista d'insieme Dirigente (Story 5.1, non ancora
+  costruita) — UJ-4 (Roberto)
+  =====================================================================
+  Fonti applicate:
+  - DESIGN.md → Componenti: nav-bar, stat-tile cluster (regola non
+    negoziabile: bordo sinistro 4px della tile "scaduto" usa
+    {colors.magenta} #E6007C, NON {colors.danger} — unico punto del
+    sistema in cui il magenta funzionale appare in un componente)
+  - EXPERIENCE.md → Pattern dei Componenti: "Cluster stat-tile
+    aggregato" — una card per Gruppo con tre contatori; il tap/click
+    rivela le atlete nominate coinvolte. [NOTA UX APERTA]: espansione
+    inline vs navigazione a vista filtrata non è specificato — scelta
+    qui l'espansione inline (più semplice da mostrare in un unico file
+    statico); la navigazione a una vista filtrata resta un'alternativa
+    ugualmente valida secondo lo spine.
+  - EXPERIENCE.md → Key Flow UJ-4 (Roberto, dirigente): step 2-4, card
+    per gruppo con contatori, nota 2 scaduti in "Under 15 Femminile",
+    tocca la card e vede i nomi delle atlete coinvolte
+  - EXPERIENCE.md → Responsive & Piattaforma: cluster di stat-tile e
+    griglie di card si impilano su mobile, si dispongono su più colonne
+    su desktop (reflow, non breakpoint intermedi dedicati)
+  - CSS riusato fedelmente da .working/color-themes-1.html variante 3
+    "Energico e Deciso" (stat-tile su base .v3, esteso per il layout a
+    card-gruppo non presente nell'esplorazione colore originale)
+  =====================================================================
+*/
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #EEF2F5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #101820;
+}
+
+.page-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+.page-wrap > h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  color: #14213D;
+}
+.page-wrap > p.caption {
+  font-size: 13.5px;
+  color: #46586B;
+  line-height: 1.5;
+  max-width: 720px;
+  margin: 0 0 8px;
+}
+.section-divider {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #312682;
+  margin: 40px 0 14px;
+  padding-top: 24px;
+  border-top: 2px solid #BFE4F5;
+}
+.section-divider:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+
+/* --- shared page content (nav + heading + grid), reused in both frames --- */
+.nav-bar {
+  background: #312682;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.nav-appname {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  margin-right: auto;
+}
+.nav-item {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #E4F5FD;
+  white-space: nowrap;
+}
+.nav-item.active {
+  /* Corretto in revisione: #00A3E0 con testo bianco dava contrasto ~2.87:1 (fallisce AA) */
+  background: #006DA6;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.page-heading {
+  padding: 16px 16px 4px;
+}
+.page-heading .section-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #46586B;
+  margin: 0 0 4px;
+}
+.page-heading h2 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #101820;
+  margin: 0;
+}
+
+.group-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 14px 16px 20px;
+}
+
+.group-card {
+  border: 1px solid #BFE4F5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #FFFFFF;
+}
+.group-card.expanded {
+  border-color: #00A3E0;
+  border-width: 2px;
+  padding: 13px;
+}
+.group-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101820;
+  margin: 0 0 2px;
+}
+.group-slot {
+  font-size: 12px;
+  color: #46586B;
+  margin: 0 0 10px;
+}
+
+.stat-tiles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stat-tile {
+  flex: 1 1 80px;
+  min-width: 80px;
+  border-radius: 6px;
+  padding: 9px 10px;
+}
+.stat-tile .num {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.1;
+  display: block;
+}
+.stat-tile .lbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  display: block;
+  margin-top: 2px;
+}
+.stat-tile.success { background: #DFF2E1; color: #256029; border-left: 4px solid #256029; }
+.stat-tile.warning { background: #FCE9CE; color: #9A4A08; border-left: 4px solid #9A4A08; }
+.stat-tile.danger  { background: #FBE3E3; color: #A81818; border-left: 4px solid #E6007C; }
+
+.expand-hint {
+  font-size: 11px;
+  color: #46586B;
+  margin: 8px 0 0;
+}
+
+.expanded-names {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #BFE4F5;
+}
+.expanded-names .exp-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #A81818;
+  margin: 0 0 6px;
+}
+.expanded-names ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.expanded-names li {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #101820;
+  background: #E4F5FD;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+
+/* --- phone frame --- */
+.phone-frame {
+  width: 390px;
+  margin: 0 auto;
+  border: 10px solid #1c1c1e;
+  border-radius: 36px;
+  background: #1c1c1e;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.phone-notch {
+  height: 22px;
+  background: #1c1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-notch::after {
+  content: "";
+  width: 90px;
+  height: 6px;
+  border-radius: 4px;
+  background: #000;
+}
+.phone-screen {
+  background: #FFFFFF;
+  min-height: 640px;
+}
+
+/* --- desktop browser-chrome frame --- */
+.browser-frame {
+  max-width: 1120px;
+  margin: 0 auto;
+  border: 1px solid #BFE4F5;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(20,33,61,0.08);
+}
+.browser-chrome {
+  background: #E4F5FD;
+  border-bottom: 1px solid #BFE4F5;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.browser-chrome .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #BFE4F5;
+}
+.browser-chrome .url-pill {
+  margin-left: 8px;
+  background: #FFFFFF;
+  border: 1px solid #BFE4F5;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #46586B;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+.browser-screen {
+  background: #FFFFFF;
+}
+
+@media (min-width: 700px) {
+  .browser-screen .group-grid {
+    grid-template-columns: repeat(3, 1fr);
+    align-items: start;
+  }
+}
+</style>
+
+<div class="page-wrap">
+  <h1>Key Screen — Vista d'insieme Dirigente</h1>
+  <p class="caption">(amministrazione)/… — Story 5.1, non ancora costruita (FR-29). Flusso UJ-4 di Roberto, dirigente, lunedì mattina: card per Gruppo con contatori in regola/in scadenza/scaduto; tocca la card "Under 15 Femminile" e vede i nomi delle 2 atlete con certificato scaduto.</p>
+
+  <!-- ============================= FRAME MOBILE ============================= -->
+  <div class="section-divider">Mobile (viewport stretto)</div>
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="nav-bar">
+        <div class="nav-appname">Società Manager</div>
+        <div class="nav-item">Vista d'insieme</div>
+        <div class="nav-item active">Gruppi</div>
+      </div>
+      <div class="page-heading">
+        <p class="section-label">Vista d'insieme</p>
+        <h2>Stato certificati per gruppo</h2>
+      </div>
+      <div class="group-grid">
+
+        <div class="group-card expanded">
+          <p class="group-name">Under 15 Femminile</p>
+          <p class="group-slot">Mar/Gio 18:00</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">10</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">2</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">2</span><span class="lbl">scaduto</span></div>
+          </div>
+          <!--
+            [NOTA UX APERTA — EXPERIENCE.md]: la rivelazione dei nomi può
+            avvenire per espansione inline (scelta qui) o per navigazione
+            a una vista filtrata — entrambe soddisfano il requisito UJ-4,
+            la scelta implementativa resta aperta. Espansione inline
+            scelta per mostrare tutto in un unico file statico.
+          -->
+          <div class="expanded-names">
+            <p class="exp-label">Scaduto — 2 atlete</p>
+            <ul>
+              <li>Sofia Marchetto</li>
+              <li>Elisa Trentin</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Under 13 Femminile</p>
+          <p class="group-slot">Lun/Mer 17:00</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">14</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">1</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Tocca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Under 17 Maschile</p>
+          <p class="group-slot">Mar/Ven 19:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">11</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">0</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Tocca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Serie C</p>
+          <p class="group-slot">Lun/Gio 20:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">0</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Tocca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Prima Divisione</p>
+          <p class="group-slot">Mer/Ven 20:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">9</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">2</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Tocca la card per i dettagli</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= FRAME DESKTOP ============================= -->
+  <div class="section-divider">Desktop (viewport largo)</div>
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="url-pill">societa-manager.app/vista-dirigente</span>
+    </div>
+    <div class="browser-screen">
+      <div class="nav-bar">
+        <div class="nav-appname">Società Manager</div>
+        <div class="nav-item active">Vista d'insieme</div>
+        <div class="nav-item">Gruppi</div>
+        <div class="nav-item">Conferma certificati</div>
+        <div class="nav-item">Orari</div>
+      </div>
+      <div class="page-heading">
+        <p class="section-label">Vista d'insieme</p>
+        <h2>Stato certificati per gruppo</h2>
+      </div>
+      <div class="group-grid">
+
+        <div class="group-card expanded">
+          <p class="group-name">Under 15 Femminile</p>
+          <p class="group-slot">Mar/Gio 18:00</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">10</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">2</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">2</span><span class="lbl">scaduto</span></div>
+          </div>
+          <div class="expanded-names">
+            <p class="exp-label">Scaduto — 2 atlete</p>
+            <ul>
+              <li>Sofia Marchetto</li>
+              <li>Elisa Trentin</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Under 13 Femminile</p>
+          <p class="group-slot">Lun/Mer 17:00</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">14</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">1</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Clicca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Under 17 Maschile</p>
+          <p class="group-slot">Mar/Ven 19:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">11</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">0</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">1</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Clicca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Serie C</p>
+          <p class="group-slot">Lun/Gio 20:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">12</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">0</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Clicca la card per i dettagli</p>
+        </div>
+
+        <div class="group-card">
+          <p class="group-name">Prima Divisione</p>
+          <p class="group-slot">Mer/Ven 20:30</p>
+          <div class="stat-tiles">
+            <div class="stat-tile success"><span class="num">9</span><span class="lbl">in regola</span></div>
+            <div class="stat-tile warning"><span class="num">2</span><span class="lbl">in scadenza</span></div>
+            <div class="stat-tile danger"><span class="num">0</span><span class="lbl">scaduto</span></div>
+          </div>
+          <p class="expand-hint">Clicca la card per i dettagli</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>

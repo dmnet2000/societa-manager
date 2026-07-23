@@ -1,0 +1,147 @@
+/* Story 5.1 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22)
+   -> sezione Componenti (stat-tile, badge) e Forme (angoli poco arrotondati). */
+
+.lista {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 720px) {
+  .lista {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .lista {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.nomeGruppo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.categoria {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.slotList {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  list-style: none;
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.statCluster {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.statTile {
+  border-radius: var(--radius-sm);
+  border-left: 4px solid transparent;
+  padding: var(--space-2);
+  text-align: center;
+  background: transparent;
+  border-style: solid;
+  border-width: 0 0 0 4px;
+  font: inherit;
+  cursor: default;
+}
+
+.statTile.cliccabile {
+  cursor: pointer;
+}
+
+.statTile:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.statValore {
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.statLabel {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.statTile.regola {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-left-color: var(--color-success);
+}
+
+.statTile.scadenza {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-left-color: var(--color-warning);
+}
+
+.statTile.scaduto {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  /* Regola non negoziabile di DESIGN.md: il bordo della tile "scaduto" usa
+     il magenta del logo, non il danger - unico punto del sistema in cui il
+     magenta appare in un componente funzionale. */
+  border-left-color: var(--color-magenta);
+}
+
+.statTile.senzaCertificato {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border-left-color: var(--color-border);
+}
+
+.drillDown {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.drillDownTitolo {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.drillDownLista {
+  list-style: none;
+  color: var(--color-text-primary);
+}
