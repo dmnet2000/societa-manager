@@ -32,6 +32,7 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[] }[] = [
   { prefix: "/smtp", ruoliAmmessi: ["ADMIN"] },
   { prefix: "/logo", ruoliAmmessi: ["ADMIN"] },
   { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"] },
+  { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"] },
 ];
 
 export type RouteDecision =

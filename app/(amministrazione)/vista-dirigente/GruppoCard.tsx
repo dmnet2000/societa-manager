@@ -8,12 +8,15 @@ export type GruppoCardData = {
   nome: string;
   categoria: string;
   slotFormattati: { id: string; testo: string }[];
+  // null = Gruppo escluso dai permessi configurati per il Dirigente (Story
+  // 5.2) - i conteggi non sono calcolabili (i Certificati non sono
+  // leggibili), non "tutti zero".
   conteggi: {
     IN_REGOLA: number;
     IN_SCADENZA: number;
     SCADUTO: number;
     SENZA_CERTIFICATO: number;
-  };
+  } | null;
   atleteScadute: string[];
   numeroAtlete: number;
 };
@@ -44,7 +47,11 @@ export function GruppoCard({ gruppo }: { gruppo: GruppoCardData }) {
         <p className={styles.messaggioVuoto}>Nessun allenamento programmato.</p>
       )}
 
-      {gruppo.numeroAtlete === 0 ? (
+      {gruppo.conteggi === null ? (
+        <p className={styles.messaggioVuoto}>
+          Fuori dai permessi configurati — stato dei certificati non visibile.
+        </p>
+      ) : gruppo.numeroAtlete === 0 ? (
         <p className={styles.messaggioVuoto}>Nessuna Atleta assegnata a questo Gruppo.</p>
       ) : (
         <div className={styles.statCluster}>

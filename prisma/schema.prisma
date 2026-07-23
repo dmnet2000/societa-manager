@@ -296,8 +296,27 @@ model Gruppo {
   allenatori       GruppoAllenatore[]
   atlete           GruppoAtleta[]
   slot             Slot[]
+  visibileDirigente GruppoVisibileDirigente?
 
   @@map("gruppi")
+}
+
+// Story 5.2 (FR-27): permesso granulare per Gruppo, solo per il Ruolo
+// Dirigente - Admin/Segreteria restano sempre ad accesso pieno (decisione
+// esplicita, non configurabile). Non protetta da RLS (AD-9, stesso
+// trattamento di Gruppo/Slot - dato puramente strutturale, nessun GRANT
+// verso "authenticated"): la policy RLS su certificati_medici la legge
+// tramite la funzione SECURITY DEFINER "dirigente_vede_certificato_atleta"
+// (stesso pattern di "allenatore_possiede_atleta", Story 3.1/4.5). Nessuna
+// riga per un Gruppo = quel Gruppo non e' nella lista; tabella
+// completamente vuota = nessuna restrizione attiva (comportamento di oggi).
+model GruppoVisibileDirigente {
+  id        String   @id @default(uuid())
+  gruppoId  String   @unique
+  gruppo    Gruppo   @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("gruppi_visibili_dirigente")
 }
 
 // Tabella di giunzione molti-a-molti (ERD: GRUPPO }o--o{ ALLENATORE). Non

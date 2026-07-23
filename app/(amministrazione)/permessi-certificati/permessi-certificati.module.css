@@ -1,0 +1,48 @@
+/* Story 5.2 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22),
+   gia' introdotti globalmente in app/globals.css da Story 5.1. */
+
+.fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.aiuto {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.riga {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+}
+
+.categoria {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.bottone {
+  margin-top: var(--space-4);
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

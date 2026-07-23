@@ -346,6 +346,35 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows only Admin on /permessi-certificati (Story 5.2, FR-27)", () => {
+    expect(getRouteDecision("/permessi-certificati", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /permessi-certificati for other roles, incluso Dirigente stesso", () => {
+    expect(getRouteDecision("/permessi-certificati", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/permessi-certificati", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/permessi-certificati", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/permessi-certificati", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/permessi-certificati", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
   it("allows Admin, Dirigente or Segreteria on /conferma-certificati (Story 4.4, FR-14)", () => {
     expect(
       getRouteDecision("/conferma-certificati", true, ["ADMIN"])

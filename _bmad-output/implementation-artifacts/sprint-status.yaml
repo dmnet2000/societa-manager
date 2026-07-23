@@ -1,5 +1,5 @@
 # generated: 2026-07-15
-# last_updated: 2026-07-23 (Story 5.1 done - prima pagina costruita sul design system finalizzato. Code review ha trovato e corretto un bug funzionale reale: la categorizzazione ignorava lo stato IN_ATTESA del certificato, in contraddizione con AC #2/#3)
+# last_updated: 2026-07-23 (Story 5.2 done - Epic 5 completato. Code review ha trovato e corretto un bug reale serio: la funzione SECURITY DEFINER non era scoped per stagione, rischiando di bloccare totalmente il Dirigente dopo un rollover; corretto anche un secondo bug in Vista Dirigente (dati falsi per gruppi esclusi). 6 gap piu' ampi (file storage, conferma-certificati, email cron) deferred su conferma esplicita dell'utente)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -97,9 +97,9 @@ development_status:
   4-6-promemoria-scadenza: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-vista-d-insieme-dirigente: done
-  5-2-permessi-granulari-su-dati-sanitari: backlog
+  5-2-permessi-granulari-su-dati-sanitari: done
   epic-5-retrospective: optional
 
   epic-6: backlog

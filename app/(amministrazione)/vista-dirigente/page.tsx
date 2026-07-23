@@ -43,24 +43,41 @@ export default async function VistaDirigentePage() {
   // sessione Dirigente (createClient, mai createAdminClient: qui esiste una
   // sessione utente reale) - Dirigente ha gia' accesso ampio (Prerequisito
   // #1 della storia), nessuna nuova policy necessaria.
-  const [gruppi, gruppoAtleteRows, atlete, certificati] = await Promise.all([
-    prisma.gruppo.findMany({
-      where: { annoAgonisticoId: annoCorrente.id },
-      orderBy: { nome: "asc" },
-      include: {
-        slot: {
-          include: { campo: { include: { palestra: true } } },
-          orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+  const [gruppi, gruppoAtleteRows, atlete, certificati, righeVisibiliDirigente] =
+    await Promise.all([
+      prisma.gruppo.findMany({
+        where: { annoAgonisticoId: annoCorrente.id },
+        orderBy: { nome: "asc" },
+        include: {
+          slot: {
+            include: { campo: { include: { palestra: true } } },
+            orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+          },
         },
-      },
-    }),
-    prisma.gruppoAtleta.findMany({
-      where: { annoAgonisticoId: annoCorrente.id },
-      select: { atletaId: true, gruppoId: true },
-    }),
-    elencaAtlete(supabase),
-    elencaCertificati(supabase),
-  ]);
+      }),
+      prisma.gruppoAtleta.findMany({
+        where: { annoAgonisticoId: annoCorrente.id },
+        select: { atletaId: true, gruppoId: true },
+      }),
+      elencaAtlete(supabase),
+      elencaCertificati(supabase),
+      // Review fix (Story 5.2): la restrizione per Ruolo Dirigente e' letta
+      // qui, scoped alla stagione corrente (stesso principio della
+      // migrazione 20260724010000, che ha corretto lo stesso bug per la
+      // RLS) - senza questo, un'Atleta esclusa dallo scope del Dirigente
+      // apparirebbe come "senza certificato" invece che "fuori dai
+      // permessi configurati": un dato falso, non solo mancante. Tabella
+      // non protetta da RLS (AD-9), Prisma diretto.
+      prisma.gruppoVisibileDirigente.findMany({
+        where: { gruppo: { annoAgonisticoId: annoCorrente.id } },
+        select: { gruppoId: true },
+      }),
+    ]);
+
+  const gruppoIdsVisibiliDirigente = righeVisibiliDirigente.map((r) => r.gruppoId);
+  // Nessuna riga per la stagione corrente = nessuna restrizione attiva,
+  // stessa semantica della funzione SQL dirigente_vede_certificato_atleta.
+  const restrizioneAttiva = gruppoIdsVisibiliDirigente.length > 0;
 
   const oggi = new Date();
   const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
@@ -70,6 +87,27 @@ export default async function VistaDirigentePage() {
     const atleteIdDelGruppo = gruppoAtleteRows
       .filter((riga) => riga.gruppoId === gruppo.id)
       .map((riga) => riga.atletaId);
+
+    // Review fix: se una restrizione e' attiva e questo Gruppo non e' fra
+    // quelli consentiti, i Certificati delle sue Atlete non sono comunque
+    // leggibili (RLS) - mostra questo esplicitamente invece di calcolare
+    // conteggi che sarebbero sistematicamente sbagliati (ogni Atleta
+    // risulterebbe "senza certificato" anche se in realta' confermato).
+    if (restrizioneAttiva && !gruppoIdsVisibiliDirigente.includes(gruppo.id)) {
+      const slotFormattatiEsclusi = gruppo.slot.map((slot) => ({
+        id: slot.id,
+        testo: `${GIORNO_BREVE[slot.giorno] ?? slot.giorno} ${slot.oraInizio}-${slot.oraFine} · ${slot.campo.palestra.nome} - ${slot.campo.nome}`,
+      }));
+      return {
+        id: gruppo.id,
+        nome: gruppo.nome,
+        categoria: gruppo.categoria,
+        slotFormattati: slotFormattatiEsclusi,
+        conteggi: null,
+        atleteScadute: [],
+        numeroAtlete: atleteIdDelGruppo.length,
+      };
+    }
 
     const conteggi = {
       IN_REGOLA: 0,
