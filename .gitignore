@@ -44,3 +44,7 @@ next-env.d.ts
 
 # supabase local
 /supabase/.temp
+
+# cloudflare / opennext
+.open-next/
+.wrangler/

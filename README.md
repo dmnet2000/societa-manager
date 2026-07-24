@@ -52,9 +52,24 @@ npm run build    # build di produzione
 npm run lint     # ESLint
 npm test         # Vitest (npx vitest run)
 npx tsc --noEmit # type check
+
+npm run cf:build   # build adattato per Cloudflare (@opennextjs/cloudflare)
+npm run cf:preview # cf:build + wrangler dev (preview locale worker)
+npm run cf:deploy  # cf:build + wrangler deploy (deploy manuale, non necessario col Git integration di Cloudflare Pages)
 ```
 
+`cf:build`/`cf:preview` creano symlink in `node_modules`: su Windows falliscono con `EPERM` a meno di attivare la Modalità sviluppatore (Impostazioni → Aggiornamento e sicurezza → Per sviluppatori) o di eseguirli da WSL. Il build su Cloudflare Pages (Linux) non risente di questo limite.
+
 Dopo ogni modifica a `prisma/schema.prisma`: scrivere a mano la migrazione in `prisma/migrations/<timestamp>_descrizione/migration.sql` (lo shadow DB di `prisma migrate dev` non è utilizzabile in questo progetto una volta introdotte policy RLS con `auth.jwt()`), poi `npx prisma migrate deploy && npx prisma generate` e riavviare il dev server.
+
+## Deploy in produzione
+
+Hosting su **Cloudflare Pages** (piano Free), tramite adapter `@opennextjs/cloudflare`. Il deploy usa l'integrazione Git nativa di Cloudflare Pages, non una pipeline CI/CD separata:
+
+- push su `main` → build e deploy automatico in produzione
+- ogni branch/PR → deploy di anteprima automatico (URL temporaneo), usato come test informale prima del merge
+
+Non è previsto un ambiente di staging dedicato (contesto solo-dev): i deploy di anteprima puntano allo stesso progetto Supabase di produzione, a meno di creare in futuro un secondo progetto Supabase per i test. Un solo progetto Supabase e un solo progetto Cloudflare Pages coprono la produzione.
 
 ## Struttura del progetto
 
@@ -80,3 +95,4 @@ Le decisioni architetturali vincolanti (AD-1..AD-11) sono in [`_bmad-output/plan
 - `AnnoAgonistico` (1 agosto – 30 giugno) come partizione temporale: helper condiviso in `lib/anno-agonistico/`, mai calcoli di date ripetuti per modulo.
 - Naming Server Action: verbo nudo, nessun suffisso (`creaGruppo`, non `creaGruppoAction`).
 - Errori Server Action nella forma `{ error: { code, message } }`; `"FORBIDDEN"` riservato ai rifiuti di autorizzazione.
+- Il file di route guard/refresh sessione si chiama `middleware.ts` (non `proxy.ts`, la convenzione Next.js 16): `proxy.ts` gira solo su runtime Node.js, incompatibile con l'adapter di deploy `@opennextjs/cloudflare`. `middleware.ts` è deprecato (warning in build, non errore) e resta l'unico modo per ottenere `runtime: "experimental-edge"` — vedi nota deploy in AD-11.

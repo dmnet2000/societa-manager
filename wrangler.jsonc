@@ -1,0 +1,31 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "societa-manager",
+	"compatibility_date": "2026-07-24",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			// Self-reference service binding, il nome del service deve combaciare col nome del worker
+			// vedi https://opennext.js.org/cloudflare/caching
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "societa-manager"
+		}
+	],
+	"r2_buckets": [
+		// Cache incrementale ISR/PPR su R2 - creare il bucket prima del deploy con:
+		// npx wrangler r2 bucket create societa-manager-opennext-cache
+		{
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "societa-manager-opennext-cache"
+		}
+	],
+	"images": {
+		// Ottimizzazione immagini Cloudflare - vedi https://opennext.js.org/cloudflare/howtos/image
+		"binding": "IMAGES"
+	}
+}

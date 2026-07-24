@@ -3,10 +3,17 @@ import { createServerClient } from "@supabase/ssr";
 import { getRouteDecision } from "@/lib/auth/route-guard";
 import { parseRuoli } from "@/lib/ruoli";
 
-// Next.js 16: "middleware.ts" e' stato rinominato "proxy.ts" (funzione
-// esportata "proxy", non piu' "middleware"). Gira su runtime Node.js di
-// default. Usa getUser() (non getSession()) perche' rivalida il JWT.
-export async function proxy(request: NextRequest) {
+// Next.js 16 rinomina "middleware.ts" in "proxy.ts" e fa girare il Proxy su
+// runtime Node.js di default (non piu' configurabile su Edge - vedi
+// node_modules/next/dist/docs/.../proxy.md). L'adapter di deploy
+// @opennextjs/cloudflare pero' rifiuta il build se rileva un
+// middleware/proxy Node.js ("Node.js middleware is not currently
+// supported"). La vecchia convenzione "middleware.ts" e' ancora
+// riconosciuta (solo deprecata, con warning in build) e permette
+// "runtime: experimental-edge" - unica combinazione compatibile con
+// Cloudflare, quindi qui si resta volutamente sulla convenzione legacy.
+// Usa getUser() (non getSession()) perche' rivalida il JWT.
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -63,5 +70,6 @@ export async function proxy(request: NextRequest) {
 
 // Esclude asset statici e ottimizzazione immagini dal Proxy.
 export const config = {
+  runtime: "experimental-edge",
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
