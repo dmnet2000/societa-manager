@@ -34,15 +34,15 @@ Stato aggiornato al 2026-07-24. Le fasi completate sono marcate `[x]`.
 
 **Nota su `DIRECT_URL` come build variable**: `prisma.config.ts` richiede sempre `DIRECT_URL` per caricare la configurazione, anche solo per `prisma generate` (lanciato dallo script `postinstall`) — va quindi impostata come **Build variable** (sezione "Build configuration" del progetto Worker), separata dalle variabili **runtime** del Worker (Fase 5).
 
-## Fase 3 — Migrazioni Prisma sul DB di produzione `[ ]`
-
-Con `.env.production` compilato (Fase 1):
+## Fase 3 — Migrazioni Prisma sul DB di produzione `[x]`
 
 ```bash
-npx prisma migrate deploy --schema prisma/schema.prisma
+DIRECT_URL="<valore da .env.production>" npx prisma migrate deploy
 ```
 
-(puntato a `.env.production` — verificare che il comando legga quel file, es. tramite `dotenv -e .env.production -- npx prisma migrate deploy` se necessario). Applica tutte le migrazioni esistenti, incluse quelle dei bucket Storage (certificati medici, logo), già idempotenti (`ON CONFLICT DO NOTHING`).
+Tutte le migrazioni esistenti applicate con successo, incluse quelle dei bucket Storage (certificati medici, logo), già idempotenti (`ON CONFLICT DO NOTHING`).
+
+**Nota tecnica — Direct connection IPv6-only**: la vera "Direct connection" Supabase (`db.<project-ref>.supabase.co`) risolve **solo su IPv6** (verificato con `nslookup`) — irraggiungibile da reti che non hanno connettività IPv6 in uscita (es. molte reti domestiche italiane). `DIRECT_URL` in `.env.production` usa quindi il **Session pooler** (stesso host del Transaction pooler `aws-0-<regione>.pooler.supabase.com`, ma porta 5432 invece di 6543) — IPv4-compatibile e con supporto ai prepared statement richiesti da Prisma Migrate (a differenza del Transaction pooler, pensato per connessioni brevi e non compatibile con Migrate).
 
 ## Fase 4 — Adapter Cloudflare + wrangler + dimensione bundle `[x]`
 
@@ -67,16 +67,17 @@ npx prisma migrate deploy --schema prisma/schema.prisma
 
 ## Fase 5 — Variabili d'ambiente runtime su Cloudflare `[ ]`
 
-Nel progetto Worker su Cloudflare: **Settings → Variables and Secrets** (diverse dalle Build variables di Fase 2, usate solo in fase di build). Inserire (come *secret*, non variabili in chiaro, tutte quelle di `.env.production`):
+Nel progetto Worker su Cloudflare: **Settings → Variables and Secrets** (diverse dalle Build variables di Fase 2, usate solo in fase di build). Inserire come *secret*:
 
 ```
 DATABASE_URL
-DIRECT_URL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 CRON_SECRET
 ```
+
+`DIRECT_URL` **non serve** qui: la usa solo il CLI Prisma (`migrate`, `generate` in build) via `prisma.config.ts`, mai `lib/prisma.ts` a runtime (che legge solo `DATABASE_URL`).
 
 ## Fase 6 — Cloudflare Cron Trigger per i promemoria certificati `[ ]`
 
