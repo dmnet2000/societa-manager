@@ -1,9 +1,11 @@
 // Seed di primo accesso per sviluppo locale: crea un utente Admin
 // (email/password fissi, SOLO per uso locale — non eseguire contro un
 // progetto Supabase di produzione).
+// Usa pg direttamente (non il client Prisma generato in generated/prisma/,
+// sorgente TypeScript non importabile da questo script node "plain").
 import { createClient } from "@supabase/supabase-js";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+import crypto from "node:crypto";
 
 const ADMIN_EMAIL = "admin@societa-manager.local";
 const ADMIN_PASSWORD = "password";
@@ -41,19 +43,20 @@ async function main() {
     throw new Error(`Creazione utente Admin fallita: ${error.message}`);
   }
 
-  const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-  });
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
 
-  await prisma.utente.create({
-    data: {
-      supabaseAuthId: data.user.id,
-      email: ADMIN_EMAIL,
-      ruoli: { create: [{ ruolo: "ADMIN" }] },
-    },
-  });
+  const utenteId = crypto.randomUUID();
+  await client.query(
+    `INSERT INTO "utenti" ("id", "supabaseAuthId", "email", "attivo", "createdAt") VALUES ($1, $2, $3, true, now())`,
+    [utenteId, data.user.id, ADMIN_EMAIL]
+  );
+  await client.query(
+    `INSERT INTO "utente_ruoli" ("id", "utenteId", "ruolo") VALUES ($1, $2, 'ADMIN')`,
+    [crypto.randomUUID(), utenteId]
+  );
 
-  await prisma.$disconnect();
+  await client.end();
 
   console.log(
     `Utente Admin di primo accesso creato: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`
