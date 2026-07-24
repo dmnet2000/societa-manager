@@ -4,7 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
-import type { GiornoSettimana } from "@prisma/client";
+import type { GiornoSettimana } from "@/generated/prisma/client";
 import { type SlotRiga } from "../SlotTable";
 import styles from "./mio-orario.module.css";
 

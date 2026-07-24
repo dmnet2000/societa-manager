@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 // AD-3 / AD-9: Prisma via driver adapter (obbligatorio in Prisma 7), connesso

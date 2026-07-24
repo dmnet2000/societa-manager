@@ -1,5 +1,5 @@
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
-import type { GiornoSettimana } from "@prisma/client";
+import type { GiornoSettimana } from "@/generated/prisma/client";
 import styles from "./SlotTable.module.css";
 
 // Esportato (review Story 8.3) - riusato identico da mio-orario/page.tsx,

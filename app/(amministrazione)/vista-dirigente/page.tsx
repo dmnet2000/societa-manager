@@ -1,4 +1,4 @@
-import type { StatoCertificato } from "@prisma/client";
+import type { StatoCertificato } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";

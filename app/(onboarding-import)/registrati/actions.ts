@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";

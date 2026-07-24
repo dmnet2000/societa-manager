@@ -119,7 +119,7 @@ graph TD
 | Supabase (Postgres, Auth, Storage) | piano Free — attenzione: auto-pausa dopo 7 giorni di inattività (vedi Deferred) |
 | Prisma | 7.x — richiede driver adapter esplicito (`@prisma/adapter-pg`) e `prisma.config.ts`, cambio rispetto alle guide Prisma 6 |
 | Nodemailer (SMTP generico) | 9.x — sostituisce Resend (AD-12, 2026-07-18): riusa una casella email SMTP esistente della polisportiva invece di un nuovo account/provider terzo, parametri configurabili a runtime dall'Admin |
-| Cloudflare Pages/Workers (hosting + Cron Trigger) | piano Free — deploy Next.js 16 via adapter `@opennextjs/cloudflare` (percorso ufficialmente supportato); Cron Trigger incluso nel piano gratuito; a differenza di Vercel Hobby, il piano Free permette esplicitamente uso commerciale/organizzativo |
+| Cloudflare Pages/Workers (hosting + Cron Trigger) | piano **Paid, $5/mese** (deroga, 2026-07-24: il piano Free limita ogni Worker a 3 MiB, superato dal bundle Prisma+Next+Supabase+exceljs anche dopo aver adottato il generator Prisma Rust-free e ottimizzato le dipendenze — vedi `docs/deploy-produzione.md` Fase 4) — deploy Next.js 16 via adapter `@opennextjs/cloudflare` (percorso ufficialmente supportato); Cron Trigger incluso; a differenza di Vercel Hobby, Cloudflare permette esplicitamente uso commerciale/organizzativo |
 
 ## Structural Seed
 

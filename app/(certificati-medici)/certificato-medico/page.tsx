@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { StatoCertificato } from "@prisma/client";
+import type { StatoCertificato } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";

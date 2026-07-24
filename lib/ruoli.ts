@@ -1,4 +1,4 @@
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 
 export const RUOLI_VALIDI: Ruolo[] = [
   "ALLENATORE",

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // AD-9: Utente/UtenteRuolo non sono nel bind-list di AD-4 - lettura via

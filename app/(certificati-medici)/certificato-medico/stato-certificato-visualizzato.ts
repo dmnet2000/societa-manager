@@ -1,4 +1,4 @@
-import type { StatoCertificato } from "@prisma/client";
+import type { StatoCertificato } from "@/generated/prisma/client";
 import { calcolaGiorniAScadenza } from "@/app/api/cron/promemoria-certificati/calcola-giorni-a-scadenza";
 
 // Story 8.5: cosa mostrare sulla scheda personale del certificato (Genitore/

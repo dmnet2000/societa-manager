@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 // Prisma 7: niente url qui - la connessione a runtime passa dall'adapter

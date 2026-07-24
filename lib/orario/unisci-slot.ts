@@ -1,4 +1,4 @@
-import type { GiornoSettimana } from "@prisma/client";
+import type { GiornoSettimana } from "@/generated/prisma/client";
 import { GIORNI_SETTIMANA } from "@/lib/giorno-settimana";
 
 const ORDINE_GIORNO = new Map<GiornoSettimana, number>(

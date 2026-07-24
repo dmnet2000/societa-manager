@@ -1,5 +1,5 @@
 import "server-only";
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 import { createAdminClient } from "./client";
 
 // AD-11: specchia i Ruoli (Prisma, fonte di verita') in app_metadata

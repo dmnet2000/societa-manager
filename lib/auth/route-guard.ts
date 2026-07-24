@@ -1,4 +1,4 @@
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 
 export const LOGIN_PATH = "/accedi";
 export const NON_AUTORIZZATO_PATH = "/non-autorizzato";

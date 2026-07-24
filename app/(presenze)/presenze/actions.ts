@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
-import type { GiornoSettimana } from "@prisma/client";
+import type { GiornoSettimana } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { registraPresenze as registraPresenzeRls } from "@/lib/db-rls/presenza";
 import { giornoSettimanaDaData } from "@/lib/giorno-settimana";

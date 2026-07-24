@@ -1,5 +1,5 @@
 import "server-only";
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
 

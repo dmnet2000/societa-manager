@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { AnnoAgonistico } from "@prisma/client";
+import type { AnnoAgonistico } from "@/generated/prisma/client";
 import { calcolaIntervalloStagioneCorrente } from "./calcola-intervallo-stagione-corrente";
 
 // AnnoAgonistico non e' protetta da RLS (non nel bind-list di AD-4) - dato

@@ -11,12 +11,7 @@ const nextConfig: NextConfig = {
   // l'entry point corretto (es. "pg-cloudflare", richiesto da "pg"/
   // @prisma/adapter-pg per aprire connessioni TCP dentro un Worker) - vedi
   // https://opennext.js.org/cloudflare/howtos/workerd.
-  serverExternalPackages: [
-    "@prisma/client",
-    ".prisma/client",
-    "pg",
-    "pg-cloudflare",
-  ],
+  serverExternalPackages: ["pg", "pg-cloudflare"],
   experimental: {
     serverActions: {
       // Default Next.js 1MB - troppo basso per gli upload multipart di

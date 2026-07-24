@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { AnnoAgonistico } from "@prisma/client";
+import type { AnnoAgonistico } from "@/generated/prisma/client";
 
 // Story 1.8: sola lettura (Prisma diretto, come le altre funzioni del
 // modulo) - cerca l'Anno Agonistico immediatamente precedente a quello

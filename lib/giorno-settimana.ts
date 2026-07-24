@@ -1,4 +1,4 @@
-import type { GiornoSettimana } from "@prisma/client";
+import type { GiornoSettimana } from "@/generated/prisma/client";
 
 // Story 2.5: unica fonte di verita' per l'ordine e le etichette italiane dei
 // GiornoSettimana - review fix: NuovoSlotForm.tsx e page.tsx mantenevano due

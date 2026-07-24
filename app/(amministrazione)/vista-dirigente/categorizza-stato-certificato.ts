@@ -1,4 +1,4 @@
-import type { StatoCertificato } from "@prisma/client";
+import type { StatoCertificato } from "@/generated/prisma/client";
 import { calcolaGiorniAScadenza } from "@/app/api/cron/promemoria-certificati/calcola-giorni-a-scadenza";
 
 // Story 5.1 (FR-29): riusa calcolaGiorniAScadenza (Story 4.6) invece di

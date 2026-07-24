@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import type { Ruolo } from "@prisma/client";
+import type { Ruolo } from "@/generated/prisma/client";
 import { aggiornaRuoliUtente, impostaAttivoUtente } from "./actions";
 import styles from "./admin.module.css";
 
