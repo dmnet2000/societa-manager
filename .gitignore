@@ -49,5 +49,3 @@ next-env.d.ts
 .open-next/
 .wrangler/
 
-# prisma (client generato dal generator "prisma-client", vedi prisma/schema.prisma)
-/generated/

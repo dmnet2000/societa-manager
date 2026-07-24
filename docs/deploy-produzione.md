@@ -2,7 +2,7 @@
 
 Guida ai 7 passi per portare Società Manager in produzione. Stack: **Supabase** (Postgres + Auth, progetto EU) + **Cloudflare Workers** (hosting, via adapter `@opennextjs/cloudflare`, piano **Paid** $5/mese) con integrazione Git automatica.
 
-Stato aggiornato al 2026-07-24. Le fasi completate sono marcate `[x]`.
+Stato aggiornato al 2026-07-25. Le fasi completate sono marcate `[x]`.
 
 ## Fase 1 — Progetto Supabase di produzione `[x]`
 
@@ -65,7 +65,7 @@ Tutte le migrazioni esistenti applicate con successo, incluse quelle dei bucket 
 
 **Limite Windows**: `cf:build`/`cf:preview` creano symlink in `node_modules`; su Windows falliscono con `EPERM` a meno di attivare la Modalità sviluppatore (Impostazioni → Privacy e sicurezza → Per sviluppatori) o di eseguire da WSL. Il build su Cloudflare (Linux) non ha questo problema.
 
-## Fase 5 — Variabili d'ambiente runtime su Cloudflare `[ ]`
+## Fase 5 — Variabili d'ambiente runtime su Cloudflare `[x]`
 
 Nel progetto Worker su Cloudflare: **Settings → Variables and Secrets** (diverse dalle Build variables di Fase 2, usate solo in fase di build). Inserire come *secret*:
 

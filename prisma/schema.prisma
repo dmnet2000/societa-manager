@@ -1,12 +1,23 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
-// Prisma 7: niente url qui - la connessione a runtime passa dall'adapter
-// (lib/prisma.ts), quella per Migrate/CLI da prisma.config.ts (DIRECT_URL).
+// Downgrade da Prisma 7 (generator "prisma-client") a 6.19: il nuovo
+// query compiler WASM di Prisma 7 fallisce su Cloudflare Workers
+// ("Wasm code generation disallowed by embedder", compilazione sincrona
+// bloccata da workerd anche con un driver adapter) - bug upstream non
+// risolto, vedi https://github.com/prisma/prisma/issues/28657. Il generator
+// classico "prisma-client-js" (import da "@prisma/client", MAI da
+// "@prisma/client/edge" - quell'endpoint e' per Prisma Accelerate ed e'
+// incompatibile col passare un adapter, vedi lib/prisma.ts) usa un
+// caricamento WASM compatibile con Workers quando si passa un driver
+// adapter (@prisma/adapter-pg). L'url qui e' richiesto per la validazione
+// dello schema anche con un adapter (non usato a runtime, che passa da
+// lib/prisma.ts); la connessione per Migrate/CLI resta in
+// prisma.config.ts (DIRECT_URL).
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Ruolo {

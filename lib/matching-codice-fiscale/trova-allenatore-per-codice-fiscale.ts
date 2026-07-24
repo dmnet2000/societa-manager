@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { Allenatore } from "@/generated/prisma/client";
+import type { Allenatore } from "@prisma/client";
 
 // AD-5: stesso modulo condiviso di trovaPerCodiceFiscale (Atleta, Story 1.3),
 // ma implementazione diversa - Allenatore non e' protetta da RLS (AD-9,
