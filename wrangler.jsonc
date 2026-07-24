@@ -16,14 +16,9 @@
 			"service": "societa-manager"
 		}
 	],
-	"r2_buckets": [
-		// Cache incrementale ISR/PPR su R2 - creare il bucket prima del deploy con:
-		// npx wrangler r2 bucket create societa-manager-opennext-cache
-		{
-			"binding": "NEXT_INC_CACHE_R2_BUCKET",
-			"bucket_name": "societa-manager-opennext-cache"
-		}
-	],
+	// Niente cache incrementale R2 (ISR/PPR): richiederebbe abilitare R2 sul
+	// dashboard Cloudflare, e l'app e' quasi interamente server-rendered
+	// dinamico - il beneficio non giustifica il servizio in piu' da gestire.
 	"images": {
 		// Ottimizzazione immagini Cloudflare - vedi https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
