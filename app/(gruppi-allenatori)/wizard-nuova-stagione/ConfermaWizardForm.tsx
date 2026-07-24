@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { confermaWizardNuovaStagione } from "./actions";
+import styles from "./wizard-nuova-stagione.module.css";
 
 // AC #1/#2: nessuna checkbox/campo editabile (decisione presa in fase di
 // creazione della storia) - un unico pulsante "Conferma" che copia tutto
@@ -18,8 +19,12 @@ export function ConfermaWizardForm() {
 
   return (
     <form action={formAction}>
-      {state && "error" in state && <p role="alert">{state.error.message}</p>}
-      <button disabled={pending} type="submit">
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Conferma
       </button>
     </form>

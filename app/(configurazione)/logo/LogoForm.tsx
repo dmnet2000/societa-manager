@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { caricaLogoAction } from "./actions";
+import styles from "./logo.module.css";
 
 export function LogoForm() {
   const [state, formAction, pending] = useActionState(
@@ -18,7 +19,7 @@ export function LogoForm() {
 
   return (
     <form ref={formRef} action={formAction}>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="logo-file">Logo (PNG o JPG, max 2MB)</label>
         <input
           id="logo-file"
@@ -28,9 +29,17 @@ export function LogoForm() {
           required
         />
       </div>
-      {state && "error" in state && <p role="alert">{state.error.message}</p>}
-      {state && "success" in state && <p role="status">Logo caricato.</p>}
-      <button disabled={pending} type="submit">
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
+      )}
+      {state && "success" in state && (
+        <p role="status" className={styles.successo}>
+          Logo caricato.
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Carica logo
       </button>
     </form>

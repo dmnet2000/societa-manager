@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
+import styles from "./gruppi.module.css";
 
 // Dati mutabili in tempo reale (creazione Gruppo/assegnazione Allenatori
 // tramite Server Action sulla stessa pagina) - stesso motivo di /admin e
@@ -65,47 +66,49 @@ export default async function GruppiPage() {
     <main>
       <h1>Gruppi</h1>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Nuovo Gruppo</h2>
         <NuovoGruppoForm />
       </section>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Elenco Gruppi</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Categoria</th>
-              <th>Allenatori</th>
-              <th>Atlete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {gruppi.map((gruppo) => {
-              const atleteGruppo = gruppoAtleteRows
-                .filter((riga) => riga.gruppoId === gruppo.id)
-                .map((riga) => atletaPerId.get(riga.atletaId))
-                .filter((atleta): atleta is { id: string; nome: string } => atleta !== undefined)
-                .sort((a, b) => a.nome.localeCompare(b.nome));
+        <div className={styles.scrollWrapper}>
+          <table className={styles.tabella}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Allenatori</th>
+                <th>Atlete</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gruppi.map((gruppo) => {
+                const atleteGruppo = gruppoAtleteRows
+                  .filter((riga) => riga.gruppoId === gruppo.id)
+                  .map((riga) => atletaPerId.get(riga.atletaId))
+                  .filter((atleta): atleta is { id: string; nome: string } => atleta !== undefined)
+                  .sort((a, b) => a.nome.localeCompare(b.nome));
 
-              return (
-                <GruppoRow
-                  key={gruppo.id}
-                  gruppo={{
-                    id: gruppo.id,
-                    nome: gruppo.nome,
-                    categoria: gruppo.categoria,
-                    allenatori: gruppo.allenatori.map((ga) => ga.allenatore),
-                    atlete: atleteGruppo,
-                  }}
-                  allenatoriDisponibili={allenatori}
-                  atleteDisponibili={atleteMinime}
-                />
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <GruppoRow
+                    key={gruppo.id}
+                    gruppo={{
+                      id: gruppo.id,
+                      nome: gruppo.nome,
+                      categoria: gruppo.categoria,
+                      allenatori: gruppo.allenatori.map((ga) => ga.allenatore),
+                      atlete: atleteGruppo,
+                    }}
+                    allenatoriDisponibili={allenatori}
+                    atleteDisponibili={atleteMinime}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   );

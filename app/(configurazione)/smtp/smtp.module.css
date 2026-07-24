@@ -1,0 +1,104 @@
+/* Story 8.7 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Nessun mockup key-screen per questa pagina - restyle puro. .campo/.bottone/
+   .errore/.successo/.messaggioVuoto coerenti con Story 8.2-8.6. .checkboxRuolo
+   (rinominata qui .checkbox, stesso stile) riusa lo stesso approccio minimo
+   di admin.module.css (Story 8.7, Task 1) per la checkbox SSL/TLS. */
+
+.sottotitolo {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-5);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+}
+
+.checkbox input {
+  accent-color: var(--color-primary);
+}
+
+.checkbox input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone {
+  margin-top: var(--space-4);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

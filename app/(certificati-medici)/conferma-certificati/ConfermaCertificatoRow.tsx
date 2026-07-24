@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { confermaCertificato, ottieniUrlCertificatoConferma } from "./actions";
+import styles from "./conferma-certificati.module.css";
 
 type Atleta = {
   id: string;
@@ -33,55 +34,65 @@ export function ConfermaCertificatoRow({
   );
 
   return (
-    <li>
-      <strong>{atleta.nome}</strong>
+    <li className={styles.card}>
+      <strong className={styles.nomeAtleta}>{atleta.nome}</strong>
 
       {filePath && (
         <form action={ottieniUrlCertificatoConferma.bind(null, filePath)}>
-          <button type="submit">Visualizza certificato caricato</button>
+          <button type="submit" className={styles.bottoneVisualizza}>
+            Visualizza certificato caricato
+          </button>
         </form>
       )}
 
       <form action={formAction}>
         <input type="hidden" name="atletaId" value={atleta.id} />
-        <label>
-          Data inizio validità
-          <input
-            type="date"
-            name="dataInizioValidita"
-            defaultValue={dataInizioValidita}
-          />
-        </label>
-        <label>
-          Data fine validità
-          <input
-            type="date"
-            name="dataFineValidita"
-            defaultValue={dataFineValidita}
-            required
-          />
-        </label>
-        <label>
-          Mesi validità
-          <input
-            type="number"
-            name="mesiValidita"
-            min="1"
-            defaultValue={mesiValidita ?? ""}
-          />
-        </label>
-        <label>
-          Modulo
-          <input type="text" name="modulo" defaultValue={modulo ?? ""} />
-        </label>
-        <label>
-          {filePath
-            ? "Sostituisci con un file scansionato (opzionale)"
-            : "Allega scansione del certificato (opzionale)"}
-          <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" />
-        </label>
-        {state && "error" in state && <p role="alert">{state.error.message}</p>}
-        <button disabled={pending} type="submit">
+        <div className={styles.campo}>
+          <label>
+            Data inizio validità
+            <input
+              type="date"
+              name="dataInizioValidita"
+              defaultValue={dataInizioValidita}
+            />
+          </label>
+        </div>
+        <div className={styles.campo}>
+          <label>
+            Data fine validità
+            <input
+              type="date"
+              name="dataFineValidita"
+              defaultValue={dataFineValidita}
+              required
+            />
+          </label>
+        </div>
+        <div className={styles.campo}>
+          <label>
+            Mesi validità
+            <input
+              type="number"
+              name="mesiValidita"
+              min="1"
+              defaultValue={mesiValidita ?? ""}
+            />
+          </label>
+        </div>
+        <div className={styles.campo}>
+          <label>
+            {filePath
+              ? "Sostituisci con un file scansionato (opzionale)"
+              : "Allega scansione del certificato (opzionale)"}
+            <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" />
+          </label>
+        </div>
+        {state && "error" in state && (
+          <p role="alert" className={styles.errore}>
+            {state.error.message}
+          </p>
+        )}
+        <button disabled={pending} type="submit" className={styles.bottone}>
           Conferma
         </button>
       </form>

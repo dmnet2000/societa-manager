@@ -3,7 +3,29 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
-import { SlotTable } from "../SlotTable";
+import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import type { GiornoSettimana } from "@prisma/client";
+import { type SlotRiga } from "../SlotTable";
+import styles from "./mio-orario.module.css";
+
+// Segue il mockup key-mio-orario.html (day-group/slot-row), non la tabella
+// condivisa di SlotTable - vedi "Decisione" nella Story 8.3. `slot` arriva
+// gia' ordinato per giorno (unisciESordinaSlot), quindi raggruppare per
+// cambio di `giorno` consecutivo preserva l'ordine Lunedi->Domenica senza
+// bisogno di iterare GIORNI_SETTIMANA a parte, e produce solo i giorni che
+// hanno davvero almeno uno Slot (nessun giorno vuoto mostrato).
+function raggruppaPerGiorno(slot: SlotRiga[]): { giorno: GiornoSettimana; righe: SlotRiga[] }[] {
+  const gruppi: { giorno: GiornoSettimana; righe: SlotRiga[] }[] = [];
+  for (const riga of slot) {
+    const ultimo = gruppi[gruppi.length - 1];
+    if (ultimo && ultimo.giorno === riga.giorno) {
+      ultimo.righe.push(riga);
+    } else {
+      gruppi.push({ giorno: riga.giorno, righe: [riga] });
+    }
+  }
+  return gruppi;
+}
 
 // Dati potenzialmente diversi ad ogni visita (nuovi Slot caricati da un
 // Dirigente) - stesso motivo di slot/page.tsx (Story 2.5).
@@ -113,9 +135,37 @@ export default async function MioOrarioPage() {
 
     const slot = unisciESordinaSlot(slotAllenatore, slotAtleta);
 
-    body = (
-      <SlotTable slot={slot} messaggioVuoto="Nessuno Slot ancora assegnato ai tuoi Gruppi." />
-    );
+    if (slot.length === 0) {
+      body = (
+        <p className={styles.messaggioVuoto}>
+          Nessuno Slot ancora assegnato ai tuoi Gruppi.
+        </p>
+      );
+    } else {
+      const gruppiPerGiorno = raggruppaPerGiorno(slot);
+      body = (
+        <div className={styles.settimana}>
+          {gruppiPerGiorno.map((gruppo) => (
+            <div key={gruppo.giorno} className={styles.giornoGruppo}>
+              <p className={styles.giornoLabel}>{ETICHETTA_GIORNO[gruppo.giorno]}</p>
+              {gruppo.righe.map((riga) => (
+                <div key={riga.id} className={styles.slotRiga}>
+                  <span className={styles.slotOrario}>
+                    {riga.oraInizio}–{riga.oraFine}
+                  </span>
+                  <div className={styles.slotDettagli}>
+                    <span className={styles.slotGruppo}>{riga.gruppo.nome}</span>
+                    <span className={styles.slotPosto}>
+                      {riga.campo.palestra.nome} - {riga.campo.nome}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
   }
 
   return (

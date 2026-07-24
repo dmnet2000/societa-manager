@@ -6,6 +6,7 @@ import {
   trovaAnnoAgonisticoPrecedente,
 } from "@/lib/anno-agonistico";
 import { ConfermaWizardForm } from "./ConfermaWizardForm";
+import styles from "./wizard-nuova-stagione.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (conferma tramite Server Action
 // sulla stessa pagina) - stesso motivo di /gruppi.
@@ -31,7 +32,7 @@ export default async function WizardNuovaStagionePage() {
     return (
       <main>
         <h1>Wizard nuova stagione</h1>
-        <p role="alert">
+        <p role="alert" className={styles.avviso}>
           Questa stagione ha già dei Gruppi. Il wizard è pensato per il primo
           utilizzo della stagione — per correggere o aggiungere Gruppi usa la{" "}
           <Link href="/gruppi">pagina Gruppi</Link>.
@@ -50,7 +51,7 @@ export default async function WizardNuovaStagionePage() {
     return (
       <main>
         <h1>Wizard nuova stagione</h1>
-        <p>Nessuna stagione precedente trovata.</p>
+        <p className={styles.testo}>Nessuna stagione precedente trovata.</p>
       </main>
     );
   }
@@ -77,7 +78,9 @@ export default async function WizardNuovaStagionePage() {
     return (
       <main>
         <h1>Wizard nuova stagione</h1>
-        <p>La stagione precedente non ha nessun Gruppo da copiare.</p>
+        <p className={styles.testo}>
+          La stagione precedente non ha nessun Gruppo da copiare.
+        </p>
       </main>
     );
   }
@@ -85,8 +88,8 @@ export default async function WizardNuovaStagionePage() {
   return (
     <main>
       <h1>Wizard nuova stagione</h1>
-      <p>Dall'anno precedente verranno copiati:</p>
-      <ul>
+      <p className={styles.testo}>Dall'anno precedente verranno copiati:</p>
+      <ul className={styles.lista}>
         {gruppiPrecedenti.map((gruppo) => (
           <li key={gruppo.id}>
             {gruppo.nome} ({gruppo.categoria})

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaNotifiche } from "@/lib/db-rls/notifica";
+import styles from "./notifiche.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (nuovi caricamenti Certificato,
 // Story 4.1) - stesso motivo di /presenze, /storico-presenze.
@@ -36,11 +37,11 @@ export default async function NotifichePage() {
     <main>
       <h1>Notifiche</h1>
       {righe.length === 0 ? (
-        <p>Nessuna notifica.</p>
+        <p className={styles.messaggioVuoto}>Nessuna notifica.</p>
       ) : (
-        <ul>
+        <ul className={styles.lista}>
           {righe.map(({ notifica, atleta }) => (
-            <li key={notifica.id}>
+            <li key={notifica.id} className={styles.riga}>
               Nuovo certificato caricato per {atleta.nome}, il{" "}
               {new Date(notifica.createdAt).toLocaleString("it-IT")}
             </li>

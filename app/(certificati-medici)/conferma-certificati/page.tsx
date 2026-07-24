@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
+import styles from "./conferma-certificati.module.css";
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
 // pagina) - stesso motivo di /presenze, /certificato-medico.
@@ -46,12 +47,12 @@ export default async function ConfermaCertificatiPage() {
     <main>
       <h1>Conferma Certificati Medici</h1>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Da confermare ({daConfermare.length})</h2>
         {daConfermare.length === 0 ? (
-          <p>Nessun Certificato in attesa di conferma.</p>
+          <p className={styles.messaggioVuoto}>Nessun Certificato in attesa di conferma.</p>
         ) : (
-          <ul>
+          <ul className={styles.lista}>
             {daConfermare.map(({ atleta, certificato }) => (
               <ConfermaCertificatoRow
                 key={atleta.id}
@@ -83,18 +84,18 @@ export default async function ConfermaCertificatiPage() {
         )}
       </section>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Confermati ({confermati.length})</h2>
         {confermati.length === 0 ? (
-          <p>Nessun Certificato ancora confermato.</p>
+          <p className={styles.messaggioVuoto}>Nessun Certificato ancora confermato.</p>
         ) : (
-          <ul>
+          <ul className={styles.listaConfermati}>
             {confermati.map(({ atleta, certificato }) => {
               const dataFineValidita = certificato?.dataFineValidita as
                 | string
                 | undefined;
               return (
-                <li key={atleta.id}>
+                <li key={atleta.id} className={styles.rigaConfermata}>
                   {atleta.nome}
                   {dataFineValidita
                     ? ` — valido fino al ${new Date(dataFineValidita).toLocaleDateString("it-IT")}`

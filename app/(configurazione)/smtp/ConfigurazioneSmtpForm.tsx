@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { salvaConfigurazione } from "./actions";
 import type { ConfigurazioneSmtpSenzaPassword } from "@/lib/db-rls/configurazione-smtp";
+import styles from "./smtp.module.css";
 
 // La password non viene mai precompilata (Prerequisito #3 della storia):
 // vuota di default, con un'etichetta che chiarisce che lasciarla vuota non
@@ -21,7 +22,7 @@ export function ConfigurazioneSmtpForm({
 
   return (
     <form action={formAction}>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-host">Host</label>
         <input
           id="smtp-host"
@@ -31,7 +32,7 @@ export function ConfigurazioneSmtpForm({
           required
         />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-porta">Porta</label>
         <input
           id="smtp-porta"
@@ -41,8 +42,8 @@ export function ConfigurazioneSmtpForm({
           required
         />
       </div>
-      <div>
-        <label>
+      <div className={styles.campo}>
+        <label className={styles.checkbox}>
           <input
             type="checkbox"
             name="sicura"
@@ -51,7 +52,7 @@ export function ConfigurazioneSmtpForm({
           Connessione SSL/TLS (tipicamente per la porta 465)
         </label>
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-utente">Utente</label>
         <input
           id="smtp-utente"
@@ -61,7 +62,7 @@ export function ConfigurazioneSmtpForm({
           required
         />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-password">
           Password
           {configurazioneEsistente
@@ -76,7 +77,7 @@ export function ConfigurazioneSmtpForm({
           required={!configurazioneEsistente}
         />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-mittente">Indirizzo mittente</label>
         <input
           id="smtp-mittente"
@@ -86,7 +87,7 @@ export function ConfigurazioneSmtpForm({
           required
         />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="smtp-nome-mittente">Nome mittente (opzionale)</label>
         <input
           id="smtp-nome-mittente"
@@ -95,11 +96,17 @@ export function ConfigurazioneSmtpForm({
           defaultValue={configurazioneEsistente?.nomeMittente ?? ""}
         />
       </div>
-      {state && "error" in state && <p role="alert">{state.error.message}</p>}
-      {state && "success" in state && (
-        <p role="status">Configurazione salvata.</p>
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
       )}
-      <button disabled={pending} type="submit">
+      {state && "success" in state && (
+        <p role="status" className={styles.successo}>
+          Configurazione salvata.
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Salva configurazione
       </button>
     </form>

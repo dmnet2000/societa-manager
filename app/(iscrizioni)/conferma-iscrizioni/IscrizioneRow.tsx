@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { confermaIscrizione, escludiIscrizione } from "./actions";
 import type { AtletaElenco } from "@/lib/db-rls/atleta";
+import styles from "./conferma-iscrizioni.module.css";
 
 type Stato =
   | { iscritta: true; iscrizioneId: string | null }
@@ -66,30 +67,42 @@ export function IscrizioneRow({
       <td>{atleta.nome}</td>
       <td>{atleta.codiceFiscale}</td>
       <td>
-        {stato.iscritta ? (
-          <>
-            Iscritta
-            {iscrizioneIdCorrente && (
-              <button
-                disabled={isPending}
-                onClick={() => escludi(iscrizioneIdCorrente)}
-                type="button"
-              >
-                Escludi
-              </button>
-            )}
-          </>
-        ) : puoConfermare ? (
-          <button disabled={isPending} onClick={conferma} type="button">
-            Conferma
-          </button>
-        ) : (
-          // Review fix: la route ammette anche Admin/Dirigente (Story 1.8,
-          // per l'esclusione), ma confermaIscrizione resta riservata alla
-          // sola Segreteria (FR-17) - niente bottone che fallirebbe sempre.
-          "Non iscritta"
+        <div className={styles.stato}>
+          {stato.iscritta ? (
+            <>
+              Iscritta
+              {iscrizioneIdCorrente && (
+                <button
+                  disabled={isPending}
+                  onClick={() => escludi(iscrizioneIdCorrente)}
+                  type="button"
+                  className={styles.bottoneSecondario}
+                >
+                  Escludi
+                </button>
+              )}
+            </>
+          ) : puoConfermare ? (
+            <button
+              disabled={isPending}
+              onClick={conferma}
+              type="button"
+              className={styles.bottone}
+            >
+              Conferma
+            </button>
+          ) : (
+            // Review fix: la route ammette anche Admin/Dirigente (Story 1.8,
+            // per l'esclusione), ma confermaIscrizione resta riservata alla
+            // sola Segreteria (FR-17) - niente bottone che fallirebbe sempre.
+            "Non iscritta"
+          )}
+        </div>
+        {error && (
+          <p role="alert" className={styles.errore}>
+            {error}
+          </p>
         )}
-        {error && <p role="alert">{error}</p>}
       </td>
     </tr>
   );

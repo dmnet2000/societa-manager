@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NuovaPalestraForm } from "./NuovaPalestraForm";
 import { PalestraRow } from "./PalestraRow";
+import styles from "./palestre.module.css";
 
 // Dati mutabili in tempo reale (creazione/modifica Palestra e Campo tramite
 // Server Action sulla stessa pagina) - stesso motivo di /admin (Story 1.2).
@@ -19,16 +20,18 @@ export default async function PalestrePage() {
     <main>
       <h1>Palestre</h1>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Nuova Palestra</h2>
         <NuovaPalestraForm />
       </section>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Elenco Palestre</h2>
-        {palestre.map((palestra) => (
-          <PalestraRow key={palestra.id} palestra={palestra} />
-        ))}
+        <div className={styles.lista}>
+          {palestre.map((palestra) => (
+            <PalestraRow key={palestra.id} palestra={palestra} />
+          ))}
+        </div>
       </section>
     </main>
   );

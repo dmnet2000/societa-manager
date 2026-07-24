@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import { LogoForm } from "./LogoForm";
+import styles from "./logo.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (Admin che ha appena
 // caricato), stesso motivo di /smtp, /notifiche.
@@ -29,9 +30,10 @@ export default async function LogoPage() {
         <img
           src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
           alt="Logo attuale"
+          className={styles.anteprimaLogo}
         />
       ) : (
-        <p>Nessun logo impostato.</p>
+        <p className={styles.messaggioVuoto}>Nessun logo impostato.</p>
       )}
       <LogoForm />
     </main>

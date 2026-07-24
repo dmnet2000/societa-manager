@@ -1,7 +1,12 @@
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import type { GiornoSettimana } from "@prisma/client";
+import styles from "./SlotTable.module.css";
 
-type SlotRiga = {
+// Esportato (review Story 8.3) - riusato identico da mio-orario/page.tsx,
+// che renderizza la stessa forma di Slot ma con un markup diverso (vedi
+// "Decisione" nella Story 8.3): una sola definizione, non due copie
+// indipendenti della stessa forma dati.
+export type SlotRiga = {
   id: string;
   giorno: GiornoSettimana;
   oraInizio: string;
@@ -24,33 +29,35 @@ export function SlotTable({
   messaggioVuoto?: string;
 }) {
   if (slot.length === 0 && messaggioVuoto) {
-    return <p>{messaggioVuoto}</p>;
+    return <p className={styles.messaggioVuoto}>{messaggioVuoto}</p>;
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Giorno</th>
-          <th>Orario</th>
-          <th>Palestra / Campo</th>
-          <th>Gruppo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {slot.map((s) => (
-          <tr key={s.id}>
-            <td>{ETICHETTA_GIORNO[s.giorno]}</td>
-            <td>
-              {s.oraInizio}–{s.oraFine}
-            </td>
-            <td>
-              {s.campo.palestra.nome} - {s.campo.nome}
-            </td>
-            <td>{s.gruppo.nome}</td>
+    <div className={styles.scrollWrapper}>
+      <table className={styles.tabella}>
+        <thead>
+          <tr>
+            <th>Giorno</th>
+            <th>Orario</th>
+            <th>Palestra / Campo</th>
+            <th>Gruppo</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {slot.map((s) => (
+            <tr key={s.id}>
+              <td>{ETICHETTA_GIORNO[s.giorno]}</td>
+              <td>
+                {s.oraInizio}–{s.oraFine}
+              </td>
+              <td>
+                {s.campo.palestra.nome} - {s.campo.nome}
+              </td>
+              <td>{s.gruppo.nome}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

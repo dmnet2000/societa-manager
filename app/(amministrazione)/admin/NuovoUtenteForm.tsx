@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { creaUtente } from "./actions";
+import styles from "./admin.module.css";
 
 const RUOLI = [
   { value: "ALLENATORE", label: "Allenatore" },
@@ -24,7 +25,7 @@ export function NuovoUtenteForm() {
 
   return (
     <form ref={formRef} action={formAction}>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-utente-email">Email</label>
         <input
           id="nuovo-utente-email"
@@ -34,7 +35,7 @@ export function NuovoUtenteForm() {
           required
         />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-utente-password">Password</label>
         <input
           id="nuovo-utente-password"
@@ -44,20 +45,26 @@ export function NuovoUtenteForm() {
           required
         />
       </div>
-      <fieldset>
+      <fieldset className={styles.fieldset}>
         <legend>Ruolo (uno o più)</legend>
         {RUOLI.map((ruolo) => (
-          <label key={ruolo.value}>
+          <label key={ruolo.value} className={styles.checkboxRuolo}>
             <input type="checkbox" name="ruoli" value={ruolo.value} />
             {ruolo.label}
           </label>
         ))}
       </fieldset>
       {state && "error" in state && (
-        <p role="alert">{state.error.message}</p>
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
       )}
-      {state && "success" in state && <p role="status">Utente creato.</p>}
-      <button disabled={pending} type="submit">
+      {state && "success" in state && (
+        <p role="status" className={styles.successo}>
+          Utente creato.
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Crea utente
       </button>
     </form>

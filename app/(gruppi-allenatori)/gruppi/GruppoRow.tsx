@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { assegnaAllenatore, assegnaAtleta } from "./actions";
+import styles from "./gruppi.module.css";
 
 type Allenatore = {
   id: string;
@@ -61,12 +62,16 @@ export function GruppoRow({
       <td>{gruppo.nome}</td>
       <td>{gruppo.categoria}</td>
       <td>
-        <ul>
+        <ul className={styles.listaAssegnati}>
           {gruppo.allenatori.map((allenatore) => (
             <li key={allenatore.id}>{allenatore.nome}</li>
           ))}
         </ul>
-        <form ref={allenatoreFormRef} action={allenatoreFormAction}>
+        <form
+          ref={allenatoreFormRef}
+          action={allenatoreFormAction}
+          className={styles.formCompatto}
+        >
           <input type="hidden" name="gruppoId" value={gruppo.id} />
           <label htmlFor={`assegna-allenatore-${gruppo.id}`}>
             Assegna Allenatore
@@ -80,20 +85,30 @@ export function GruppoRow({
             ))}
           </select>
           {allenatoreState && "error" in allenatoreState && (
-            <p role="alert">{allenatoreState.error.message}</p>
+            <p role="alert" className={styles.errore}>
+              {allenatoreState.error.message}
+            </p>
           )}
-          <button disabled={allenatorePending} type="submit">
+          <button
+            disabled={allenatorePending}
+            type="submit"
+            className={styles.bottoneCompatto}
+          >
             Assegna
           </button>
         </form>
       </td>
       <td>
-        <ul>
+        <ul className={styles.listaAssegnati}>
           {gruppo.atlete.map((atleta) => (
             <li key={atleta.id}>{atleta.nome}</li>
           ))}
         </ul>
-        <form ref={atletaFormRef} action={atletaFormAction}>
+        <form
+          ref={atletaFormRef}
+          action={atletaFormAction}
+          className={styles.formCompatto}
+        >
           <input type="hidden" name="gruppoId" value={gruppo.id} />
           <label htmlFor={`assegna-atleta-${gruppo.id}`}>Assegna Atleta</label>
           <select id={`assegna-atleta-${gruppo.id}`} name="atletaId" required>
@@ -105,9 +120,15 @@ export function GruppoRow({
             ))}
           </select>
           {atletaState && "error" in atletaState && (
-            <p role="alert">{atletaState.error.message}</p>
+            <p role="alert" className={styles.errore}>
+              {atletaState.error.message}
+            </p>
           )}
-          <button disabled={atletaPending} type="submit">
+          <button
+            disabled={atletaPending}
+            type="submit"
+            className={styles.bottoneCompatto}
+          >
             Assegna
           </button>
         </form>

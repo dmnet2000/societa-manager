@@ -1,0 +1,113 @@
+/* Story 8.3 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   .campo/.bottone/.errore/.successo coerenti con i CSS module di Story 8.2
+   (es. accedi.module.css); .card/.messaggioVuoto coerenti con
+   vista-dirigente.module.css (Story 5.1). */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.sezione h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.bottone {
+  margin-top: var(--space-5);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.card h3 {
+  margin-top: var(--space-4);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.campiLista {
+  list-style: none;
+  margin-top: var(--space-2);
+}
+
+.campiLista li + li {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}

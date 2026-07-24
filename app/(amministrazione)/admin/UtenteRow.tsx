@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import type { Ruolo } from "@prisma/client";
 import { aggiornaRuoliUtente, impostaAttivoUtente } from "./actions";
+import styles from "./admin.module.css";
 
 const RUOLI = [
   { value: "ALLENATORE", label: "Allenatore" },
@@ -50,10 +51,10 @@ export function UtenteRow({ utente }: { utente: Utente }) {
     <tr>
       <td>{utente.email}</td>
       <td>
-        <form action={ruoliAction}>
+        <form action={ruoliAction} className={styles.formCompatto}>
           <input type="hidden" name="utenteId" value={utente.id} />
           {RUOLI.map((ruolo) => (
-            <label key={ruolo.value}>
+            <label key={ruolo.value} className={styles.checkboxRuolo}>
               <input
                 type="checkbox"
                 name="ruoli"
@@ -64,19 +65,36 @@ export function UtenteRow({ utente }: { utente: Utente }) {
             </label>
           ))}
           {ruoliState && "error" in ruoliState && (
-            <p role="alert">{ruoliState.error.message}</p>
+            <p role="alert" className={styles.errore}>
+              {ruoliState.error.message}
+            </p>
           )}
-          <button disabled={ruoliPending} type="submit">
+          <button
+            disabled={ruoliPending}
+            type="submit"
+            className={styles.bottoneCompatto}
+          >
             Salva Ruoli
           </button>
         </form>
       </td>
       <td>{utente.attivo ? "Attivo" : "Disattivato"}</td>
       <td>
-        <button disabled={isTogglePending} onClick={toggleAttivo} type="button">
+        <button
+          disabled={isTogglePending}
+          onClick={toggleAttivo}
+          type="button"
+          className={
+            utente.attivo ? styles.bottoneSecondario : styles.bottoneCompatto
+          }
+        >
           {utente.attivo ? "Disattiva" : "Riattiva"}
         </button>
-        {attivoError && <p role="alert">{attivoError}</p>}
+        {attivoError && (
+          <p role="alert" className={styles.errore}>
+            {attivoError}
+          </p>
+        )}
       </td>
     </tr>
   );

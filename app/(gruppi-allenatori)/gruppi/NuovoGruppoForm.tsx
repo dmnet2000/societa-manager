@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { creaGruppo } from "./actions";
+import styles from "./gruppi.module.css";
 
 export function NuovoGruppoForm() {
   const [state, formAction, pending] = useActionState(creaGruppo, undefined);
@@ -15,17 +16,25 @@ export function NuovoGruppoForm() {
 
   return (
     <form ref={formRef} action={formAction}>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-gruppo-nome">Nome</label>
         <input id="nuovo-gruppo-nome" name="nome" type="text" required />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-gruppo-categoria">Categoria</label>
         <input id="nuovo-gruppo-categoria" name="categoria" type="text" required />
       </div>
-      {state && "error" in state && <p role="alert">{state.error.message}</p>}
-      {state && "success" in state && <p role="status">Gruppo creato.</p>}
-      <button disabled={pending} type="submit">
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
+      )}
+      {state && "success" in state && (
+        <p role="status" className={styles.successo}>
+          Gruppo creato.
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Crea Gruppo
       </button>
     </form>

@@ -8,6 +8,7 @@ import { leggiMisurazioniPerAtleta } from "@/lib/db-rls/misurazione-atleta";
 import { raggruppaPerTipo } from "@/lib/misurazioni";
 import { MisurazioneForm } from "./MisurazioneForm";
 import { GraficoMisurazione } from "./GraficoMisurazione";
+import styles from "./dati-fisici.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (nuove misurazioni inserite) -
 // stesso motivo di /storico-presenze.
@@ -38,28 +39,30 @@ async function SezioneMisurazioni({
         />
       ))}
       {misurazioni.length === 0 ? (
-        <p>Nessuna misurazione registrata.</p>
+        <p className={styles.messaggioVuoto}>Nessuna misurazione registrata.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Valore</th>
-              <th>Unità di misura</th>
-            </tr>
-          </thead>
-          <tbody>
-            {misurazioni.map((m) => (
-              <tr key={m.id}>
-                <td>{m.data}</td>
-                <td>{m.tipo}</td>
-                <td>{m.valore}</td>
-                <td>{m.unitaMisura}</td>
+        <div className={styles.scrollWrapper}>
+          <table className={styles.tabella}>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Valore</th>
+                <th>Unità di misura</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {misurazioni.map((m) => (
+                <tr key={m.id}>
+                  <td>{m.data}</td>
+                  <td>{m.tipo}</td>
+                  <td>{m.valore}</td>
+                  <td>{m.unitaMisura}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </>
   );
@@ -114,7 +117,7 @@ export default async function DatiFisiciPage({
     return (
       <main>
         <h1>Dati fisici</h1>
-        <p>
+        <p className={styles.testo}>
           Il tuo account non è ancora collegato a un profilo Allenatore o
           Atleta. Contatta la segreteria.
         </p>
@@ -127,7 +130,7 @@ export default async function DatiFisiciPage({
     // AC #4: mostra il PRIMO atletaId risolto, mai un merge - stesso
     // principio di storico-presenze/page.tsx.
     sezioneAtleta = (
-      <section>
+      <section className={styles.sezione}>
         <h2>Le mie misurazioni</h2>
         <SezioneMisurazioni supabase={supabase} atletaId={atletaIds[0]} />
       </section>
@@ -173,28 +176,34 @@ export default async function DatiFisiciPage({
         // AC #3: un'Atleta non tra le proprie (manomissione dell'URL, non
         // raggiungibile dalla UI) non deve mai arrivare a interrogare le
         // misurazioni - stesso principio di storico-presenze/page.tsx.
-        <p role="alert">Atleta non trovata tra le tue.</p>
+        <p role="alert" className={styles.errore}>
+          Atleta non trovata tra le tue.
+        </p>
       );
     }
 
     sezioneAllenatore = (
-      <section>
+      <section className={styles.sezione}>
         <h2>Misurazioni delle mie Atlete</h2>
         <form method="get">
-          <label htmlFor="dati-fisici-atleta">Atleta</label>
-          <select
-            id="dati-fisici-atleta"
-            name="atletaId"
-            defaultValue={atletaIdSelezionato}
-          >
-            <option value="">Seleziona...</option>
-            {proprieAtlete.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome}
-              </option>
-            ))}
-          </select>
-          <button type="submit">Carica</button>
+          <div className={styles.campoSelettore}>
+            <label htmlFor="dati-fisici-atleta">Atleta</label>
+            <select
+              id="dati-fisici-atleta"
+              name="atletaId"
+              defaultValue={atletaIdSelezionato}
+            >
+              <option value="">Seleziona...</option>
+              {proprieAtlete.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className={styles.bottone}>
+            Carica
+          </button>
         </form>
         {sezioneSelezionata}
       </section>

@@ -1,0 +1,201 @@
+/* Story 8.4 - segue il mockup key-screen approvato
+   (ux-designs/ux-societa-manager-2026-07-22/mockups/key-presenze.html).
+   Prima implementazione reale dei componenti attendance-row/badge di
+   DESIGN.md (mai costruiti prima - Story 5.1/5.2 hanno usato solo
+   stat-tile/card). .campo/.errore/.successo coerenti con Story 8.2/8.3. */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input,
+.campo select {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible,
+.campo select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneCarica {
+  margin-top: var(--space-5);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottoneCarica:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Intestazione Slot (DESIGN.md -> section-label; mockup .slot-header) */
+.slotHeader {
+  margin-top: var(--space-4);
+}
+
+.sezioneLabel {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.slotTitolo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.lista {
+  list-style: none;
+  margin-top: var(--space-3);
+}
+
+/* Componente attendance-row (DESIGN.md -> Componenti): sfondo surface-alt,
+   radius-sm, checkbox a sinistra, nome body-strong, badge opzionale a
+   destra. min-height 44px (EXPERIENCE.md -> Primitive di Interazione,
+   target di tocco >=44x44px per "checkbox di presenza") - il mockup mostra
+   un checkbox 20x20 solo a scopo illustrativo, non come target di tocco
+   letterale. */
+.riga {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+/* Review fix: .riga usa align-items:center, quindi senza align-self:stretch
+   .etichetta (la <label> che e' l'effettivo target cliccabile) si
+   dimensiona sul proprio contenuto (~20-24px) invece di riempire il
+   min-height:44px della riga - il target di tocco reale era piu' piccolo
+   dei 44px dichiarati. min-width:0 evita che un nome lungo + badge
+   sfondino la riga (senza, un flex item non si restringe mai sotto la
+   dimensione del proprio contenuto, con overflow-x:hidden su <body> il
+   testo verrebbe tagliato silenziosamente). */
+.etichetta {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  gap: var(--space-2);
+  flex: 1;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-button-bg);
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* Componente badge (DESIGN.md -> Componenti): variante warning - regola
+   non negoziabile per lo stato "certificato scaduto" a livello di singola
+   atleta (mai danger, FR-15: informativo, non deve allarmare). */
+.badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  white-space: nowrap;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+/* Pulsante "Salva presenze": a differenza di .bottone (compatto,
+   align-self: flex-start) usato altrove nell'Epic 8, il mockup lo mostra
+   esplicitamente a piena larghezza - variazione contestuale legittima
+   dello stesso componente button-primary per un'azione di salvataggio a
+   fine lista lunga su mobile, non una deviazione dal token system. */
+.saveFooter {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.bottoneSalva {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottoneSalva:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSalva:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

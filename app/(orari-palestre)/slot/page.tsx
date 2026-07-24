@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { NuovoSlotForm } from "./NuovoSlotForm";
 import { SlotTable } from "../SlotTable";
+import styles from "./slot.module.css";
 
 // Dati mutabili in tempo reale (creazione Slot tramite Server Action sulla
 // stessa pagina) - stesso motivo di /admin e /palestre (Story 1.2, 2.1).
@@ -43,12 +44,12 @@ export default async function SlotPage() {
     <main>
       <h1>Slot</h1>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Nuovo Slot</h2>
         <NuovoSlotForm campi={campi} gruppi={gruppi} />
       </section>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Elenco Slot</h2>
         <SlotTable slot={slot} />
       </section>

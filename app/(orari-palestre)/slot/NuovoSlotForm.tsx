@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { creaSlot } from "./actions";
 import { GIORNI_SETTIMANA } from "@/lib/giorno-settimana";
+import styles from "./slot.module.css";
 
 type Campo = {
   id: string;
@@ -33,7 +34,7 @@ export function NuovoSlotForm({
 
   return (
     <form ref={formRef} action={formAction}>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-slot-giorno">Giorno</label>
         <select id="nuovo-slot-giorno" name="giorno" required defaultValue="">
           <option value="" disabled>
@@ -46,15 +47,15 @@ export function NuovoSlotForm({
           ))}
         </select>
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-slot-ora-inizio">Ora inizio</label>
         <input id="nuovo-slot-ora-inizio" name="oraInizio" type="time" required />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-slot-ora-fine">Ora fine</label>
         <input id="nuovo-slot-ora-fine" name="oraFine" type="time" required />
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-slot-campo">Campo</label>
         <select id="nuovo-slot-campo" name="campoId" required defaultValue="">
           <option value="" disabled>
@@ -67,7 +68,7 @@ export function NuovoSlotForm({
           ))}
         </select>
       </div>
-      <div>
+      <div className={styles.campo}>
         <label htmlFor="nuovo-slot-gruppo">Gruppo</label>
         <select id="nuovo-slot-gruppo" name="gruppoId" required defaultValue="">
           <option value="" disabled>
@@ -80,9 +81,17 @@ export function NuovoSlotForm({
           ))}
         </select>
       </div>
-      {state && "error" in state && <p role="alert">{state.error.message}</p>}
-      {state && "success" in state && <p role="status">Slot creato.</p>}
-      <button disabled={pending} type="submit">
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
+      )}
+      {state && "success" in state && (
+        <p role="status" className={styles.successo}>
+          Slot creato.
+        </p>
+      )}
+      <button disabled={pending} type="submit" className={styles.bottone}>
         Crea Slot
       </button>
     </form>

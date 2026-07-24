@@ -1,0 +1,43 @@
+/* Story 8.3 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Nessun pattern tabellare esiste ancora nel codebase sotto il design system:
+   deriva coerenza dai token base (bordo, testo, spaziatura), stesso principio
+   gia' applicato in Story 8.2 per i campi form. */
+
+/* Review fix: senza un contenitore con overflow-x, una tabella a 4 colonne
+   su viewport stretto verrebbe tagliata silenziosamente da `overflow-x:
+   hidden` su <body> (app/globals.css) invece di restare scorrevole -
+   rilevante per NFR3 (mobile-first, "da smartphone in palestra"). */
+.scrollWrapper {
+  overflow-x: auto;
+  margin-top: var(--space-4);
+}
+
+.tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.tabella th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabella td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

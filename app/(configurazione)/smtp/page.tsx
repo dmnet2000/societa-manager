@@ -5,6 +5,7 @@ import {
 } from "@/lib/db-rls/configurazione-smtp";
 import { ConfigurazioneSmtpForm } from "./ConfigurazioneSmtpForm";
 import { InviaEmailProvaForm } from "./InviaEmailProvaForm";
+import styles from "./smtp.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (Admin che ha appena salvato),
 // stesso motivo di /certificato-medico, /notifiche.
@@ -27,7 +28,11 @@ export default async function ConfigurazioneSmtpPage() {
   return (
     <main>
       <h1>Configurazione SMTP</h1>
-      {!configurazione && <p>Nessuna configurazione email impostata.</p>}
+      {!configurazione && (
+        <p className={styles.messaggioVuoto}>
+          Nessuna configurazione email impostata.
+        </p>
+      )}
       <ConfigurazioneSmtpForm configurazioneEsistente={configurazionePubblica} />
       {configurazione && <InviaEmailProvaForm />}
     </main>

@@ -1,0 +1,134 @@
+/* Story 8.5 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Nessun mockup key-screen per questa pagina - restyle puro, stesso
+   approccio di /orari e /storico-presenze (Story 8.3/8.4). .card riusa 1:1
+   il pattern di vista-dirigente.module.css; .campo/.bottone/.errore
+   coerenti con Story 8.2-8.5. */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.sezione h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.nomeAtleta {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.bottoneVisualizza {
+  margin-top: var(--space-2);
+  align-self: flex-start;
+  background: var(--color-surface);
+  color: var(--color-button-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.bottoneVisualizza:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.bottone {
+  margin-top: var(--space-4);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.listaConfermati {
+  list-style: none;
+  margin-top: var(--space-3);
+}
+
+.rigaConfermata {
+  padding: var(--space-2) 0;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

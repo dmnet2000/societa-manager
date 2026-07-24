@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
+import type { StatoCertificato } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { trovaCertificatoPerAtleta } from "@/lib/db-rls/certificato-medico";
 import { CaricaCertificatoForm } from "./CaricaCertificatoForm";
 import { ottieniUrlCertificato } from "./actions";
+import { calcolaStatoCertificatoVisualizzato } from "./stato-certificato-visualizzato";
+import styles from "./certificato-medico.module.css";
 
 // Dati mutabili ad ogni visita (upload tramite Server Action sulla stessa
 // pagina) - stesso motivo di /presenze, /gruppi.
@@ -85,22 +88,28 @@ export default async function CertificatoMedicoPage({
   let sezioneSelettore: ReactNode = null;
   if (proprieAtlete.length > 1) {
     sezioneSelettore = (
-      <form method="get">
-        <label htmlFor="certificato-atleta">Atleta</label>
-        <select
-          id="certificato-atleta"
-          name="atletaId"
-          defaultValue={atletaIdSelezionato}
-        >
-          <option value="">Seleziona...</option>
-          {proprieAtlete.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nome}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Carica</button>
-      </form>
+      <section className={styles.sezione}>
+        <form method="get">
+          <div className={styles.campo}>
+            <label htmlFor="certificato-atleta">Atleta</label>
+            <select
+              id="certificato-atleta"
+              name="atletaId"
+              defaultValue={atletaIdSelezionato}
+            >
+              <option value="">Seleziona...</option>
+              {proprieAtlete.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className={styles.bottone}>
+            Carica
+          </button>
+        </form>
+      </section>
     );
   }
 
@@ -111,21 +120,74 @@ export default async function CertificatoMedicoPage({
       atletaIdCorrente
     );
     const filePath = certificato?.filePath as string | undefined;
+    const atleta = atletaPerId.get(atletaIdCorrente);
+
+    // Stato mostrato sulla card (mockup key-certificato-medico.html) - sola
+    // formattazione di dati gia' letti da trovaCertificatoPerAtleta (nessuna
+    // nuova query), vedi "Decisione" nella Story 8.5.
+    const statoVisualizzato = calcolaStatoCertificatoVisualizzato(
+      (certificato?.stato as StatoCertificato | undefined) ?? null,
+      (certificato?.dataFineValidita as string | undefined) ?? null,
+      new Date()
+    );
 
     sezioneGestione = (
-      <section>
-        {filePath ? (
-          <form action={ottieniUrlCertificato.bind(null, atletaIdCorrente)}>
-            <button type="submit">Visualizza certificato attuale</button>
-          </form>
-        ) : (
-          <p>Nessun Certificato ancora caricato.</p>
-        )}
+      <section className={styles.sezione}>
+        <div className={styles.card}>
+          {atleta && <p className={styles.nomeAtleta}>{atleta.nome}</p>}
+          <div className={styles.statusLine}>
+            {statoVisualizzato.tipo === "nessuno" && (
+              <span className={styles.testoStato}>
+                Nessun certificato caricato
+              </span>
+            )}
+            {statoVisualizzato.tipo === "in-attesa" && (
+              <span className={styles.testoStato}>
+                Certificato in attesa di conferma
+              </span>
+            )}
+            {statoVisualizzato.tipo === "scaduto" && (
+              <span className={`${styles.badge} ${styles.badgeWarning}`}>
+                Certificato scaduto
+              </span>
+            )}
+            {statoVisualizzato.tipo === "in-scadenza" && (
+              <span className={`${styles.badge} ${styles.badgeWarning}`}>
+                Certificato in scadenza
+              </span>
+            )}
+            {statoVisualizzato.tipo === "in-regola" && (
+              <span className={`${styles.badge} ${styles.badgeSuccess}`}>
+                Certificato in regola
+              </span>
+            )}
+          </div>
+          {statoVisualizzato.tipo === "in-regola" &&
+            statoVisualizzato.dataFineValidita && (
+              <span className={styles.validityText}>
+                Valido fino al{" "}
+                {new Date(statoVisualizzato.dataFineValidita).toLocaleDateString(
+                  "it-IT"
+                )}
+              </span>
+            )}
+          {filePath && (
+            <form action={ottieniUrlCertificato.bind(null, atletaIdCorrente)}>
+              <button type="submit" className={styles.bottone}>
+                Visualizza certificato attuale
+              </button>
+            </form>
+          )}
+        </div>
         <CaricaCertificatoForm atletaId={atletaIdCorrente} />
       </section>
     );
   } else if (proprieAtlete.length > 1) {
-    sezioneGestione = <p>Seleziona un&apos;Atleta per gestire il suo Certificato.</p>;
+    sezioneGestione = (
+      <p className={styles.testoStato}>
+        Seleziona un&apos;Atleta per gestire il suo Certificato.
+      </p>
+    );
   }
 
   return (

@@ -1,0 +1,89 @@
+/* Story 8.2 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22),
+   gia' introdotti globalmente in app/globals.css da Story 5.1. Nessun pattern di
+   campo form esisteva ancora nel codebase sotto il design system: bordo/radius/focus
+   derivati dai token base gia' usati altrove (button-primary, stat-tile). */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.bottone {
+  margin-top: var(--space-5);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.link {
+  margin-top: var(--space-5);
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+
+.link a {
+  color: var(--color-button-bg);
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+/* Review fix: DESIGN.md -> "Stato di focus" elenca esplicitamente il link
+   fra gli elementi interattivi che devono mostrare il contorno
+   {colors.focus-ring}, non solo pulsante/campo. */
+.link a:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

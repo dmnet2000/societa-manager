@@ -10,6 +10,7 @@ import {
   calcolaStatistichePresenza,
   ETICHETTA_TREND,
 } from "./calcola-statistiche-presenza";
+import styles from "./storico-presenze.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (nuove Presenze registrate da
 // un Allenatore, Story 3.1) - stesso motivo di /mio-orario, /presenze.
@@ -30,7 +31,7 @@ async function StoricoTable({
   const storico = await leggiStoricoPresenzePerAtleta(supabase, atletaId);
 
   if (storico.length === 0) {
-    return <p>Nessuna Presenza registrata.</p>;
+    return <p className={styles.messaggioVuoto}>Nessuna Presenza registrata.</p>;
   }
 
   const slotIds = [...new Set(storico.map((r) => r.slotId))];
@@ -61,35 +62,37 @@ async function StoricoTable({
   return (
     <>
       {statistiche && (
-        <p>
-          Percentuale presenza: {statistiche.percentuale}% — Trend:{" "}
+        <p className={styles.statistiche}>
+          Percentuale presenza: <span className={styles.percentuale}>{statistiche.percentuale}%</span> — Trend:{" "}
           {ETICHETTA_TREND[statistiche.trend]}
         </p>
       )}
-      <table>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Giorno</th>
-            <th>Orario</th>
-            <th>Gruppo</th>
-            <th>Presenza</th>
-          </tr>
-        </thead>
-        <tbody>
-          {righeVisibili.map(({ riga, slot }) => (
-            <tr key={riga.id}>
-              <td>{riga.data}</td>
-              <td>{ETICHETTA_GIORNO[slot.giorno]}</td>
-              <td>
-                {slot.oraInizio}–{slot.oraFine}
-              </td>
-              <td>{slot.gruppo.nome}</td>
-              <td>{riga.presente ? "Presente" : "Assente"}</td>
+      <div className={styles.scrollWrapper}>
+        <table className={styles.tabella}>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Giorno</th>
+              <th>Orario</th>
+              <th>Gruppo</th>
+              <th>Presenza</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {righeVisibili.map(({ riga, slot }) => (
+              <tr key={riga.id}>
+                <td>{riga.data}</td>
+                <td>{ETICHETTA_GIORNO[slot.giorno]}</td>
+                <td>
+                  {slot.oraInizio}–{slot.oraFine}
+                </td>
+                <td>{slot.gruppo.nome}</td>
+                <td>{riga.presente ? "Presente" : "Assente"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -162,7 +165,7 @@ export default async function StoricoPresenzePage({
     // Story 3.2) - a differenza di mio-orario, unire cronologie di presenza
     // di persone diverse confonderebbe l'identita' di chi era presente.
     sezioneAtleta = (
-      <section>
+      <section className={styles.sezione}>
         <h2>Il mio storico</h2>
         <StoricoTable supabase={supabase} atletaId={atletaIds[0]} />
       </section>
@@ -206,28 +209,34 @@ export default async function StoricoPresenzePage({
         // AC #2: un'Atleta non tra le proprie (manomissione dell'URL, non
         // raggiungibile dalla UI, che espone solo le proprie Atlete nel
         // <select>) non deve mai arrivare a interrogare lo storico.
-        <p role="alert">Atleta non trovata tra le tue.</p>
+        <p role="alert" className={styles.errore}>
+          Atleta non trovata tra le tue.
+        </p>
       );
     }
 
     sezioneAllenatore = (
-      <section>
+      <section className={styles.sezione}>
         <h2>Storico delle mie Atlete</h2>
         <form method="get">
-          <label htmlFor="storico-atleta">Atleta</label>
-          <select
-            id="storico-atleta"
-            name="atletaId"
-            defaultValue={atletaIdSelezionato}
-          >
-            <option value="">Seleziona...</option>
-            {proprieAtlete.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome}
-              </option>
-            ))}
-          </select>
-          <button type="submit">Carica</button>
+          <div className={styles.campo}>
+            <label htmlFor="storico-atleta">Atleta</label>
+            <select
+              id="storico-atleta"
+              name="atletaId"
+              defaultValue={atletaIdSelezionato}
+            >
+              <option value="">Seleziona...</option>
+              {proprieAtlete.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className={styles.bottone}>
+            Carica
+          </button>
         </form>
         {storicoSelezionato}
       </section>

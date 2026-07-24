@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { registrati } from "./actions";
+import styles from "./registrati.module.css";
 
 const RUOLI = [
   { value: "ALLENATORE", label: "Allenatore" },
@@ -26,19 +27,19 @@ export default function RegistratiPage() {
   return (
     <main>
       <h1>Registrati</h1>
-      <form action={formAction}>
-        <div>
+      <form action={formAction} className={styles.form}>
+        <div className={styles.campo}>
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" required />
         </div>
-        <div>
+        <div className={styles.campo}>
           <label htmlFor="password">Password</label>
           <input id="password" name="password" type="password" required />
         </div>
-        <fieldset>
+        <fieldset className={styles.fieldset}>
           <legend>Ruolo (uno o più)</legend>
           {RUOLI.map((ruolo) => (
-            <label key={ruolo.value}>
+            <label key={ruolo.value} className={styles.rigaRuolo}>
               <input
                 type="checkbox"
                 name="ruoli"
@@ -50,7 +51,7 @@ export default function RegistratiPage() {
           ))}
         </fieldset>
         {ruoliSelezionati.includes("ALLENATORE") && (
-          <div>
+          <div className={styles.campo}>
             <label htmlFor="codiceFiscaleAllenatore">
               Codice Fiscale (se sei già stato precaricato dalla società)
             </label>
@@ -62,7 +63,7 @@ export default function RegistratiPage() {
           </div>
         )}
         {ruoliSelezionati.includes("ATLETA") && (
-          <div>
+          <div className={styles.campo}>
             <label htmlFor="codiceFiscaleAtleta">Il tuo Codice Fiscale</label>
             <input
               id="codiceFiscaleAtleta"
@@ -73,7 +74,7 @@ export default function RegistratiPage() {
           </div>
         )}
         {ruoliSelezionati.includes("GENITORE") && (
-          <div>
+          <div className={styles.campo}>
             <label htmlFor="codiceFiscaleFiglio">
               Codice Fiscale della figlia/o
             </label>
@@ -85,12 +86,16 @@ export default function RegistratiPage() {
             />
           </div>
         )}
-        {state?.error && <p role="alert">{state.error.message}</p>}
-        <button disabled={pending} type="submit">
+        {state?.error && (
+          <p role="alert" className={styles.errore}>
+            {state.error.message}
+          </p>
+        )}
+        <button disabled={pending} type="submit" className={styles.bottone}>
           Registrati
         </button>
       </form>
-      <p>
+      <p className={styles.link}>
         Hai già un account? <Link href="/accedi">Accedi</Link>
       </p>
     </main>

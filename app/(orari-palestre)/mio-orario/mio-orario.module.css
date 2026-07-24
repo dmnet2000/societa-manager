@@ -1,0 +1,64 @@
+/* Story 8.3 - segue il mockup key-screen approvato
+   (ux-designs/ux-societa-manager-2026-07-22/mockups/key-mio-orario.html):
+   .day-group/.day-label/.slot-row/.slot-time/.slot-details/.slot-group/
+   .slot-place del mockup, qui rinominate in camelCase e mappate sui token di
+   DESIGN.md. Nessuna data di calendario (il mockup mostra "Martedi 15/07",
+   qui solo il nome del giorno - vedi Dev Notes della storia). */
+
+.settimana {
+  margin-top: var(--space-4);
+}
+
+.giornoGruppo {
+  margin-bottom: var(--space-5);
+}
+
+.giornoLabel {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  margin-bottom: var(--space-2);
+}
+
+.slotRiga {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.slotOrario {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  min-width: 88px;
+  flex-shrink: 0;
+}
+
+.slotDettagli {
+  display: flex;
+  flex-direction: column;
+}
+
+.slotGruppo {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.slotPosto {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

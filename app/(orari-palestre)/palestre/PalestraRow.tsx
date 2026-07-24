@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { aggiornaPalestra } from "./actions";
 import { CampoRow } from "./CampoRow";
 import { NuovoCampoForm } from "./NuovoCampoForm";
+import styles from "./palestre.module.css";
 
 type Campo = {
   id: string;
@@ -24,10 +25,10 @@ export function PalestraRow({ palestra }: { palestra: Palestra }) {
   );
 
   return (
-    <article>
+    <article className={styles.card}>
       <form action={formAction}>
         <input type="hidden" name="id" value={palestra.id} />
-        <div>
+        <div className={styles.campo}>
           <label htmlFor={`palestra-nome-${palestra.id}`}>Nome</label>
           <input
             id={`palestra-nome-${palestra.id}`}
@@ -37,7 +38,7 @@ export function PalestraRow({ palestra }: { palestra: Palestra }) {
             required
           />
         </div>
-        <div>
+        <div className={styles.campo}>
           <label htmlFor={`palestra-indirizzo-${palestra.id}`}>Indirizzo</label>
           <input
             id={`palestra-indirizzo-${palestra.id}`}
@@ -46,14 +47,18 @@ export function PalestraRow({ palestra }: { palestra: Palestra }) {
             defaultValue={palestra.indirizzo ?? ""}
           />
         </div>
-        {state && "error" in state && <p role="alert">{state.error.message}</p>}
-        <button disabled={pending} type="submit">
+        {state && "error" in state && (
+          <p role="alert" className={styles.errore}>
+            {state.error.message}
+          </p>
+        )}
+        <button disabled={pending} type="submit" className={styles.bottone}>
           Salva Palestra
         </button>
       </form>
 
       <h3>Campi</h3>
-      <ul>
+      <ul className={styles.campiLista}>
         {palestra.campi.map((campo) => (
           <CampoRow key={campo.id} campo={campo} />
         ))}

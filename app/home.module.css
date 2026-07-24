@@ -1,0 +1,24 @@
+/* Story 8.7 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Nessun mockup key-screen per questa pagina - restyle puro, pagina piu'
+   semplice della storia (solo testo). .card riusa 1:1 il pattern di
+   vista-dirigente.module.css (Story 5.1). */
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  margin-top: var(--space-4);
+}
+
+.saluto {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.testo {
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}

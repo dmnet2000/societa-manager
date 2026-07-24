@@ -8,6 +8,7 @@ import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { ETICHETTA_GIORNO, giornoSettimanaDaData } from "@/lib/giorno-settimana";
 import { certificatoScaduto } from "./certificato-scaduto";
 import { PresenzeForm } from "./PresenzeForm";
+import styles from "./presenze.module.css";
 
 // Dati mutabili ad ogni visita (registrazione presenze tramite Server
 // Action sulla stessa pagina) - stesso motivo di /gruppi, /slot (Story 2.2,
@@ -141,31 +142,58 @@ export default async function PresenzePage({
           .filter((p) => p.presente)
           .map((p) => p.atletaId);
 
+        // Intestazione Slot (mockup key-presenze.html -> .slot-header):
+        // sola formattazione di dati gia' caricati sopra (slotSelezionato,
+        // data, gruppo.nome) - nessuna nuova query. Formatta la data ISO
+        // "YYYY-MM-DD" gia' selezionata dall'Allenatore in "GG/MM".
+        // Review fix: il controllo a monte (giornoSettimanaDaData(data) !==
+        // slotSelezionato.giorno) verifica solo che il giorno-della-settimana
+        // combaci, non che `data` sia in forma "YYYY-MM-DD" pulita - uno
+        // split("-") ingenuo su una stringa non conforme (es. "2026-07",
+        // raggiungibile solo manomettendo l'URL) produrrebbe "undefined" nel
+        // testo. Verifica esplicita del formato prima di affettare le
+        // posizioni fisse, altrimenti mostra la data grezza invece di un
+        // valore parzialmente indefinito.
+        const dataFormattata = /^\d{4}-\d{2}-\d{2}$/.test(data)
+          ? `${data.slice(8, 10)}/${data.slice(5, 7)}`
+          : data;
+
         sezioneRoster =
           roster.length === 0 ? (
             <p>Nessuna Atleta assegnata a questo Gruppo.</p>
           ) : (
-            // key su Slot+data (review fix): i checkbox sono non controllati
-            // (defaultChecked, PresenzeForm.tsx) - senza una key che cambia
-            // insieme ai dati caricati, React potrebbe non rimontare il
-            // componente e lo stato visualizzato potrebbe non risincronizzarsi
-            // con presentiIniziali dopo un cambio di Slot/data o un refresh.
-            <PresenzeForm
-              key={`${slotId}-${data}`}
-              slotId={slotId}
-              data={data}
-              roster={roster}
-              presentiIniziali={presentiIniziali}
-            />
+            <>
+              <div className={styles.slotHeader}>
+                <p className={styles.sezioneLabel}>Slot selezionato</p>
+                <p className={styles.slotTitolo}>
+                  {ETICHETTA_GIORNO[slotSelezionato.giorno]} {dataFormattata} ·{" "}
+                  {slotSelezionato.oraInizio}–{slotSelezionato.oraFine} ·{" "}
+                  {slotSelezionato.gruppo.nome}
+                </p>
+              </div>
+              {/* key su Slot+data (review fix): i checkbox sono non
+                  controllati (defaultChecked, PresenzeForm.tsx) - senza una
+                  key che cambia insieme ai dati caricati, React potrebbe non
+                  rimontare il componente e lo stato visualizzato potrebbe non
+                  risincronizzarsi con presentiIniziali dopo un cambio di
+                  Slot/data o un refresh. */}
+              <PresenzeForm
+                key={`${slotId}-${data}`}
+                slotId={slotId}
+                data={data}
+                roster={roster}
+                presentiIniziali={presentiIniziali}
+              />
+            </>
           );
       }
     }
 
     body = (
       <>
-        <section>
+        <section className={styles.sezione}>
           <form method="get">
-            <div>
+            <div className={styles.campo}>
               <label htmlFor="presenze-slot">Slot</label>
               <select id="presenze-slot" name="slotId" defaultValue={slotId}>
                 <option value="">Seleziona...</option>
@@ -177,7 +205,7 @@ export default async function PresenzePage({
                 ))}
               </select>
             </div>
-            <div>
+            <div className={styles.campo}>
               <label htmlFor="presenze-data">Data</label>
               <input
                 id="presenze-data"
@@ -186,10 +214,12 @@ export default async function PresenzePage({
                 defaultValue={data}
               />
             </div>
-            <button type="submit">Carica</button>
+            <button type="submit" className={styles.bottoneCarica}>
+              Carica
+            </button>
           </form>
         </section>
-        <section>{sezioneRoster}</section>
+        <section className={styles.sezione}>{sezioneRoster}</section>
       </>
     );
   }

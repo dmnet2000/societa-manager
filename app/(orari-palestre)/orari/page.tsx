@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { SlotTable } from "../SlotTable";
+import styles from "./orari.module.css";
 
 // Dati potenzialmente diversi ad ogni visita - stesso motivo di
 // slot/page.tsx e mio-orario/page.tsx (Story 2.5/2.6).
@@ -56,9 +57,9 @@ export default async function OrariPage({
     <main>
       <h1>Orari</h1>
 
-      <section>
-        <form method="get">
-          <div>
+      <section className={styles.sezione}>
+        <form method="get" className={styles.filtro}>
+          <div className={styles.campo}>
             <label htmlFor="filtro-palestra">Palestra</label>
             <select id="filtro-palestra" name="palestraId" defaultValue={palestraId}>
               <option value="">Tutte le Palestre</option>
@@ -69,7 +70,7 @@ export default async function OrariPage({
               ))}
             </select>
           </div>
-          <div>
+          <div className={styles.campo}>
             <label htmlFor="filtro-gruppo">Gruppo</label>
             <select id="filtro-gruppo" name="gruppoId" defaultValue={gruppoId}>
               <option value="">Tutti i Gruppi</option>
@@ -80,11 +81,13 @@ export default async function OrariPage({
               ))}
             </select>
           </div>
-          <button type="submit">Filtra</button>
+          <button type="submit" className={styles.bottone}>
+            Filtra
+          </button>
         </form>
       </section>
 
-      <section>
+      <section className={styles.sezione}>
         <h2>Elenco Slot</h2>
         <SlotTable slot={slot} messaggioVuoto="Nessuno Slot trovato." />
       </section>

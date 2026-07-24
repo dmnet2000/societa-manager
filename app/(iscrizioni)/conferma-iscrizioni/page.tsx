@@ -4,6 +4,7 @@ import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { IscrizioneRow } from "./IscrizioneRow";
+import styles from "./conferma-iscrizioni.module.css";
 
 // Dati mutabili in tempo reale (conferme via Server Action sulla stessa
 // pagina) - stesso motivo di /admin, Story 1.2.
@@ -43,25 +44,27 @@ export default async function ConfermaIscrizioniPage() {
   return (
     <main>
       <h1>Conferma Iscrizioni</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Codice Fiscale</th>
-            <th>Stato Iscrizione</th>
-          </tr>
-        </thead>
-        <tbody>
-          {atlete.map((atleta) => (
-            <IscrizioneRow
-              key={atleta.id}
-              atleta={atleta}
-              iscrizioneId={iscrizioneIdPerAtleta.get(atleta.id) ?? null}
-              puoConfermare={puoConfermare}
-            />
-          ))}
-        </tbody>
-      </table>
+      <div className={styles.scrollWrapper}>
+        <table className={styles.tabella}>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Codice Fiscale</th>
+              <th>Stato Iscrizione</th>
+            </tr>
+          </thead>
+          <tbody>
+            {atlete.map((atleta) => (
+              <IscrizioneRow
+                key={atleta.id}
+                atleta={atleta}
+                iscrizioneId={iscrizioneIdPerAtleta.get(atleta.id) ?? null}
+                puoConfermare={puoConfermare}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }

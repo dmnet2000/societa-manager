@@ -1,0 +1,9 @@
+/* Story 8.7 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Nessun mockup key-screen per questa pagina - restyle puro, pagina di
+   sistema piu' semplice della storia (solo testo). */
+
+.testo {
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-2);
+}
