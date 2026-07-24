@@ -4,6 +4,19 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
+  // Pacchetti con export condizionali specifici per il runtime "workerd"
+  // (Cloudflare Workers/Pages, via @opennextjs/cloudflare): senza questa
+  // esclusione Next.js li impacchetta con le condizioni Node.js di
+  // default, e il bundling finale su Cloudflare fallisce a risolvere
+  // l'entry point corretto (es. "pg-cloudflare", richiesto da "pg"/
+  // @prisma/adapter-pg per aprire connessioni TCP dentro un Worker) - vedi
+  // https://opennext.js.org/cloudflare/howtos/workerd.
+  serverExternalPackages: [
+    "@prisma/client",
+    ".prisma/client",
+    "pg",
+    "pg-cloudflare",
+  ],
   experimental: {
     serverActions: {
       // Default Next.js 1MB - troppo basso per gli upload multipart di
