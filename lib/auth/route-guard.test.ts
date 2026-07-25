@@ -311,6 +311,15 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows /api/health regardless of session (2026-07-25): endpoint di diagnostica, deve restare raggiungibile anche con autenticazione rotta", () => {
+    expect(getRouteDecision("/api/health", false, [])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/api/health", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
   it("allows only Dirigente on /vista-dirigente (Story 5.1, FR-29)", () => {
     expect(getRouteDecision("/vista-dirigente", true, ["DIRIGENTE"])).toEqual({
       action: "allow",

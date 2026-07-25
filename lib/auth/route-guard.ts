@@ -88,6 +88,16 @@ function isRouteHandlerCron(pathname: string): boolean {
   return pathname.startsWith("/api/cron/");
 }
 
+// /api/health (2026-07-25): endpoint di diagnostica (DB/Supabase Auth
+// raggiungibili) usato per verificare la produzione senza passare dal
+// login - deve restare raggiungibile anche quando l'autenticazione stessa
+// e' rotta, altrimenti non serve al suo scopo. Nessun dato sensibile
+// esposto (solo stato/latenza, vedi app/api/health/route.ts), stesso
+// principio di isRouteHandlerCron sopra.
+function isRouteHandlerHealth(pathname: string): boolean {
+  return pathname === "/api/health";
+}
+
 function matchProtectedRoute(pathname: string) {
   return PROTECTED_ROUTES.find(
     (route) =>
@@ -103,7 +113,11 @@ export function getRouteDecision(
   isAuthenticated: boolean,
   ruoli: Ruolo[]
 ): RouteDecision {
-  if (isPublicRoute(pathname) || isRouteHandlerCron(pathname)) {
+  if (
+    isPublicRoute(pathname) ||
+    isRouteHandlerCron(pathname) ||
+    isRouteHandlerHealth(pathname)
+  ) {
     return { action: "allow" };
   }
 
