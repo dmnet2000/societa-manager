@@ -873,6 +873,26 @@ so that non devo cercare a mano l'indirizzo in un'altra app.
 **When** viene visualizzata
 **Then** nessun link "Naviga" rotto/vuoto viene mostrato (stesso principio guard-clause già usato per il logo, Story 7.2)
 
+### Story 9.7: Barra laterale ancora visibile dopo il logoff
+
+As a Utente che effettua il logoff,
+I want che la barra di navigazione (laterale su desktop, drawer/hamburger su mobile) sparisca insieme al resto della pagina quando atterro su `/accedi`,
+so that non veda un menu di navigazione residuo per una sessione che non esiste più.
+
+**Note aggiuntive:** segnalato dall'utente (2026-07-26), osservato dal vivo dopo l'introduzione della barra laterale persistente di Story 9.2: subito dopo aver eseguito `esci()` (Server Action di logoff, `app/NavBar.actions.ts`, Story 9.1) e essere atterrati su `/accedi`, la barra laterale resta visibile a sinistra invece di sparire insieme al resto della pagina (che invece cambia correttamente, mostrando il form di login). `app/NavBar.tsx` già ritorna `null` quando non c'è sessione (`if (!user) return null` — AC di Story 8.1/9.2), quindi il bug è quasi certamente un problema di invalidazione della cache di navigazione lato client di Next.js dopo il `redirect()` di una Server Action (il layout radice, di cui `NavBar` fa parte, potrebbe non essere ri-richiesto al server e mostrare l'ultimo output noto invece di quello aggiornato) — non una lacuna nella logica del componente stesso, ma **da confermare/investigare in fase di sviluppo**, non assumere la causa a priori. Distinto dal problema già catalogato in `deferred-work.md` per Story 9.1 (tasto "indietro" del browser dopo il logoff, bfcache): quello riguarda la navigazione all'indietro, questo la navigazione in avanti causata dal logoff stesso.
+
+**Acceptance Criteria:**
+
+**Given** un Utente autenticato con la barra laterale (desktop) visibile
+**When** esegue il logoff dal pulsante "Esci"
+**Then** atterra su `/accedi` e la barra laterale non è più visibile in nessun momento (nessun lampo/flash della barra prima che sparisca)
+
+**Given** lo stesso scenario su schermo stretto (drawer/hamburger invece di barra laterale fissa, Story 9.2)
+**When** il logoff viene eseguito
+**Then** anche il drawer/hamburger di navigazione sparisce insieme al resto della pagina precedente
+
+**And** nessuna regressione sul comportamento di logoff già esistente (Story 9.1): redirect a `/accedi`, sessione terminata lato Supabase, fail-closed in caso di errore
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. A differenza di Epic 9 (miglioramenti puntuali), questo è un epic sostanziale con nuove entità dati e superfici per più Ruoli — **l'analisi completa e la rottura in storie dettagliate sono deliberatamente rimandate all'avvio dello sviluppo di questo epic**, su richiesta esplicita dell'utente ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Quanto segue è la cattura fedele dei requisiti così come dettati, non ancora elaborata in Acceptance Criteria/storie.)*
