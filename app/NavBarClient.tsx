@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { VoceNavigazione } from "@/lib/auth/voci-navigazione";
@@ -42,13 +42,21 @@ export function NavBarClient({
   logoUrl,
   titolo,
   esci,
+  email,
 }: {
   voci: VoceConStato[];
   logoUrl: string | null;
   titolo: string;
   esci: () => Promise<void>;
+  email: string;
 }) {
   const [aperto, setAperto] = useState(false);
+  // Story 9.4: stato aperto/chiuso del menu profilo (dropdown "email ->
+  // Modifica password/Esci"), stesso stile di stato locale del drawer sopra
+  // - un secondo useState indipendente, non un'unione con `aperto` (i due
+  // pannelli si aprono/chiudono in modo indipendente).
+  const [menuProfiloAperto, setMenuProfiloAperto] = useState(false);
+  const menuProfiloRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   // Review fix (code review Story 9.2, trovato da tutti e 3 i layer): sotto
@@ -91,6 +99,24 @@ export function NavBarClient({
   if (pathname !== pathnamePrecedente) {
     setPathnamePrecedente(pathname);
     setAperto(false);
+    // Story 9.4: stesso motivo del drawer sopra - senza questo, il menu
+    // profilo resterebbe "aperto" nello stato React dopo aver navigato a
+    // /modifica-password (il componente non si smonta mai, e' nel root
+    // layout), riapparendo visivamente sulla pagina di destinazione.
+    setMenuProfiloAperto(false);
+  }
+
+  // Review fix (code review Story 9.4, Edge Case Hunter): stesso pattern
+  // "adjusting state during render" di sopra, non un useEffect - senza
+  // questo, chiudere il drawer mobile (hamburger o overlay) lasciando il
+  // menu profilo aperto lo faceva riapparire gia' espanso alla riapertura
+  // successiva del drawer (lo stato React del menu profilo non veniva mai
+  // resettato dalla sola chiusura del drawer, solo dal cambio pathname
+  // sopra o da Esc/click-fuori sul menu stesso).
+  const [apertoPrecedente, setApertoPrecedente] = useState(aperto);
+  if (aperto !== apertoPrecedente) {
+    setApertoPrecedente(aperto);
+    if (!aperto) setMenuProfiloAperto(false);
   }
 
   // AC (Story 9.2): Esc chiude il drawer. Ascoltatore attivo solo quando
@@ -103,6 +129,38 @@ export function NavBarClient({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [aperto]);
+
+  // AC Story 9.4: Esc chiude il menu profilo - stesso identico pattern
+  // dell'effect gemello sopra (drawer), ascoltatore attivo solo quando
+  // aperto.
+  useEffect(() => {
+    if (!menuProfiloAperto) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuProfiloAperto(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuProfiloAperto]);
+
+  // AC Story 9.4: click fuori dal menu profilo lo chiude. A differenza del
+  // drawer (che ha un overlay dedicato a piena pagina su cui intercettare il
+  // click), il menu profilo e' un dropdown ancorato senza overlay proprio -
+  // serve quindi un ref sul contenitore (trigger + tendina) per distinguere
+  // un click al suo interno (incluso il trigger stesso, che gia' gestisce il
+  // toggle nel proprio onClick) da un click altrove nella pagina.
+  useEffect(() => {
+    if (!menuProfiloAperto) return;
+    function onPointerDown(e: MouseEvent) {
+      if (
+        menuProfiloRef.current &&
+        !menuProfiloRef.current.contains(e.target as Node)
+      ) {
+        setMenuProfiloAperto(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [menuProfiloAperto]);
 
   const brand = (
     <div className={styles.brand}>
@@ -158,11 +216,62 @@ export function NavBarClient({
             </li>
           ))}
         </ul>
-        <form action={esci} className={styles.formEsci}>
-          <button type="submit" className={styles.voce}>
-            Esci
+        {/* Story 9.4: menu profilo a tendina - sostituisce il singolo
+            pulsante "Esci". Trigger = email dell'Utente (nessuna nuova
+            icona), stesso ancoraggio "in fondo alla colonna" di prima
+            (.menuProfilo riusa margin-top:auto di .formEsci). Dropdown
+            ancorato (non un vero modale, vedi Design Notes) - resta
+            all'interno dello stesso <nav id="nav-sidebar"> condiviso da
+            drawer mobile e barra laterale desktop, nessuna duplicazione di
+            markup fra breakpoint. */}
+        {/* Review fix (code review Story 9.4, Edge Case Hunter): onBlur con
+            currentTarget.contains(relatedTarget) copre l'uscita da tastiera
+            (Tab fuori dal menu senza click ne' Esc) - il click-fuori sopra
+            (mousedown su menuProfiloRef) non intercetta questo caso, solo i
+            click reali. relatedTarget puo' essere null (nessun elemento
+            riceve il focus, es. si clicca fuori dalla finestra) - contains
+            su null e' sempre false, quindi chiude comunque correttamente. */}
+        <div
+          className={styles.menuProfilo}
+          ref={menuProfiloRef}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setMenuProfiloAperto(false);
+            }
+          }}
+        >
+          <button
+            type="button"
+            className={styles.menuProfiloTrigger}
+            aria-haspopup="menu"
+            aria-expanded={menuProfiloAperto}
+            onClick={() => setMenuProfiloAperto((v) => !v)}
+          >
+            {email}
           </button>
-        </form>
+          {/* Non renderizzato nel DOM quando chiuso (stesso principio gia'
+              usato sopra per l'overlay del drawer) - a differenza del
+              drawer, questo pannello non ha una transizione CSS che
+              richieda di restare montato, quindi non serve alcun
+              inert/aria-hidden per bloccarne la raggiungibilita' da
+              tastiera: semplicemente non esiste finche' non e' aperto. */}
+          {menuProfiloAperto && (
+            <div className={styles.menuProfiloTendina} role="menu">
+              <Link
+                href="/modifica-password"
+                role="menuitem"
+                className={styles.voceMenu}
+              >
+                Modifica password
+              </Link>
+              <form action={esci}>
+                <button type="submit" role="menuitem" className={styles.voceMenu}>
+                  Esci
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
       </nav>
     </>
   );

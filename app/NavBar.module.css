@@ -127,27 +127,103 @@
   color: var(--color-surface);
 }
 
-/* margin-top:auto spinge "Esci" in fondo alla colonna (sidebar/drawer),
-   staccato dalle voci di navigazione. */
-.formEsci {
+/* Story 9.4: sostituisce .formEsci - stesso margin-top:auto (spinge il
+   menu profilo in fondo alla colonna sidebar/drawer, staccato dalle voci di
+   navigazione), ma ora e' un dropdown ancorato (trigger = email + tendina),
+   non un singolo pulsante. position:relative ancora .menuProfiloTendina
+   (absolute) al trigger. */
+.menuProfilo {
+  position: relative;
   margin-top: auto;
 }
 
-.formEsci button {
+.menuProfiloTrigger {
+  /* Dimensioni di .voce (stesso padding/font-size/peso, per restare visivo
+     coerente con le voci di navigazione sopra) - non riusa .voce stesso
+     perche' quella classe fissa anche `display:block` su un elemento senza
+     stato aperto/chiuso ne' aria-haspopup: qui serve un bottone nativo con
+     reset esplicito, stesso principio gia' documentato per .formEsci
+     button (Story 9.1) prima di questa storia. */
+  display: block;
+  width: 100%;
   font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-surface-alt);
   background: none;
   border: none;
-  /* "appearance" e' l'unico reset che serve davvero - padding/margin NON
-     vanno azzerati qui: ".voce" (sullo stesso elemento) imposta gia' il
-     proprio padding, che sovrascrive comunque il default dello user-agent
-     stylesheet (le regole d'autore hanno sempre priorita' sullo
-     user-agent, a prescindere dalla specificita' - aggiungere "padding: 0"
-     qui lo romperebbe: 0,1,1 batte 0,1,0 di ".voce" ENTRO lo stesso
-     livello di origine - scoperto durante la review di Story 9.1). */
   appearance: none;
   cursor: pointer;
-  width: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
   text-align: left;
+  /* L'email puo' essere piu' lunga delle etichette di navigazione - va a
+     capo invece di uscire dal bordo della sidebar stretta (220-240px),
+     stesso principio gia' applicato a .voce (Story 9.2 review fix). */
+  overflow-wrap: break-word;
+}
+
+.menuProfiloTrigger:focus-visible {
+  outline: 2px solid var(--color-focus-ring-on-navy);
+  outline-offset: 2px;
+}
+
+/* Chiude la [NOTA UX APERTA] di DESIGN.md sulle superfici sovrapposte
+   transitorie (dropdown/popover): ombra leggera e {rounded.sm}, stesso
+   valore hard-coded gia' riusato ad hoc da .riquadro-form (Story 9.3,
+   app/globals.css) per lo stesso identico motivo (nessun token --shadow
+   esiste ancora in DESIGN.md). Sfondo chiaro {colors.surface} - a
+   differenza del trigger sopra (sempre su sfondo navy), qui .voceMenu sotto
+   usa colori scuri su chiaro, MAI i colori chiari di .voce/.menuProfiloTrigger
+   pensati per lo sfondo navy. */
+.menuProfiloTendina {
+  position: absolute;
+  /* Il trigger e' in fondo alla colonna (margin-top:auto) - la tendina si
+     apre verso l'alto, non verso il basso, per non uscire dal viewport
+     (sia nel drawer mobile a tutta altezza sia nella sidebar sticky
+     desktop). */
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.voceMenu {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: none;
+  border: none;
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+/* Review fix (code review Story 9.4, Blind Hunter): "--color-surface-alt"
+   e' riservato come colore di TESTO sullo sfondo navy (righe 114/152) -
+   riusarlo qui come sfondo contraddiceva il commento subito sopra
+   (".voceMenu... MAI i colori chiari... pensati per lo sfondo navy").
+   "--color-border" e' gia' il token usato altrove per tinte chiare su
+   superfici chiare (bordi di .riquadro-form, .campo input). */
+.voceMenu:hover {
+  background: var(--color-border);
+}
+
+.voceMenu:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 @media (min-width: 880px) {

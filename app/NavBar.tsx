@@ -82,6 +82,13 @@ export async function NavBar() {
       logoUrl={logoUrl}
       titolo="Società Manager"
       esci={esci}
+      // Story 9.4: trigger del menu profilo = email dell'Utente (nessuna
+      // nuova icona, vedi spec) - fallback solo teorico ("Account"), un
+      // Utente Supabase Auth autenticato ha sempre un'email in questo
+      // progetto (unico metodo di signUp/signIn usato). Review fix (code
+      // review Story 9.4, Edge Case Hunter): "||" invece di "??" copre anche
+      // una stringa vuota (non solo null/undefined), stesso fallback.
+      email={user.email || "Account"}
     />
   );
 }
