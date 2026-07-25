@@ -1,5 +1,7 @@
 # generated: 2026-07-15
 # last_updated: 2026-07-25 (Story 9.1 Pulsante di logoff: code review completato - 2 decision-needed risolte con l'utente (fail-closed su signOut(), scope globale confermato deliberato), 3 patch applicati (try/catch fail-closed + test fallimento, LOGIN_PATH invece di stringa letterale, fix specificita' CSS .formEsci button scoperto durante l'applicazione stessa della patch), 2 defer, 4 dismiss. Status: done. 492/492 test passati.)
+# last_updated: 2026-07-25 (Story 9.3 Riquadro larghezza massima pagine-form: implementata (6 pagine + nuove classi globali .pagina-form/.riquadro-form in globals.css, /accedi invariata), code review adversariale (Blind Hunter + Edge Case Hunter) completata senza intent_gap/bad_spec - 3 patch applicati (overflow-wrap per testo dinamico lungo, entry YAML DESIGN.md completata con padding/shadow, prosa DESIGN.md corretta su smtp/logo), 1 defer (duplicazione non convergente col pattern locale di /accedi), resto scartato come gia' deliberato in spec. Status: done. 492/492 test passati.)
+# last_updated: 2026-07-26 (Story 9.3, estensione post-done su feedback utente dal vivo: lo scope originale escludeva deliberatamente le pagine-tabella, ma l'utente le voleva comunque non a piena larghezza - aggiunte 2 regole globali trasversali in app/globals.css: max-width:1000px su ogni <main> via selettore ".contenuto > main" (nessuna pagina toccata singolarmente) e max-width:400px su ogni input/select/textarea (corregge lo stretch di default del pattern .campo). Verificato dal vivo: /registrati (pattern riquadro-form, 480px) invariato, pagina-tabella isolata (test statico fuori dall'app, Supabase locale non disponibile) mostra margine visibile anche a 1536px/125%. DESIGN.md aggiornato con 2 nuove voci trasversali. 492/492 test passati, 0 nuovi errori TS/lint.)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -131,7 +133,7 @@ development_status:
   epic-9: in-progress
   9-1-pulsante-di-logoff: done
   9-2-navigazione-responsive-hamburger-e-barra-laterale: review
-  9-3-riquadro-larghezza-massima-pagine-form: review
+  9-3-riquadro-larghezza-massima-pagine-form: done
   9-4-menu-profilo-con-logoff-e-modifica-password: backlog
   9-5-campo-cognome-per-allenatore: backlog
   9-6-geolocalizzazione-palestre: backlog

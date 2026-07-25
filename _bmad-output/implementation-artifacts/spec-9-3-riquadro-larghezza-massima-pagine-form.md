@@ -86,6 +86,18 @@ Il max-width di 480px (contro i 360px di `/accedi`) è una scelta pragmatica per
 **Manual checks (if no CLI):**
 - Verificare a video (browser, resize finestra) che le 6 pagine mostrino il riquadro centrato su schermo largo e piena larghezza con margine su schermo stretto, e che `/accedi` sia visivamente invariata.
 
+## Post-Done Amendment (2026-07-26)
+
+L'utente ha visto il risultato dal vivo e chiarito che l'esclusione delle pagine-tabella (deliberata nello scope originale, vedi Boundaries & Constraints sopra) non corrispondeva a quello che voleva: anche quelle pagine non dovevano arrivare fino al bordo, e i singoli campi di testo non dovevano occupare tutta la larghezza disponibile, su nessuna pagina. Non è un difetto dell'esecuzione originale (lo scope era stato eseguito esattamente come specificato e approvato) — è un ampliamento di scope emerso dopo la verifica visiva.
+
+**Modifica (in `app/globals.css`, nessuna pagina toccata singolarmente):**
+- `.contenuto > main` (selettore trasversale sul tag, non una classe): `max-width: 1000px` centrato, applicato a OGNI pagina dell'app incluse le tabelle - scelto 1000px (non 1200px, testato e scartato) perché a 1200px il margine risultava invisibile sui laptop comuni (~1366-1440px di larghezza disponibile dopo la sidebar).
+- `input:not([type=checkbox]):not([type=radio]), select, textarea { max-width: 400px }` (regola globale sul tag): corregge lo stretch di default del pattern `.campo` (flex-column senza `align-items` esplicito, ripetuto in ~15 file `*.module.css` mai centralizzati).
+
+**Verifica:** 492/492 test, 0 errori TS, 0 nuovi errori lint (stessa baseline). Verificato dal vivo `/registrati` (nessuna regressione sul pattern riquadro-form a 480px). Le pagine-tabella autenticate non sono state verificate dal vivo nell'app reale (Supabase locale non in esecuzione in questa sessione, richiederebbe Docker) - verificate invece con una replica statica isolata (stessa struttura `.shell`/`.contenuto`/`<main>`+tabella+campo, stesso `globals.css` reale) che conferma il margine e il limite sugli input funzionare come atteso.
+
+**DESIGN.md aggiornato** con due nuove voci trasversali ("Larghezza massima di pagina", "Larghezza massima dei campi di input") + entry YAML `pagina-max-width`/`campo-max-width`.
+
 ## Suggested Review Order
 
 **Il pattern CSS (nuovo)**

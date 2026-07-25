@@ -79,7 +79,27 @@ body {
   min-width: 0;
 }
 
+/* Story 9.3 (estensione, feedback utente 2026-07-26): sulle pagine-tabella
+   (escluse dal pattern .pagina-form/.riquadro-form perche' il contenuto
+   principale e' una tabella, non un form) il <main> restava comunque a
+   piena larghezza fino al bordo della finestra su schermo largo. Selettore
+   sul tag `main` (non una classe) cosi' si applica a OGNI pagina
+   dell'app senza dover toccare i singoli page.tsx uno per uno - incluse le
+   pagine con .pagina-form (la classe, piu' specifica, vince comunque sulla
+   proprieta' "padding" che le due regole hanno in comune; "max-width" non e'
+   in conflitto perche' .pagina-form non lo imposta sul <main> stesso). */
 @media (min-width: 880px) {
+  .contenuto {
+    display: flex;
+    justify-content: center;
+  }
+
+  .contenuto > main {
+    width: 100%;
+    max-width: 1000px;
+    padding: 0 var(--space-6);
+  }
+
   .shell {
     flex-direction: row;
   }
@@ -124,4 +144,20 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Story 9.3 (estensione, feedback utente 2026-07-26): i campi ".campo input"
+   (pattern ripetuto in ogni *.module.css del progetto, mai centralizzato)
+   si allargano a piena larghezza del contenitore per lo stretch di default
+   di un flex column (".campo" e' quasi ovunque display:flex;
+   flex-direction:column senza align-items esplicito) - su una pagina-tabella
+   larga un singolo campo email/testo arrivava a occupare centinaia di
+   pixel. Regola globale sul tag, non su una classe, per correggere ogni
+   occorrenza esistente senza toccare i ~15 file *.module.css uno per uno;
+   checkbox/radio esclusi perche' hanno gia' una dimensione intrinseca
+   piccola e non ne hanno bisogno. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  max-width: 400px;
 }
