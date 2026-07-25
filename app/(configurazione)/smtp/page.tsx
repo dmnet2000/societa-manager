@@ -26,15 +26,17 @@ export default async function ConfigurazioneSmtpPage() {
     : null;
 
   return (
-    <main>
-      <h1>Configurazione SMTP</h1>
-      {!configurazione && (
-        <p className={styles.messaggioVuoto}>
-          Nessuna configurazione email impostata.
-        </p>
-      )}
-      <ConfigurazioneSmtpForm configurazioneEsistente={configurazionePubblica} />
-      {configurazione && <InviaEmailProvaForm />}
+    <main className="pagina-form">
+      <div className="riquadro-form">
+        <h1>Configurazione SMTP</h1>
+        {!configurazione && (
+          <p className={styles.messaggioVuoto}>
+            Nessuna configurazione email impostata.
+          </p>
+        )}
+        <ConfigurazioneSmtpForm configurazioneEsistente={configurazionePubblica} />
+        {configurazione && <InviaEmailProvaForm />}
+      </div>
     </main>
   );
 }

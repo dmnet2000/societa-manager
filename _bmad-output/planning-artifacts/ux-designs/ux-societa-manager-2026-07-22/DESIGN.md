@@ -116,8 +116,19 @@ components:
     background: '{colors.surface-alt}'
     radius: '{rounded.sm}'
     typography-name: '{typography.body-strong}'
+  pagina-form:
+    display: flex
+    justify-content: center
+    padding: '{spacing.8} {spacing.4}'
+  riquadro-form:
+    background: '{colors.surface}'
+    border: '1px solid {colors.border}'
+    radius: '{rounded.md}'
+    padding: '{spacing.6}'
+    shadow: '0 1px 3px rgba(16,24,32,0.08)'
+    max-width: '480px'
 status: final
-updated: 2026-07-22
+updated: 2026-07-25
 ---
 
 ## Marchio e Stile
@@ -191,6 +202,7 @@ Nessuna forma a pillola (`rounded.full`) nel sistema: non è stata definita né 
 - **Cluster di stat-tile (`stat-tile`)** — usato dalla Vista Dirigente (Story 5.1, non ancora costruita) per riassumere lo stato certificati di un gruppo: tre tile affiancate "in regola / in scadenza / scaduto", ciascuna con numero grande (`{typography.stat-value}`) ed etichetta piccola (`{typography.stat-label}`). Ogni tile usa il colore semantico coerente (success/warning/danger) sia per sfondo/testo sia per un bordo sinistro di accento di 4px — **eccetto** la tile "scaduto", il cui bordo sinistro usa `{colors.magenta}` invece di `{colors.danger}`: l'unico punto in tutto il sistema in cui il magenta del logo appare in un componente funzionale, non solo come colore di brand statico. → Riferimento di composizione: `mockups/key-vista-dirigente.html`. Spec vince in caso di conflitto.
 - **Pulsante primario (`button-primary`)** — sfondo `{colors.button-bg}`, testo bianco, `{rounded.sm}`, **maiuscolo** (`text-transform: uppercase`), `{typography.button-label}`. Il maiuscolo è una scelta di registro (assertivo, "azione decisa"), non un default: da riservare al pulsante primario di un form/flusso, non applicarlo a link o azioni secondarie. Il testo sorgente resta in maiuscolo/minuscolo naturale (es. "Salva presenze", mai "SALVA PRESENZE" scritto così nel markup): la resa maiuscola è affidata esclusivamente alla proprietà CSS `text-transform`, mai alla stringa stessa — uno screen reader o un display braille impostato su verbosità carattere-per-carattere legge la stringa sorgente, non la resa visiva. Stato di focus da tastiera: vedi voce dedicata sotto.
 - **Stato di focus (trasversale, non un componente a sé)** — ogni elemento interattivo (voce di navigazione, pulsante, checkbox, link) mostra un contorno di focus visibile alla navigazione da tastiera, coerente con l'impegno WCAG AA dichiarato in `EXPERIENCE.md` → Soglia di Accessibilità (SC 2.4.7): `{colors.focus-ring}` (`#006DA6`, 2px, offset 2px) su sfondi chiari/bianchi (pulsanti, form, righe); `{colors.focus-ring-on-navy}` (bianco, stessa dimensione) sulla nav-bar navy. Nessun elemento interattivo si affida al solo cambio di colore di sfondo per segnalare il focus.
+- **Riquadro pagina-form (`riquadro-form`)** — pattern riusabile per le pagine il cui contenuto principale è un form (o un piccolo gruppo di form/azioni strettamente correlati sulla stessa entità di configurazione — es. `/smtp` unisce configurazione SMTP e invio email di prova, `/logo` unisce logo e nome del settore) anziché una tabella/elenco (`/registrati`, `/import-atlete`, `/precaricamento-allenatori`, `/permessi-certificati`, `/smtp`, `/logo`): il `<main>` centra un riquadro (`background: {colors.surface}`, bordo `{colors.border}`, `{rounded.md}`, ombra minima `0 1px 3px rgba(16,24,32,0.08)` — nessun token `--shadow` esiste ancora in `DESIGN.md`, riuso ad hoc dello stesso valore hard-coded) invece di stirare i campi a piena larghezza della finestra. `max-width: 480px`, più largo dei 360px del pattern gemello `.pagina`/`.riquadro` di `/accedi` (Story 8.2, modulo CSS locale non toccato da questo pattern globale): questi form hanno più campi visibili contemporaneamente (es. `/smtp`: host+porta+utente+password; `/registrati`: email+password+fieldset ruoli+campi condizionali), un riquadro più stretto avrebbe causato wrapping eccessivo delle label. Su schermo stretto il riquadro occupa `width: 100%` col solo padding di `{spacing.8}`/`{spacing.4}` del contenitore, senza scorrimento orizzontale. Non applicato alle pagine-tabella/elenco (restano a piena larghezza) né a `/accedi` (che resta sul proprio pattern locale a 360px) né alle pagine a struttura variabile (`/wizard-nuova-stagione`, `/certificato-medico`).
 
 ## Cose da fare e da evitare
 

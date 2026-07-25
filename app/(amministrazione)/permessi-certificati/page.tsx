@@ -13,9 +13,11 @@ export default async function PermessiCertificatiPage() {
 
   if (!annoCorrente) {
     return (
-      <main>
-        <h1>Permessi certificati</h1>
-        <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
+      <main className="pagina-form">
+        <div className="riquadro-form">
+          <h1>Permessi certificati</h1>
+          <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
+        </div>
       </main>
     );
   }
@@ -33,9 +35,11 @@ export default async function PermessiCertificatiPage() {
 
   if (gruppi.length === 0) {
     return (
-      <main>
-        <h1>Permessi certificati</h1>
-        <p>Nessun Gruppo creato per l&apos;Anno Agonistico corrente.</p>
+      <main className="pagina-form">
+        <div className="riquadro-form">
+          <h1>Permessi certificati</h1>
+          <p>Nessun Gruppo creato per l&apos;Anno Agonistico corrente.</p>
+        </div>
       </main>
     );
   }
@@ -43,9 +47,11 @@ export default async function PermessiCertificatiPage() {
   const gruppoIdsVisibili = righeVisibili.map((r) => r.gruppoId);
 
   return (
-    <main>
-      <h1>Permessi certificati</h1>
-      <PermessiCertificatiForm gruppi={gruppi} gruppoIdsVisibili={gruppoIdsVisibili} />
+    <main className="pagina-form">
+      <div className="riquadro-form">
+        <h1>Permessi certificati</h1>
+        <PermessiCertificatiForm gruppi={gruppi} gruppoIdsVisibili={gruppoIdsVisibili} />
+      </div>
     </main>
   );
 }

@@ -25,79 +25,81 @@ export default function RegistratiPage() {
   }
 
   return (
-    <main>
-      <h1>Registrati</h1>
-      <form action={formAction} className={styles.form}>
-        <div className={styles.campo}>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required />
-        </div>
-        <div className={styles.campo}>
-          <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required />
-        </div>
-        <fieldset className={styles.fieldset}>
-          <legend>Ruolo (uno o più)</legend>
-          {RUOLI.map((ruolo) => (
-            <label key={ruolo.value} className={styles.rigaRuolo}>
+    <main className="pagina-form">
+      <div className="riquadro-form">
+        <h1>Registrati</h1>
+        <form action={formAction} className={styles.form}>
+          <div className={styles.campo}>
+            <label htmlFor="email">Email</label>
+            <input id="email" name="email" type="email" required />
+          </div>
+          <div className={styles.campo}>
+            <label htmlFor="password">Password</label>
+            <input id="password" name="password" type="password" required />
+          </div>
+          <fieldset className={styles.fieldset}>
+            <legend>Ruolo (uno o più)</legend>
+            {RUOLI.map((ruolo) => (
+              <label key={ruolo.value} className={styles.rigaRuolo}>
+                <input
+                  type="checkbox"
+                  name="ruoli"
+                  value={ruolo.value}
+                  onChange={(e) => toggleRuolo(ruolo.value, e.target.checked)}
+                />
+                {ruolo.label}
+              </label>
+            ))}
+          </fieldset>
+          {ruoliSelezionati.includes("ALLENATORE") && (
+            <div className={styles.campo}>
+              <label htmlFor="codiceFiscaleAllenatore">
+                Codice Fiscale (se sei già stato precaricato dalla società)
+              </label>
               <input
-                type="checkbox"
-                name="ruoli"
-                value={ruolo.value}
-                onChange={(e) => toggleRuolo(ruolo.value, e.target.checked)}
+                id="codiceFiscaleAllenatore"
+                name="codiceFiscaleAllenatore"
+                type="text"
               />
-              {ruolo.label}
-            </label>
-          ))}
-        </fieldset>
-        {ruoliSelezionati.includes("ALLENATORE") && (
-          <div className={styles.campo}>
-            <label htmlFor="codiceFiscaleAllenatore">
-              Codice Fiscale (se sei già stato precaricato dalla società)
-            </label>
-            <input
-              id="codiceFiscaleAllenatore"
-              name="codiceFiscaleAllenatore"
-              type="text"
-            />
-          </div>
-        )}
-        {ruoliSelezionati.includes("ATLETA") && (
-          <div className={styles.campo}>
-            <label htmlFor="codiceFiscaleAtleta">Il tuo Codice Fiscale</label>
-            <input
-              id="codiceFiscaleAtleta"
-              name="codiceFiscaleAtleta"
-              type="text"
-              required
-            />
-          </div>
-        )}
-        {ruoliSelezionati.includes("GENITORE") && (
-          <div className={styles.campo}>
-            <label htmlFor="codiceFiscaleFiglio">
-              Codice Fiscale della figlia/o
-            </label>
-            <input
-              id="codiceFiscaleFiglio"
-              name="codiceFiscaleFiglio"
-              type="text"
-              required
-            />
-          </div>
-        )}
-        {state?.error && (
-          <p role="alert" className={styles.errore}>
-            {state.error.message}
-          </p>
-        )}
-        <button disabled={pending} type="submit" className={styles.bottone}>
-          Registrati
-        </button>
-      </form>
-      <p className={styles.link}>
-        Hai già un account? <Link href="/accedi">Accedi</Link>
-      </p>
+            </div>
+          )}
+          {ruoliSelezionati.includes("ATLETA") && (
+            <div className={styles.campo}>
+              <label htmlFor="codiceFiscaleAtleta">Il tuo Codice Fiscale</label>
+              <input
+                id="codiceFiscaleAtleta"
+                name="codiceFiscaleAtleta"
+                type="text"
+                required
+              />
+            </div>
+          )}
+          {ruoliSelezionati.includes("GENITORE") && (
+            <div className={styles.campo}>
+              <label htmlFor="codiceFiscaleFiglio">
+                Codice Fiscale della figlia/o
+              </label>
+              <input
+                id="codiceFiscaleFiglio"
+                name="codiceFiscaleFiglio"
+                type="text"
+                required
+              />
+            </div>
+          )}
+          {state?.error && (
+            <p role="alert" className={styles.errore}>
+              {state.error.message}
+            </p>
+          )}
+          <button disabled={pending} type="submit" className={styles.bottone}>
+            Registrati
+          </button>
+        </form>
+        <p className={styles.link}>
+          Hai già un account? <Link href="/accedi">Accedi</Link>
+        </p>
+      </div>
     </main>
   );
 }

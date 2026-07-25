@@ -85,6 +85,36 @@ body {
   }
 }
 
+/* Story 9.3: stesso pattern di .pagina/.riquadro di app/(auth)/accedi/accedi.module.css
+   (Story 8.2), qui globale e non-module perche' condiviso da 6 pagine-form
+   diverse (registrati, import-atlete, precaricamento-allenatori,
+   permessi-certificati, smtp, logo). max-width piu' largo (480px contro
+   360px di /accedi) perche' questi form hanno piu' campi visibili
+   contemporaneamente (es. /smtp: host+porta+utente+password). /accedi resta
+   sul proprio modulo locale, non refattorizzata per riusare queste classi
+   (fuori perimetro di questa storia, vedi spec 9.3). */
+.pagina-form {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.riquadro-form {
+  width: 100%;
+  max-width: 480px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+  /* Review fix (code review Story 9.3, Edge Case Hunter): il riquadro e'
+     piu' stretto (480px) del <main> a piena larghezza di prima - un token
+     lungo senza spazi (es. un messaggio d'errore o un nome file scartato
+     durante l'import) puo' fuoriuscire dal bordo invece di andare a capo.
+     overflow-wrap eredita nei figli (.errore/.scartate ecc.). */
+  overflow-wrap: break-word;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

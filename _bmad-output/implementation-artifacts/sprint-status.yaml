@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: 2026-07-24
+last_updated: 2026-07-25
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -131,7 +131,7 @@ development_status:
   epic-9: in-progress
   9-1-pulsante-di-logoff: done
   9-2-navigazione-responsive-hamburger-e-barra-laterale: review
-  9-3-riquadro-larghezza-massima-pagine-form: backlog
+  9-3-riquadro-larghezza-massima-pagine-form: review
   9-4-menu-profilo-con-logoff-e-modifica-password: backlog
   9-5-campo-cognome-per-allenatore: backlog
   9-6-geolocalizzazione-palestre: backlog
