@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
+import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
 import { LogoForm } from "./LogoForm";
+import { NomeSettoreForm } from "./NomeSettoreForm";
 import styles from "./logo.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (Admin che ha appena
@@ -12,7 +14,10 @@ export const dynamic = "force-dynamic";
 // stesso motivo del fix di Story 7.1) e' gia' il cancello.
 export default async function LogoPage() {
   const supabase = await createClient();
-  const info = await leggiInfoLogo(supabase);
+  const [info, nomeSettoreAttuale] = await Promise.all([
+    leggiInfoLogo(supabase),
+    leggiNomeSettore(),
+  ]);
 
   return (
     <main>
@@ -36,6 +41,8 @@ export default async function LogoPage() {
         <p className={styles.messaggioVuoto}>Nessun logo impostato.</p>
       )}
       <LogoForm />
+      <h2 className={styles.titoloSezione}>Nome del settore</h2>
+      <NomeSettoreForm nomeSettoreAttuale={nomeSettoreAttuale} />
     </main>
   );
 }

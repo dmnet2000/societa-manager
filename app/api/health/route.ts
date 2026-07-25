@@ -45,6 +45,7 @@ async function verificaDatabase() {
 
 async function verificaSupabaseAuth() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url) {
     return {
       stato: "errore" as const,
@@ -54,7 +55,11 @@ async function verificaSupabaseAuth() {
   }
   const inizio = Date.now();
   try {
+    // GoTrue richiede sempre l'header "apikey" (anche su /health): senza,
+    // risponde 401 - non un'indicazione che il servizio sia irraggiungibile
+    // (falso allarme osservato in produzione il 2026-07-25).
     const risposta = await fetch(new URL("/auth/v1/health", url), {
+      headers: anonKey ? { apikey: anonKey } : undefined,
       signal: AbortSignal.timeout(5000),
     });
     const latenzaMs = Date.now() - inizio;

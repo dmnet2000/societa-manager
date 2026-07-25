@@ -3,6 +3,52 @@
    campo form esisteva ancora nel codebase sotto il design system: bordo/radius/focus
    derivati dai token base gia' usati altrove (button-primary, stat-tile). */
 
+/* Riquadro centrato invece del form a piena larghezza della pagina
+   (feedback utente 2026-07-25). Nessun token --shadow in DESIGN.md: ombra
+   minima scelta ad hoc, coerente con --color-border/--radius-md gia' in
+   uso qui sotto. */
+.pagina {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.riquadro {
+  width: 100%;
+  max-width: 360px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+}
+
+/* Logo/nome del settore (2026-07-25, configurabili da Admin in /logo):
+   centrati sopra il titolo "Accedi", stesso .anteprimaLogo di
+   app/(configurazione)/logo/logo.module.css come ispirazione ma senza
+   bordo/riquadro proprio - qui e' gia' dentro .riquadro. */
+.intestazione {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.logo {
+  max-width: 100%;
+  max-height: 64px;
+}
+
+.nomeSettore {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
 .form {
   display: flex;
   flex-direction: column;

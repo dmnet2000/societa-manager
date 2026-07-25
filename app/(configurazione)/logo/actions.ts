@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
 import { caricaLogo } from "@/lib/storage/logo";
+import { salvaNomeSettore } from "@/lib/configurazione-applicazione";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -93,6 +94,53 @@ export async function caricaLogoAction(
     console.error(err);
     return {
       error: { code: "INTERNAL", message: "Impossibile caricare il logo. Riprova." },
+    };
+  }
+
+  revalidatePath("/logo");
+  return { success: true };
+}
+
+const LUNGHEZZA_MASSIMA_NOME_SETTORE = 60;
+
+// Stesso schema { error }/{ success: true } di caricaLogoAction sopra.
+export type NomeSettoreActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+// Nessuna dimensione di appartenenza da delegare a RLS (stesso principio del
+// commento su caricaLogoAction) - requireRuolo("ADMIN") e' l'unico controllo
+// qui, dato che "configurazione_applicazione" non e' protetta da RLS (vedi
+// prisma/schema.prisma): a differenza del logo, qui non c'e' una seconda
+// difesa in profondita' a livello database, requireRuolo resta l'unico
+// cancello.
+export async function salvaNomeSettoreAction(
+  _prevState: NomeSettoreActionState,
+  formData: FormData
+): Promise<NomeSettoreActionState> {
+  const forbidden = await requireRuolo("ADMIN");
+  if (forbidden) return forbidden;
+
+  const valore = String(formData.get("nomeSettore") ?? "").trim();
+
+  if (valore.length > LUNGHEZZA_MASSIMA_NOME_SETTORE) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il nome del settore supera i ${LUNGHEZZA_MASSIMA_NOME_SETTORE} caratteri.`,
+      },
+    };
+  }
+
+  try {
+    // Stringa vuota = l'Admin vuole rimuovere il nome del settore (torna a
+    // non mostrare nulla in NavBar/login), non un valore letterale vuoto.
+    await salvaNomeSettore(valore || null);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile salvare il nome del settore. Riprova." },
     };
   }
 

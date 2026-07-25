@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const requireRuoloMock = vi.fn();
 const createClientMock = vi.fn();
 const caricaLogoMock = vi.fn();
+const salvaNomeSettoreMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -17,11 +18,15 @@ vi.mock("@/lib/storage/logo", () => ({
   caricaLogo: caricaLogoMock,
 }));
 
+vi.mock("@/lib/configurazione-applicazione", () => ({
+  salvaNomeSettore: salvaNomeSettoreMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { caricaLogoAction } = await import("./actions");
+const { caricaLogoAction, salvaNomeSettoreAction } = await import("./actions");
 
 const supabaseFinto = { finto: true };
 
@@ -54,8 +59,16 @@ beforeEach(() => {
   createClientMock.mockResolvedValue(supabaseFinto);
   caricaLogoMock.mockReset();
   caricaLogoMock.mockResolvedValue(undefined);
+  salvaNomeSettoreMock.mockReset();
+  salvaNomeSettoreMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
+
+function buildFormDataNomeSettore(valore: string) {
+  const formData = new FormData();
+  formData.append("nomeSettore", valore);
+  return formData;
+}
 
 describe("caricaLogoAction (Server Action)", () => {
   it("returns FORBIDDEN se il chiamante non e' Admin (AC #3)", async () => {
@@ -175,6 +188,69 @@ describe("caricaLogoAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile caricare il logo. Riprova." },
+    });
+  });
+});
+
+describe("salvaNomeSettoreAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaNomeSettoreAction(
+      undefined,
+      buildFormDataNomeSettore("Volley")
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(salvaNomeSettoreMock).not.toHaveBeenCalled();
+  });
+
+  it("salva il valore fornito (trim applicato) e revalida /logo", async () => {
+    const result = await salvaNomeSettoreAction(
+      undefined,
+      buildFormDataNomeSettore("  Volley  ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaNomeSettoreMock).toHaveBeenCalledWith("Volley");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/logo");
+  });
+
+  it("salva null quando il campo e' lasciato vuoto (rimuove il nome del settore)", async () => {
+    const result = await salvaNomeSettoreAction(undefined, buildFormDataNomeSettore("   "));
+
+    expect(result).toEqual({ success: true });
+    expect(salvaNomeSettoreMock).toHaveBeenCalledWith(null);
+  });
+
+  it("returns VALIDATION oltre i 60 caratteri", async () => {
+    const result = await salvaNomeSettoreAction(
+      undefined,
+      buildFormDataNomeSettore("x".repeat(61))
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il nome del settore supera i 60 caratteri.",
+      },
+    });
+    expect(salvaNomeSettoreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed quando salvaNomeSettore lancia", async () => {
+    salvaNomeSettoreMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaNomeSettoreAction(
+      undefined,
+      buildFormDataNomeSettore("Volley")
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare il nome del settore. Riprova." },
     });
   });
 });

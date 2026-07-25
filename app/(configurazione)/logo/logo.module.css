@@ -4,6 +4,13 @@
    e' nuova: nessuna storia precedente ha restylato un'anteprima <img>,
    contenitore semplice coerente coi token esistenti. */
 
+.titoloSezione {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+  font-size: 16px;
+}
+
 .anteprimaLogo {
   display: block;
   max-width: 260px;
