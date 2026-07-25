@@ -130,7 +130,15 @@ development_status:
   # le storie vengono aggiunte una alla volta. Nessun FR proprio.
   epic-9: in-progress
   9-1-pulsante-di-logoff: done
-  9-2-navigazione-responsive-hamburger-e-barra-laterale: backlog
+  9-2-navigazione-responsive-hamburger-e-barra-laterale: review
   9-3-riquadro-larghezza-massima-pagine-form: backlog
   9-4-menu-profilo-con-logoff-e-modifica-password: backlog
   9-5-campo-cognome-per-allenatore: backlog
+  9-6-geolocalizzazione-palestre: backlog
+
+  # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
+  # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
+  # Analisi/rottura in storie dettagliate deliberatamente rimandata all'avvio
+  # dello sviluppo (richiesta esplicita dell'utente) - solo i requisiti grezzi
+  # sono catturati in epics.md per ora, nessuna storia numerata ancora.
+  epic-10: backlog

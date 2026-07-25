@@ -850,3 +850,47 @@ so that l'anagrafica Allenatore sia completa fin dal precaricamento, senza dover
 **Then** il Cognome è persistito sul nuovo campo `Allenatore.cognome`, non concatenato dentro `nome`
 
 **And** ogni pagina esistente che mostra il nome di un Allenatore continua a funzionare senza errori (nessuna regressione, suite Vitest invariata) — la decisione su cosa mostrare esattamente (solo nome, o "Nome Cognome") va presa in fase di sviluppo
+
+### Story 9.6: Geolocalizzazione Palestre
+
+As a Utente di qualunque Ruolo che deve raggiungere una Palestra,
+I want che l'app mi permetta di navigare direttamente verso la Palestra con Maps,
+so that non devo cercare a mano l'indirizzo in un'altra app.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25). Il model `Palestra` (`prisma/schema.prisma`) ha oggi solo `nome`/`indirizzo` (testo libero), nessuna coordinata. **Da decidere in fase di sviluppo**: (a) se basta un link "Naviga" che apre Google/Apple Maps con una ricerca sul testo di `indirizzo` già esistente (nessun nuovo campo, nessuna geocodifica, soluzione più semplice e coerente con NFR6 - nessun servizio esterno a pagamento), oppure (b) se serve un campo coordinate dedicato (lat/lon) impostato a mano dall'Admin/Dirigente in fase di creazione/modifica Palestra (piu' preciso, ma richiede una migrazione e un modo per l'Admin di ottenere le coordinate, es. incollando un link Google Maps). **Collegamento con la nuova Epic "Gestione Partite/Campionati"** (vedi sotto): quella richiede geolocalizzazione anche per le partite in trasferta, che potrebbero non corrispondere a una Palestra già censita in questo progetto — il meccanismo scelto qui va progettato tenendo conto di quel riuso, o esplicitamente limitato alle sole Palestre proprie con una nota sul gap per le trasferte.
+
+**Acceptance Criteria:**
+
+**Given** una Palestra con posizione impostata (indirizzo o coordinate, a seconda della scelta di sviluppo)
+**When** un Utente qualunque la visualizza (es. in `/palestre`, `/slot`, `/orari`, `/mio-orario`)
+**Then** vede un link/pulsante "Naviga" che apre l'app Maps del dispositivo (Google Maps su Android, sceglie fra le app disponibili su iOS/desktop) puntato su quella posizione
+
+**Given** un Admin o Dirigente che crea/modifica una Palestra
+**When** compila il form
+**Then** può impostare la posizione (nuovo campo se scelta l'opzione (b) sopra, altrimenti riusa l'indirizzo già esistente)
+
+**Given** una Palestra senza posizione impostata
+**When** viene visualizzata
+**Then** nessun link "Naviga" rotto/vuoto viene mostrato (stesso principio guard-clause già usato per il logo, Story 7.2)
+
+## Epic 10: Gestione Partite e Campionati
+
+*(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. A differenza di Epic 9 (miglioramenti puntuali), questo è un epic sostanziale con nuove entità dati e superfici per più Ruoli — **l'analisi completa e la rottura in storie dettagliate sono deliberatamente rimandate all'avvio dello sviluppo di questo epic**, su richiesta esplicita dell'utente ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Quanto segue è la cattura fedele dei requisiti così come dettati, non ancora elaborata in Acceptance Criteria/storie.)*
+
+**Requisiti raccolti (testo dell'utente, 2026-07-25):**
+
+- Nuova entità **Campionato**: un Gruppo (squadra) può partecipare a **più Campionati contemporaneamente** (relazione molti-a-molti Gruppo↔Campionato, non uno-a-uno).
+- L'**Allenatore** può creare un nuovo Campionato per il proprio Gruppo.
+- L'Allenatore può **caricare tramite file Excel** tutte le gare (partite) di un Campionato per la propria squadra — un file per squadra/campionato, non un import unico multi-squadra (da confermare in fase di analisi).
+- Vista partite **settimana per settimana**.
+- Possibilità di **modificare la singola partita**: giorno, ora, palestra.
+- Le **Atlete** vedono nell'app le partite dei Campionati a cui il proprio Gruppo partecipa.
+- I **Genitori** vedono le partite delle proprie figlie (stesso meccanismo di aggancio Genitore↔Atleta già esistente, AD-10/Story 1.5).
+- **Geolocalizzazione** per navigare con Maps verso il luogo della partita (vedi Story 9.6 sopra per il meccanismo base — qui si aggiunge il caso delle trasferte, dove il luogo potrebbe non essere una Palestra propria già censita).
+
+**Domande aperte da affrontare in fase di analisi (non richieste esplicitamente, emerse leggendo i requisiti):**
+- Formato/colonne attese del file Excel di import (nessun esempio fornito finora — stesso tipo di gap già colmato nell'Epic 1 per l'import federale Atlete, Story 1.3, con un file di riferimento reale).
+- Le partite in trasferta (fuori dalle Palestre proprie) richiedono un modo di registrare luogo/indirizzo dell'avversario, non solo scegliere fra le Palestre già censite in questo progetto.
+- Autorizzazione: solo l'Allenatore del proprio Gruppo può creare/modificare i Campionati e le partite di quel Gruppo? Dirigente/Admin hanno accesso più ampio (stesso pattern già visto altrove nel progetto, es. FR-7)?
+- Le partite sono dato "strutturale" (non RLS, come Gruppo/Slot, AD-9) o "personale" (RLS, come Presenza/Iscrizione, AD-4)? Probabilmente strutturale (non riguarda dati sanitari/personali), ma va confermato esplicitamente seguendo lo stesso principio già stabilito per le altre entità.
+- Relazione con l'Anno Agonistico (AD-8): un Campionato è legato a una stagione specifica?

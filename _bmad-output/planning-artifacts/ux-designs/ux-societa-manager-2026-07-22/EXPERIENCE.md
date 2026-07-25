@@ -66,7 +66,7 @@ Le superfici si dividono in due cluster, secondo la stessa logica che separa i r
 | Non autorizzato | `/non-autorizzato` | Atterraggio per un accesso rifiutato (`FORBIDDEN`, AD-4) |
 | Cron promemoria certificati | `api/cron/promemoria-certificati` | Nessuna UI — job schedulato (FR-16, AD-7) |
 
-Nessuna barra laterale o drawer complesso: la navigazione è una singola barra orizzontale (sfondo `{colors.navy}` per Componenti → nav-bar in `DESIGN.md`), le cui voci visibili dipendono dal ruolo dell'utente autenticato (guardia di ruolo per pagina/route-group, non un menu che nasconde voci lato client). Nessuno stack modale a più di un livello.
+**Aggiornato — Story 9.2 (2026-07-25, correzione di rotta post-rilascio)**: la navigazione non è più una singola barra orizzontale in ogni contesto. Su schermo stretto (mobile/tablet) è una barra superiore con logo/nome del settore e un pulsante hamburger che apre/chiude un drawer verticale; su desktop è una barra laterale verticale a sinistra, sempre visibile (sfondo `{colors.navy}` per Componenti → nav-bar in `DESIGN.md`, invariato nei token di colore). Le voci visibili dipendono comunque dal ruolo dell'utente autenticato (guardia di ruolo per pagina/route-group, non un menu che nasconde voci lato client) — questo principio non cambia. Nessuno stack modale a più di un livello (il drawer mobile resta l'unico livello aperto per volta). *(Testo originale, valido fino al 2026-07-25: "Nessuna barra laterale o drawer complesso: la navigazione è una singola barra orizzontale... Nessuno stack modale a più di un livello" — invertito deliberatamente su richiesta esplicita dell'utente, vedi `epics.md` Story 9.2.)*
 
 ## Voce e Tono
 

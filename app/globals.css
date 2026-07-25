@@ -62,6 +62,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Story 9.2: contenitore di app/layout.tsx per NavBar + contenuto pagina.
+   Colonna su mobile (la sidebar e' un drawer "position:fixed" fuori dal
+   flusso, vedi NavBar.module.css - qui resta solo la topBar in flusso
+   normale); riga su desktop, dove la sidebar diventa un elemento sticky
+   regolare del flex e il contenuto occupa lo spazio restante. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.contenuto {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 880px) {
+  .shell {
+    flex-direction: row;
+  }
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

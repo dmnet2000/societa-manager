@@ -1,15 +1,77 @@
 /* Story 8.1 - applica il componente nav-bar di DESIGN.md
-   (ux-designs/ux-societa-manager-2026-07-22): sfondo navy a piena
-   larghezza, unico punto del sistema in cui il navy occupa un'area larga
-   (mai come sfondo di un'intera pagina/area di contenuto). */
+   (ux-designs/ux-societa-manager-2026-07-22): sfondo navy, invariato dalla
+   Story 9.2 sotto (solo il layout - orizzontale vs verticale - cambia).
 
-.navBar {
+   Story 9.2 (2026-07-25): hamburger + drawer su mobile, barra laterale
+   verticale sempre visibile su desktop - inverte la decisione originale di
+   EXPERIENCE.md (riga 69, vedi nota li'). Breakpoint 880px: nessun token
+   di breakpoint esiste in DESIGN.md, scelto qui come confine
+   tablet/desktop ragionevole (una barra laterale di 220px + contenuto ha
+   senso solo con abbastanza spazio orizzontale residuo). */
+
+.topBar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
   background: var(--color-navy);
   padding: var(--space-2) var(--space-4);
-  overflow-x: auto;
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  appearance: none;
+  color: var(--color-surface);
+  font-size: 22px;
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid var(--color-focus-ring-on-navy);
+  outline-offset: 2px;
+}
+
+/* Sfondo semi-trasparente dietro il drawer aperto - tocco fuori dal menu
+   per chiuderlo (gestito in NavBarClient.tsx). */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 32, 0.4);
+  z-index: 20;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 240px;
+  max-width: 80vw;
+  background: var(--color-navy);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+  z-index: 21;
+}
+
+.sidebarAperta {
+  transform: translateX(0);
+}
+
+/* Il brand compare due volte nel markup (topBar per mobile, qui dentro la
+   sidebar per desktop) - ciascuno visibile solo nel proprio breakpoint,
+   mai entrambi insieme (vedi regole sotto). */
+.brandSidebar {
+  display: none;
 }
 
 .brand {
@@ -34,19 +96,23 @@
 
 .voci {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-1);
   list-style: none;
-  overflow-x: auto;
 }
 
 .voce {
-  display: inline-block;
-  white-space: nowrap;
+  /* Review fix (code review Story 9.2): "white-space: nowrap" aveva senso
+     nella barra orizzontale (Story 8.1), dove impediva alle voci di andare
+     a capo dentro una riga - qui le voci sono gia' una per riga in una
+     colonna stretta (220px/240px): un'etichetta lunga (es.
+     "Precaricamento allenatori") uscirebbe dal bordo della sidebar invece
+     di andare semplicemente a capo. */
+  display: block;
   font-size: 13px;
   font-weight: 700;
   color: var(--color-surface-alt);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2);
   border-radius: var(--radius-sm);
   text-decoration: none;
 }
@@ -61,27 +127,50 @@
   color: var(--color-surface);
 }
 
-/* Story 9.1: margin-left:auto lo spinge a destra quando c'e' spazio libero;
-   flex-shrink:0 evita che si schiacci. Su schermi molto stretti con molte
-   voci puo' finire comunque nello scorrimento orizzontale della barra
-   (limite gia' esistente di .navBar/.voci) - superato dalla barra laterale
-   responsive di Story 9.2, non affrontato qui. */
+/* margin-top:auto spinge "Esci" in fondo alla colonna (sidebar/drawer),
+   staccato dalle voci di navigazione. */
 .formEsci {
-  margin-left: auto;
-  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .formEsci button {
   font: inherit;
   background: none;
   border: none;
-  /* Review fix (code review Story 9.1): "appearance" e' l'unico reset che
-     mancava davvero - padding/margin NON vanno azzerati qui: ".voce" (sullo
-     stesso elemento) imposta gia' il proprio padding, che sovrascrive
-     comunque il default dello user-agent stylesheet (le regole d'autore
-     hanno sempre priorita' sullo user-agent, a prescindere dalla
-     specificita' - aggiungere "padding: 0" qui lo romperebbe: 0,1,1 batte
-     0,1,0 di ".voce" ENTRO lo stesso livello di origine). */
+  /* "appearance" e' l'unico reset che serve davvero - padding/margin NON
+     vanno azzerati qui: ".voce" (sullo stesso elemento) imposta gia' il
+     proprio padding, che sovrascrive comunque il default dello user-agent
+     stylesheet (le regole d'autore hanno sempre priorita' sullo
+     user-agent, a prescindere dalla specificita' - aggiungere "padding: 0"
+     qui lo romperebbe: 0,1,1 batte 0,1,0 di ".voce" ENTRO lo stesso
+     livello di origine - scoperto durante la review di Story 9.1). */
   appearance: none;
   cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+@media (min-width: 880px) {
+  .topBar,
+  .overlay {
+    display: none;
+  }
+
+  .sidebar {
+    /* sticky (non fixed, non static): resta visibile durante lo scroll di
+       pagine di contenuto lunghe (es. tabelle), ma e' un elemento
+       normale del flusso flex di .shell (app/globals.css), a differenza
+       di "fixed" usato su mobile per il drawer overlay. */
+    position: sticky;
+    top: 0;
+    transform: none;
+    max-width: none;
+    width: 220px;
+    height: 100vh;
+    flex-shrink: 0;
+  }
+
+  .brandSidebar {
+    display: block;
+  }
 }

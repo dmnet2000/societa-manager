@@ -19,8 +19,16 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
-        <NavBar />
-        {children}
+        {/* Story 9.2: ".shell"/".contenuto" (app/globals.css) - colonna su
+            mobile (solo la topBar di NavBar occupa spazio, la sidebar e'
+            un drawer fuori dal flusso), riga su desktop (sidebar + contenuto
+            fianco a fianco). Un <div>, non un altro <main>: ogni page.tsx
+            renderizza gia' il proprio <main> - annidarne un secondo qui
+            violerebbe l'unicita' semantica dell'elemento. */}
+        <div className="shell">
+          <NavBar />
+          <div className="contenuto">{children}</div>
+        </div>
       </body>
     </html>
   );

@@ -1,12 +1,11 @@
 import { headers } from "next/headers";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
 import { NON_AUTORIZZATO_PATH } from "@/lib/auth/route-guard";
 import { filtraVociNavigazione } from "@/lib/auth/voci-navigazione";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import { esci } from "./NavBar.actions";
-import styles from "./NavBar.module.css";
+import { NavBarClient } from "./NavBarClient";
 
 // Story 8.1: componente cross-cutting condiviso (non di un singolo modulo/
 // route-group) - montato una sola volta nel root layout, ereditato da ogni
@@ -68,40 +67,21 @@ export async function NavBar() {
     console.error(err);
   }
 
+  const vociConStato = voci.map((voce) => ({
+    ...voce,
+    attiva: pathname === voce.href || pathname.startsWith(`${voce.href}/`),
+  }));
+
+  const logoUrl = info.esiste
+    ? `${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`
+    : null;
+
   return (
-    <nav className={styles.navBar}>
-      <div className={styles.brand}>
-        {/* Nessuna immagine rotta se il logo non e' mai stato caricato
-            (Story 7.2, stesso guard-clause di app/(configurazione)/logo/page.tsx). */}
-        {info.esiste && (
-          <img
-            className={styles.logo}
-            src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
-            alt=""
-          />
-        )}
-        <span className={styles.title}>Società Manager</span>
-      </div>
-      <ul className={styles.voci}>
-        {voci.map((voce) => {
-          const attiva = pathname === voce.href || pathname.startsWith(`${voce.href}/`);
-          return (
-            <li key={voce.href}>
-              <Link
-                href={voce.href}
-                className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
-              >
-                {voce.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      <form action={esci} className={styles.formEsci}>
-        <button type="submit" className={styles.voce}>
-          Esci
-        </button>
-      </form>
-    </nav>
+    <NavBarClient
+      voci={vociConStato}
+      logoUrl={logoUrl}
+      titolo="Società Manager"
+      esci={esci}
+    />
   );
 }
