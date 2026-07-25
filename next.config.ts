@@ -11,7 +11,15 @@ const nextConfig: NextConfig = {
   // l'entry point corretto (es. "pg-cloudflare", richiesto da "pg"/
   // @prisma/adapter-pg per aprire connessioni TCP dentro un Worker) - vedi
   // https://opennext.js.org/cloudflare/howtos/workerd.
-  serverExternalPackages: ["pg", "pg-cloudflare"],
+  // "@prisma/client" (generator "prisma-client-js"): senza questa
+  // esclusione Next.js risolve l'export "." con la condizione "node"
+  // (motore nativo, richiede un binario OpenSSL specifico del sistema -
+  // introvabile/incompatibile a runtime su Workers), invece della
+  // condizione "workerd" del package (motore WASM, nessun binario nativo).
+  // Errore osservato in produzione (2026-07-25): "PrismaClientInitializationError:
+  // Prisma Client could not locate the Query Engine for runtime
+  // debian-openssl-1.1.x".
+  serverExternalPackages: ["pg", "pg-cloudflare", "@prisma/client"],
   experimental: {
     serverActions: {
       // Default Next.js 1MB - troppo basso per gli upload multipart di

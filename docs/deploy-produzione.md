@@ -14,11 +14,13 @@ Stato aggiornato al 2026-07-25. Le fasi completate sono marcate `[x]`.
    | `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → Data API / API Keys → Project URL (dominio base, **senza** `/rest/v1/`) |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API Keys → chiave `anon` `public` |
    | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API Keys → chiave `service_role` (segreta, dietro "Reveal") |
-   | `DATABASE_URL` | Project Settings → Database → Connect → tab **Transaction pooler** (porta 6543) + `?pgbouncer=true` in coda |
-   | `DIRECT_URL` | Project Settings → Database → Connect → tab **Direct connection** (porta 5432), host `db.<project-ref>.supabase.co` |
+   | `DATABASE_URL` | Project Settings → Database → Connect → tab **Transaction pooler** (porta 6543) + `?pgbouncer=true&sslmode=require` in coda |
+   | `DIRECT_URL` | Project Settings → Database → Connect → tab **Direct connection** (porta 5432), host `db.<project-ref>.supabase.co` + `?sslmode=require` in coda |
    | `CRON_SECRET` | generato a mano (stringa casuale lunga, es. `openssl rand -hex 32` o `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
 
    **Attenzione password DB con caratteri speciali**: se la password del database contiene `@`, `:`, `/`, `%` o altri caratteri riservati negli URL, vanno URL-encodati (es. `@` → `%40`) sia in `DATABASE_URL` sia in `DIRECT_URL`, altrimenti il parsing della connection string si rompe silenziosamente.
+
+   **Attenzione `sslmode=require` obbligatorio in produzione**: il pooler Supabase (Supavisor) richiede sempre TLS sulle connessioni esterne, ma `pg`/`@prisma/adapter-pg` non attivano SSL a meno che non sia esplicito nella connection string. Senza `sslmode=require` il login sembra fallire con "Servizio momentaneamente non disponibile" (la query Prisma che verifica l'utente in `app/(auth)/accedi/actions.ts` va in errore silenzioso, senza messaggio utile nei log Cloudflare — verificato in produzione il 2026-07-25). In locale (Supabase locale, `127.0.0.1`) non serve, quindi non è nell'esempio di `.env.example`.
 
 ## Fase 2 — Account Cloudflare + progetto collegato a GitHub `[x]`
 
@@ -37,7 +39,7 @@ Stato aggiornato al 2026-07-25. Le fasi completate sono marcate `[x]`.
 ## Fase 3 — Migrazioni Prisma sul DB di produzione `[x]`
 
 ```bash
-DIRECT_URL="<valore da .env.production>" npx prisma migrate deploy
+DIRECT_URL="<valore da .env.production, con ?sslmode=require>" npx prisma migrate deploy
 ```
 
 Tutte le migrazioni esistenti applicate con successo, incluse quelle dei bucket Storage (certificati medici, logo), già idempotenti (`ON CONFLICT DO NOTHING`).
@@ -78,6 +80,8 @@ CRON_SECRET
 ```
 
 `DIRECT_URL` **non serve** qui: la usa solo il CLI Prisma (`migrate`, `generate` in build) via `prisma.config.ts`, mai `lib/prisma.ts` a runtime (che legge solo `DATABASE_URL`).
+
+`DATABASE_URL` **deve** includere `&sslmode=require` (vedi nota in Fase 1) — senza, le query Prisma a runtime falliscono in modo silenzioso (nessun messaggio d'errore utile nei log Cloudflare) e il login resta bloccato su "Servizio momentaneamente non disponibile".
 
 ## Fase 6 — Cloudflare Cron Trigger per i promemoria certificati `[ ]`
 
