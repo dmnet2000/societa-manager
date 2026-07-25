@@ -145,6 +145,10 @@ Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un
 *(Aggiunto in corso d'opera — correzione di rotta 2026-07-23, vedi `sprint-change-proposal-2026-07-23.md`.)* Il sistema di design (`DESIGN.md`/`EXPERIENCE.md`, prodotto tra Epic 4 ed Epic 5) è stato applicato solo alle pagine nuove da allora in poi — questo epic lo retrofitta sulle 20 pagine preesistenti rimaste allo stile precedente. Puramente presentazionale: nessuna nuova tabella, RLS, Server Action o comportamento in nessuna delle sue storie — solo CSS module + markup sopra le pagine esistenti, stesso pattern già stabilito in Story 5.1/5.2. Tutti i test Vitest esistenti devono continuare a passare invariati.
 **FRs covered:** nessuno (opera su NFR3, "applicazione web responsive... mobile-first", già esistente — nessun nuovo comportamento)
 
+### Epic 9: Miglioramenti Post-Rilascio
+*(Aggiunto in corso d'opera — 2026-07-25, raccolta di lacune/miglioramenti individuati durante la verifica dal vivo in produzione dopo il completamento di Epic 1-8, non pianificati nel PRD originale. Elenco aperto: le storie vengono aggiunte una alla volta man mano che emergono, non tutte definite in anticipo come negli epic precedenti.)*
+**FRs covered:** nessuno finora (da aggiornare se una storia futura ne introduce)
+
 ## Epic 1: Accesso, Popolamento e Iscrizioni
 
 Ogni ruolo può registrarsi e accedere; Admin/Dirigente popolano atlete e allenatori (import Excel, precaricamento, aggancio genitore-atleta), gestiscono utenti/ruoli, e la Segreteria conferma le iscrizioni — inclusa la corretta gestione del passaggio da una stagione all'altra (merge certificati per data più recente, riporto Under 13).
@@ -712,3 +716,59 @@ so that anche le pagine a minor traffico (solo-Admin, di sistema) siano coerenti
 **And** il comportamento resta identico a prima — nessuna regressione, suite Vitest invariata
 
 **Note:** ultima storia dell'epic — priorità visiva più bassa (pagine solo-Admin o di sistema, traffico minore rispetto alle altre).
+
+## Epic 9: Miglioramenti Post-Rilascio
+
+*(Aggiunto in corso d'opera — 2026-07-25, vedi Epic List sopra. A differenza degli epic precedenti, l'elenco delle storie resta aperto: si aggiungono una alla volta man mano che emergono dalla verifica dal vivo in produzione, invece di essere definite tutte in anticipo.)*
+
+### Story 9.1: Pulsante di logoff
+
+As a Utente autenticato di qualunque Ruolo,
+I want un pulsante per terminare la sessione visibile nella barra di navigazione,
+so that posso uscire dal mio account in modo esplicito, specialmente su un dispositivo condiviso (es. un tablet in palestra usato da più Allenatori).
+
+**Note aggiuntive:** lacuna scoperta dall'utente in produzione (2026-07-25) — `app/NavBar.tsx` (Story 8.1) non ha mai incluso un modo per terminare la sessione. `supabase.auth.signOut()` è già usato nel codice, ma solo internamente (`app/(auth)/accedi/actions.ts`, quando un account risulta disattivato dopo il login) — nessuna Server Action/pulsante lo espone all'Utente.
+
+**Acceptance Criteria:**
+
+**Given** un Utente autenticato con una sessione attiva
+**When** visualizza la barra di navigazione
+**Then** vede un pulsante/voce "Esci" (coerente con i token di `DESIGN.md`, stesso trattamento delle altre voci di `app/NavBar.tsx`)
+
+**Given** l'Utente clicca il pulsante di logoff
+**When** l'azione viene eseguita
+**Then** la sessione Supabase Auth viene terminata (cookie invalidati) e l'Utente viene rediretto a `/accedi`
+
+**Given** l'Utente ha appena effettuato il logoff
+**When** tenta di raggiungere una pagina protetta (URL diretto o pulsante "indietro" del browser)
+**Then** il Proxy (`middleware.ts`) lo rediretta a `/accedi` come qualunque Utente non autenticato — nessun accesso residuo tramite cache del browser
+
+### Story 9.2: Menu applicativo a hamburger
+
+As a Utente autenticato di qualunque Ruolo, specialmente da smartphone,
+I want che le voci di navigazione siano raccolte dietro un pulsante hamburger invece che in una barra orizzontale sempre visibile,
+so that la barra di navigazione non occupi spazio prezioso su schermo piccolo e non richieda scorrimento orizzontale per trovare la voce che cerco.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25). **Attenzione — inverte una decisione UX precedente**: `EXPERIENCE.md` (riga 69) specifica esplicitamente *"Nessuna barra laterale o drawer complesso: la navigazione è una singola barra orizzontale... Nessuno stack modale a più di un livello"*, decisione poi implementata fedelmente in Story 8.1 (`app/NavBar.tsx`, `.voci` con `overflow-x: auto` per lo scorrimento orizzontale su schermi stretti, mai un drawer). Questa storia sostituisce deliberatamente quella scelta — va aggiornato anche `EXPERIENCE.md` per non lasciare il documento di riferimento in contraddizione col comportamento reale (stesso principio già seguito per altre correzioni di rotta di questo progetto, es. Epic 7/8).
+
+**Acceptance Criteria:**
+
+**Given** un Utente autenticato su schermo stretto (mobile/tablet, il caso che motiva questa storia)
+**When** visualizza l'app
+**Then** la barra superiore mostra solo logo/nome del settore e un pulsante hamburger — le voci di navigazione (incluso il pulsante di logoff, Story 9.1) sono nascoste finché non lo apre
+
+**Given** l'Utente clicca/tocca il pulsante hamburger
+**When** il menu si apre
+**Then** vede l'elenco delle voci a cui il suo Ruolo ha accesso (stessa fonte `lib/auth/voci-navigazione.ts` già in uso, nessuna lista duplicata), inclusa la voce attiva evidenziata come oggi
+
+**Given** il menu e' aperto
+**When** l'Utente seleziona una voce, o tocca fuori dal menu, o preme Esc
+**Then** il menu si chiude (nessuno stack di più livelli aperti insieme — vincolo ereditato da `EXPERIENCE.md`, unica parte di quella riga non invertita da questa storia)
+
+**Given** la navigazione da tastiera
+**When** il focus raggiunge il pulsante hamburger e poi le voci del menu aperto
+**Then** l'ordine di tabulazione è logico e ogni elemento mostra il contorno di focus (`{colors.focus-ring-on-navy}`, coerente con Story 8.1)
+
+**Given** uno schermo largo (desktop, sopra il breakpoint scelto in fase di sviluppo della storia)
+**When** l'Utente visualizza l'app
+**Then** la barra di navigazione resta orizzontale come oggi (nessun hamburger) — pattern responsive classico, deciso con l'utente il 2026-07-25: il problema di spazio/scorrimento motiva la storia solo su schermi stretti, su desktop la barra orizzontale non ha questo limite

@@ -18,21 +18,40 @@
 // PrismaClientInitializationError "could not locate the Query Engine for
 // runtime debian-openssl-x.x.x" in produzione); con lo shim contiene
 // `config.engineWasm = {...}` (motore WASM).
+import { cache } from "react";
 import { PrismaClient } from "./prisma-engine-wasm";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 // AD-3 / AD-9: Prisma via driver adapter (obbligatorio in Prisma 7), connesso
 // al pooler Supavisor (DATABASE_URL, transaction pooler) a runtime — non alla
 // connessione diretta, che e' riservata al CLI (vedi prisma.config.ts).
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-function createPrismaClient() {
+//
+// React.cache() invece di un singleton a livello di modulo (usato prima
+// del 2026-07-25): su Cloudflare Workers un modulo viene valutato una sola
+// volta per isolate, non per richiesta - un isolate "caldo" gestisce piu'
+// richieste riusando lo stesso modulo, quindi un semplice
+// `export const prisma = new PrismaClient(...)` riusava lo stesso pool
+// pg/PrismaClient (e il socket TCP sottostante di @prisma/adapter-pg) tra
+// richieste HTTP diverse. workerd non garantisce che un I/O aperto durante
+// una richiesta resti valido/utilizzabile in un'altra - osservato in
+// produzione come richieste bloccate in modo intermittente ("The Workers
+// runtime canceled this request because it detected that your Worker's
+// code had hung"), "risolte" da un reload solo perche' capitava di finire
+// su un isolate nuovo. cache() (Request Memoization di Next.js, non solo
+// deduplicazione React) crea un'istanza fresca per ogni richiesta,
+// condivisa pero' fra le chiamate multiple a `prisma` DENTRO la stessa
+// richiesta - nessun costo aggiuntivo rispetto a prima in quel caso.
+const getPrismaClient = cache(() => {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   return new PrismaClient({ adapter });
-}
+});
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Proxy invece di esportare direttamente la funzione: i ~30 file che
+// importano `{ prisma }` continuano a scrivere `prisma.utente.findUnique(...)`
+// invariato - ogni accesso a una proprieta' risolve al client della
+// richiesta CORRENTE tramite getPrismaClient() sopra.
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getPrismaClient(), prop, receiver);
+  },
+});
