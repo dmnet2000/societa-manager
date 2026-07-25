@@ -743,13 +743,13 @@ so that posso uscire dal mio account in modo esplicito, specialmente su un dispo
 **When** tenta di raggiungere una pagina protetta (URL diretto o pulsante "indietro" del browser)
 **Then** il Proxy (`middleware.ts`) lo rediretta a `/accedi` come qualunque Utente non autenticato — nessun accesso residuo tramite cache del browser
 
-### Story 9.2: Menu applicativo a hamburger
+### Story 9.2: Navigazione responsive — hamburger su mobile, barra laterale verticale su desktop
 
-As a Utente autenticato di qualunque Ruolo, specialmente da smartphone,
-I want che le voci di navigazione siano raccolte dietro un pulsante hamburger invece che in una barra orizzontale sempre visibile,
-so that la barra di navigazione non occupi spazio prezioso su schermo piccolo e non richieda scorrimento orizzontale per trovare la voce che cerco.
+As a Utente autenticato di qualunque Ruolo,
+I want su schermo stretto le voci di navigazione raccolte dietro un pulsante hamburger, e su desktop una barra laterale verticale a sinistra invece della barra orizzontale attuale,
+so that la navigazione non occupi spazio prezioso su mobile (niente scorrimento orizzontale) e su desktop sia più simile alle applicazioni gestionali che uso di solito, con più voci leggibili in verticale senza dover scorrere.
 
-**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25). **Attenzione — inverte una decisione UX precedente**: `EXPERIENCE.md` (riga 69) specifica esplicitamente *"Nessuna barra laterale o drawer complesso: la navigazione è una singola barra orizzontale... Nessuno stack modale a più di un livello"*, decisione poi implementata fedelmente in Story 8.1 (`app/NavBar.tsx`, `.voci` con `overflow-x: auto` per lo scorrimento orizzontale su schermi stretti, mai un drawer). Questa storia sostituisce deliberatamente quella scelta — va aggiornato anche `EXPERIENCE.md` per non lasciare il documento di riferimento in contraddizione col comportamento reale (stesso principio già seguito per altre correzioni di rotta di questo progetto, es. Epic 7/8).
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25, integrata dopo una prima versione che manteneva la barra orizzontale su desktop). **Attenzione — inverte una decisione UX precedente su ENTRAMBI i punti**: `EXPERIENCE.md` (riga 69) specifica esplicitamente *"Nessuna barra laterale o drawer complesso: la navigazione è una singola barra orizzontale... Nessuno stack modale a più di un livello"*, decisione poi implementata fedelmente in Story 8.1 (`app/NavBar.tsx`, `.voci` con `overflow-x: auto` per lo scorrimento orizzontale su schermi stretti, mai una barra laterale). Questa storia sostituisce deliberatamente quella scelta sia su mobile (hamburger/drawer) sia su desktop (barra laterale) — va aggiornato anche `EXPERIENCE.md` per non lasciare il documento di riferimento in contraddizione col comportamento reale (stesso principio già seguito per altre correzioni di rotta di questo progetto, es. Epic 7/8). **Assunzione da confermare in fase di sviluppo** (non specificata esplicitamente dall'utente): la barra laterale su desktop è sempre visibile/aperta, senza bisogno di un pulsante per aprirla/chiuderla — a differenza del comportamento mobile, dove serve l'hamburger per fare spazio al contenuto.
 
 **Acceptance Criteria:**
 
@@ -771,4 +771,82 @@ so that la barra di navigazione non occupi spazio prezioso su schermo piccolo e 
 
 **Given** uno schermo largo (desktop, sopra il breakpoint scelto in fase di sviluppo della storia)
 **When** l'Utente visualizza l'app
-**Then** la barra di navigazione resta orizzontale come oggi (nessun hamburger) — pattern responsive classico, deciso con l'utente il 2026-07-25: il problema di spazio/scorrimento motiva la storia solo su schermi stretti, su desktop la barra orizzontale non ha questo limite
+**Then** vede una barra laterale verticale a sinistra (sempre visibile, non un hamburger) con le stesse voci/logo/nome del settore/pulsante di logoff, e il contenuto della pagina occupa lo spazio restante a destra
+
+**Given** l'Utente su desktop naviga tra pagine diverse
+**When** la pagina cambia
+**Then** la barra laterale resta fissa/visibile (nessun ricaricamento visibile della barra stessa, coerente con l'esperienza di un'app gestionale)
+
+### Story 9.3: Riquadro con larghezza massima per le pagine-form
+
+As a Utente di qualunque Ruolo,
+I want che le pagine il cui contenuto principale è un form autonomo (non una tabella/lista) siano racchiuse in un riquadro di larghezza massima, come già fatto per `/accedi`,
+so that su schermo largo non debba percorrere con lo sguardo campi stirati da un bordo all'altro della finestra.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25), stesso principio già applicato a `/accedi` (vedi `.pagina`/`.riquadro` in `accedi.module.css`, introdotti durante la correzione del logo/nome-settore) — questa storia lo estende come pattern di design system riusabile (nuova voce in `DESIGN.md`, nessuna esisteva finora per la larghezza massima di un contenitore) a tutte le altre pagine con lo stesso problema. Verificato dal vivo che `<main>` non ha mai un vincolo di larghezza in nessuna pagina (nessun wrapper nel root layout, vedi `app/layout.tsx`) — confermato almeno su `/registrati` e `/smtp` (stesso `<main>` grezzo), probabilmente su ogni altra pagina-form dell'app: l'elenco esatto va completato in fase di creazione della storia (stesso lavoro di inventario già fatto per l'Epic 8, questa volta per "pagina-form" invece che "pagina non ancora restylata"). **Esclude** le pagine il cui contenuto principale è una tabella/lista (es. `/admin`, `/gruppi`, `/palestre`) anche se contengono form secondari inline (es. riga di creazione in una tabella) — per quelle il riquadro stretto sarebbe controproducente, restano a piena larghezza.
+
+**Acceptance Criteria:**
+
+**Given** una pagina il cui contenuto principale è un form autonomo (es. `/registrati`, `/smtp`, `/logo`, elenco completo da confermare in fase di sviluppo)
+**When** viene visualizzata su schermo largo
+**Then** il form è racchiuso in un riquadro di larghezza massima centrato (stesso pattern `.pagina`/`.riquadro` di `/accedi`), non stirato a piena larghezza
+
+**Given** la stessa pagina su schermo stretto (mobile/tablet)
+**When** viene visualizzata
+**Then** il riquadro occupa la larghezza disponibile con margine, senza scorrimento orizzontale (`width: 100%` + `max-width`, stesso comportamento già verificato su `/accedi`)
+
+**And** il comportamento (validazione, Server Action, redirect, messaggi di errore) resta identico a prima — nessuna regressione, suite Vitest invariata (stesso vincolo delle storie di restyle puro dell'Epic 8)
+
+### Story 9.4: Menu profilo con logoff e modifica password
+
+As a Utente autenticato di qualunque Ruolo,
+I want un menu profilo (icona/nome utente nella barra di navigazione) da cui accedere sia al logoff sia alla modifica della propria password,
+so that ho un unico punto dove gestire il mio account, invece di un pulsante isolato, e posso cambiare la password senza dover chiedere aiuto all'Admin.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25). **Sostituisce/estende la Story 9.1** (già `done`): il pulsante "Esci" isolato in `app/NavBar.tsx`/`app/NavBar.actions.ts` va spostato dentro questo nuovo menu, non duplicato — `esci()` (Server Action) resta riusabile invariata. **Nessuna funzionalità di modifica password esiste oggi in nessuna pagina dell'app** (verificato: nessun uso di `supabase.auth.updateUser()` nel codice) — questa storia introduce sia il menu sia la pagina/form di modifica password, due funzionalità distinte unite dallo stesso punto di accesso. Il meccanismo di modifica password più semplice con Supabase Auth è `supabase.auth.updateUser({ password })` sul client con la sessione dell'Utente corrente (nessuna verifica della password attuale richiesta da Supabase stesso) — **da decidere in fase di sviluppo** se richiedere comunque un secondo campo "conferma nuova password" lato form (validazione applicativa, non protezione reale) e se applicare una policy di lunghezza minima. **Interazione con Story 9.2** (barra laterale su desktop): il menu profilo va integrato in qualunque forma prenda la navigazione dopo quella storia — l'ordine di sviluppo consigliato è 9.2 prima di 9.4, per non ricostruire il posizionamento due volte.
+
+**Acceptance Criteria:**
+
+**Given** un Utente autenticato con una sessione attiva
+**When** visualizza la barra di navigazione
+**Then** vede un elemento "profilo" (icona o nome utente, non più il pulsante "Esci" isolato) che apre un menu al click/tocco
+
+**Given** il menu profilo aperto
+**When** l'Utente lo visualizza
+**Then** contiene almeno due voci: "Modifica password" e "Esci"
+
+**Given** l'Utente seleziona "Esci" dal menu profilo
+**When** l'azione viene eseguita
+**Then** il comportamento è identico a quello già validato in Story 9.1 (sessione terminata fail-closed, redirect a `/accedi`) — nessuna Server Action duplicata
+
+**Given** l'Utente seleziona "Modifica password"
+**When** inserisce una nuova password (e un campo di conferma, se deciso in sviluppo) e conferma
+**Then** la password viene aggiornata (`supabase.auth.updateUser({ password })`) e l'Utente riceve conferma dell'avvenuta modifica, senza essere disconnesso
+
+**Given** l'Utente inserisce una nuova password troppo corta o i due campi (se presenti) non coincidono
+**When** invia il form
+**Then** vede un messaggio di errore chiaro, nessuna chiamata a Supabase Auth (stesso pattern `{ error: { code, message } }` delle altre Server Action del progetto)
+
+### Story 9.5: Campo Cognome per Allenatore (precaricamento)
+
+As a Admin o Dirigente che precarica un Allenatore,
+I want inserire anche il Cognome oltre a Nome e Codice Fiscale,
+so that l'anagrafica Allenatore sia completa fin dal precaricamento, senza dover dedurre il cognome dal solo Codice Fiscale.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-25). Il model `Allenatore` (`prisma/schema.prisma`) ha oggi un solo campo `nome` (usato come nome completo in `app/(onboarding-import)/precaricamento-allenatori/`, Story 1.4) — nessun `cognome` esiste. Richiede una migrazione Prisma (nuovo campo, `Allenatore` non è protetta da RLS, AD-9 — via Prisma diretto, nessuna policy da aggiornare). **Osservazione emersa analizzando lo schema, non richiesta dall'utente**: anche il model `Atleta` ha oggi un solo campo `nome` (nessun `cognome`) — la stessa incoerenza esisterebbe fra le due entità se questa storia aggiungesse `cognome` solo per `Allenatore`; da valutare se estendere anche `Atleta` in una storia separata, o se sia una scelta accettata (fuori perimetro di questa richiesta). **Impatto da mappare in fase di sviluppo**: ogni punto che mostra `allenatore.nome` (es. `app/(gruppi-allenatori)/gruppi/GruppoRow.tsx`, `app/(gruppi-allenatori)/wizard-nuova-stagione/page.tsx`) va verificato per capire se mostrare "Nome Cognome" concatenato o lasciare invariato.
+
+**Acceptance Criteria:**
+
+**Given** la pagina `/precaricamento-allenatori`
+**When** un Admin o Dirigente compila il form
+**Then** vede un campo "Cognome" obbligatorio, oltre ai due campi già esistenti (Nome, Codice Fiscale)
+
+**Given** il form inviato senza Cognome
+**When** la Server Action `precaricaAllenatore` lo valida
+**Then** restituisce un errore di validazione, stesso pattern dei controlli già esistenti su Nome/Codice Fiscale vuoti
+
+**Given** un Allenatore precaricato con successo
+**When** viene salvato
+**Then** il Cognome è persistito sul nuovo campo `Allenatore.cognome`, non concatenato dentro `nome`
+
+**And** ogni pagina esistente che mostra il nome di un Allenatore continua a funzionare senza errori (nessuna regressione, suite Vitest invariata) — la decisione su cosa mostrare esattamente (solo nome, o "Nome Cognome") va presa in fase di sviluppo

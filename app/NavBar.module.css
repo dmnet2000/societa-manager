@@ -60,3 +60,28 @@
   background: var(--color-button-bg);
   color: var(--color-surface);
 }
+
+/* Story 9.1: margin-left:auto lo spinge a destra quando c'e' spazio libero;
+   flex-shrink:0 evita che si schiacci. Su schermi molto stretti con molte
+   voci puo' finire comunque nello scorrimento orizzontale della barra
+   (limite gia' esistente di .navBar/.voci) - superato dalla barra laterale
+   responsive di Story 9.2, non affrontato qui. */
+.formEsci {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.formEsci button {
+  font: inherit;
+  background: none;
+  border: none;
+  /* Review fix (code review Story 9.1): "appearance" e' l'unico reset che
+     mancava davvero - padding/margin NON vanno azzerati qui: ".voce" (sullo
+     stesso elemento) imposta gia' il proprio padding, che sovrascrive
+     comunque il default dello user-agent stylesheet (le regole d'autore
+     hanno sempre priorita' sullo user-agent, a prescindere dalla
+     specificita' - aggiungere "padding: 0" qui lo romperebbe: 0,1,1 batte
+     0,1,0 di ".voce" ENTRO lo stesso livello di origine). */
+  appearance: none;
+  cursor: pointer;
+}

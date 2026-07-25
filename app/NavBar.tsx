@@ -5,6 +5,7 @@ import { parseRuoli } from "@/lib/ruoli";
 import { NON_AUTORIZZATO_PATH } from "@/lib/auth/route-guard";
 import { filtraVociNavigazione } from "@/lib/auth/voci-navigazione";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
+import { esci } from "./NavBar.actions";
 import styles from "./NavBar.module.css";
 
 // Story 8.1: componente cross-cutting condiviso (non di un singolo modulo/
@@ -96,6 +97,11 @@ export async function NavBar() {
           );
         })}
       </ul>
+      <form action={esci} className={styles.formEsci}>
+        <button type="submit" className={styles.voce}>
+          Esci
+        </button>
+      </form>
     </nav>
   );
 }
