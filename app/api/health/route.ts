@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { prisma } from "@/lib/prisma";
 
 // Endpoint di diagnostica pubblico (nessun segreto richiesto, a differenza
@@ -79,6 +80,16 @@ async function verificaSupabaseAuth() {
   }
 }
 
+// Diagnostica 2026-07-25: process.env risultava vuoto per tutte le secret
+// nonostante fossero configurate correttamente su Cloudflare (Settings ->
+// Variables and Secrets, verificato dal vivo). Confronta process.env (come
+// lo popola lib/cloudflare/init.js di @opennextjs/cloudflare, copiando da
+// env) con l'`env` grezzo del binding Cloudflare (getCloudflareContext) per
+// distinguere due cause diverse: (a) le secret non arrivano affatto al
+// Worker, oppure (b) arrivano ma si perdono nel passaggio verso
+// process.env (es. non sono stringhe semplici - vedi populateProcessEnv in
+// .open-next/cloudflare/init.js, che copia in process.env solo le entry di
+// `env` con `typeof valore === "string"").
 function verificaVariabiliAmbiente() {
   const richieste = [
     "DATABASE_URL",
@@ -87,7 +98,24 @@ function verificaVariabiliAmbiente() {
     "SUPABASE_SERVICE_ROLE_KEY",
     "CRON_SECRET",
   ] as const;
-  return Object.fromEntries(richieste.map((nome) => [nome, Boolean(process.env[nome])]));
+
+  let envGrezzo: Record<string, unknown> | undefined;
+  try {
+    envGrezzo = getCloudflareContext().env as unknown as Record<string, unknown>;
+  } catch (err) {
+    log("error", "getCloudflareContext() ha lanciato un'eccezione", err);
+  }
+
+  return Object.fromEntries(
+    richieste.map((nome) => [
+      nome,
+      {
+        processEnv: Boolean(process.env[nome]),
+        cloudflareEnvPresente: envGrezzo ? nome in envGrezzo : "n/d",
+        cloudflareEnvTipo: envGrezzo ? typeof envGrezzo[nome] : "n/d",
+      },
+    ])
+  );
 }
 
 export async function GET() {
