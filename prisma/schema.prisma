@@ -7,14 +7,17 @@ generator client {
 // ("Wasm code generation disallowed by embedder", compilazione sincrona
 // bloccata da workerd anche con un driver adapter) - bug upstream non
 // risolto, vedi https://github.com/prisma/prisma/issues/28657. Il generator
-// classico "prisma-client-js" (import da "@prisma/client", MAI da
-// "@prisma/client/edge" - quell'endpoint e' per Prisma Accelerate ed e'
-// incompatibile col passare un adapter, vedi lib/prisma.ts) usa un
-// caricamento WASM compatibile con Workers quando si passa un driver
-// adapter (@prisma/adapter-pg). L'url qui e' richiesto per la validazione
-// dello schema anche con un adapter (non usato a runtime, che passa da
-// lib/prisma.ts); la connessione per Migrate/CLI resta in
-// prisma.config.ts (DIRECT_URL).
+// classico "prisma-client-js" espone un motore WASM (query engine, diverso
+// dal query compiler di Prisma 7 sopra, non affetto da quel bug)
+// compatibile con Workers quando si passa un driver adapter
+// (@prisma/adapter-pg) - MA a runtime va forzato esplicitamente il subpath
+// "@prisma/client/wasm" tramite lo shim lib/prisma-engine-wasm.js, MAI un
+// import diretto da "@prisma/client" (ne' da "@prisma/client/edge" -
+// quell'endpoint e' per Prisma Accelerate): vedi il commento in
+// lib/prisma.ts per il dettaglio del problema di bundling e la verifica
+// fatta. L'url qui e' richiesto per la validazione dello schema anche con
+// un adapter (non usato a runtime, che passa da lib/prisma.ts); la
+// connessione per Migrate/CLI resta in prisma.config.ts (DIRECT_URL).
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

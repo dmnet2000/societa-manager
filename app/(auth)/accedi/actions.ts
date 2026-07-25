@@ -37,7 +37,7 @@ export async function accedi(
       password,
     }));
   } catch (err) {
-    console.error(err);
+    console.error("[accedi] signInWithPassword ha lanciato un'eccezione", err);
     return {
       error: {
         code: "INTERNAL",
@@ -79,7 +79,7 @@ export async function accedi(
       };
     }
   } catch (err) {
-    console.error(err);
+    console.error("[accedi] prisma.utente.findUnique ha lanciato un'eccezione", err);
     await supabase.auth.signOut().catch(() => {});
     return {
       error: {
