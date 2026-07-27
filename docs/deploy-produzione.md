@@ -46,6 +46,18 @@ Tutte le migrazioni esistenti applicate con successo, incluse quelle dei bucket 
 
 **Nota tecnica — Direct connection IPv6-only**: la vera "Direct connection" Supabase (`db.<project-ref>.supabase.co`) risolve **solo su IPv6** (verificato con `nslookup`) — irraggiungibile da reti che non hanno connettività IPv6 in uscita (es. molte reti domestiche italiane). `DIRECT_URL` in `.env.production` usa quindi il **Session pooler** (stesso host del Transaction pooler `aws-0-<regione>.pooler.supabase.com`, ma porta 5432 invece di 6543) — IPv4-compatibile e con supporto ai prepared statement richiesti da Prisma Migrate (a differenza del Transaction pooler, pensato per connessioni brevi e non compatibile con Migrate).
 
+## Fase 3bis — ⚠️ Ad ogni nuova migrazione: applicarla PRIMA o CONTESTUALMENTE al push del codice
+
+**Regola non negoziabile, aggiunta dopo due incidenti reali in produzione nella stessa settimana** (Story 11.1 — colonna `Allenatore.cognome`; Story 11.2 — colonne `Palestra.latitudine`/`longitudine`, entrambe 2026-07-27): ogni volta che una storia aggiunge una migrazione Prisma, `postinstall: prisma generate` (Fase 4) rigenera il Client con le colonne nuove **ad ogni build su Cloudflare**, quindi il codice deployato interroga da subito quelle colonne — se la migrazione non è ancora stata applicata al database di produzione, ogni richiesta che tocca quella tabella fallisce (500 se la query non è avvolta in un `try/catch`, come per una pagina; risposta 200 con errore generico se è dentro una Server Action con gestione errori).
+
+**Prima di fare `git push` su `main`** per una storia con una nuova cartella in `prisma/migrations/`:
+
+```bash
+DIRECT_URL="<valore da .env.production, con ?sslmode=require>" npx prisma migrate deploy
+```
+
+Poi (e solo poi) push del codice. Se il push è già avvenuto per errore, la stessa identica correzione va lanciata subito — il downtime dura solo fino a quando questo comando non viene eseguito.
+
 ## Fase 4 — Adapter Cloudflare + wrangler + dimensione bundle `[x]`
 
 **Setup adapter:**

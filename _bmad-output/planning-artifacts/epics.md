@@ -947,6 +947,26 @@ so that posso correggere un precaricamento sbagliato (es. Codice Fiscale digitat
 
 **And** il comportamento esistente del form di precaricamento (Story 1.4/9.5) resta identico — nessuna regressione, suite Vitest invariata
 
+### Story 9.10: La voce di navigazione attiva non si aggiorna durante la navigazione
+
+As a Utente autenticato che naviga tra le pagine dell'app,
+I want che la voce evidenziata nella barra di navigazione (laterale su desktop, drawer su mobile) rifletta sempre la pagina che sto effettivamente visitando,
+so that ho sempre un riferimento visivo corretto di dove mi trovo nell'app.
+
+**Note aggiuntive:** segnalato dall'utente (2026-07-27), osservato dal vivo: la voce evidenziata resta ferma sulla prima pagina visitata (es. "Palestre") anche navigando altrove con i link della barra stessa. **Causa probabile, collegata alla stessa causa già confermata per Story 9.7**: `app/NavBar.tsx` (Server Component) calcola quale voce è "attiva" leggendo il pathname lato server (`pathname === voce.href`, header `x-pathname` impostato dal Proxy) e passa il risultato già calcolato (`vociConStato`) a `NavBarClient.tsx`. Se il layout radice (dove `<NavBar/>` è montato) resta nella Client Cache del router e non viene ri-eseguito ad ogni normale navigazione tra pagine con lo stesso layout (comportamento Next.js documentato, vedi Story 9.7 Dev Notes), la voce attiva calcolata lato server non si aggiorna mai dopo il primo caricamento — a differenza di Story 9.7 (dove il problema si manifesta solo dopo il logoff), qui accade ad **ogni** navigazione normale. `NavBarClient.tsx` legge già `usePathname()` lato client (riga 60, oggi usato solo per chiudere il drawer al cambio pagina) — potrebbe essere la base per calcolare la voce attiva direttamente lì invece che riceverla già calcolata dal server, rendendo l'evidenziazione indipendente dalla cache del layout. **Da confermare/decidere in fase di sviluppo**, non assumere la soluzione a priori.
+
+**Acceptance Criteria:**
+
+**Given** un Utente autenticato su una qualunque pagina dell'app
+**When** clicca una voce diversa della barra di navigazione
+**Then** la voce appena selezionata diventa quella evidenziata come attiva, quella precedente non lo è più
+
+**Given** l'Utente naviga con il pulsante "indietro"/"avanti" del browser
+**When** la pagina cambia
+**Then** la voce attiva riflette comunque la pagina effettivamente visualizzata
+
+**And** nessuna regressione sul resto del comportamento della barra di navigazione (apertura/chiusura drawer mobile, menu profilo, logoff) — stesso vincolo di test invariati delle altre storie di questo epic
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. A differenza di Epic 9 (miglioramenti puntuali), questo è un epic sostanziale con nuove entità dati e superfici per più Ruoli — **l'analisi completa e la rottura in storie dettagliate sono deliberatamente rimandate all'avvio dello sviluppo di questo epic**, su richiesta esplicita dell'utente ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Quanto segue è la cattura fedele dei requisiti così come dettati, non ancora elaborata in Acceptance Criteria/storie.)*
@@ -996,3 +1016,27 @@ so that posso completare il precaricamento in modo affidabile.
 **Then** la causa e la correzione vengono documentate in questa storia (per riconoscere la stessa classe di problema se si ripresenta, es. ordine deploy-codice/migrazione per le prossime storie con migrazione)
 
 **Risolto (2026-07-27):** causa confermata — la migrazione `20260727000000_add_cognome_allenatore` (Story 9.5) non era stata applicata al database di produzione al momento del deploy del codice che la richiedeva. Risolto lanciando `prisma migrate deploy` sul DB di produzione; precaricamento riprovato con successo. Lezione: applicare la migrazione prima/contestualmente al deploy del codice, non dopo.
+
+### Story 11.2: Errore 500 sulla pagina Palestre (GET /palestre)
+
+As a Admin o Dirigente che visita `/palestre`,
+I want che la pagina si carichi correttamente,
+so that posso gestire le Palestre e i Campi.
+
+**Note aggiuntive:** segnalato dall'utente (2026-07-27) tramite un log di produzione (Cloudflare Workers, `requestId: a21e2b57ba2fedc6`). Evidenza raccolta:
+- `GET https://societa-manager.dmnet2000.workers.dev/palestre`, `statusCode: 500` — a differenza di Story 11.1 (`statusCode: 200`, errore catturato dentro una Server Action), qui l'errore non è gestito: `/palestre/page.tsx` non ha alcun `try/catch` attorno alla query Prisma, quindi un'eccezione lì si propaga come 500 vero e proprio.
+- Stack minificato (`worker.js`, stessi frame generici `Jr.handleRequestError` ecc.) — stessa limitazione di diagnosi già incontrata in Story 11.1, nessuna riga di codice applicativo visibile.
+
+**Causa probabile ma NON confermata — stessa classe di problema già risolta in Story 11.1, da verificare non assumere**: `/palestre` esegue `prisma.palestra.findMany(...)`, e lo schema `Palestra` è stato esteso da Story 9.6 (estensione) con `latitudine`/`longitudine` (migrazione `prisma/migrations/20260727010000_add_coordinate_palestra`). Se quella migrazione non fosse ancora applicata al database di produzione mentre il codice (e il Prisma Client rigenerato in fase di build, che include già le nuove colonne nello `SELECT`) è già live, la query fallirebbe con un errore Postgres "colonna inesistente" — non catturato da nessun `try/catch` in questa pagina (a differenza delle Server Action), risultando in un vero 500. Da confermare: verificare se questa migrazione risulta applicata in produzione, riprodurre la visita a `/palestre` dopo averla applicata.
+
+**Acceptance Criteria:**
+
+**Given** un Admin o Dirigente visita `/palestre`
+**When** la pagina si carica
+**Then** l'elenco delle Palestre viene mostrato correttamente, nessun errore 500
+
+**Given** la causa reale viene identificata in fase di sviluppo
+**When** viene corretta
+**Then** la causa e la correzione vengono documentate in questa storia — se si confermasse ancora una volta un problema di ordine deploy-codice/migrazione (stessa classe di Story 11.1), valutare se serva un passo esplicito nel runbook di deploy (`docs/deploy-produzione.md`) per non ripetere lo stesso errore una terza volta
+
+**Risolto (2026-07-27):** causa confermata — seconda occorrenza della stessa classe di problema di Story 11.1: la migrazione `20260727010000_add_coordinate_palestra` (Story 9.6 estensione) non era stata applicata al database di produzione al momento del deploy del codice che la richiedeva. Risolto lanciando `prisma migrate deploy` sul DB di produzione; `/palestre` riprovata con successo. Essendosi ripetuto due volte di fila, aggiunto un promemoria esplicito in `docs/deploy-produzione.md` (nuova Fase 3bis) per non ripeterlo una terza volta.
