@@ -7,6 +7,7 @@ import styles from "./gruppi.module.css";
 type Allenatore = {
   id: string;
   nome: string;
+  cognome: string;
 };
 
 type Atleta = {
@@ -64,7 +65,9 @@ export function GruppoRow({
       <td>
         <ul className={styles.listaAssegnati}>
           {gruppo.allenatori.map((allenatore) => (
-            <li key={allenatore.id}>{allenatore.nome}</li>
+            <li key={allenatore.id}>
+              {allenatore.nome} {allenatore.cognome}
+            </li>
           ))}
         </ul>
         <form
@@ -80,7 +83,7 @@ export function GruppoRow({
             <option value="">Seleziona...</option>
             {allenatoriDisponibili.map((allenatore) => (
               <option key={allenatore.id} value={allenatore.id}>
-                {allenatore.nome}
+                {allenatore.nome} {allenatore.cognome}
               </option>
             ))}
           </select>

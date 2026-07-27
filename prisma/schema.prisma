@@ -128,6 +128,7 @@ model MisurazioneAtleta {
 model Allenatore {
   id            String             @id @default(uuid())
   nome          String
+  cognome       String
   codiceFiscale String             @unique
   utenteId      String?            @unique
   utente        Utente?            @relation(fields: [utenteId], references: [id], onDelete: SetNull)

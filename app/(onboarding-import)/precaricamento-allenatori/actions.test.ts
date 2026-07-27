@@ -53,7 +53,11 @@ describe("precaricaAllenatore", () => {
 
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "Mario Rossi", codiceFiscale: "RSSMRA10A41H501Z" })
+      buildFormData({
+        nome: "Mario",
+        cognome: "Rossi",
+        codiceFiscale: "RSSMRA10A41H501Z",
+      })
     );
 
     expect(result).toEqual({
@@ -62,21 +66,40 @@ describe("precaricaAllenatore", () => {
     expect(trovaAllenatorePerCodiceFiscaleMock).not.toHaveBeenCalled();
   });
 
-  it("returns a validation error when nome or codiceFiscale is missing", async () => {
+  it("returns a validation error when nome, cognome or codiceFiscale is missing", async () => {
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "", codiceFiscale: "" })
+      buildFormData({ nome: "", cognome: "", codiceFiscale: "" })
     );
 
     expect(result).toEqual({
-      error: { code: "VALIDATION", message: "Nome e Codice Fiscale sono obbligatori." },
+      error: {
+        code: "VALIDATION",
+        message: "Nome, Cognome e Codice Fiscale sono obbligatori.",
+      },
     });
+  });
+
+  it("returns a validation error when cognome is missing but nome and codiceFiscale are present", async () => {
+    const result = await precaricaAllenatore(
+      undefined,
+      buildFormData({ nome: "Mario", cognome: "", codiceFiscale: "RSSMRA10A41H501Z" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Nome, Cognome e Codice Fiscale sono obbligatori.",
+      },
+    });
+    expect(trovaAllenatorePerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when the Codice Fiscale has an invalid format", async () => {
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "Mario Rossi", codiceFiscale: "123" })
+      buildFormData({ nome: "Mario", cognome: "Rossi", codiceFiscale: "123" })
     );
 
     expect(result).toEqual({
@@ -98,7 +121,7 @@ describe("precaricaAllenatore", () => {
 
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "Mario Rossi", codiceFiscale: "rssmra10a41h501z" })
+      buildFormData({ nome: "Mario", cognome: "Rossi", codiceFiscale: "rssmra10a41h501z" })
     );
 
     expect(result).toEqual({
@@ -110,18 +133,27 @@ describe("precaricaAllenatore", () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it("creates a minimal Allenatore record with utenteId null (AC #1)", async () => {
+  it("creates a minimal Allenatore record with utenteId null (AC #1, #3)", async () => {
     trovaAllenatorePerCodiceFiscaleMock.mockResolvedValue(null);
     createMock.mockResolvedValue({});
 
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "Mario Rossi", codiceFiscale: "  rssmra10a41h501z  " })
+      buildFormData({
+        nome: "Mario",
+        cognome: "Rossi",
+        codiceFiscale: "  rssmra10a41h501z  ",
+      })
     );
 
     expect(result).toEqual({ success: true });
     expect(createMock).toHaveBeenCalledWith({
-      data: { nome: "Mario Rossi", codiceFiscale: "RSSMRA10A41H501Z", utenteId: null },
+      data: {
+        nome: "Mario",
+        cognome: "Rossi",
+        codiceFiscale: "RSSMRA10A41H501Z",
+        utenteId: null,
+      },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/precaricamento-allenatori");
   });
@@ -132,7 +164,7 @@ describe("precaricaAllenatore", () => {
 
     const result = await precaricaAllenatore(
       undefined,
-      buildFormData({ nome: "Mario Rossi", codiceFiscale: "RSSMRA10A41H501Z" })
+      buildFormData({ nome: "Mario", cognome: "Rossi", codiceFiscale: "RSSMRA10A41H501Z" })
     );
 
     expect(result).toEqual({

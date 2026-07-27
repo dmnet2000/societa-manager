@@ -24,13 +24,14 @@ export async function precaricaAllenatore(
   if (forbidden) return forbidden;
 
   const nome = String(formData.get("nome") ?? "").trim();
+  const cognome = String(formData.get("cognome") ?? "").trim();
   const codiceFiscaleInput = String(formData.get("codiceFiscale") ?? "").trim();
 
-  if (!nome || !codiceFiscaleInput) {
+  if (!nome || !cognome || !codiceFiscaleInput) {
     return {
       error: {
         code: "VALIDATION",
-        message: "Nome e Codice Fiscale sono obbligatori.",
+        message: "Nome, Cognome e Codice Fiscale sono obbligatori.",
       },
     };
   }
@@ -60,7 +61,7 @@ export async function precaricaAllenatore(
     }
 
     await prisma.allenatore.create({
-      data: { nome, codiceFiscale, utenteId: null },
+      data: { nome, cognome, codiceFiscale, utenteId: null },
     });
   } catch (err) {
     console.error(err);

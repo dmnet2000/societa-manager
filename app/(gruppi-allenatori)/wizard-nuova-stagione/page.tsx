@@ -65,7 +65,7 @@ export default async function WizardNuovaStagionePage() {
     include: {
       allenatori: {
         include: { allenatore: true },
-        orderBy: { allenatore: { nome: "asc" } },
+        orderBy: [{ allenatore: { nome: "asc" } }, { allenatore: { cognome: "asc" } }],
       },
     },
   });
@@ -94,7 +94,12 @@ export default async function WizardNuovaStagionePage() {
           <li key={gruppo.id}>
             {gruppo.nome} ({gruppo.categoria})
             {gruppo.allenatori.length > 0 ? (
-              <>: {gruppo.allenatori.map((ga) => ga.allenatore.nome).join(", ")}</>
+              <>
+                :{" "}
+                {gruppo.allenatori
+                  .map((ga) => `${ga.allenatore.nome} ${ga.allenatore.cognome}`)
+                  .join(", ")}
+              </>
             ) : (
               <> — nessun Allenatore assegnato</>
             )}

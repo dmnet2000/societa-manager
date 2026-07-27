@@ -20,6 +20,10 @@ export default function PrecaricamentoAllenatoriPage() {
             <input id="precarica-nome" name="nome" type="text" required />
           </div>
           <div className={styles.campo}>
+            <label htmlFor="precarica-cognome">Cognome</label>
+            <input id="precarica-cognome" name="cognome" type="text" required />
+          </div>
+          <div className={styles.campo}>
             <label htmlFor="precarica-cf">Codice Fiscale</label>
             <input
               id="precarica-cf"

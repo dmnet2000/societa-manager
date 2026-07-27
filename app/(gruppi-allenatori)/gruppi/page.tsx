@@ -38,12 +38,12 @@ export default async function GruppiPage() {
           include: {
             allenatori: {
               include: { allenatore: true },
-              orderBy: { allenatore: { nome: "asc" } },
+              orderBy: [{ allenatore: { nome: "asc" } }, { allenatore: { cognome: "asc" } }],
             },
           },
         })
       : Promise.resolve([]),
-    prisma.allenatore.findMany({ orderBy: { nome: "asc" } }),
+    prisma.allenatore.findMany({ orderBy: [{ nome: "asc" }, { cognome: "asc" }] }),
     elencaAtlete(supabase),
     annoCorrente
       ? prisma.gruppoAtleta.findMany({
