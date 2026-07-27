@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getRouteDecision } from "@/lib/auth/route-guard";
 import { parseRuoli } from "@/lib/ruoli";
+import {
+  SOGLIA_INATTIVITA_MS,
+  ULTIMA_ATTIVITA_COOKIE,
+  sessioneScaduta,
+} from "@/lib/auth/sessione-inattiva";
 
 // Next.js 16 rinomina "middleware.ts" in "proxy.ts" e fa girare il Proxy su
 // runtime Node.js di default (non piu' configurabile su Edge - vedi
@@ -48,6 +53,33 @@ export async function middleware(request: NextRequest) {
     user = null;
   }
 
+  // Story 9.8: timeout applicativo per inattivita' (1 ora) - le impostazioni
+  // native Supabase richiedono il piano Pro (contro NFR6). "user = null" fa
+  // si' che il resto della funzione tratti la richiesta come non autenticata,
+  // riusando getRouteDecision/il redirect a LOGIN_PATH gia' esistenti sotto -
+  // nessuna ramificazione di redirect duplicata.
+  let sessioneTerminataPerInattivita = false;
+  if (user) {
+    const ultimaAttivita = request.cookies.get(ULTIMA_ATTIVITA_COOKIE)?.value;
+    if (sessioneScaduta(ultimaAttivita, Date.now())) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.error(err);
+      }
+      user = null;
+      sessioneTerminataPerInattivita = true;
+    } else {
+      response.cookies.set(ULTIMA_ATTIVITA_COOKIE, String(Date.now()), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: SOGLIA_INATTIVITA_MS / 1000,
+      });
+    }
+  }
+
   const ruoli = parseRuoli(user?.app_metadata?.ruoli);
   const decision = getRouteDecision(
     request.nextUrl.pathname,
@@ -56,7 +88,15 @@ export async function middleware(request: NextRequest) {
   );
 
   if (decision.action === "redirect") {
-    return NextResponse.redirect(new URL(decision.location, request.url));
+    const redirectResponse = NextResponse.redirect(new URL(decision.location, request.url));
+    // Senza questo, i cookie scritti su "response" (incluso il signOut()
+    // sopra, o un refresh del token Supabase avvenuto in getUser()) andrebbero
+    // persi: questo ramo ritorna un oggetto NextResponse diverso da "response".
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    if (sessioneTerminataPerInattivita) {
+      redirectResponse.cookies.delete(ULTIMA_ATTIVITA_COOKIE);
+    }
+    return redirectResponse;
   }
 
   // Story 8.1: espone il pathname corrente ai Server Component (es.

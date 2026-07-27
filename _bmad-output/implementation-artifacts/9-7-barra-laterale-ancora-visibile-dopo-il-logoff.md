@@ -4,7 +4,7 @@ baseline_commit: 11821dffcede6564d8097c3ee88bd7257a014d31
 
 # Story 9.7: Barra laterale ancora visibile dopo il logoff
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,10 +31,8 @@ so that non veda un menu di navigazione residuo per una sessione che non esiste 
 - [x] Task 3: Regressione (AC: #3)
   - [x] Suite Vitest completa: 538/538 passati (528 baseline + 7 nuovi/estesi in `NavBar.actions.test.ts`... nota: 4 nuovi + 3 preesistenti = 7 totali nel file), zero regressioni
   - [x] `npx tsc --noEmit` ed `eslint` su `app/NavBar.actions.ts`/`.test.ts`: 0 errori
-- [ ] Task 4: Verifica manuale dal vivo (non automatizzabile con Vitest+mock)
-  - [ ] Login, verificare barra laterale (desktop) o drawer chiuso (mobile) visibili come atteso
-  - [ ] Eseguire il logoff, confermare che la barra/drawer sparisce insieme al resto della pagina, senza lampo/flash residuo su `/accedi` — sia a viewport desktop (≥880px) sia mobile (<880px, resize del browser o devtools)
-  - [ ] Riferire l'esito all'utente prima di marcare la storia `done` — questo è l'unico modo per confermare il fix, dato che è un comportamento di cache lato client del browser reale, non riproducibile in JSDOM/Vitest
+- [x] Task 4: Verifica manuale dal vivo (non automatizzabile con Vitest+mock)
+  - [x] Chiusa su richiesta esplicita dell'utente (2026-07-27): commit pushato, verifica dal vivo delegata al deploy in produzione in corso, non confermata esplicitamente in questa sessione prima della chiusura della storia
 
 ## Dev Notes
 
@@ -70,7 +68,7 @@ so that non veda un menu di navigazione residuo per una sessione che non esiste 
 
 - Fix di una riga (`revalidatePath("/", "layout")` in `esci()`, prima del `redirect()`), causa confermata nella documentazione locale di Next.js prima di scrivere codice (come richiesto da `AGENTS.md`).
 - Nessuna modifica a `NavBar.tsx`/`NavBarClient.tsx` — erano già corretti, il problema era solo di invalidazione cache.
-- Task 4 (verifica manuale dal vivo) intenzionalmente **non** marcato completo: richiede un click-through reale in un browser (login → logoff, sia a viewport desktop sia mobile) per confermare che il comportamento di Client Cache di Next.js sia davvero risolto — non riproducibile in Vitest/JSDOM. In attesa di conferma dall'utente prima di passare la storia a `review`/`done`.
+- Task 4 (verifica manuale dal vivo) chiuso su richiesta esplicita dell'utente senza conferma esplicita in questa sessione — commit pushato, deploy in corso. Se il comportamento dovesse ripresentarsi, riaprire questa storia (stesso pattern già usato per Story 9.3/9.6 in questo epic).
 
 ### File List
 
