@@ -1040,3 +1040,29 @@ so that posso gestire le Palestre e i Campi.
 **Then** la causa e la correzione vengono documentate in questa storia — se si confermasse ancora una volta un problema di ordine deploy-codice/migrazione (stessa classe di Story 11.1), valutare se serva un passo esplicito nel runbook di deploy (`docs/deploy-produzione.md`) per non ripetere lo stesso errore una terza volta
 
 **Risolto (2026-07-27):** causa confermata — seconda occorrenza della stessa classe di problema di Story 11.1: la migrazione `20260727010000_add_coordinate_palestra` (Story 9.6 estensione) non era stata applicata al database di produzione al momento del deploy del codice che la richiedeva. Risolto lanciando `prisma migrate deploy` sul DB di produzione; `/palestre` riprovata con successo. Essendosi ripetuto due volte di fila, aggiunto un promemoria esplicito in `docs/deploy-produzione.md` (nuova Fase 3bis) per non ripeterlo una terza volta.
+
+### Story 11.3: "Invalid login" sull'invio email (POST /smtp)
+
+As a Admin che invia un'email di prova (o che si affida all'invio automatico, es. Story 4.3/4.6),
+I want che l'invio funzioni con le credenziali SMTP configurate,
+so that le email automatiche/di prova arrivino davvero a destinazione.
+
+**Note aggiuntive:** segnalato dall'utente (2026-07-27) tramite un log di produzione (Cloudflare Workers, `requestId: a21ea0912943ba97`). Evidenza raccolta:
+- `POST https://societa-manager.dmnet2000.workers.dev/smtp`, `statusCode: 200` — l'errore è catturato dal `try/catch` già esistente in `inviaEmailDiProva` (`app/(configurazione)/smtp/actions.ts`), che logga con `console.error(err)` e restituisce un messaggio generico all'Admin ("Impossibile inviare l'email di prova. Verifica i parametri.") — comportamento del codice già corretto, non un crash.
+- Stack minificato ma **non generico questa volta**: `worker.js` mostra frame interni di Nodemailer/`smtp-connection` (`_actionAUTHComplete`, `_formatError`) e il messaggio letterale **"Invalid login"** — il messaggio standard SMTP quando il server di posta rifiuta le credenziali fornite (comando `AUTH` respinto).
+
+**Causa probabile ma NON confermata — diversa classe dai bug precedenti (11.1/11.2), non un problema di migrazione**: analizzato `lib/email/invia-email.ts` e `lib/db-rls/configurazione-smtp.ts` — nessun difetto di codice individuato (la password viene salvata e passata a Nodemailer esattamente come inserita, con `.trim()` già applicato in `salvaConfigurazione`, nessuna trasformazione/troncamento in mezzo). Il sospetto più probabile è quindi **esterno**: credenziali sbagliate salvate nella configurazione (typo), oppure il provider di posta richiede una password specifica per app (es. Gmail/Outlook con verifica in due passaggi attivo non accettano la password normale dell'account via SMTP diretto). Da confermare in fase di sviluppo, non assumere quale delle due.
+
+**Aggiornamento (2026-07-27)**: dopo aver corretto le credenziali, l'errore è avanzato — non più `AUTH` (login) ma **`MAIL FROM`** ("Mail command failed" nei frame `_actionMAIL` di Nodemailer/smtp-connection), cioè il server accetta il login ma rifiuta il comando successivo con l'indirizzo mittente. Causa probabile (non confermata): il campo "Indirizzo mittente" configurato non coincide con l'account SMTP autenticato ("Utente") — molti provider (Gmail, Outlook, ecc.) rifiutano di inviare "a nome di" un indirizzo diverso da quello con cui si è fatto login, a meno che non sia registrato come alias autorizzato presso il provider stesso.
+
+**Acceptance Criteria:**
+
+**Given** un Admin invia un'email di prova con credenziali SMTP corrette e accettate dal provider
+**When** l'invio viene eseguito
+**Then** l'email arriva a destinazione, nessun errore `AUTH`/`Invalid login`
+
+**Given** la causa reale viene identificata in fase di sviluppo (credenziali errate salvate vs. limitazione del provider)
+**When** viene corretta o chiarita
+**Then** la causa e la correzione (o le istruzioni per l'Admin, se la causa è una password per-app da generare presso il provider) vengono documentate in questa storia
+
+**Risolto (2026-07-27):** causa confermata — entrambe le ipotesi erano corrette in sequenza: prima le credenziali SMTP salvate erano sbagliate (`AUTH`/"Invalid login"), poi, dopo averle corrette, l'"Indirizzo mittente" configurato era diverso dall'account SMTP autenticato ("Utente"), causando il rifiuto del comando `MAIL FROM`. Nessun difetto di codice: entrambe cause di configurazione, corrette dall'utente direttamente in `/smtp`. Email di prova inviata con successo.

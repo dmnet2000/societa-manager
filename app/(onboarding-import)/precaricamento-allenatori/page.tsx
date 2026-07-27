@@ -1,52 +1,40 @@
-"use client";
-
-import { useActionState } from "react";
-import { precaricaAllenatore } from "./actions";
+import { prisma } from "@/lib/prisma";
+import { NuovoAllenatoreForm } from "./NuovoAllenatoreForm";
+import { AllenatoreRow } from "./AllenatoreRow";
 import styles from "./precaricamento-allenatori.module.css";
 
-export default function PrecaricamentoAllenatoriPage() {
-  const [state, formAction, pending] = useActionState(
-    precaricaAllenatore,
-    undefined
-  );
+// Story 9.9: la pagina passa da Client Component (solo form) a Server
+// Component (form + elenco) - stesso schema di /palestre. Dati mutabili in
+// tempo reale (precaricamento/modifica/cancellazione sulla stessa pagina),
+// stesso motivo di /admin, /palestre.
+export const dynamic = "force-dynamic";
+
+export default async function PrecaricamentoAllenatoriPage() {
+  // Allenatore non e' protetto da RLS (AD-9) - Prisma diretto, come
+  // /palestre. Il guard-clause di cancellazione (AC #4) vive interamente
+  // dentro cancellaAllenatore (where compound sulla deleteMany) - qui non
+  // serve includere "gruppi".
+  const allenatori = await prisma.allenatore.findMany({
+    orderBy: [{ nome: "asc" }, { cognome: "asc" }],
+  });
 
   return (
-    <main className="pagina-form">
-      <div className="riquadro-form">
-        <h1>Precaricamento Allenatori</h1>
-        <form action={formAction} className={styles.form}>
-          <div className={styles.campo}>
-            <label htmlFor="precarica-nome">Nome</label>
-            <input id="precarica-nome" name="nome" type="text" required />
-          </div>
-          <div className={styles.campo}>
-            <label htmlFor="precarica-cognome">Cognome</label>
-            <input id="precarica-cognome" name="cognome" type="text" required />
-          </div>
-          <div className={styles.campo}>
-            <label htmlFor="precarica-cf">Codice Fiscale</label>
-            <input
-              id="precarica-cf"
-              name="codiceFiscale"
-              type="text"
-              required
-            />
-          </div>
-          {state && "error" in state && (
-            <p role="alert" className={styles.errore}>
-              {state.error.message}
-            </p>
-          )}
-          {state && "success" in state && (
-            <p role="status" className={styles.successo}>
-              Allenatore precaricato.
-            </p>
-          )}
-          <button disabled={pending} type="submit" className={styles.bottone}>
-            Precarica
-          </button>
-        </form>
-      </div>
+    <main>
+      <h1>Precaricamento Allenatori</h1>
+
+      <section className={styles.sezione}>
+        <h2>Nuovo Allenatore</h2>
+        <NuovoAllenatoreForm />
+      </section>
+
+      <section className={styles.sezione}>
+        <h2>Elenco Allenatori</h2>
+        <div className={styles.lista}>
+          {allenatori.map((allenatore) => (
+            <AllenatoreRow key={allenatore.id} allenatore={allenatore} />
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

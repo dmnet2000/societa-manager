@@ -353,3 +353,10 @@
 - Il pattern del centro vista richiede la virgola finale (`@lat,lng,`) — un link `@lat,lngz` senza quella virgola non matcherebbe; i link Google Maps reali includono sempre quella virgola prima dello zoom. [lib/estrai-coordinate-maps.ts]
 - Messaggio di errore generico per il link Maps non valido — non distingue "testo non riconoscibile" da "la fetch di risoluzione del link breve è fallita/andata in timeout". [app/(orari-palestre)/palestre/actions.ts]
 - Nessun attributo `sandbox` sull'iframe della mappa incorporata — rischierebbe di rompere l'interattività della mappa (che richiede script) senza verifica dal vivo; il controllo di dominio già applicato al link riduce comunque il rischio di contenuto arbitrario incorporato. [app/(orari-palestre)/palestre/PalestraRow.tsx]
+
+## Deferred from: code review of 9-9-gestione-allenatori-precaricati (2026-07-27)
+
+- Race TOCTOU sul Codice Fiscale duplicato in `aggiornaAllenatore` [app/(onboarding-import)/precaricamento-allenatori/actions.ts] — stesso pattern pre-esistente già deferito per `precaricaAllenatore` (code review Story 9.5).
+- Messaggio "Riprova" fuorviante quando l'Allenatore non esiste più al momento della cancellazione (pagina non aggiornata, cancellato da un altro Admin nel frattempo) [app/(onboarding-import)/precaricamento-allenatori/actions.ts] — percorso raro, impatto basso.
+- Nessuna restrizione sulla modifica del Codice Fiscale di un Allenatore già "Registrato" — rischio speculativo di disallineamento dell'identità usata per il matching, nessun AC lo vieta esplicitamente. [app/(onboarding-import)/precaricamento-allenatori/actions.ts]
+- Nessuna paginazione sull'elenco Allenatori — coerente con la stessa scelta già deliberata altrove nel progetto (`/palestre`, `/admin`) per la scala ridotta di NFR5.

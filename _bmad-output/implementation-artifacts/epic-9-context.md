@@ -16,7 +16,7 @@ Epic aggiunto in corso d'opera (2026-07-25) per raccogliere lacune e miglioramen
 - Story 9.6: Geolocalizzazione Palestre — **done**
 - Story 9.7: Barra laterale ancora visibile dopo il logoff — **done**
 - Story 9.8: Durata della sessione di login — ready-for-dev
-- Story 9.9: Gestione Allenatori precaricati (vista, modifica, cancellazione) — backlog
+- Story 9.9: Gestione Allenatori precaricati (vista, modifica, cancellazione) — **done**
 - Story 9.10: La voce di navigazione attiva non si aggiorna durante la navigazione — backlog
 
 ## Requirements & Constraints

@@ -1,5 +1,61 @@
 /* Story 8.2 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
-   .campo/.bottone coerenti con accedi.module.css/registrati.module.css/import-atlete.module.css (Story 8.2). */
+   .campo/.bottone coerenti con accedi.module.css/registrati.module.css/import-atlete.module.css (Story 8.2).
+   Story 9.9 - .sezione/.lista/.card/.bottoneSecondario coerenti con
+   palestre.module.css/admin.module.css (stesso pattern elenco+modifica inline). */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.sezione h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.stato {
+  margin-top: var(--space-2);
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.bottoneSecondario {
+  margin-top: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneSecondario:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSecondario:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 
 .form {
   display: flex;
