@@ -150,7 +150,7 @@ export default async function MioOrarioPage() {
             <div key={gruppo.giorno} className={styles.giornoGruppo}>
               <p className={styles.giornoLabel}>{ETICHETTA_GIORNO[gruppo.giorno]}</p>
               {gruppo.righe.map((riga) => {
-                const linkNaviga = costruisciLinkNaviga(riga.campo.palestra.indirizzo);
+                const linkNaviga = costruisciLinkNaviga(riga.campo.palestra);
                 return (
                   <div key={riga.id} className={styles.slotRiga}>
                     <span className={styles.slotOrario}>
@@ -168,7 +168,7 @@ export default async function MioOrarioPage() {
                               href={linkNaviga}
                               target="_blank"
                               rel="noopener noreferrer"
-                              aria-label={`Naviga verso ${riga.campo.palestra.nome} - ${riga.campo.nome}`}
+                              aria-label={`Naviga verso ${riga.campo.palestra.nome}`}
                             >
                               Naviga
                             </a>

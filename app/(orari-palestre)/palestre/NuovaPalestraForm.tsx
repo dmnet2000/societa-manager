@@ -24,6 +24,10 @@ export function NuovaPalestraForm() {
         <label htmlFor="nuova-palestra-indirizzo">Indirizzo</label>
         <input id="nuova-palestra-indirizzo" name="indirizzo" type="text" />
       </div>
+      <div className={styles.campo}>
+        <label htmlFor="nuova-palestra-link-maps">Link Google Maps (opzionale)</label>
+        <input id="nuova-palestra-link-maps" name="linkMaps" type="url" />
+      </div>
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>
           {state.error.message}

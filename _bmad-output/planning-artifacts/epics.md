@@ -873,6 +873,32 @@ so that non devo cercare a mano l'indirizzo in un'altra app.
 **When** viene visualizzata
 **Then** nessun link "Naviga" rotto/vuoto viene mostrato (stesso principio guard-clause già usato per il logo, Story 7.2)
 
+**Estensione post-done (2026-07-27), su feedback utente dal vivo:** la prima implementazione (opzione (a), solo link "Naviga" di ricerca testuale sull'`indirizzo`) non soddisfa la richiesta reale — l'utente vuole poter **scegliere la posizione da Google Maps** e **vederla** dentro l'app, non solo aprire un link esterno. Opzione (c) scelta (via/senza selettore mappa interattivo, che richiederebbe Google Maps JavaScript API con account di fatturazione, contro NFR6): l'Admin/Dirigente incolla un **link di condivisione Google Maps** in un nuovo campo del form Palestra; il server ne estrae latitudine/longitudine (nuove colonne `Palestra.latitudine`/`longitudine`, nullable — la tabella ha già righe reali, nessun `NOT NULL` possibile) e le persiste. **Solo in `/palestre`** (non in `/slot`, `/orari`, `/mio-orario`) compare anche una **mappa incorporata** (iframe `output=embed`, nessuna chiave API, gratuito) centrata sulla posizione. Se non è ancora stato incollato alcun link, l'app continua a funzionare con il solo `indirizzo` testuale (link "Naviga" di ricerca testuale come prima, mappa incorporata basata sulla stessa ricerca testuale) — mai una Palestra senza nulla da mostrare se ha almeno un `indirizzo`. Corretto anche un difetto minore introdotto dalla code review della prima versione: l'etichetta accessibile del link "Naviga" in `/slot`/`/orari`/`/mio-orario` includeva il nome del Campo ("Naviga verso Palestra X - Campo Y"), fuorviante perché la posizione riguarda l'edificio (Palestra), non il singolo campo da gioco al suo interno — tolto, resta solo il nome della Palestra.
+
+**Acceptance Criteria aggiunti (estensione):**
+
+**Given** un Admin o Dirigente che crea/modifica una Palestra incolla un link di condivisione Google Maps nel nuovo campo dedicato
+**When** salva
+**Then** l'app estrae latitudine/longitudine da quel link e le persiste su `Palestra.latitudine`/`Palestra.longitudine`
+
+**Given** il testo incollato non è un link Google Maps riconoscibile (nessuna posizione estraibile)
+**When** l'Admin/Dirigente salva
+**Then** vede un errore di validazione chiaro, nessuna scrittura (stesso pattern `{ error: { code: "VALIDATION", message } }` delle altre Server Action)
+
+**Given** una Palestra con latitudine/longitudine salvate
+**When** viene visualizzata in `/palestre`
+**Then** l'Admin/Dirigente vede una mappa incorporata (iframe, nessuna chiave API) centrata su quella posizione, oltre al link "Naviga" (ora basato sulle coordinate precise, non più solo sulla ricerca testuale)
+
+**Given** una Palestra ha solo l'`indirizzo` testuale (nessun link Maps ancora incollato)
+**When** viene visualizzata in `/palestre`
+**Then** vede comunque una mappa incorporata basata sulla ricerca testuale dell'indirizzo — nessuna mappa mancante se esiste almeno l'indirizzo
+
+**Given** `/slot`, `/orari`, `/mio-orario`
+**When** una Palestra ha coordinate precise
+**Then** il link "Naviga" punta alle coordinate (più preciso), senza alcuna mappa incorporata in queste pagine — solo `/palestre` la mostra
+
+**And** l'etichetta accessibile del link "Naviga" fa riferimento solo al nome della Palestra, mai al Campo
+
 ### Story 9.7: Barra laterale ancora visibile dopo il logoff
 
 As a Utente che effettua il logoff,
@@ -892,6 +918,34 @@ so that non veda un menu di navigazione residuo per una sessione che non esiste 
 **Then** anche il drawer/hamburger di navigazione sparisce insieme al resto della pagina precedente
 
 **And** nessuna regressione sul comportamento di logoff già esistente (Story 9.1): redirect a `/accedi`, sessione terminata lato Supabase, fail-closed in caso di errore
+
+### Story 9.9: Gestione Allenatori precaricati (vista, modifica, cancellazione)
+
+As a Admin,
+I want vedere l'elenco di tutti gli Allenatori (precaricati e già registrati), poterne modificare Nome/Cognome/Codice Fiscale, e cancellare quelli inseriti per errore,
+so that posso correggere un precaricamento sbagliato (es. Codice Fiscale digitato male, doppione) senza dover intervenire manualmente sul database.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-27). Oggi `/precaricamento-allenatori` (Story 1.4, campo Cognome aggiunto da Story 9.5) mostra solo il form di creazione — nessun elenco degli Allenatori già inseriti, nessun modo di correggerli o rimuoverli dalla UI. **Vincolo architetturale importante**: in tutto questo progetto nessuna entità viene mai cancellata realmente — il pattern esistente per "rimuovere" qualcosa è un flag booleano tipo `attivo` con azioni disattiva/riattiva (`Utente.attivo`, Story 1.2); l'unico uso di `.delete()`/`deleteMany()` nel codice riguarda righe di giunzione (`UtenteRuolo`, `GruppoVisibileDirigente`), mai un record di dominio reale. Cancellare fisicamente un `Allenatore` (`prisma.allenatore.delete`) avrebbe due conseguenze silenziose per via delle FK esistenti in `prisma/schema.prisma`: (a) `GruppoAllenatore.allenatoreId` ha `onDelete: Cascade` — cancellare l'Allenatore rimuoverebbe silenziosamente ogni sua assegnazione a un Gruppo; (b) se l'Allenatore è già agganciato a un account (`utenteId` non nullo, cioè si è già registrato), cancellarlo disconnetterebbe silenziosamente quell'Utente dal proprio profilo Allenatore, senza alcun avviso. **Decisione da prendere in fase di sviluppo** (raccomandazione, non ancora validata con l'utente): permettere la cancellazione libera solo per Allenatori non ancora agganciati (`utenteId` nullo — il caso reale "l'ho inserito per errore") e non assegnati a nessun Gruppo; bloccarla con un messaggio esplicativo negli altri casi, invece di introdurre in questa storia il primo hard-delete di un'entità di dominio del progetto senza alcuna rete di sicurezza. **Ruolo**: stesso perimetro già usato da `precaricaAllenatore` (ADMIN e DIRIGENTE, non solo ADMIN) salvo diversa indicazione — "lato admin" nella richiesta dell'utente da confermare se significa "area di amministrazione" (come oggi) o "solo Ruolo ADMIN, escluso Dirigente".
+
+**Acceptance Criteria:**
+
+**Given** la pagina `/precaricamento-allenatori`
+**When** un Admin o Dirigente la visualizza
+**Then** vede, oltre al form di creazione già esistente, un elenco di tutti gli Allenatori esistenti con Nome, Cognome, Codice Fiscale e se sono già agganciati a un account oppure ancora solo precaricati
+
+**Given** un Admin o Dirigente modifica Nome, Cognome o Codice Fiscale di un Allenatore dall'elenco
+**When** salva
+**Then** i nuovi valori vengono persistiti, con la stessa validazione già usata per il precaricamento (campi obbligatori, Codice Fiscale nel formato valido e non duplicato su un altro Allenatore)
+
+**Given** un Allenatore non ancora agganciato a nessun account e non assegnato a nessun Gruppo
+**When** un Admin o Dirigente lo cancella
+**Then** l'Allenatore viene rimosso dall'elenco
+
+**Given** un Allenatore già agganciato a un account e/o assegnato a uno o più Gruppi
+**When** un Admin o Dirigente tenta di cancellarlo
+**Then** l'operazione è impedita con un messaggio che ne spiega il motivo (nessuna cancellazione silenziosa che romperebbe un aggancio o un'assegnazione esistente)
+
+**And** il comportamento esistente del form di precaricamento (Story 1.4/9.5) resta identico — nessuna regressione, suite Vitest invariata
 
 ## Epic 10: Gestione Partite e Campionati
 
@@ -940,3 +994,5 @@ so that posso completare il precaricamento in modo affidabile.
 **Given** la causa reale viene identificata in fase di sviluppo
 **When** viene corretta
 **Then** la causa e la correzione vengono documentate in questa storia (per riconoscere la stessa classe di problema se si ripresenta, es. ordine deploy-codice/migrazione per le prossime storie con migrazione)
+
+**Risolto (2026-07-27):** causa confermata — la migrazione `20260727000000_add_cognome_allenatore` (Story 9.5) non era stata applicata al database di produzione al momento del deploy del codice che la richiedeva. Risolto lanciando `prisma migrate deploy` sul DB di produzione; precaricamento riprovato con successo. Lezione: applicare la migrazione prima/contestualmente al deploy del codice, non dopo.

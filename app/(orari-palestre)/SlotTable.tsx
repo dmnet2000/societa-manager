@@ -12,7 +12,10 @@ export type SlotRiga = {
   giorno: GiornoSettimana;
   oraInizio: string;
   oraFine: string;
-  campo: { nome: string; palestra: { nome: string; indirizzo: string | null } };
+  campo: {
+    nome: string;
+    palestra: { nome: string; indirizzo: string | null; latitudine: number | null; longitudine: number | null };
+  };
   gruppo: { nome: string };
 };
 
@@ -46,7 +49,7 @@ export function SlotTable({
         </thead>
         <tbody>
           {slot.map((s) => {
-            const linkNaviga = costruisciLinkNaviga(s.campo.palestra.indirizzo);
+            const linkNaviga = costruisciLinkNaviga(s.campo.palestra);
             return (
               <tr key={s.id}>
                 <td>{ETICHETTA_GIORNO[s.giorno]}</td>
@@ -63,7 +66,7 @@ export function SlotTable({
                         href={linkNaviga}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`Naviga verso ${s.campo.palestra.nome} - ${s.campo.nome}`}
+                        aria-label={`Naviga verso ${s.campo.palestra.nome}`}
                       >
                         Naviga
                       </a>

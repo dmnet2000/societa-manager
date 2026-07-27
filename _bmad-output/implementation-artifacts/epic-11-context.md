@@ -8,7 +8,7 @@ Epic aggiunto in corso d'opera (2026-07-27) su richiesta dell'utente per raccogl
 
 ## Stories
 
-- Story 11.1: Errore interno al precaricamento Allenatore (POST /precaricamento-allenatori) — backlog
+- Story 11.1: Errore interno al precaricamento Allenatore (POST /precaricamento-allenatori) — **done**
 
 ## Requirements & Constraints
 
@@ -19,7 +19,7 @@ Epic aggiunto in corso d'opera (2026-07-27) su richiesta dell'utente per raccogl
 
 ## Technical Decisions
 
-- Story 11.1: causa probabile ma **non confermata** — la rotta `POST /precaricamento-allenatori` corrisponde alla Server Action `precaricaAllenatore` (`app/(onboarding-import)/precaricamento-allenatori/actions.ts`), modificata da Story 9.5 (nuovo campo `Allenatore.cognome`, `NOT NULL`, migrazione `20260727000000_add_cognome_allenatore`). Ipotesi: una finestra temporale in cui il codice era già deployato ma la migrazione non ancora applicata al database di produzione (o viceversa) farebbe fallire l'`INSERT` (colonna mancante o vincolo NOT NULL); l'eccezione verrebbe catturata dal `try/catch` già esistente in `precaricaAllenatore` (che logga con `console.error` e restituisce un messaggio generico all'Utente) — spiegherebbe sia il `level: error` sia lo `statusCode: 200` osservati nel log. Da confermare in sviluppo: stato della migrazione in produzione, riproducibilità dell'errore ora, e se possibile il testo/stack completo non minificato.
+- Story 11.1: causa **confermata** (2026-07-27) — l'ipotesi iniziale era corretta: la migrazione `20260727000000_add_cognome_allenatore` (Story 9.5, colonna `Allenatore.cognome` `NOT NULL`) non era ancora stata applicata al database di produzione nel momento in cui il codice di Story 9.5 era già live, causando il fallimento dell'`INSERT` in `precaricaAllenatore` (catturato dal `try/catch` esistente, da cui `level: error` nei log con `statusCode: 200`). Risolto lanciando `DIRECT_URL="..." npx prisma migrate deploy` (Session pooler, `?sslmode=require`, vedi `docs/deploy-produzione.md` Fase 3) sul DB di produzione — precaricamento riprovato con successo, nessun nuovo errore. **Lezione per le prossime storie con migrazione**: applicare la migrazione al DB di produzione **prima o contestualmente** al deploy del codice che la richiede, non dopo — l'ordine seguito per Story 9.5 (codice deployato, migrazione lanciata solo in un secondo momento) ha causato questo bug.
 
 ## Cross-Story Dependencies
 

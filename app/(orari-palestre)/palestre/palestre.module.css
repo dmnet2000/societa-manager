@@ -94,6 +94,18 @@
   text-decoration: none;
 }
 
+/* Story 9.6 (estensione): mappa incorporata (iframe output=embed, nessuna
+   chiave API) - solo qui in /palestre, non nelle tabelle /slot e /orari
+   (troppe righe per un iframe ciascuna). */
+.mappaIncorporata {
+  display: block;
+  width: 100%;
+  height: 240px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+}
+
 .lista {
   display: flex;
   flex-direction: column;

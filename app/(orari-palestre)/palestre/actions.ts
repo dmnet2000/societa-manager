@@ -3,6 +3,58 @@
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { prisma } from "@/lib/prisma";
+import { estraiCoordinateDaLinkMaps, isLinkMapsAccorciato } from "@/lib/estrai-coordinate-maps";
+
+const ERRORE_LINK_MAPS = {
+  code: "VALIDATION",
+  message: "Link Google Maps non valido: incolla il link di condivisione della posizione.",
+};
+
+// Story 9.6 (estensione): i link brevi (maps.app.goo.gl, goo.gl/maps, tipici
+// della condivisione da mobile) non contengono le coordinate nell'URL stesso
+// - vanno risolti seguendo il redirect prima di poter applicare
+// estraiCoordinateDaLinkMaps. Nessuna chiamata di rete per il caso comune
+// (link gia' nel formato lungo).
+async function risolviLinkMaps(link: string): Promise<{ lat: number; lng: number } | null> {
+  const diretta = estraiCoordinateDaLinkMaps(link);
+  if (diretta) {
+    return diretta;
+  }
+  if (!isLinkMapsAccorciato(link)) {
+    return null;
+  }
+  try {
+    // Timeout (review fix): senza, un host di condivisione lento/irraggiungibile
+    // bloccherebbe la Server Action a tempo indefinito. estraiCoordinateDaLinkMaps
+    // ri-valida comunque il dominio di risposta.url - se il redirect finisse
+    // fuori da Google, verrebbe scartato come qualunque altro link non riconosciuto.
+    const risposta = await fetch(link, { redirect: "follow", signal: AbortSignal.timeout(5000) });
+    return estraiCoordinateDaLinkMaps(risposta.url);
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+// Legge il campo "linkMaps" (opzionale) da formData e lo risolve in
+// coordinate. Vuoto -> nessuna posizione (o cancellazione esplicita in
+// modifica, stesso principio gia' in uso per "indirizzo"). Non vuoto ma non
+// risolvibile -> errore di validazione, nessuna scrittura.
+async function leggiCoordinateDaFormData(
+  formData: FormData
+): Promise<{ latitudine: number | null; longitudine: number | null } | { error: typeof ERRORE_LINK_MAPS }> {
+  const linkMapsInput = String(formData.get("linkMaps") ?? "").trim();
+  if (!linkMapsInput) {
+    return { latitudine: null, longitudine: null };
+  }
+
+  const coordinate = await risolviLinkMaps(linkMapsInput);
+  if (!coordinate) {
+    return { error: ERRORE_LINK_MAPS };
+  }
+
+  return { latitudine: coordinate.lat, longitudine: coordinate.lng };
+}
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -30,8 +82,15 @@ export async function creaPalestra(
     };
   }
 
+  const coordinate = await leggiCoordinateDaFormData(formData);
+  if ("error" in coordinate) {
+    return { error: coordinate.error };
+  }
+
   try {
-    await prisma.palestra.create({ data: { nome, indirizzo } });
+    await prisma.palestra.create({
+      data: { nome, indirizzo, latitudine: coordinate.latitudine, longitudine: coordinate.longitudine },
+    });
   } catch (err) {
     console.error(err);
     return {
@@ -66,8 +125,16 @@ export async function aggiornaPalestra(
     };
   }
 
+  const coordinate = await leggiCoordinateDaFormData(formData);
+  if ("error" in coordinate) {
+    return { error: coordinate.error };
+  }
+
   try {
-    await prisma.palestra.update({ where: { id }, data: { nome, indirizzo } });
+    await prisma.palestra.update({
+      where: { id },
+      data: { nome, indirizzo, latitudine: coordinate.latitudine, longitudine: coordinate.longitudine },
+    });
   } catch (err) {
     console.error(err);
     return {

@@ -310,11 +310,13 @@ model ConfigurazioneApplicazione {
 // (Story 1.4) e AnnoAgonistico (Story 1.6). Struttura permanente, nessun
 // riferimento all'Anno Agonistico (a differenza di Gruppo/Iscrizione, AD-8).
 model Palestra {
-  id        String   @id @default(uuid())
-  nome      String
-  indirizzo String?
-  createdAt DateTime @default(now())
-  campi     Campo[]
+  id          String   @id @default(uuid())
+  nome        String
+  indirizzo   String?
+  latitudine  Float?
+  longitudine Float?
+  createdAt   DateTime @default(now())
+  campi       Campo[]
 
   @@map("palestre")
 }

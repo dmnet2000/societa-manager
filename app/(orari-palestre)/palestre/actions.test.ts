@@ -6,6 +6,8 @@ const palestraUpdateMock = vi.fn();
 const campoCreateMock = vi.fn();
 const campoUpdateMock = vi.fn();
 const revalidatePathMock = vi.fn();
+const fetchMock = vi.fn();
+vi.stubGlobal("fetch", fetchMock);
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -41,6 +43,7 @@ beforeEach(() => {
   campoCreateMock.mockReset();
   campoUpdateMock.mockReset();
   revalidatePathMock.mockReset();
+  fetchMock.mockReset();
 });
 
 describe("creaPalestra", () => {
@@ -80,7 +83,12 @@ describe("creaPalestra", () => {
 
     expect(result).toEqual({ success: true });
     expect(palestraCreateMock).toHaveBeenCalledWith({
-      data: { nome: "Palazzetto Comunale", indirizzo: "Via Roma 1" },
+      data: {
+        nome: "Palazzetto Comunale",
+        indirizzo: "Via Roma 1",
+        latitudine: null,
+        longitudine: null,
+      },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/palestre");
   });
@@ -91,8 +99,108 @@ describe("creaPalestra", () => {
     await creaPalestra(undefined, buildFormData({ nome: "Palazzetto Comunale" }));
 
     expect(palestraCreateMock).toHaveBeenCalledWith({
-      data: { nome: "Palazzetto Comunale", indirizzo: null },
+      data: {
+        nome: "Palazzetto Comunale",
+        indirizzo: null,
+        latitudine: null,
+        longitudine: null,
+      },
     });
+  });
+
+  it("creates a Palestra with coordinates parsed from a pasted Maps link (AC #4, estensione)", async () => {
+    palestraCreateMock.mockResolvedValue({ id: "p1" });
+
+    const result = await creaPalestra(
+      undefined,
+      buildFormData({
+        nome: "Palazzetto Comunale",
+        linkMaps: "https://www.google.com/maps/@45.123456,12.654321,15z",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(palestraCreateMock).toHaveBeenCalledWith({
+      data: {
+        nome: "Palazzetto Comunale",
+        indirizzo: null,
+        latitudine: 45.123456,
+        longitudine: 12.654321,
+      },
+    });
+  });
+
+  it("resolves a shortened Maps link before parsing coordinates (estensione)", async () => {
+    palestraCreateMock.mockResolvedValue({ id: "p1" });
+    fetchMock.mockResolvedValue({ url: "https://www.google.com/maps/@45.1,12.6,15z" });
+
+    await creaPalestra(
+      undefined,
+      buildFormData({
+        nome: "Palazzetto Comunale",
+        linkMaps: "https://maps.app.goo.gl/abc123",
+      })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://maps.app.goo.gl/abc123",
+      expect.objectContaining({ redirect: "follow" })
+    );
+    expect(palestraCreateMock).toHaveBeenCalledWith({
+      data: {
+        nome: "Palazzetto Comunale",
+        indirizzo: null,
+        latitudine: 45.1,
+        longitudine: 12.6,
+      },
+    });
+  });
+
+  it("returns a validation error when a coordinate-shaped link is not a Google Maps domain (security, review fix)", async () => {
+    const result = await creaPalestra(
+      undefined,
+      buildFormData({ nome: "Palazzetto Comunale", linkMaps: "https://example.com/?q=45.1,12.6" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Link Google Maps non valido: incolla il link di condivisione della posizione.",
+      },
+    });
+    expect(palestraCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when a shortened link redirects outside Google Maps (security, review fix)", async () => {
+    fetchMock.mockResolvedValue({ url: "https://example.com/attacker-controlled" });
+
+    const result = await creaPalestra(
+      undefined,
+      buildFormData({ nome: "Palazzetto Comunale", linkMaps: "https://maps.app.goo.gl/abc123" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Link Google Maps non valido: incolla il link di condivisione della posizione.",
+      },
+    });
+    expect(palestraCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Maps link has no recognizable coordinates (AC #5, estensione)", async () => {
+    const result = await creaPalestra(
+      undefined,
+      buildFormData({ nome: "Palazzetto Comunale", linkMaps: "non un link Maps valido" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Link Google Maps non valido: incolla il link di condivisione della posizione.",
+      },
+    });
+    expect(palestraCreateMock).not.toHaveBeenCalled();
   });
 
   it("returns a friendly error, no crash, when the create fails", async () => {
@@ -149,9 +257,58 @@ describe("aggiornaPalestra", () => {
     expect(result).toBeUndefined();
     expect(palestraUpdateMock).toHaveBeenCalledWith({
       where: { id: "p1" },
-      data: { nome: "Nuovo Nome", indirizzo: "Via Nuova 2" },
+      data: { nome: "Nuovo Nome", indirizzo: "Via Nuova 2", latitudine: null, longitudine: null },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/palestre");
+  });
+
+  it("updates coordinates parsed from a pasted Maps link (AC #4, estensione)", async () => {
+    palestraUpdateMock.mockResolvedValue({ id: "p1" });
+
+    await aggiornaPalestra(
+      undefined,
+      buildFormData({
+        id: "p1",
+        nome: "Nuovo Nome",
+        linkMaps: "https://www.google.com/maps?q=45.123456,12.654321",
+      })
+    );
+
+    expect(palestraUpdateMock).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: {
+        nome: "Nuovo Nome",
+        indirizzo: null,
+        latitudine: 45.123456,
+        longitudine: 12.654321,
+      },
+    });
+  });
+
+  it("clears coordinates when the Maps link field is left empty (estensione)", async () => {
+    palestraUpdateMock.mockResolvedValue({ id: "p1" });
+
+    await aggiornaPalestra(undefined, buildFormData({ id: "p1", nome: "Nuovo Nome" }));
+
+    expect(palestraUpdateMock).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: { nome: "Nuovo Nome", indirizzo: null, latitudine: null, longitudine: null },
+    });
+  });
+
+  it("returns a validation error when the Maps link has no recognizable coordinates (AC #5, estensione)", async () => {
+    const result = await aggiornaPalestra(
+      undefined,
+      buildFormData({ id: "p1", nome: "Nuovo Nome", linkMaps: "non un link Maps valido" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Link Google Maps non valido: incolla il link di condivisione della posizione.",
+      },
+    });
+    expect(palestraUpdateMock).not.toHaveBeenCalled();
   });
 
   it("returns a friendly error, no crash, when the update fails (e.g. id inesistente, P2025)", async () => {
