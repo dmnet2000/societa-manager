@@ -13,7 +13,7 @@ Epic aggiunto in corso d'opera (2026-07-25) per raccogliere lacune e miglioramen
 - Story 9.3: Riquadro con larghezza massima per le pagine-form — **done**
 - Story 9.4: Menu profilo con logoff e modifica password (sostituisce/estende 9.1) — **done**
 - Story 9.5: Campo Cognome per Allenatore (precaricamento) — **done**
-- Story 9.6: Geolocalizzazione Palestre — backlog
+- Story 9.6: Geolocalizzazione Palestre — **done**
 - Story 9.7: Barra laterale ancora visibile dopo il logoff — backlog
 - Story 9.8: Durata della sessione di login — backlog
 

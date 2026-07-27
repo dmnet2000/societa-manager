@@ -80,6 +80,20 @@
   opacity: 0.6;
 }
 
+/* Story 9.6: .bottone e' pensato per <button> (senza text-decoration/display
+   propri, mai serviti finora) - un <a> riusa .bottone per il resto ma ha
+   bisogno di questi due in piu' per non apparire come un link sottolineato.
+   margin-top azzerato (review fix): .bottone porta margin-top:{space-5} per
+   staccarsi dai campi del form sopra di se' - il link "Naviga" e' invece il
+   primo figlio della card, quel margine creava uno spazio indesiderato dal
+   bordo superiore. */
+.linkNaviga {
+  display: inline-block;
+  margin-top: 0;
+  margin-bottom: var(--space-4);
+  text-decoration: none;
+}
+
 .lista {
   display: flex;
   flex-direction: column;

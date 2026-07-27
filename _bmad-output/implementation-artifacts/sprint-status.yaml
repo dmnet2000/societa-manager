@@ -9,6 +9,10 @@
 # last_updated: 2026-07-27 (Story 9.5 Campo Cognome per Allenatore: file di story creato (9-5-campo-cognome-per-allenatore.md), stato ready-for-dev. Vincolo critico documentato per lo sviluppo: la tabella allenatori ha gia' righe reali in produzione, quindi la nuova colonna cognome va aggiunta nullable a livello DB - NOT NULL senza DEFAULT romperebbe la migrazione. Obbligatorieta' imposta solo a livello applicativo (form + Server Action), coerente con AD-3/AD-9.)
 # last_updated: 2026-07-27 (Story 9.5 Campo Cognome per Allenatore: implementata - l'utente ha confermato che la tabella allenatori e' ancora vuota in produzione, quindi la colonna cognome e' stata aggiunta NOT NULL diretta invece che nullable. Nuova migrazione prisma/migrations/20260727000000_add_cognome_allenatore, Server Action precaricaAllenatore e form aggiornati, GruppoRow.tsx/wizard-nuova-stagione/page.tsx lasciati invariati (mostrano solo nome, nessun AC richiedeva la concatenazione). 500/500 test passati, 0 errori tsc/eslint. Status: review.)
 # last_updated: 2026-07-27 (Story 9.5 Campo Cognome per Allenatore: code review adversariale (Blind Hunter + Edge Case Hunter + Acceptance Auditor) completata - 1 decision-needed risolta con l'utente (GruppoRow.tsx/wizard-nuova-stagione/page.tsx aggiornati per mostrare "Nome Cognome" invece del solo nome, con ordinamento secondario per cognome in tutte le query coinvolte - la scelta iniziale "lasciare invariato" e' stata rivista), 1 patch applicato (Completion Notes con conteggio test corretto), 5 defer (messaggio validazione impreciso, race TOCTOU su CF duplicato, nessun vincolo formato su cognome, nessun autoComplete, nessun test di rendering - tutti pre-esistenti/convenzioni gia' accettate nel progetto), 2 scartati (vincolo NOT NULL sulla migrazione gia' confermato dall'utente, asimmetria Atleta/Allenatore gia' accettata in spec). 500/500 test passati, 0 errori tsc/eslint dopo il fix. Status: done.)
+# last_updated: 2026-07-27 (Story 9.6 Geolocalizzazione Palestre: file di story creato (9-6-geolocalizzazione-palestre.md), stato ready-for-dev. Decisione presa in fase di creazione storia: opzione (a) delle due proposte in epics.md - riuso dell'indirizzo testuale gia' esistente di Palestra con link di ricerca Google Maps, nessun campo coordinate dedicato/nessuna migrazione (Palestra.indirizzo e' gia' String? da Story 2.1), coerente con NFR6 e con la preferenza "soluzione piu' semplice" gia' documentata in epic-9-context.md. AC #2 (Admin/Dirigente puo' impostare la posizione) gia' soddisfatto dal form esistente, nessun codice nuovo richiesto per quell'AC.)
+# last_updated: 2026-07-27 (Story 9.6 Geolocalizzazione Palestre: implementata - nuovo helper puro lib/link-naviga-palestra.ts (7 test), link "Naviga" aggiunto in /palestre (PalestraRow.tsx, pulsante pieno), /slot e /orari (SlotTable.tsx condiviso, link testuale), /mio-orario (link testuale) - guard-clause su indirizzo mancante in tutti e quattro i punti. Nessuna query Prisma modificata (indirizzo gia' incluso a runtime, solo il tipo SlotRiga era piu' stretto). 507/507 test passati, 0 errori tsc/eslint. Status: review.)
+# last_updated: 2026-07-27 (Nuovo Epic 11 "Bug di Produzione" aggiunto su richiesta dell'utente - elenco aperto di difetti reali osservati in produzione, distinto da Epic 9 (miglioramenti/richieste). Story 11.1 (backlog): errore level:error loggato su POST /precaricamento-allenatori (log Cloudflare Workers fornito dall'utente, statusCode 200, stack minificato senza sourcemap). Causa probabile ma non confermata: possibile finestra tra deploy del codice di Story 9.5 (colonna Allenatore.cognome NOT NULL) e applicazione della migrazione in produzione, che farebbe fallire l'INSERT e cadere nel catch gia' esistente in precaricaAllenatore - da confermare in sviluppo, non assumere.)
+# last_updated: 2026-07-27 (Story 9.6 Geolocalizzazione Palestre: code review adversariale (Blind Hunter + Edge Case Hunter + Acceptance Auditor) completata - 0 decision-needed, 5 patch applicati (contrasto colore link "Naviga" insufficiente corretto da --color-primary a --color-button-bg in SlotTable.module.css/mio-orario.module.css, margine superiore indesiderato rimosso in palestre.module.css, aria-label aggiunto sui tre link per distinguerli da screen reader, spazio letterale prima del link invece di solo margin-left CSS, CSS duplicato tra i due file unificato a font-size 12px), 3 defer (nessun test di rendering - convenzione gia' accettata, nessun avviso "nuova scheda" su target=_blank - nessun precedente nel progetto, link Naviga in /palestre riflette l'ultimo indirizzo salvato non il valore live - pattern Server Component gia' esistente ovunque), 3 scartati (due trattamenti visivi per la stessa azione - gia' deliberato, filtro su indirizzi placeholder - speculativo, whitespace interno non normalizzato - impatto trascurabile). 507/507 test passati, 0 errori tsc/eslint dopo il fix. Status: done.)
 # project: societa-manager
 # project_key: NOKEY
 # tracking_system: file-system
@@ -143,7 +147,7 @@ development_status:
   9-3-riquadro-larghezza-massima-pagine-form: done
   9-4-menu-profilo-con-logoff-e-modifica-password: done
   9-5-campo-cognome-per-allenatore: done
-  9-6-geolocalizzazione-palestre: backlog
+  9-6-geolocalizzazione-palestre: done
   9-7-barra-laterale-ancora-visibile-dopo-il-logoff: backlog
   9-8-durata-della-sessione-di-login: backlog
 
@@ -153,3 +157,11 @@ development_status:
   # dello sviluppo (richiesta esplicita dell'utente) - solo i requisiti grezzi
   # sono catturati in epics.md per ora, nessuna storia numerata ancora.
   epic-10: backlog
+
+  # Epic 11 (Bug di Produzione) inserito il 2026-07-27 su richiesta dell'utente:
+  # elenco APERTO di difetti reali osservati in produzione (log di errore,
+  # comportamento scorretto), a differenza di Epic 9 che raccoglie richieste/
+  # miglioramenti. Ogni storia parte da un sintomo osservato, non da un
+  # requisito - la causa va confermata in sviluppo prima di correggere.
+  epic-11: backlog
+  11-1-errore-precaricamento-allenatore: backlog

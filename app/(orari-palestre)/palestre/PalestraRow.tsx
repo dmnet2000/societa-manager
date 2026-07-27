@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { aggiornaPalestra } from "./actions";
 import { CampoRow } from "./CampoRow";
 import { NuovoCampoForm } from "./NuovoCampoForm";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import styles from "./palestre.module.css";
 
 type Campo = {
@@ -23,9 +24,21 @@ export function PalestraRow({ palestra }: { palestra: Palestra }) {
     aggiornaPalestra,
     undefined
   );
+  const linkNaviga = costruisciLinkNaviga(palestra.indirizzo);
 
   return (
     <article className={styles.card}>
+      {linkNaviga && (
+        <a
+          className={`${styles.bottone} ${styles.linkNaviga}`}
+          href={linkNaviga}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Naviga verso ${palestra.nome}`}
+        >
+          Naviga
+        </a>
+      )}
       <form action={formAction}>
         <input type="hidden" name="id" value={palestra.id} />
         <div className={styles.campo}>

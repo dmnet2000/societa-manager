@@ -4,6 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import type { GiornoSettimana } from "@prisma/client";
 import { type SlotRiga } from "../SlotTable";
 import styles from "./mio-orario.module.css";
@@ -148,19 +149,36 @@ export default async function MioOrarioPage() {
           {gruppiPerGiorno.map((gruppo) => (
             <div key={gruppo.giorno} className={styles.giornoGruppo}>
               <p className={styles.giornoLabel}>{ETICHETTA_GIORNO[gruppo.giorno]}</p>
-              {gruppo.righe.map((riga) => (
-                <div key={riga.id} className={styles.slotRiga}>
-                  <span className={styles.slotOrario}>
-                    {riga.oraInizio}–{riga.oraFine}
-                  </span>
-                  <div className={styles.slotDettagli}>
-                    <span className={styles.slotGruppo}>{riga.gruppo.nome}</span>
-                    <span className={styles.slotPosto}>
-                      {riga.campo.palestra.nome} - {riga.campo.nome}
+              {gruppo.righe.map((riga) => {
+                const linkNaviga = costruisciLinkNaviga(riga.campo.palestra.indirizzo);
+                return (
+                  <div key={riga.id} className={styles.slotRiga}>
+                    <span className={styles.slotOrario}>
+                      {riga.oraInizio}–{riga.oraFine}
                     </span>
+                    <div className={styles.slotDettagli}>
+                      <span className={styles.slotGruppo}>{riga.gruppo.nome}</span>
+                      <span className={styles.slotPosto}>
+                        {riga.campo.palestra.nome} - {riga.campo.nome}
+                        {linkNaviga && (
+                          <>
+                            {" "}
+                            <a
+                              className={styles.linkNaviga}
+                              href={linkNaviga}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Naviga verso ${riga.campo.palestra.nome} - ${riga.campo.nome}`}
+                            >
+                              Naviga
+                            </a>
+                          </>
+                        )}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ))}
         </div>

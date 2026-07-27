@@ -339,3 +339,9 @@
 - Nessun vincolo di formato/lunghezza su `cognome` (maxlength, normalizzazione spazi multipli) — stesso gap già presente su `nome`, non specifico di questa storia. [app/(onboarding-import)/precaricamento-allenatori/actions.ts]
 - Nessun attributo `autoComplete` sul nuovo campo Cognome — nessun campo nome/form del progetto lo usa, convenzione pre-esistente. [app/(onboarding-import)/precaricamento-allenatori/page.tsx]
 - Nessun test che verifichi il rendering del campo Cognome in UI (solo la Server Action è testata) — coerente con la convenzione già stabilita dal progetto (nessuna pagina ha mai avuto test di rendering component, solo Server Action). [app/(onboarding-import)/precaricamento-allenatori/page.tsx]
+
+## Deferred from: code review of 9-6-geolocalizzazione-palestre (2026-07-27)
+
+- Nessun test verifica il rendering condizionale del link "Naviga" nei tre punti di utilizzo — coerente con la convenzione gia' stabilita dal progetto (nessuna pagina/componente ha mai avuto test di rendering, solo funzioni pure e Server Action). [app/(orari-palestre)/SlotTable.tsx, app/(orari-palestre)/mio-orario/page.tsx, app/(orari-palestre)/palestre/PalestraRow.tsx]
+- Nessun avviso "si apre in una nuova scheda" sui link `target="_blank"` — nessun precedente di questo pattern esiste altrove nel progetto (nessun altro link esterno), da valutare come convenzione trasversale futura. [app/(orari-palestre)/SlotTable.tsx, app/(orari-palestre)/mio-orario/page.tsx, app/(orari-palestre)/palestre/PalestraRow.tsx]
+- Il link "Naviga" in `/palestre` riflette l'ultimo indirizzo salvato, non il valore live dell'input durante la modifica — comportamento intrinseco del pattern Server Component + `revalidatePath` gia' usato in tutto il progetto, non specifico di questa storia. [app/(orari-palestre)/palestre/PalestraRow.tsx]

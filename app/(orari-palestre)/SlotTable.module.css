@@ -41,3 +41,21 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Story 9.6: link testuale, non un pulsante pieno - un pulsante pieno dentro
+   una cella di tabella sarebbe troppo pesante visivamente rispetto al resto
+   della riga (nessun altro pulsante esiste in questa tabella). Colore
+   {colors.button-bg}, non {colors.primary}: review fix, {colors.primary} su
+   sfondo chiaro a questa dimensione scende sotto la soglia WCAG AA (~2.9:1),
+   stesso motivo per cui DESIGN.md riserva {colors.button-bg} al testo su
+   sfondo chiaro (contrasto >=4.5:1 verificato). */
+.linkNaviga {
+  color: var(--color-button-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

@@ -56,6 +56,20 @@
   color: var(--color-text-secondary);
 }
 
+/* Story 9.6: stesso trattamento di link testuale di SlotTable.module.css,
+   {colors.button-bg} invece di {colors.primary} per il contrasto AA su
+   sfondo chiaro (review fix, vedi commento in SlotTable.module.css). */
+.linkNaviga {
+  color: var(--color-button-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .messaggioVuoto {
   margin-top: var(--space-2);
   font-size: 13px;

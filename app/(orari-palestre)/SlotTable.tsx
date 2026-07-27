@@ -1,4 +1,5 @@
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import type { GiornoSettimana } from "@prisma/client";
 import styles from "./SlotTable.module.css";
 
@@ -11,7 +12,7 @@ export type SlotRiga = {
   giorno: GiornoSettimana;
   oraInizio: string;
   oraFine: string;
-  campo: { nome: string; palestra: { nome: string } };
+  campo: { nome: string; palestra: { nome: string; indirizzo: string | null } };
   gruppo: { nome: string };
 };
 
@@ -44,18 +45,35 @@ export function SlotTable({
           </tr>
         </thead>
         <tbody>
-          {slot.map((s) => (
-            <tr key={s.id}>
-              <td>{ETICHETTA_GIORNO[s.giorno]}</td>
-              <td>
-                {s.oraInizio}–{s.oraFine}
-              </td>
-              <td>
-                {s.campo.palestra.nome} - {s.campo.nome}
-              </td>
-              <td>{s.gruppo.nome}</td>
-            </tr>
-          ))}
+          {slot.map((s) => {
+            const linkNaviga = costruisciLinkNaviga(s.campo.palestra.indirizzo);
+            return (
+              <tr key={s.id}>
+                <td>{ETICHETTA_GIORNO[s.giorno]}</td>
+                <td>
+                  {s.oraInizio}–{s.oraFine}
+                </td>
+                <td>
+                  {s.campo.palestra.nome} - {s.campo.nome}
+                  {linkNaviga && (
+                    <>
+                      {" "}
+                      <a
+                        className={styles.linkNaviga}
+                        href={linkNaviga}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Naviga verso ${s.campo.palestra.nome} - ${s.campo.nome}`}
+                      >
+                        Naviga
+                      </a>
+                    </>
+                  )}
+                </td>
+                <td>{s.gruppo.nome}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

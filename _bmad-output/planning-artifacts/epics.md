@@ -914,3 +914,29 @@ so that non veda un menu di navigazione residuo per una sessione che non esiste 
 - Autorizzazione: solo l'Allenatore del proprio Gruppo può creare/modificare i Campionati e le partite di quel Gruppo? Dirigente/Admin hanno accesso più ampio (stesso pattern già visto altrove nel progetto, es. FR-7)?
 - Le partite sono dato "strutturale" (non RLS, come Gruppo/Slot, AD-9) o "personale" (RLS, come Presenza/Iscrizione, AD-4)? Probabilmente strutturale (non riguarda dati sanitari/personali), ma va confermato esplicitamente seguendo lo stesso principio già stabilito per le altre entità.
 - Relazione con l'Anno Agonistico (AD-8): un Campionato è legato a una stagione specifica?
+
+## Epic 11: Bug di Produzione
+
+*(Aggiunto in corso d'opera — 2026-07-27, su richiesta dell'utente. A differenza di Epic 9 (miglioramenti/richieste), questo epic raccoglie difetti reali osservati in produzione (log di errore, comportamento scorretto) — non nuove funzionalità. Elenco aperto come Epic 9: le storie vengono aggiunte una alla volta man mano che un bug viene segnalato, non definite tutte in anticipo. Ogni storia parte da un sintomo/evidenza osservata (log, screenshot, segnalazione utente), non da un requisito: la causa va confermata in fase di sviluppo prima di scrivere una patch, mai assunta a priori.)*
+
+### Story 11.1: Errore interno al precaricamento Allenatore (POST /precaricamento-allenatori)
+
+As a Admin o Dirigente che precarica un Allenatore,
+I want che l'operazione vada a buon fine senza errori lato server,
+so that posso completare il precaricamento in modo affidabile.
+
+**Note aggiuntive:** segnalato dall'utente (2026-07-27) tramite un log di errore di produzione (Cloudflare Workers, `scriptName: societa-manager`, `requestId: a21da8b36ad04bdd`). Evidenza raccolta:
+- `POST https://societa-manager.dmnet2000.workers.dev/precaricamento-allenatori`, `statusCode: 200` nonostante `level: error` — coerente con un errore catturato lato applicazione (non un errore HTTP) che ha comunque restituito una risposta normale.
+- Il campo `message`/`error` del log è uno stack minificato (`worker.js:68008:19` ecc., frame come `Jr.handleRequestError`/`Jr.handleAndLogRequestError`) senza sourcemap — non identifica la riga di codice applicativo reale, solo che *qualcosa* ha sollevato un'eccezione durante la gestione della richiesta.
+
+**Causa probabile ma NON confermata — da verificare in fase di sviluppo, non assumere**: questa rotta è la Server Action `precaricaAllenatore` (`app/(onboarding-import)/precaricamento-allenatori/actions.ts`), appena modificata da Story 9.5 per scrivere il nuovo campo `Allenatore.cognome` (`NOT NULL`, migrazione `prisma/migrations/20260727000000_add_cognome_allenatore`). Se la richiesta che ha generato questo log è arrivata in una finestra in cui il codice era già deployato ma la migrazione non ancora applicata al database di produzione (o viceversa), l'`INSERT` fallirebbe (colonna mancante o vincolo NOT NULL) — l'eccezione verrebbe presa dal `try/catch` già presente in `precaricaAllenatore` (che logga con `console.error(err)` e restituisce all'Utente il messaggio generico "Impossibile precaricare l'Allenatore. Riprova."), spiegando sia il `level: error` sia lo `statusCode: 200`. Da confermare: (a) se la migrazione risulta applicata in produzione ora, (b) riprodurre un precaricamento in produzione per vedere se l'errore persiste, (c) se possibile ottenere il testo/stack completo non minificato dell'errore originale (sourcemap Cloudflare) per una diagnosi certa invece che per deduzione.
+
+**Acceptance Criteria:**
+
+**Given** un Admin o Dirigente compila il form di precaricamento Allenatore con Nome, Cognome e Codice Fiscale validi
+**When** invia il form
+**Then** l'Allenatore viene creato con successo, nessun errore di livello `error` loggato lato server per quella richiesta
+
+**Given** la causa reale viene identificata in fase di sviluppo
+**When** viene corretta
+**Then** la causa e la correzione vengono documentate in questa storia (per riconoscere la stessa classe di problema se si ripresenta, es. ordine deploy-codice/migrazione per le prossime storie con migrazione)
