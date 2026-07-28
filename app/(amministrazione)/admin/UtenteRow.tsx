@@ -2,7 +2,11 @@
 
 import { useActionState, useState, useTransition } from "react";
 import type { Ruolo } from "@prisma/client";
-import { aggiornaRuoliUtente, impostaAttivoUtente } from "./actions";
+import {
+  aggiornaRuoliUtente,
+  impostaAttivoUtente,
+  reimpostaPasswordFissaUtente,
+} from "./actions";
 import styles from "./admin.module.css";
 
 const RUOLI = [
@@ -28,6 +32,8 @@ export function UtenteRow({ utente }: { utente: Utente }) {
   );
   const [attivoError, setAttivoError] = useState<string | null>(null);
   const [isTogglePending, startToggleTransition] = useTransition();
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+  const [isResetPasswordPending, startResetPasswordTransition] = useTransition();
 
   function toggleAttivo() {
     setAttivoError(null);
@@ -43,6 +49,31 @@ export function UtenteRow({ utente }: { utente: Utente }) {
         }
       } catch {
         setAttivoError("Impossibile aggiornare lo stato dell'utente. Riprova.");
+      }
+    });
+  }
+
+  // Story 9.11 (Parte B): sovrascrive silenziosamente la password attuale
+  // dell'Utente senza notifica automatica - la conferma (stesso pattern
+  // window.confirm() di AllenatoreRow.tsx, Story 9.9) e' l'unico argine
+  // contro un click accidentale.
+  function reimpostaPassword() {
+    if (
+      !window.confirm(
+        `Reimpostare la password di ${utente.email} al valore fisso concordato? L'Utente dovrà poi cambiarla da "Modifica password".`
+      )
+    ) {
+      return;
+    }
+    setResetPasswordError(null);
+    startResetPasswordTransition(async () => {
+      try {
+        const result = await reimpostaPasswordFissaUtente(undefined, utente.id);
+        if (result && "error" in result) {
+          setResetPasswordError(result.error.message);
+        }
+      } catch {
+        setResetPasswordError("Impossibile reimpostare la password. Riprova.");
       }
     });
   }
@@ -93,6 +124,22 @@ export function UtenteRow({ utente }: { utente: Utente }) {
         {attivoError && (
           <p role="alert" className={styles.errore}>
             {attivoError}
+          </p>
+        )}
+      </td>
+      <td>
+        <button
+          disabled={isResetPasswordPending}
+          onClick={reimpostaPassword}
+          type="button"
+          className={styles.bottoneSecondario}
+          aria-label={`Reimposta password di ${utente.email}`}
+        >
+          Reimposta password
+        </button>
+        {resetPasswordError && (
+          <p role="alert" className={styles.errore}>
+            {resetPasswordError}
           </p>
         )}
       </td>

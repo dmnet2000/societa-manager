@@ -36,6 +36,7 @@ export default async function AdminPage() {
                 <th>Ruoli</th>
                 <th>Stato</th>
                 <th></th>
+                <th></th>
               </tr>
             </thead>
             <tbody>

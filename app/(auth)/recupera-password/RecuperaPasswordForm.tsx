@@ -2,11 +2,14 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { accedi } from "./actions";
-import styles from "./accedi.module.css";
+import { richiediRecuperoPassword } from "./actions";
+import styles from "./recupera-password.module.css";
 
-export function AccediForm() {
-  const [state, formAction, pending] = useActionState(accedi, undefined);
+export function RecuperaPasswordForm() {
+  const [state, formAction, pending] = useActionState(
+    richiediRecuperoPassword,
+    undefined
+  );
 
   return (
     <>
@@ -15,24 +18,22 @@ export function AccediForm() {
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" required />
         </div>
-        <div className={styles.campo}>
-          <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required />
-        </div>
         {state?.error && (
           <p role="alert" className={styles.errore}>
             {state.error.message}
           </p>
         )}
+        {state?.successo && (
+          <p role="status" className={styles.successo}>
+            {state.messaggio}
+          </p>
+        )}
         <button disabled={pending} type="submit" className={styles.bottone}>
-          Accedi
+          Invia
         </button>
       </form>
       <p className={styles.link}>
-        <Link href="/recupera-password">Password dimenticata?</Link>
-      </p>
-      <p className={styles.link}>
-        Non hai un account? <Link href="/registrati">Registrati</Link>
+        <Link href="/accedi">Torna al login</Link>
       </p>
     </>
   );

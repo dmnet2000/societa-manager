@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const createUserMock = vi.fn();
+const updateUserByIdMock = vi.fn();
 const utenteCreateMock = vi.fn();
 const utenteUpdateMock = vi.fn();
 const utenteCountMock = vi.fn();
@@ -9,10 +10,17 @@ const transactionMock = vi.fn();
 const sincronizzaRuoliMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const requireRuoloMock = vi.fn();
+const getUserMock = vi.fn();
 
 vi.mock("@/lib/auth-admin/client", () => ({
   createAdminClient: () => ({
-    auth: { admin: { createUser: createUserMock } },
+    auth: { admin: { createUser: createUserMock, updateUserById: updateUserByIdMock } },
+  }),
+}));
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({
+    auth: { getUser: getUserMock },
   }),
 }));
 
@@ -44,9 +52,8 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaUtente, impostaAttivoUtente, aggiornaRuoliUtente } = await import(
-  "./actions"
-);
+const { creaUtente, impostaAttivoUtente, aggiornaRuoliUtente, reimpostaPasswordFissaUtente } =
+  await import("./actions");
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData();
@@ -105,6 +112,106 @@ describe("autorizzazione (comune alle 3 Server Action)", () => {
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
     expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  it("reimpostaPasswordFissaUtente restituisce FORBIDDEN e non chiama Supabase se il chiamante non e' Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u1");
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("reimpostaPasswordFissaUtente", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    utenteFindUniqueOrThrowMock.mockReset();
+    updateUserByIdMock.mockReset();
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
+  });
+
+  it("deriva il supabaseAuthId da utenteId via Prisma e imposta la password fissa concordata su un bersaglio non-Admin", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u1");
+
+    expect(utenteFindUniqueOrThrowMock).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      include: { ruoli: true },
+    });
+    expect(updateUserByIdMock).toHaveBeenCalledWith("auth-u1", {
+      password: "Volley@Mogliano",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("refuses to reset the password of a target Utente who is also Admin (account-takeover prevention)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      supabaseAuthId: "auth-admin2",
+      ruoli: [{ ruolo: "ADMIN" }],
+    });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u-admin2");
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Non puoi reimpostare la password di un altro Admin con questa funzione.",
+      },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses the reset even when the target has Admin among multiple Ruoli", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      supabaseAuthId: "auth-u2",
+      ruoli: [{ ruolo: "ALLENATORE" }, { ruolo: "ADMIN" }],
+    });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u2");
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Non puoi reimpostare la password di un altro Admin con questa funzione.",
+      },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns an error, no crash, when updateUserById fails", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    updateUserByIdMock.mockResolvedValue({ error: { message: "unexpected" } });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u1");
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile reimpostare la password. Riprova." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when Prisma throws (Utente inesistente)", async () => {
+    utenteFindUniqueOrThrowMock.mockRejectedValue(new Error("not found"));
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "u1");
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile reimpostare la password. Riprova." },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
   });
 });
 

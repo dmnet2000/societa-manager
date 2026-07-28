@@ -4,7 +4,16 @@ export const LOGIN_PATH = "/accedi";
 export const NON_AUTORIZZATO_PATH = "/non-autorizzato";
 
 // Route pubbliche: accessibili senza sessione (login, registrazione).
-export const PUBLIC_ROUTES = ["/accedi", "/registrati"];
+// Story 9.11: /recupera-password e /reimposta-password sono per definizione
+// raggiunte da un Utente senza sessione (o con una sessione appena scaduta),
+// senza queste il Proxy le rediregerebbe a /accedi prima ancora di mostrare
+// il form.
+export const PUBLIC_ROUTES = [
+  "/accedi",
+  "/registrati",
+  "/recupera-password",
+  "/reimposta-password",
+];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte
 // dalle prossime storie (Story 1.2+ estendera' con altri prefissi).

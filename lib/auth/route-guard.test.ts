@@ -9,6 +9,15 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows /recupera-password and /reimposta-password even when not authenticated (Story 9.11)", () => {
+    expect(getRouteDecision("/recupera-password", false, [])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/reimposta-password", false, [])).toEqual({
+      action: "allow",
+    });
+  });
+
   it("redirects to login when not authenticated on a non-public route", () => {
     expect(getRouteDecision("/", false, [])).toEqual({
       action: "redirect",
