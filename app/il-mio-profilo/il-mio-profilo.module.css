@@ -1,0 +1,82 @@
+/* Story 9.12 - stesso pattern .form/.campo/.bottone/.errore/.successo gia'
+   stabilito in modifica-password.module.css (nessun meccanismo "composes"
+   mai usato in questa codebase, vedi Defer Story 8.3). */
+
+.sezione {
+  margin-top: var(--space-6);
+}
+
+.sezione:first-child {
+  margin-top: 0;
+}
+
+.fotoAttuale {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  margin-top: var(--space-3);
+}
+
+.testo {
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.bottone {
+  margin-top: var(--space-5);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

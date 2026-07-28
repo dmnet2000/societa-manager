@@ -472,4 +472,24 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Allenatore or Atleta on /il-mio-profilo (Story 9.12)", () => {
+    expect(getRouteDecision("/il-mio-profilo", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/il-mio-profilo", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /il-mio-profilo for other roles", () => {
+    expect(getRouteDecision("/il-mio-profilo", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/il-mio-profilo", true, ["GENITORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });
