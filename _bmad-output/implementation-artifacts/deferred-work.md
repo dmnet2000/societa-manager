@@ -360,3 +360,8 @@
 - Messaggio "Riprova" fuorviante quando l'Allenatore non esiste più al momento della cancellazione (pagina non aggiornata, cancellato da un altro Admin nel frattempo) [app/(onboarding-import)/precaricamento-allenatori/actions.ts] — percorso raro, impatto basso.
 - Nessuna restrizione sulla modifica del Codice Fiscale di un Allenatore già "Registrato" — rischio speculativo di disallineamento dell'identità usata per il matching, nessun AC lo vieta esplicitamente. [app/(onboarding-import)/precaricamento-allenatori/actions.ts]
 - Nessuna paginazione sull'elenco Allenatori — coerente con la stessa scelta già deliberata altrove nel progetto (`/palestre`, `/admin`) per la scala ridotta di NFR5.
+
+## Deferred from: code review of 9-10-voce-navigazione-attiva-non-aggiornata (2026-07-28)
+
+- Il controllo `NON_AUTORIZZATO_PATH` in `NavBar.tsx` (righe 50-53) legge ancora il pathname calcolato una sola volta lato server (header `x-pathname`) — stessa identica causa di staleness (Client Cache del layout radice) appena risolta per la voce attiva in questa storia, ma esplicitamente escluso dallo scope nei Dev Notes originali. Fuori scope esplicito di questa storia; stesso pattern che ha già generato la Story 9.10 a partire dalla 9.7, potrebbe meritare una story propria se osservato dal vivo. [app/NavBar.tsx]
+- L'elenco `voci` (filtrato per Ruolo in `NavBar.tsx`) soffre della stessa staleness di navigazione se i Ruoli di un Utente cambiano durante una sessione attiva — non toccato da questa storia. Collegato al trade-off già accettato in AD-11 (finestra di autorizzazione stantia, deferred-work.md Story 1.1). [app/NavBar.tsx]

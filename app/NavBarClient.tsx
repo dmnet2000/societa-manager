@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { VoceNavigazione } from "@/lib/auth/voci-navigazione";
+import { isVoceAttiva, type VoceNavigazione } from "@/lib/auth/voci-navigazione";
 import styles from "./NavBar.module.css";
 
 // Story 9.2: la parte interattiva (stato aperto/chiuso del drawer mobile) e'
@@ -11,7 +11,6 @@ import styles from "./NavBar.module.css";
 // in app/NavBar.tsx (Server Component), invariato. Su desktop (>= 880px,
 // vedi NavBar.module.css) questo stato non ha alcun effetto visivo: la
 // barra laterale e' sempre visibile via CSS, indipendentemente da `aperto`.
-type VoceConStato = VoceNavigazione & { attiva: boolean };
 
 // Review fix (code review Story 9.2): replica qui lo stesso breakpoint
 // 880px del CSS (NavBar.module.css) - se quel valore cambia, va cambiato
@@ -44,7 +43,7 @@ export function NavBarClient({
   esci,
   email,
 }: {
-  voci: VoceConStato[];
+  voci: VoceNavigazione[];
   logoUrl: string | null;
   titolo: string;
   esci: () => Promise<void>;
@@ -205,16 +204,24 @@ export function NavBarClient({
       >
         <div className={styles.brandSidebar}>{brand}</div>
         <ul className={styles.voci}>
-          {voci.map((voce) => (
-            <li key={voce.href}>
-              <Link
-                href={voce.href}
-                className={voce.attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
-              >
-                {voce.label}
-              </Link>
-            </li>
-          ))}
+          {voci.map((voce) => {
+            // Story 9.10: calcolato qui invece che ricevuto gia' pronto dal
+            // server - pathname (sopra) si aggiorna ad ogni navigazione
+            // completata, a differenza del layout radice server-side che
+            // resta nella Client Cache e non si ri-esegue.
+            const attiva = isVoceAttiva(pathname, voce.href);
+            return (
+              <li key={voce.href}>
+                <Link
+                  href={voce.href}
+                  className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
+                  aria-current={attiva ? "page" : undefined}
+                >
+                  {voce.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
         {/* Story 9.4: menu profilo a tendina - sostituisce il singolo
             pulsante "Esci". Trigger = email dell'Utente (nessuna nuova

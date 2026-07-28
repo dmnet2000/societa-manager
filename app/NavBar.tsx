@@ -53,6 +53,13 @@ export async function NavBar() {
   }
 
   const ruoli = parseRuoli(user.app_metadata?.ruoli);
+  // Story 9.10: la voce attiva NON viene piu' calcolata qui - il layout
+  // radice resta nella Client Cache di Next.js e non viene ri-eseguito ad
+  // ogni navigazione (stessa causa gia' confermata per Story 9.7), quindi un
+  // calcolo lato server smetterebbe di aggiornarsi dopo il primo
+  // caricamento. Il calcolo si sposta in NavBarClient.tsx, che legge
+  // usePathname() (si aggiorna ad ogni navigazione, incluso indietro/avanti
+  // del browser).
   const voci = filtraVociNavigazione(ruoli);
 
   // Review fix: il logo e' puramente decorativo - un errore transitorio di
@@ -67,18 +74,13 @@ export async function NavBar() {
     console.error(err);
   }
 
-  const vociConStato = voci.map((voce) => ({
-    ...voce,
-    attiva: pathname === voce.href || pathname.startsWith(`${voce.href}/`),
-  }));
-
   const logoUrl = info.esiste
     ? `${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`
     : null;
 
   return (
     <NavBarClient
-      voci={vociConStato}
+      voci={voci}
       logoUrl={logoUrl}
       titolo="Società Manager"
       esci={esci}

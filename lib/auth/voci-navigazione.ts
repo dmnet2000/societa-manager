@@ -14,3 +14,11 @@ export function filtraVociNavigazione(ruoli: Ruolo[]): VoceNavigazione[] {
     route.ruoliAmmessi.some((r) => ruoli.includes(r))
   ).map((route) => ({ href: route.prefix, label: route.navLabel }));
 }
+
+// Story 9.10 (Review fix): estratta come funzione pura testabile - va
+// chiamata lato client (usePathname() in NavBarClient.tsx), non lato server
+// (il layout radice resta nella Client Cache di Next.js e non si
+// ri-esegue ad ogni navigazione, vedi Story 9.7/9.10).
+export function isVoceAttiva(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}

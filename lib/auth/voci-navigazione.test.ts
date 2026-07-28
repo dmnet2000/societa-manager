@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filtraVociNavigazione } from "./voci-navigazione";
+import { filtraVociNavigazione, isVoceAttiva } from "./voci-navigazione";
 
 describe("filtraVociNavigazione", () => {
   it("restituisce array vuoto per ruoli vuoti", () => {
@@ -57,5 +57,31 @@ describe("filtraVociNavigazione", () => {
       expect(voce.href).toMatch(/^\//);
       expect(voce.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// Story 9.10 (Review][Patch): estratta come funzione pura testabile - prima
+// viveva inline dentro il .map() di NavBarClient.tsx, non testabile in
+// isolamento senza montare React. Proprio uno stato derivato non testato e'
+// stata la causa della regressione (voce attiva mai aggiornata) che ha
+// originato questa storia.
+describe("isVoceAttiva", () => {
+  it("e' attiva quando il pathname coincide esattamente con l'href", () => {
+    expect(isVoceAttiva("/palestre", "/palestre")).toBe(true);
+  });
+
+  it("e' attiva quando il pathname e' una sotto-pagina dell'href", () => {
+    expect(isVoceAttiva("/palestre/1", "/palestre")).toBe(true);
+  });
+
+  it("non e' attiva per un pathname diverso", () => {
+    expect(isVoceAttiva("/admin", "/palestre")).toBe(false);
+  });
+
+  it("non e' attiva per un href che e' solo prefisso testuale senza separatore '/'", () => {
+    // "/palestreX" non e' una sotto-pagina di "/palestre" - deve richiedere
+    // il separatore "/" esplicito, non un semplice startsWith su tutta la
+    // stringa.
+    expect(isVoceAttiva("/palestreX", "/palestre")).toBe(false);
   });
 });
