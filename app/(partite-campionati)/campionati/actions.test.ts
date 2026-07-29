@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const requireRuoloMock = vi.fn();
 const getUserMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();

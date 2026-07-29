@@ -4,6 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { NuovoCampionatoForm } from "./NuovoCampionatoForm";
 import { CollegaCampionatoForm } from "./CollegaCampionatoForm";
+import { ImportaGareForm } from "./ImportaGareForm";
 import styles from "./campionati.module.css";
 
 // Dati mutabili in tempo reale (creazione/collegamento Campionato tramite
@@ -96,7 +97,13 @@ export default async function CampionatiPage() {
                   <td>
                     <ul className={styles.listaAssegnati}>
                       {collegati.map((campionato) => (
-                        <li key={campionato.id}>{campionato.nome}</li>
+                        <li key={campionato.id}>
+                          {campionato.nome}
+                          <ImportaGareForm
+                            gruppoId={gruppo.id}
+                            campionatoId={campionato.id}
+                          />
+                        </li>
                       ))}
                     </ul>
                     <NuovoCampionatoForm gruppoId={gruppo.id} />

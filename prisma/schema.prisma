@@ -357,6 +357,7 @@ model Gruppo {
   slot             Slot[]
   visibileDirigente GruppoVisibileDirigente?
   campionati       GruppoCampionato[]
+  partite          Partita[]
 
   @@map("gruppi")
 }
@@ -372,6 +373,7 @@ model Campionato {
   annoAgonistico   AnnoAgonistico     @relation(fields: [annoAgonisticoId], references: [id])
   createdAt        DateTime           @default(now())
   gruppi           GruppoCampionato[]
+  partite          Partita[]
 
   @@map("campionati")
 }
@@ -389,6 +391,45 @@ model GruppoCampionato {
 
   @@unique([gruppoId, campionatoId])
   @@map("gruppo_campionati")
+}
+
+// Story 10.2 (Epic 10): non protetta da RLS (AD-9), stesso trattamento di
+// Campionato/Gruppo/Slot. data/ora come stringhe (non DateTime) - stesso
+// principio di Presenza.data/Slot.oraInizio, nessuna aritmetica di date
+// richiesta. garaNumero univoco per Gruppo (non globalmente: due Gruppi di
+// questa societa' potrebbero importare file di campionati diversi con lo
+// stesso identificativo federale) - chiave naturale per l'upsert idempotente
+// (AC #2). ON DELETE CASCADE su entrambe le FK (a differenza della FK verso
+// AnnoAgonistico di Campionato/Gruppo, che usa RESTRICT): una Partita non ha
+// senso senza il suo Campionato/Gruppo.
+model Partita {
+  id                String     @id @default(uuid())
+  campionatoId      String
+  campionato        Campionato @relation(fields: [campionatoId], references: [id], onDelete: Cascade)
+  gruppoId          String
+  gruppo            Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  garaNumero        String
+  giornata          String?
+  data              String
+  ora               String
+  squadraCasa       String
+  squadraOspite     String
+  risultato         String?
+  parziali          String?
+  statoDescrizione  String?
+  impianto          String?
+  indirizzoImpianto String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Review fix (Story 10.2): la chiave include campionatoId, non solo
+  // gruppoId+garaNumero - un Gruppo puo' essere collegato a piu' Campionati
+  // contemporaneamente (Story 10.1 AC #5) e la numerazione "Gara N" e' per
+  // competizione, non globale; senza campionatoId un Gara N che coincide
+  // per puro caso tra due Campionati diversi dello stesso Gruppo
+  // sovrascriverebbe silenziosamente la Partita sbagliata.
+  @@unique([gruppoId, campionatoId, garaNumero])
+  @@map("partite")
 }
 
 // Story 5.2 (FR-27): permesso granulare per Gruppo, solo per il Ruolo

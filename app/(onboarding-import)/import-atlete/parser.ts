@@ -1,5 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
+import { parseDataItaliana } from "@/lib/data-italiana";
 
 export type DatiCertificatoImportato = {
   dataInizioValidita: Date | null;
@@ -53,38 +54,6 @@ function testoCella(value: ExcelJS.CellValue): string | null {
   }
   const testo = String(value).trim();
   return testo === "" ? null : testo;
-}
-
-// Le date nell'export sono stringhe "gg/mm/aaaa", non date native Excel
-// (confermato nell'addendum) - normalizzate qui prima della persistenza
-// (AC #2). Gestisce difensivamente anche una Date nativa, se presente.
-// Valida anche che giorno/mese/anno corrispondano davvero alla data
-// costruita (Date.UTC altrimenti farebbe rollover silenzioso di date
-// inesistenti come 31/02 - review Story 1.3).
-function parseDataItaliana(value: ExcelJS.CellValue): Date | null {
-  if (value instanceof Date) {
-    return value;
-  }
-  const testo = testoCella(value);
-  if (!testo) {
-    return null;
-  }
-  const match = testo.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) {
-    return null;
-  }
-  const [, giornoTesto, meseTesto, annoTesto] = match;
-  const giorno = Number(giornoTesto);
-  const mese = Number(meseTesto);
-  const anno = Number(annoTesto);
-  const data = new Date(Date.UTC(anno, mese - 1, giorno));
-
-  const eValida =
-    data.getUTCFullYear() === anno &&
-    data.getUTCMonth() === mese - 1 &&
-    data.getUTCDate() === giorno;
-
-  return eValida ? data : null;
 }
 
 // "Mesi Validità Cert" - numero intero, null se assente o non parsabile
