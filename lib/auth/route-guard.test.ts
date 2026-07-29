@@ -515,4 +515,27 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Admin, Dirigente or Allenatore on /partite (Story 10.3)", () => {
+    expect(getRouteDecision("/partite", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/partite", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/partite", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /partite for other roles", () => {
+    expect(getRouteDecision("/partite", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/partite", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

@@ -975,6 +975,96 @@ so that ho sempre un riferimento visivo corretto di dove mi trovo nell'app.
 
 **And** nessuna regressione sul resto del comportamento della barra di navigazione (apertura/chiusura drawer mobile, menu profilo, logoff) — stesso vincolo di test invariati delle altre storie di questo epic
 
+### Story 9.13: Modifica e cancellazione di uno Slot già inserito
+
+As a Admin o Dirigente,
+I want poter modificare o cancellare uno Slot già inserito nell'orario,
+so that posso correggere un giorno/orario/palestra sbagliato o rimuovere uno slot che non serve più, senza dover intervenire manualmente sul database.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-29). Oggi (`/slot`, Story 2.5) esiste solo `creaSlot` (`app/(orari-palestre)/slot/actions.ts`) — nessuna modifica/cancellazione una volta inserito. `Slot` ha `presenze Presenza[]` come relazione inversa (Story 3.1): cancellare uno Slot con Presenze già registrate solleva la stessa domanda già affrontata in Story 9.9 per `Allenatore` — verificare innanzitutto l'`onDelete` effettivo della FK `Presenza.slotId` (se `Cascade`, una cancellazione libera spazzerebbe via silenziosamente lo storico presenze di quello slot). **Decisione da prendere in fase di sviluppo** (raccomandazione, non ancora validata con l'utente, stesso principio già usato per Allenatore in Story 9.9): permettere la cancellazione libera solo se lo Slot non ha Presenze registrate, bloccarla con un messaggio esplicativo altrimenti.
+
+**Acceptance Criteria:**
+
+**Given** uno Slot esistente
+**When** un Admin o Dirigente lo modifica (giorno, ora inizio/fine, campo, gruppo)
+**Then** le modifiche vengono salvate con la stessa validazione già usata in creazione (formato ora HH:MM, ora fine successiva a ora inizio, campi obbligatori)
+
+**Given** uno Slot senza Presenze registrate
+**When** un Admin o Dirigente lo cancella
+**Then** lo Slot viene rimosso dall'elenco
+
+**Given** uno Slot con una o più Presenze già registrate
+**When** un Admin o Dirigente tenta di cancellarlo
+**Then** l'operazione è impedita con un messaggio esplicito (nessuna perdita silenziosa dello storico presenze) — comportamento da confermare in fase di sviluppo, stesso principio già stabilito per Allenatore in Story 9.9
+
+**And** nessuna regressione sul comportamento esistente di creazione Slot (Story 2.5) — suite Vitest invariata, stesso perimetro di Ruoli (ADMIN/DIRIGENTE) di `creaSlot`
+
+### Story 9.14: Rimozione di un'Atleta da un Gruppo
+
+As a Admin o Dirigente,
+I want poter rimuovere un'Atleta da un Gruppo a cui è stata assegnata per errore,
+so that posso correggere un'assegnazione sbagliata senza dover intervenire manualmente sul database.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-29). Oggi (`/gruppi`, Story 2.4) esiste solo `assegnaAtleta` (`app/(gruppi-allenatori)/gruppi/actions.ts`) — nessuna azione di rimozione. `GruppoAtleta` è una tabella di giunzione pura (`@@unique([atletaId, annoAgonisticoId])`, un'Atleta sta in un solo Gruppo per stagione, nessuna riga dipendente collegata) — rimuoverla è sicuro, stesso principio già stabilito per le altre tabelle di giunzione del progetto (`UtenteRuolo`, `GruppoVisibileDirigente`): **non** introduce il problema di hard-delete di un'entità di dominio già affrontato in Story 9.9 per `Allenatore` (qui non si cancella l'Atleta, solo il suo collegamento al Gruppo).
+
+**Acceptance Criteria:**
+
+**Given** un'Atleta assegnata a un Gruppo
+**When** un Admin o Dirigente la rimuove dall'elenco delle Atlete di quel Gruppo
+**Then** l'assegnazione viene rimossa (riga `GruppoAtleta` cancellata) — l'Atleta resta nell'anagrafica e può essere riassegnata a un altro Gruppo nella stessa stagione
+
+**And** nessuna regressione sul comportamento esistente di assegnazione Atleta a Gruppo (Story 2.4) — suite Vitest invariata, stesso perimetro di Ruoli (ADMIN/DIRIGENTE) di `assegnaAtleta`
+
+### Story 9.15: Assegnazione Atlete al proprio Gruppo da parte dell'Allenatore
+
+As a Allenatore assegnato a un Gruppo,
+I want poter caricare in autonomia le Atlete sul mio Gruppo, senza passare da un Admin/Dirigente,
+so that non devo aspettare l'intervento di qualcun altro per completare la composizione della mia squadra.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-29). Oggi `assegnaAtleta` (`app/(gruppi-allenatori)/gruppi/actions.ts`, Story 2.4) richiede `requireRuolo(["ADMIN", "DIRIGENTE"])` — un Allenatore non può assegnare Atlete al proprio Gruppo, nemmeno al Gruppo che gestisce lui stesso (`GruppoAllenatore`). Stesso principio di autorizzazione a due livelli già stabilito in Epic 10 (Story 10.1/10.2, `risolviAutorizzazioneGruppo`): un Allenatore deve poter agire solo sul **proprio** Gruppo (verificato tramite `GruppoAllenatore`), Admin/Dirigente restano ad accesso ampio su tutti i Gruppi come oggi.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore assegnato a un Gruppo (tramite `GruppoAllenatore`)
+**When** assegna un'Atleta a quel Gruppo
+**Then** l'assegnazione viene salvata, stessa validazione già esistente in `assegnaAtleta` (Story 2.4)
+
+**Given** un Allenatore che non gestisce un dato Gruppo
+**When** tenta di assegnargli un'Atleta
+**Then** l'operazione viene rifiutata
+
+**Given** un Admin o Dirigente
+**When** assegna un'Atleta a un Gruppo
+**Then** può farlo per qualunque Gruppo, non solo quelli gestiti da un Allenatore specifico — comportamento invariato
+
+**And** nessuna regressione sul comportamento esistente di assegnazione Atleta a Gruppo (Story 2.4) — suite Vitest invariata
+
+### Story 9.16: Parametri standard per i dati fisici delle Atlete
+
+As a Allenatore o Atleta,
+I want poter inserire rapidamente le misurazioni fisiche più comuni (peso, altezza, reach a una mano, reach a due mani, salto con rincorsa, salto a muro) senza dover scrivere ogni volta tipo/unità di misura a mano,
+so that l'inserimento sia più veloce e i dati restino confrontabili nel tempo (stesso "tipo" testuale usato in ogni misurazione).
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-29). Oggi (`/dati-fisici`, Story 6.1) `MisurazioneAtleta` è già un modello generico (`tipo: String` libero, `valore: Float`, `unitaMisura: String`, `data: String`) — **nessuna migrazione necessaria** per aggiungere parametri "standard", si tratta di un miglioramento del form (`MisurazioneForm.tsx`) che oggi richiede di scrivere tipo/unità a mano ogni volta. Parametri richiesti dall'utente: peso, altezza, reach a una mano, reach a due mani, salto con rincorsa (tre misurazioni), salto a muro (tre misurazioni) — mantenendo la possibilità di inserire un tipo libero ("altro") come oggi, esplicitamente richiesto dall'utente. **Decisione da prendere in fase di sviluppo (non ancora chiarita con l'utente)**: salto con rincorsa/salto a muro richiedono "tre misurazioni" ciascuno — chiarire se vadano salvate come tre righe `MisurazioneAtleta` distinte (stesso tipo, stessa data, tre valori) mostrando poi il migliore/la media nello storico/grafico (Story 6.2), o se serva un meccanismo diverso — non presumere la risposta.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore o un'Atleta sulla pagina `/dati-fisici`
+**When** compila il form di inserimento
+**Then** può scegliere rapidamente tra i parametri standard (peso, altezza, reach a una mano, reach a due mani, salto con rincorsa, salto a muro) con l'unità di misura già precompilata per ciascuno, invece di doverla scrivere a mano
+
+**Given** lo stesso form
+**When** vuole registrare un parametro non standard
+**Then** può ancora inserire un tipo libero con la propria unità di misura, esattamente come oggi (nessuna regressione)
+
+**Given** un test "salto con rincorsa" o "salto a muro" (tre misurazioni)
+**When** registrato
+**Then** tutte e tre le misurazioni vengono salvate e visibili nello storico — dettaglio esatto di come (tre righe distinte, media, migliore) da definire in fase di sviluppo
+
+**And** la data resta un campo obbligatorio per ogni misurazione, come oggi
+
+**And** nessuna regressione sul comportamento esistente di inserimento/visualizzazione misurazioni (Story 6.1/6.2) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
