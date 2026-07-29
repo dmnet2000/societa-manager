@@ -71,6 +71,11 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     navLabel: "Il mio profilo",
   },
+  {
+    prefix: "/campionati",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE"],
+    navLabel: "Campionati",
+  },
 ];
 
 export type RouteDecision =

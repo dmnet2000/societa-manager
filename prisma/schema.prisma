@@ -178,6 +178,7 @@ model AnnoAgonistico {
   iscrizioni   Iscrizione[]
   gruppi       Gruppo[]
   gruppoAtlete GruppoAtleta[]
+  campionati   Campionato[]
 
   @@unique([dataInizio, dataFine])
   @@map("anni_agonistici")
@@ -355,8 +356,39 @@ model Gruppo {
   atlete           GruppoAtleta[]
   slot             Slot[]
   visibileDirigente GruppoVisibileDirigente?
+  campionati       GruppoCampionato[]
 
   @@map("gruppi")
+}
+
+// Story 10.1 (Epic 10, Gestione Partite e Campionati): non protetto da RLS
+// (AD-9) - dato strutturale, stesso trattamento di Gruppo/Slot, nessun dato
+// sanitario/personale. FK diretta verso AnnoAgonistico (come Gruppo, AD-8):
+// un Campionato non sopravvive al cambio di stagione.
+model Campionato {
+  id               String             @id @default(uuid())
+  nome             String
+  annoAgonisticoId String
+  annoAgonistico   AnnoAgonistico     @relation(fields: [annoAgonisticoId], references: [id])
+  createdAt        DateTime           @default(now())
+  gruppi           GruppoCampionato[]
+
+  @@map("campionati")
+}
+
+// Tabella di giunzione molti-a-molti (un Gruppo puo' partecipare a piu'
+// Campionati contemporaneamente, un Campionato puo' essere condiviso da piu'
+// Gruppi) - stesso pattern di GruppoAllenatore (Story 2.3).
+model GruppoCampionato {
+  id           String     @id @default(uuid())
+  gruppoId     String
+  campionatoId String
+  gruppo       Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  campionato   Campionato @relation(fields: [campionatoId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([gruppoId, campionatoId])
+  @@map("gruppo_campionati")
 }
 
 // Story 5.2 (FR-27): permesso granulare per Gruppo, solo per il Ruolo

@@ -149,6 +149,14 @@ Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un
 *(Aggiunto in corso d'opera — 2026-07-25, raccolta di lacune/miglioramenti individuati durante la verifica dal vivo in produzione dopo il completamento di Epic 1-8, non pianificati nel PRD originale. Elenco aperto: le storie vengono aggiunte una alla volta man mano che emergono, non tutte definite in anticipo come negli epic precedenti.)*
 **FRs covered:** nessuno finora (da aggiornare se una storia futura ne introduce)
 
+### Epic 10: Gestione Partite e Campionati
+*(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente, analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto.)* Un Allenatore crea Campionati per il proprio Gruppo e vi importa le gare da un file Excel esportato dalla federazione; Allenatore/Dirigente/Admin vedono e modificano le partite settimana per settimana; Atlete e Genitori vedono le partite della propria squadra/figlia, con navigazione Maps verso il luogo di gioco (riuso del meccanismo di Story 9.6).
+**FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera, come Epic 7/8/9)
+
+### Epic 11: Bug di Produzione
+*(Aggiunto in corso d'opera — 2026-07-27, raccolta di difetti reali osservati in produzione (log di errore, comportamento scorretto), non richieste/miglioramenti. Elenco aperto come Epic 9.)*
+**FRs covered:** nessuno (correzioni di difetti, non nuove funzionalità)
+
 ## Epic 1: Accesso, Popolamento e Iscrizioni
 
 Ogni ruolo può registrarsi e accedere; Admin/Dirigente popolano atlete e allenatori (import Excel, precaricamento, aggancio genitore-atleta), gestiscono utenti/ruoli, e la Segreteria conferma le iscrizioni — inclusa la corretta gestione del passaggio da una stagione all'altra (merge certificati per data più recente, riporto Under 13).
@@ -969,25 +977,134 @@ so that ho sempre un riferimento visivo corretto di dove mi trovo nell'app.
 
 ## Epic 10: Gestione Partite e Campionati
 
-*(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. A differenza di Epic 9 (miglioramenti puntuali), questo è un epic sostanziale con nuove entità dati e superfici per più Ruoli — **l'analisi completa e la rottura in storie dettagliate sono deliberatamente rimandate all'avvio dello sviluppo di questo epic**, su richiesta esplicita dell'utente ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Quanto segue è la cattura fedele dei requisiti così come dettati, non ancora elaborata in Acceptance Criteria/storie.)*
+*(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
 
-**Requisiti raccolti (testo dell'utente, 2026-07-25):**
+**Requisiti originali (testo dell'utente, 2026-07-25):** nuova entità Campionato (un Gruppo può parteciparvi a più di uno contemporaneamente), l'Allenatore crea Campionati per il proprio Gruppo, import Excel delle gare (un file per squadra/campionato), vista partite settimana per settimana, modifica della singola partita (giorno/ora/palestra), visibilità per Atlete (proprio Gruppo) e Genitori (propria figlia, stesso aggancio di Story 1.5), navigazione Maps verso il luogo di gioco.
 
-- Nuova entità **Campionato**: un Gruppo (squadra) può partecipare a **più Campionati contemporaneamente** (relazione molti-a-molti Gruppo↔Campionato, non uno-a-uno).
-- L'**Allenatore** può creare un nuovo Campionato per il proprio Gruppo.
-- L'Allenatore può **caricare tramite file Excel** tutte le gare (partite) di un Campionato per la propria squadra — un file per squadra/campionato, non un import unico multi-squadra (da confermare in fase di analisi).
-- Vista partite **settimana per settimana**.
-- Possibilità di **modificare la singola partita**: giorno, ora, palestra.
-- Le **Atlete** vedono nell'app le partite dei Campionati a cui il proprio Gruppo partecipa.
-- I **Genitori** vedono le partite delle proprie figlie (stesso meccanismo di aggancio Genitore↔Atleta già esistente, AD-10/Story 1.5).
-- **Geolocalizzazione** per navigare con Maps verso il luogo della partita (vedi Story 9.6 sopra per il meccanismo base — qui si aggiunge il caso delle trasferte, dove il luogo potrebbe non essere una Palestra propria già censita).
+### Story 10.1: Creazione di un Campionato per un Gruppo
 
-**Domande aperte da affrontare in fase di analisi (non richieste esplicitamente, emerse leggendo i requisiti):**
-- Formato/colonne attese del file Excel di import (nessun esempio fornito finora — stesso tipo di gap già colmato nell'Epic 1 per l'import federale Atlete, Story 1.3, con un file di riferimento reale).
-- Le partite in trasferta (fuori dalle Palestre proprie) richiedono un modo di registrare luogo/indirizzo dell'avversario, non solo scegliere fra le Palestre già censite in questo progetto.
-- Autorizzazione: solo l'Allenatore del proprio Gruppo può creare/modificare i Campionati e le partite di quel Gruppo? Dirigente/Admin hanno accesso più ampio (stesso pattern già visto altrove nel progetto, es. FR-7)?
-- Le partite sono dato "strutturale" (non RLS, come Gruppo/Slot, AD-9) o "personale" (RLS, come Presenza/Iscrizione, AD-4)? Probabilmente strutturale (non riguarda dati sanitari/personali), ma va confermato esplicitamente seguendo lo stesso principio già stabilito per le altre entità.
-- Relazione con l'Anno Agonistico (AD-8): un Campionato è legato a una stagione specifica?
+As a Allenatore del proprio Gruppo (o Admin/Dirigente per qualunque Gruppo),
+I want creare un nuovo Campionato e collegarlo a uno o più Gruppi,
+so that posso poi importare/gestire le partite di quella competizione per la mia squadra.
+
+**Note aggiuntive:** relazione molti-a-molti Gruppo↔Campionato (un Gruppo può partecipare a più Campionati contemporaneamente, es. campionato + coppa; un Campionato può in teoria essere condiviso da più Gruppi/categorie, anche se nella pratica ogni girone federale è tipicamente specifico di una singola squadra). Un Campionato è legato a un Anno Agonistico (stesso principio di Gruppo, AD-8) — non ha senso far sopravvivere un Campionato al cambio di stagione.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore agganciato al proprio Gruppo
+**When** crea un nuovo Campionato (nome) per quel Gruppo
+**Then** il Campionato viene creato, associato all'Anno Agonistico corrente, e collegato al Gruppo
+
+**Given** un Campionato già esistente (creato da un altro Allenatore/Admin per un altro Gruppo)
+**When** un Allenatore vuole iscrivere il proprio Gruppo alla stessa competizione
+**Then** può collegare il proprio Gruppo a un Campionato esistente scegliendolo da un elenco, invece di crearne uno duplicato con lo stesso nome
+
+**Given** un Admin o Dirigente
+**When** crea/collega un Campionato
+**Then** può farlo per qualunque Gruppo, non solo i propri (stesso pattern di accesso ampio già usato per la gestione dei Gruppi, Story 2.2)
+
+**Given** un Allenatore che non gestisce un dato Gruppo
+**When** tenta di creare/collegare un Campionato per quel Gruppo
+**Then** l'operazione viene rifiutata
+
+### Story 10.2: Import Excel delle partite di un Campionato
+
+As a Allenatore del Gruppo iscritto a un Campionato (o Admin/Dirigente),
+I want caricare un file Excel con tutte le gare della propria squadra in quel Campionato,
+so that non devo inserire manualmente ogni partita una per una.
+
+**Note aggiuntive:** formato reale fornito dall'utente (`_bmad/resources/Gare.xls`, esportazione FIPAV/Lega Pallavolo, 20 righe di un intero girone di andata-ritorno). Colonne attese: `Campionato, Gara N, Giornata, Data, Ora, SquadraCasa, SquadraOspite, Risultato, Parziali, StatoDescrizione, Impianto, IndirizzoImpianto`. `Data` in formato gg/mm/aaaa (stessa normalizzazione già applicata all'import federale Atlete, Story 1.3). `Gara N` è l'identificativo federale univoco della gara — chiave naturale per un re-import idempotente (ricaricare lo stesso file per aggiornare risultati di giornate più recenti aggiorna le righe esistenti, non le duplica). `Impianto`/`IndirizzoImpianto` sono presenti su OGNI riga, incluse le partite in casa (l'export federale non distingue "nostro impianto" da "impianto avversario") — nessuna necessità di un'entità "luogo" dedicata o di riuso di `Palestra`: l'indirizzo importato è testo libero, usato direttamente dal meccanismo di navigazione Maps già esistente (`lib/link-naviga-palestra.ts`, Story 9.6 — già generico su `{ indirizzo }`, non specifico di `Palestra`, riusabile invariato). L'import avviene nel contesto di un Gruppo+Campionato già collegati (Story 10.1) — la colonna `Campionato` nel file serve come controllo di coerenza, non per creare/scegliere il Campionato.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore (o Admin/Dirigente) su un Campionato a cui il proprio Gruppo è iscritto
+**When** carica un file Excel con le colonne attese
+**Then** tutte le righe vengono importate come Partite collegate a quel Campionato e a quel Gruppo
+
+**Given** un file con una riga il cui `Gara N` corrisponde a una Partita già importata in precedenza
+**When** il file viene ricaricato (es. per aggiornare i risultati di giornate nel frattempo disputate)
+**Then** la Partita esistente viene aggiornata sul posto, non duplicata
+
+**Given** un file con colonne mancanti o un formato non riconosciuto
+**When** caricato
+**Then** l'import viene rifiutato con un messaggio di errore chiaro, nessuna Partita parzialmente importata
+
+**Given** un import riuscito
+**When** completato
+**Then** viene mostrato un riepilogo (N create, M aggiornate) — stesso pattern già usato per l'import Atlete (Story 1.3)
+
+### Story 10.3: Vista partite settimana per settimana (Allenatore, Dirigente, Admin)
+
+As a Allenatore, Dirigente o Admin,
+I want vedere le partite organizzate settimana per settimana,
+so that posso pianificare la presenza a bordo campo e le trasferte.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore, Dirigente o Admin
+**When** visita la pagina Partite
+**Then** vede le partite raggruppate per settimana, con giorno/ora/avversario/luogo per ciascuna
+
+**Given** una Partita con indirizzo disponibile
+**When** visualizzata
+**Then** mostra un pulsante "Naviga" (stesso meccanismo/link di Story 9.6, riuso invariato)
+
+**Given** un Allenatore
+**When** visita la pagina
+**Then** vede solo le partite dei propri Gruppi — Admin/Dirigente vedono le partite di tutti i Gruppi
+
+**Given** una settimana senza partite
+**When** visualizzata
+**Then** mostra un messaggio esplicito ("nessuna partita questa settimana"), non una sezione vuota silenziosa
+
+### Story 10.4: Modifica di una singola partita
+
+As a Allenatore del Gruppo (o Admin/Dirigente),
+I want modificare giorno, ora e luogo di una singola partita,
+so that posso correggere un rinvio o un cambio di programma comunicato dalla federazione.
+
+**Acceptance Criteria:**
+
+**Given** una Partita esistente
+**When** l'Allenatore (del proprio Gruppo) o un Admin/Dirigente la modifica (data, ora, impianto, indirizzo)
+**Then** le modifiche vengono salvate
+
+**Given** un Allenatore che non gestisce il Gruppo a cui appartiene una Partita
+**When** tenta di modificarla
+**Then** l'operazione viene rifiutata
+
+**And** nessuna modifica ai campi identitari della gara (`Gara N`, Campionato, squadre) — solo giorno/ora/luogo, come esplicitamente richiesto
+
+### Story 10.5: Vista partite per Atleta e Genitore
+
+As a Atleta o Genitore,
+I want vedere le partite del proprio Gruppo/della propria figlia,
+so that so quando e dove si gioca, con indicazioni per raggiungere il luogo.
+
+**Acceptance Criteria:**
+
+**Given** un'Atleta
+**When** visita la vista partite
+**Then** vede le partite di tutti i Campionati a cui il proprio Gruppo partecipa
+
+**Given** un Genitore
+**When** visita la vista partite
+**Then** vede le partite del Gruppo della propria figlia (stesso aggancio Genitore↔Atleta già esistente, AD-10/Story 1.5)
+
+**Given** una Partita con indirizzo
+**When** visualizzata
+**Then** mostra lo stesso pulsante "Naviga" già disponibile per Allenatore/Dirigente/Admin (Story 10.3)
+
+**Given** un'Atleta o un Genitore
+**When** visita la pagina
+**Then** non ha alcuna possibilità di modifica (sola lettura, a differenza di Allenatore/Admin/Dirigente)
+
+**Decisioni prese con l'utente (2026-07-28), in risposta alle domande aperte della cattura iniziale:**
+- **Formato Excel**: file di riferimento reale fornito (`_bmad/resources/Gare.xls`) — vedi Story 10.2.
+- **Luogo delle trasferte**: l'indirizzo è già una colonna del file Excel importato (`IndirizzoImpianto`, presente su ogni riga) — nessuna nuova entità "luogo"/riuso di `Palestra` per gli avversari, il pulsante "Naviga" (Story 9.6) va reso disponibile anche lato Atleta/Genitore, non solo Allenatore/Dirigente/Admin.
+- **Autorizzazione**: Allenatore del proprio Gruppo + Admin/Dirigente ad accesso ampio su tutti i Gruppi — stesso pattern già usato per la gestione dei Gruppi (Story 2.2), qui esteso per includere anche l'Allenatore come gestore dei propri Campionati/Partite (a differenza della gestione Gruppi, oggi riservata a soli Admin/Dirigente).
+- **RLS**: `Campionato`/`Partita` sono dato **strutturale** (non RLS), stesso trattamento di `Gruppo`/`Slot` (AD-9) — non riguardano dati sanitari/personali.
+- **Anno Agonistico**: `Campionato` ha una FK diretta verso `AnnoAgonistico` (come `Gruppo`, AD-8) — un Campionato non sopravvive al cambio di stagione.
 
 ## Epic 11: Bug di Produzione
 

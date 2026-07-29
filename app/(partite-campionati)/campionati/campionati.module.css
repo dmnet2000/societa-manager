@@ -1,0 +1,108 @@
+/* Story 10.1 - stesso set di classi gia' stabilito in gruppi.module.css
+   (Story 8.6), nessun meccanismo "composes" in questa codebase. */
+
+.testo {
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+}
+
+.scrollWrapper {
+  overflow-x: auto;
+  margin-top: var(--space-4);
+}
+
+.tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.tabella th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabella td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.listaAssegnati {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.listaAssegnati li {
+  padding: 2px 0;
+}
+
+.formCompatto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 160px;
+  margin-top: var(--space-2);
+}
+
+.formCompatto label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.formCompatto input,
+.formCompatto select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.formCompatto input:focus-visible,
+.formCompatto select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.errore {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.bottoneCompatto {
+  margin-top: var(--space-1);
+  align-self: flex-start;
+  background: var(--color-surface);
+  color: var(--color-button-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneCompatto:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneCompatto:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

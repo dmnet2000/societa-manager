@@ -492,4 +492,27 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows Admin, Dirigente or Allenatore on /campionati (Story 10.1)", () => {
+    expect(getRouteDecision("/campionati", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/campionati", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+    expect(getRouteDecision("/campionati", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /campionati for other roles", () => {
+    expect(getRouteDecision("/campionati", true, ["ATLETA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/campionati", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

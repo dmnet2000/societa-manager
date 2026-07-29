@@ -380,3 +380,11 @@
 - Nessuna validazione lato client di formato/dimensione oltre al filtro `accept` dell'input file — miglioramento UX a bassa priorità, nessun AC lo richiede. [app/il-mio-profilo/FotoProfiloForm.tsx]
 - `utente_possiede_allenatore` non verifica `Utente.attivo` — stesso trade-off già accettato a livello di intero progetto (Story 1.2), tutte le funzioni RLS sorelle hanno la stessa caratteristica. [prisma/migrations/20260728000000_add_foto_profilo/migration.sql]
 - Doppio round-trip a `supabase.auth.getUser()` per invio (uno dentro `requireRuolo`, uno esplicito nell'azione) — inefficienza minore coerente con lo stesso pattern già presente in ogni altra Server Action del progetto. [app/il-mio-profilo/actions.ts]
+
+## Deferred from: code review of 10-1-creazione-campionato-per-un-gruppo (2026-07-28)
+
+- Un errore di `supabase.auth.getUser()` in `page.tsx` viene solo loggato, l'esecuzione prosegue con `user` potenzialmente `undefined` — un Admin/Dirigente colpito da un problema transitorio di autenticazione vedrebbe il messaggio "account non collegato a un profilo Allenatore" invece di un'indicazione di errore reale. Stesso pattern di gestione errori già presente in molte pagine del progetto, severità bassa. [app/(partite-campionati)/campionati/page.tsx]
+- `Utente.attivo` non viene mai verificato nella risoluzione dell'Allenatore chiamante in `verificaPossessoGruppoSeAllenatore` — stesso trade-off già accettato a livello di intero progetto (Story 1.2/AD-11). [app/(partite-campionati)/campionati/actions.ts]
+- Doppio round-trip a `supabase.auth.getUser()` per invio (uno dentro `requireRuolo`, uno dentro `verificaPossessoGruppoSeAllenatore`) — stessa inefficienza minore già accettata altrove nel progetto (Story 9.12). [app/(partite-campionati)/campionati/actions.ts]
+- `gruppo_campionati` non ha un indice secondario su `campionatoId` da solo — stesso limite già presente in `gruppo_allenatori`, non una regressione introdotta qui.
+- La corrispondenza tra l'`onDelete` implicito di Prisma per `Campionato → AnnoAgonistico` e `ON DELETE RESTRICT` scritto a mano nella migrazione non è stata verificata con `prisma migrate diff`, solo per analogia visiva con la migrazione già in produzione di `Gruppo` — rischio basso per analogia diretta con un pattern già validato dal vivo.
