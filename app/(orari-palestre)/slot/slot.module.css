@@ -67,10 +67,23 @@
   margin-top: var(--space-4);
 }
 
+/* Review fix (feedback utente dal vivo): elenco Slot illeggibile con un
+   campo per riga, specialmente ripetuto per ogni Slot nell'elenco - i 5
+   campi vengono disposti in orizzontale e vanno a capo (flex-wrap) invece
+   di impilarsi uno sotto l'altro, tipicamente su due righe a schermo
+   pieno, un campo per riga su viewport stretto (mobile-first, NFR3). */
+.campiRiga {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+}
+
 .campo {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  flex: 1 1 150px;
+  min-width: 150px;
   margin-top: var(--space-4);
 }
 

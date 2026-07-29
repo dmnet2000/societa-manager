@@ -1065,6 +1065,34 @@ so that l'inserimento sia più veloce e i dati restino confrontabili nel tempo (
 
 **And** nessuna regressione sul comportamento esistente di inserimento/visualizzazione misurazioni (Story 6.1/6.2) — suite Vitest invariata
 
+### Story 9.17: Vista griglia mensile delle presenze per Gruppo (lato Allenatore)
+
+As a Allenatore,
+I want vedere le presenze del mio Gruppo in una griglia mensile (Atlete sulle righe, giorni del mese sulle colonne),
+so that posso vedere a colpo d'occhio le presenze di tutta la squadra in un mese, invece di controllare un'Atleta alla volta.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-29) sulla sezione "Storico delle mie Atlete" di `/storico-presenze` (Story 3.2/3.3, `app/(presenze)/storico-presenze/page.tsx`) — oggi mostra lo storico cronologico di **una** Atleta alla volta (select Atleta + tabella Data/Giorno/Orario/Gruppo/Presenza, `StoricoTable`). La nuova vista è per **Gruppo** (non per singola Atleta) e per **mese** (non l'intero storico): una griglia con una riga per Atleta del Gruppo e una colonna per ogni giorno del mese, cella con indicatore presente/assente. La sezione "Il mio storico" (vista Atleta/Genitore, stessa pagina) **non è in scope** qui, resta invariata. **Da chiarire in fase di sviluppo, non presumere**: questa griglia sostituisce la sezione "Storico delle mie Atlete" esistente (select singola Atleta) o si aggiunge come vista alternativa? La richiesta dell'utente ("fix lista presenza... layout griglia") suggerisce una sostituzione, ma va confermato prima di rimuovere la vista esistente. Riuso naturale: `leggiStoricoPresenzePerAtleta` (`lib/db-rls/presenza.ts`) filtra già per `atletaId` con RLS che scopa automaticamente l'Allenatore alle proprie Atlete/Gruppi (`allenatore_proprio_gruppo_select`, Story 3.1) — la query per la griglia dovrà estendere quel filtro a un intervallo di date (il mese) e a più Atlete contemporaneamente (quelle del Gruppo scelto), non necessariamente riusando la funzione esistente invariata.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore assegnato a uno o più Gruppi
+**When** visita la nuova vista
+**Then** può scegliere un Gruppo (tra quelli che gestisce) e un mese, e vede una griglia con le Atlete del Gruppo sulle righe e i giorni del mese sulle colonne
+
+**Given** una cella della griglia corrispondente a un giorno in cui una Presenza è stata registrata per quella Atleta
+**When** visualizzata
+**Then** mostra un indicatore chiaro presente/assente
+
+**Given** un giorno del mese in cui non è stata registrata alcuna Presenza per quella Atleta (nessuno Slot quel giorno, o presenza non ancora segnata)
+**When** visualizzato
+**Then** la cella è vuota/neutra, non un falso "assente"
+
+**Given** un Allenatore che non gestisce un dato Gruppo
+**When** tenta di vedere la griglia di quel Gruppo (manomissione dell'URL/form)
+**Then** l'operazione è rifiutata, stesso principio di autorizzazione già stabilito per `/presenze` (Story 3.1)
+
+**And** nessuna regressione sulla sezione "Il mio storico" (vista Atleta/Genitore, Story 3.2) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

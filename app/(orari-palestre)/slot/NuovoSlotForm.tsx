@@ -34,52 +34,54 @@ export function NuovoSlotForm({
 
   return (
     <form ref={formRef} action={formAction}>
-      <div className={styles.campo}>
-        <label htmlFor="nuovo-slot-giorno">Giorno</label>
-        <select id="nuovo-slot-giorno" name="giorno" required defaultValue="">
-          <option value="" disabled>
-            Seleziona...
-          </option>
-          {GIORNI_SETTIMANA.map((giorno) => (
-            <option key={giorno.value} value={giorno.value}>
-              {giorno.label}
+      <div className={styles.campiRiga}>
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-giorno">Giorno</label>
+          <select id="nuovo-slot-giorno" name="giorno" required defaultValue="">
+            <option value="" disabled>
+              Seleziona...
             </option>
-          ))}
-        </select>
-      </div>
-      <div className={styles.campo}>
-        <label htmlFor="nuovo-slot-ora-inizio">Ora inizio</label>
-        <input id="nuovo-slot-ora-inizio" name="oraInizio" type="time" required />
-      </div>
-      <div className={styles.campo}>
-        <label htmlFor="nuovo-slot-ora-fine">Ora fine</label>
-        <input id="nuovo-slot-ora-fine" name="oraFine" type="time" required />
-      </div>
-      <div className={styles.campo}>
-        <label htmlFor="nuovo-slot-campo">Campo</label>
-        <select id="nuovo-slot-campo" name="campoId" required defaultValue="">
-          <option value="" disabled>
-            Seleziona...
-          </option>
-          {campi.map((campo) => (
-            <option key={campo.id} value={campo.id}>
-              {campo.palestra.nome} - {campo.nome}
+            {GIORNI_SETTIMANA.map((giorno) => (
+              <option key={giorno.value} value={giorno.value}>
+                {giorno.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-ora-inizio">Ora inizio</label>
+          <input id="nuovo-slot-ora-inizio" name="oraInizio" type="time" required />
+        </div>
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-ora-fine">Ora fine</label>
+          <input id="nuovo-slot-ora-fine" name="oraFine" type="time" required />
+        </div>
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-campo">Campo</label>
+          <select id="nuovo-slot-campo" name="campoId" required defaultValue="">
+            <option value="" disabled>
+              Seleziona...
             </option>
-          ))}
-        </select>
-      </div>
-      <div className={styles.campo}>
-        <label htmlFor="nuovo-slot-gruppo">Gruppo</label>
-        <select id="nuovo-slot-gruppo" name="gruppoId" required defaultValue="">
-          <option value="" disabled>
-            Seleziona...
-          </option>
-          {gruppi.map((gruppo) => (
-            <option key={gruppo.id} value={gruppo.id}>
-              {gruppo.nome}
+            {campi.map((campo) => (
+              <option key={campo.id} value={campo.id}>
+                {campo.palestra.nome} - {campo.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-gruppo">Gruppo</label>
+          <select id="nuovo-slot-gruppo" name="gruppoId" required defaultValue="">
+            <option value="" disabled>
+              Seleziona...
             </option>
-          ))}
-        </select>
+            {gruppi.map((gruppo) => (
+              <option key={gruppo.id} value={gruppo.id}>
+                {gruppo.nome}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>

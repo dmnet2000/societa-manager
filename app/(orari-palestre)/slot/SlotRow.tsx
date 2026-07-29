@@ -75,81 +75,83 @@ export function SlotRow({
     <article className={styles.card}>
       <form action={modificaAction} className={styles.form}>
         <input type="hidden" name="id" value={slot.id} />
-        <div className={styles.campo}>
-          <label htmlFor={`slot-giorno-${slot.id}`}>Giorno</label>
-          <select
-            id={`slot-giorno-${slot.id}`}
-            name="giorno"
-            required
-            defaultValue={slot.giorno}
-          >
-            {GIORNI_SETTIMANA.map((giorno) => (
-              <option key={giorno.value} value={giorno.value}>
-                {giorno.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.campo}>
-          <label htmlFor={`slot-ora-inizio-${slot.id}`}>Ora inizio</label>
-          <input
-            id={`slot-ora-inizio-${slot.id}`}
-            name="oraInizio"
-            type="time"
-            defaultValue={slot.oraInizio}
-            required
-          />
-        </div>
-        <div className={styles.campo}>
-          <label htmlFor={`slot-ora-fine-${slot.id}`}>Ora fine</label>
-          <input
-            id={`slot-ora-fine-${slot.id}`}
-            name="oraFine"
-            type="time"
-            defaultValue={slot.oraFine}
-            required
-          />
-        </div>
-        <div className={styles.campo}>
-          <label htmlFor={`slot-campo-${slot.id}`}>Campo</label>
-          <select
-            id={`slot-campo-${slot.id}`}
-            name="campoId"
-            required
-            defaultValue={slot.campoId}
-          >
-            {campi.map((campo) => (
-              <option key={campo.id} value={campo.id}>
-                {campo.palestra.nome} - {campo.nome}
-              </option>
-            ))}
-          </select>
-          {linkNaviga && (
-            <a
-              className={styles.linkNaviga}
-              href={linkNaviga}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Naviga verso ${campoAttuale?.palestra.nome}`}
+        <div className={styles.campiRiga}>
+          <div className={styles.campo}>
+            <label htmlFor={`slot-giorno-${slot.id}`}>Giorno</label>
+            <select
+              id={`slot-giorno-${slot.id}`}
+              name="giorno"
+              required
+              defaultValue={slot.giorno}
             >
-              Naviga
-            </a>
-          )}
-        </div>
-        <div className={styles.campo}>
-          <label htmlFor={`slot-gruppo-${slot.id}`}>Gruppo</label>
-          <select
-            id={`slot-gruppo-${slot.id}`}
-            name="gruppoId"
-            required
-            defaultValue={slot.gruppoId}
-          >
-            {gruppi.map((gruppo) => (
-              <option key={gruppo.id} value={gruppo.id}>
-                {gruppo.nome}
-              </option>
-            ))}
-          </select>
+              {GIORNI_SETTIMANA.map((giorno) => (
+                <option key={giorno.value} value={giorno.value}>
+                  {giorno.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.campo}>
+            <label htmlFor={`slot-ora-inizio-${slot.id}`}>Ora inizio</label>
+            <input
+              id={`slot-ora-inizio-${slot.id}`}
+              name="oraInizio"
+              type="time"
+              defaultValue={slot.oraInizio}
+              required
+            />
+          </div>
+          <div className={styles.campo}>
+            <label htmlFor={`slot-ora-fine-${slot.id}`}>Ora fine</label>
+            <input
+              id={`slot-ora-fine-${slot.id}`}
+              name="oraFine"
+              type="time"
+              defaultValue={slot.oraFine}
+              required
+            />
+          </div>
+          <div className={styles.campo}>
+            <label htmlFor={`slot-campo-${slot.id}`}>Campo</label>
+            <select
+              id={`slot-campo-${slot.id}`}
+              name="campoId"
+              required
+              defaultValue={slot.campoId}
+            >
+              {campi.map((campo) => (
+                <option key={campo.id} value={campo.id}>
+                  {campo.palestra.nome} - {campo.nome}
+                </option>
+              ))}
+            </select>
+            {linkNaviga && (
+              <a
+                className={styles.linkNaviga}
+                href={linkNaviga}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Naviga verso ${campoAttuale?.palestra.nome}`}
+              >
+                Naviga
+              </a>
+            )}
+          </div>
+          <div className={styles.campo}>
+            <label htmlFor={`slot-gruppo-${slot.id}`}>Gruppo</label>
+            <select
+              id={`slot-gruppo-${slot.id}`}
+              name="gruppoId"
+              required
+              defaultValue={slot.gruppoId}
+            >
+              {gruppi.map((gruppo) => (
+                <option key={gruppo.id} value={gruppo.id}>
+                  {gruppo.nome}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         {modificaState && "error" in modificaState && (
           <p role="alert" className={styles.errore}>
