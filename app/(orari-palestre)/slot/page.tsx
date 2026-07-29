@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { NuovoSlotForm } from "./NuovoSlotForm";
-import { SlotTable } from "../SlotTable";
+import { SlotRow } from "./SlotRow";
 import styles from "./slot.module.css";
 
 // Dati mutabili in tempo reale (creazione Slot tramite Server Action sulla
@@ -51,7 +51,15 @@ export default async function SlotPage() {
 
       <section className={styles.sezione}>
         <h2>Elenco Slot</h2>
-        <SlotTable slot={slot} />
+        {slot.length === 0 ? (
+          <p className={styles.messaggioVuoto}>Nessuno Slot inserito.</p>
+        ) : (
+          <div className={styles.lista}>
+            {slot.map((s) => (
+              <SlotRow key={s.id} slot={s} campi={campi} gruppi={gruppi} />
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

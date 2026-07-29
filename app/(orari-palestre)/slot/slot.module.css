@@ -15,6 +15,58 @@
   color: var(--color-text-secondary);
 }
 
+/* Story 9.13 - .lista/.card/.bottoneSecondario coerenti con
+   precaricamento-allenatori.module.css (stesso pattern elenco + modifica
+   inline + cancellazione, Story 9.9). */
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.bottoneSecondario {
+  margin-top: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneSecondario:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSecondario:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
 .campo {
   display: flex;
   flex-direction: column;
@@ -41,6 +93,20 @@
 
 .campo input:focus-visible,
 .campo select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Story 9.13 (review fix) - stesso stile di SlotTable.module.css, link
+   "Naviga" ripristinato per riga dopo la sostituzione di SlotTable. */
+.linkNaviga {
+  margin-top: var(--space-1);
+  color: var(--color-button-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
