@@ -163,3 +163,61 @@ export async function assegnaAtleta(
   revalidatePath("/gruppi");
   return { success: true };
 }
+
+// Story 9.14 (AC #1): GruppoAtleta e' una tabella di giunzione pura, nessuna
+// riga dipendente altrove nello schema (a differenza di Allenatore/Slot,
+// Story 9.9/9.13) - nessun guard di blocco necessario, la cancellazione non
+// perde storico ne' richiede un hard-delete di un'entita' di dominio.
+export async function rimuoviAtleta(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  const atletaId = String(formData.get("atletaId") ?? "");
+
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  if (!atletaId) {
+    return { error: { code: "VALIDATION", message: "Atleta non specificata." } };
+  }
+
+  let gruppo: { annoAgonisticoId: string } | null;
+  try {
+    // Stesso blocco di risoluzione dell'annoAgonisticoId gia' usato in
+    // assegnaAtleta - non reinventarlo.
+    gruppo = await prisma.gruppo.findUnique({
+      where: { id: gruppoId },
+      select: { annoAgonisticoId: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
+    };
+  }
+  if (!gruppo) {
+    return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+  }
+
+  try {
+    // deleteMany (non delete su una chiave univoca): idempotente, non lancia
+    // se la riga non esiste piu' (doppio submit, o l'Atleta e' gia' stata
+    // rimossa/riassegnata altrove) - AC #1 non richiede che l'assegnazione
+    // esista ancora, solo che non esista piu' dopo la chiamata.
+    await prisma.gruppoAtleta.deleteMany({
+      where: { atletaId, annoAgonisticoId: gruppo.annoAgonisticoId, gruppoId },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
+    };
+  }
+
+  revalidatePath("/gruppi");
+  return { success: true };
+}

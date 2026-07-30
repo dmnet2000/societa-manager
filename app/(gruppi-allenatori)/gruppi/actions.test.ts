@@ -6,6 +6,7 @@ const gruppoCreateMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
 const gruppoAtletaUpsertMock = vi.fn();
+const gruppoAtletaDeleteManyMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -20,7 +21,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     gruppo: { create: gruppoCreateMock, findUnique: gruppoFindUniqueMock },
     gruppoAllenatore: { create: gruppoAllenatoreCreateMock },
-    gruppoAtleta: { upsert: gruppoAtletaUpsertMock },
+    gruppoAtleta: { upsert: gruppoAtletaUpsertMock, deleteMany: gruppoAtletaDeleteManyMock },
   },
 }));
 
@@ -28,7 +29,9 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaGruppo, assegnaAllenatore, assegnaAtleta } = await import("./actions");
+const { creaGruppo, assegnaAllenatore, assegnaAtleta, rimuoviAtleta } = await import(
+  "./actions"
+);
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -46,6 +49,7 @@ beforeEach(() => {
   gruppoFindUniqueMock.mockReset();
   gruppoAllenatoreCreateMock.mockReset();
   gruppoAtletaUpsertMock.mockReset();
+  gruppoAtletaDeleteManyMock.mockReset();
   revalidatePathMock.mockReset();
 });
 
@@ -328,6 +332,112 @@ describe("assegnaAtleta", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
+    });
+  });
+});
+
+describe("rimuoviAtleta", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when gruppoId is missing", async () => {
+    const result = await rimuoviAtleta(undefined, buildFormData({ atletaId: "at1" }));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when atletaId is missing", async () => {
+    const result = await rimuoviAtleta(undefined, buildFormData({ gruppoId: "g1" }));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Gruppo does not exist", async () => {
+    gruppoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
+    });
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("removes the assignment (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaDeleteManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(gruppoAtletaDeleteManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", annoAgonisticoId: "anno-1", gruppoId: "g1" },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("is idempotent: returns success even if the assignment no longer exists (count 0)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaDeleteManyMock.mockResolvedValue({ count: 0 });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a friendly error, no crash, when the Gruppo lookup fails", async () => {
+    gruppoFindUniqueMock.mockRejectedValue(new Error("db down"));
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the delete fails", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaDeleteManyMock.mockRejectedValue(new Error("db down"));
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
     });
   });
 });

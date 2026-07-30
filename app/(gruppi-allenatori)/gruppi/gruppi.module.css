@@ -124,6 +124,42 @@
   padding: 2px 0;
 }
 
+/* Story 9.14 - riga Atleta con pulsante di rimozione, stesso stile compatto
+   di .bottoneCompatto (azione secondaria inline in un <li>). */
+.atletaAssegnata {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Review fix: padding/font-size allineati a .bottoneCompatto - la versione
+   originale (padding: 1px var(--space-2), font-size: 11px) era troppo
+   piccola per un target touch accessibile, coincideva con una lezione gia'
+   documentata in questo progetto (min-height/align-self non bastano da
+   soli, il figlio cliccabile resta piu' piccolo se non dimensionato
+   esplicitamente). */
+.bottoneRimuovi {
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneRimuovi:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneRimuovi:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .formCompatto {
   display: flex;
   flex-direction: column;

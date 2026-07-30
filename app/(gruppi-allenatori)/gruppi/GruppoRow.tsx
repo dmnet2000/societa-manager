@@ -2,17 +2,13 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { assegnaAllenatore, assegnaAtleta } from "./actions";
+import { AtletaAssegnata, type Atleta } from "./AtletaAssegnata";
 import styles from "./gruppi.module.css";
 
 type Allenatore = {
   id: string;
   nome: string;
   cognome: string;
-};
-
-type Atleta = {
-  id: string;
-  nome: string;
 };
 
 type Gruppo = {
@@ -104,7 +100,12 @@ export function GruppoRow({
       <td>
         <ul className={styles.listaAssegnati}>
           {gruppo.atlete.map((atleta) => (
-            <li key={atleta.id}>{atleta.nome}</li>
+            <AtletaAssegnata
+              key={atleta.id}
+              gruppoId={gruppo.id}
+              gruppoNome={gruppo.nome}
+              atleta={atleta}
+            />
           ))}
         </ul>
         <form

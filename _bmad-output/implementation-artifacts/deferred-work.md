@@ -413,3 +413,15 @@
 - Nessun controllo di sovrapposizione oraria per lo stesso Campo raggiungibile dalla modifica — stesso limite pre-esistente di `creaSlot`. [app/(orari-palestre)/slot/actions.ts]
 - Nessun test dedicato per `aggiornaSlot` su uno Slot cancellato concorrentemente (Prisma P2025) — il `catch` generico gestisce già il caso in sicurezza, solo non testato esplicitamente. [app/(orari-palestre)/slot/actions.test.ts]
 - Margine superiore raddoppiato nel form di modifica (`.form` e il primo `.campo` hanno entrambi `margin-top: var(--space-4)`) — stesso identico pattern già presente in `precaricamento-allenatori.module.css` (Story 9.9). [app/(orari-palestre)/slot/slot.module.css]
+
+## Deferred from: code review of 9-14-rimozione-atleta-da-gruppo (2026-07-29)
+
+- `deleteMany` ritorna comunque `{ success: true }` anche quando `count` è 0 perché l'Atleta è stata riassegnata a un altro Gruppo tra il caricamento della pagina e il click — stessa classe di ambiguità già accettata in Story 9.13 per `cancellaSlot`/`aggiornaSlot` su una riga cancellata concorrentemente. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- Nessun coordinamento tra "Assegna Atleta" e "Rimuovi" per la stessa Atleta — `atleteDisponibili` non filtrata (pre-esistente da Story 2.4, l'upsert lo rende comunque sicuro), i due `pending` non sono condivisi come in `AllenatoreRow.tsx`/`SlotRow.tsx` — stessa classe di race a bassa probabilità già tollerata altrove. [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx, AtletaAssegnata.tsx]
+- `console.error(err)` senza identificativi (`gruppoId`/`atletaId`) per correlare un errore in produzione — stessa convenzione identica in ogni altra Server Action del progetto. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- Nessun `aria-busy`/testo "in corso" oltre a `disabled` durante la rimozione — stessa convenzione già presente in ogni altro Client Component del progetto. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
+- `revalidatePath("/gruppi")` fuori dal blocco `try/catch` — stessa identica collocazione già usata in ogni altra Server Action del progetto. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- `window.confirm` bypassabile da una sottomissione del form non innescata dall'evento React `onSubmit` — stesso limite già presente nel pattern replicato (`AllenatoreRow.tsx`/`SlotRow.tsx`, Story 9.9/9.13). [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
+- Il messaggio di errore precedente resta visibile mentre un nuovo tentativo è `pending` — comportamento intrinseco dello stesso pattern `useActionState` già usato in ogni altro Client Component del progetto. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
+- `String(formData.get(...) ?? "")` non verifica che il valore non sia un `File` — stessa identica conversione già usata in ogni altra Server Action del progetto. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- `aria-label` identico per due Atlete con lo stesso `nome` nello stesso Gruppo — l'elenco mostra solo `nome` (mai `cognome`) fin da Story 2.4, stessa ambiguità di visualizzazione pre-esistente. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
