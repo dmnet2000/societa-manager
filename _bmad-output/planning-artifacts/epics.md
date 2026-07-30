@@ -1093,6 +1093,40 @@ so that posso vedere a colpo d'occhio le presenze di tutta la squadra in un mese
 
 **And** nessuna regressione sulla sezione "Il mio storico" (vista Atleta/Genitore, Story 3.2) — suite Vitest invariata
 
+### Story 9.18: Creazione di una nuova Atleta da parte dell'Allenatore
+
+As a Allenatore assegnato a un Gruppo,
+I want poter inserire una nuova Atleta che non trovo nell'elenco, direttamente dalla pagina del mio Gruppo,
+so that non devo aspettare che la Segreteria la registri altrove prima di poterla aggiungere alla squadra.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-30). Dati richiesti dall'utente: Cognome, Nome, data di nascita, Codice Fiscale (obbligatori); email e cellulare (opzionali, per comunicazioni). Punti tecnici emersi in analisi:
+- **AD-10 esteso**: oggi (onboarding-import) è l'unico proprietario dichiarato della creazione dei campi identitari di Atleta (`lib/db-rls/atleta.ts`, `creaAtleta`). Chiesto esplicitamente all'utente se allargare questo confine o mantenere la creazione formalmente dentro (onboarding-import): risposta → estendere AD-10, il form resta sulla pagina del Gruppo (gruppi-allenatori) e la nuova Server Action richiama la stessa `creaAtleta()` condivisa (nessuna duplicazione della logica di creazione).
+- **`nome`**: Atleta non ha una colonna `cognome` separata (a differenza di Allenatore, Story 9.5) — tutta l'anagrafica esistente (import federale, Story 1.2) salva "Cognome e Nome" concatenato in un'unica colonna `nome`. Il nuovo form mostra Cognome e Nome come due campi separati (migliore UX/validazione) ma li concatena nello stesso formato prima di scrivere su `nome`, per restare coerente con i dati già esistenti.
+- **`sesso`**: colonna obbligatoria (NOT NULL) su Atleta, non presente nell'elenco di campi richiesto dall'utente. Il Codice Fiscale la codifica deterministicamente (giorno di nascita +40 per il sesso femminile) — va derivata dal Codice Fiscale con una nuova funzione di decodifica in `lib/matching-codice-fiscale/` (oggi esiste solo la validazione di formato, `isCodiceFiscaleValido`, nessuna logica di decodifica).
+- **Notifica alla Segreteria**: il modello `Notifica` esistente (Story 4.2) è oggi a scopo singolo (`{id, atletaId, createdAt}`, pagina `/notifiche` mostra sempre "Nuovo certificato caricato per..."). Riusarlo senza modifiche mostrerebbe un messaggio falso per questo nuovo evento. Serve una nuova colonna `tipo` (enum, default `CERTIFICATO_CARICATO` per compatibilità con le righe esistenti, nuovo valore `NUOVO_ATLETA`) e la pagina `/notifiche` deve mostrare un testo diverso in base al tipo.
+- **Codice Fiscale duplicato**: `Atleta.codiceFiscale` è già `@unique` — un tentativo di inserire un Codice Fiscale già esistente in anagrafica deve essere rifiutato con un messaggio chiaro (l'Atleta esiste già, non va duplicata), non un errore generico di vincolo DB.
+- Assegnazione automatica: la nuova Atleta viene creata e assegnata contestualmente al Gruppo dell'Allenatore per l'Anno Agonistico corrente (stesso principio di risoluzione stagione già usato in `assegnaAtleta`, Story 2.4/9.15) — nessun passaggio manuale successivo di assegnazione.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore sulla pagina del proprio Gruppo, che non trova un'Atleta nell'elenco esistente
+**When** apre il form "nuova Atleta" e compila Cognome, Nome, data di nascita, Codice Fiscale (obbligatori) ed eventualmente email e/o cellulare (opzionali)
+**Then** una nuova Atleta viene creata (con `sesso` derivato dal Codice Fiscale) e assegnata automaticamente al Gruppo dell'Allenatore per la stagione corrente
+
+**Given** lo stesso form
+**When** il Codice Fiscale inserito non rispetta il formato valido, oppure appartiene a un'Atleta già esistente in anagrafica
+**Then** l'inserimento viene rifiutato con un messaggio chiaro, nessuna Atleta duplicata viene creata
+
+**Given** una nuova Atleta creata da un Allenatore con questo flusso
+**When** l'inserimento va a buon fine
+**Then** viene generata una notifica visibile alla Segreteria (e Admin/Dirigente) nella pagina `/notifiche`, con un testo che indica chiaramente che si tratta di una nuova Atleta (non di un certificato caricato) — nessuna regressione sulle notifiche esistenti di caricamento certificato (Story 4.2)
+
+**Given** un Allenatore che non gestisce un dato Gruppo
+**When** tenta di inserire una nuova Atleta su quel Gruppo (manomissione form/URL)
+**Then** l'operazione viene rifiutata, stesso principio di autorizzazione già stabilito per `assegnaAtleta` (Story 9.15)
+
+**And** nessuna regressione sul comportamento esistente di creazione Atleta da Onboarding-Import (Story 1.2) né di assegnazione Atleta a Gruppo (Story 2.4/9.15) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

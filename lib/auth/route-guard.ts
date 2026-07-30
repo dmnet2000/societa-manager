@@ -36,6 +36,11 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel
   },
   { prefix: "/palestre", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Palestre" },
   { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
+  {
+    prefix: "/i-miei-gruppi",
+    ruoliAmmessi: ["ALLENATORE"],
+    navLabel: "I miei Gruppi",
+  },
   { prefix: "/slot", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Slot" },
   { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
   { prefix: "/orari", ruoliAmmessi: ["SEGRETERIA"], navLabel: "Orari" },

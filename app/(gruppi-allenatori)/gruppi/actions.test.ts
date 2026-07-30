@@ -2,12 +2,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const requireRuoloMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
+const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const gruppoCreateMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
+const gruppoAllenatoreFindUniqueMock = vi.fn();
+const allenatoreFindFirstMock = vi.fn();
 const gruppoAtletaUpsertMock = vi.fn();
 const gruppoAtletaDeleteManyMock = vi.fn();
 const revalidatePathMock = vi.fn();
+const getUserMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -15,14 +19,28 @@ vi.mock("@/lib/auth/require-ruolo", () => ({
 
 vi.mock("@/lib/anno-agonistico", () => ({
   risolviAnnoAgonisticoCorrente: risolviAnnoAgonisticoCorrenteMock,
+  trovaAnnoAgonisticoCorrente: trovaAnnoAgonisticoCorrenteMock,
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     gruppo: { create: gruppoCreateMock, findUnique: gruppoFindUniqueMock },
-    gruppoAllenatore: { create: gruppoAllenatoreCreateMock },
+    allenatore: { findFirst: allenatoreFindFirstMock },
+    gruppoAllenatore: {
+      create: gruppoAllenatoreCreateMock,
+      findUnique: gruppoAllenatoreFindUniqueMock,
+    },
     gruppoAtleta: { upsert: gruppoAtletaUpsertMock, deleteMany: gruppoAtletaDeleteManyMock },
   },
+}));
+
+// Story 9.15: assegnaAtleta/rimuoviAtleta ora chiamano risolviPossessoGruppo,
+// che legge la sessione tramite createClient() - stesso pattern di mock gia'
+// usato in app/(partite-campionati)/campionati/actions.test.ts.
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({
+    auth: { getUser: getUserMock },
+  }),
 }));
 
 vi.mock("next/cache", () => ({
@@ -45,12 +63,25 @@ beforeEach(() => {
   requireRuoloMock.mockReset();
   requireRuoloMock.mockResolvedValue(null);
   risolviAnnoAgonisticoCorrenteMock.mockReset();
+  trovaAnnoAgonisticoCorrenteMock.mockReset();
+  trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
   gruppoCreateMock.mockReset();
   gruppoFindUniqueMock.mockReset();
   gruppoAllenatoreCreateMock.mockReset();
+  gruppoAllenatoreFindUniqueMock.mockReset();
+  allenatoreFindFirstMock.mockReset();
   gruppoAtletaUpsertMock.mockReset();
   gruppoAtletaDeleteManyMock.mockReset();
   revalidatePathMock.mockReset();
+  // Default: sessione ADMIN, cosi' i test gia' esistenti (scritti prima di
+  // Story 9.15) che non configurano esplicitamente getUserMock continuano a
+  // passare invariati - risolviPossessoGruppo si ferma al ramo ADMIN/
+  // DIRIGENTE senza mai interrogare Allenatore/GruppoAllenatore.
+  getUserMock.mockReset();
+  getUserMock.mockResolvedValue({
+    data: { user: { id: "utente-admin", app_metadata: { ruoli: ["ADMIN"] } } },
+    error: null,
+  });
 });
 
 describe("creaGruppo", () => {
@@ -240,7 +271,7 @@ describe("assegnaAtleta", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
     expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
     expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
   });
@@ -334,6 +365,116 @@ describe("assegnaAtleta", () => {
       error: { code: "INTERNAL", message: "Impossibile assegnare l'Atleta. Riprova." },
     });
   });
+
+  // Story 9.15 (AC #1, #2): un Allenatore puo' assegnare Atlete solo al
+  // proprio Gruppo (verificato tramite GruppoAllenatore), Admin/Dirigente
+  // restano ad accesso ampio (AC #3, gia' coperto dai test sopra col
+  // default ADMIN di getUserMock).
+  it("allows an ALLENATORE who manages the Gruppo to assign an Atleta (AC #1)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ gruppoId: "g1", allenatoreId: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat1" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAllenatoreFindUniqueMock).toHaveBeenCalledWith({
+      where: { gruppoId_allenatoreId: { gruppoId: "g1", allenatoreId: "all-1" } },
+    });
+    expect(gruppoAtletaUpsertMock).toHaveBeenCalled();
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE who does not manage the Gruppo, no write (AC #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-2", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-2" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE without a linked profile, no write (AC #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-senza-profilo", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (code review Story 9.15): GruppoAllenatore non viene mai
+  // ripulita al cambio stagione - senza il confronto con l'Anno Agonistico
+  // corrente, un Allenatore manterrebbe per sempre il possesso di un Gruppo
+  // di una stagione passata.
+  it("rejects (FORBIDDEN) an ALLENATORE whose Gruppo belongs to a past season, no write (review fix)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-3", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-3" });
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-corrente" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-vecchio" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL, no crash, when checking possesso throws (review fix)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-4", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockRejectedValue(new Error("db down"));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
+    });
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("rimuoviAtleta", () => {
@@ -350,7 +491,7 @@ describe("rimuoviAtleta", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
     expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
   });
 
@@ -439,5 +580,110 @@ describe("rimuoviAtleta", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
     });
+  });
+
+  // Story 9.15 (AC #1, #2): stesso principio di assegnaAtleta - un
+  // Allenatore puo' rimuovere Atlete solo dal proprio Gruppo.
+  it("allows an ALLENATORE who manages the Gruppo to remove an Atleta (AC #1)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ gruppoId: "g1", allenatoreId: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaDeleteManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAtletaDeleteManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", annoAgonisticoId: "anno-1", gruppoId: "g1" },
+    });
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE who does not manage the Gruppo, no write (AC #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-2", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-2" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE without a linked profile, no write (AC #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-senza-profilo", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (code review Story 9.15): stesso principio di assegnaAtleta -
+  // GruppoAllenatore non viene mai ripulita al cambio stagione.
+  it("rejects (FORBIDDEN) an ALLENATORE whose Gruppo belongs to a past season, no write (review fix)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-3", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-3" });
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-corrente" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-vecchio" });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL, no crash, when checking possesso throws (review fix)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-4", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockRejectedValue(new Error("db down"));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
+    });
+    expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
   });
 });

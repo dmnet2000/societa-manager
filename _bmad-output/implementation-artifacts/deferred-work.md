@@ -6,6 +6,15 @@
 - Finestra di autorizzazione stantia: se i Ruoli di un utente vengono revocati, il JWT già emesso mantiene i vecchi Ruoli fino al refresh/scadenza (`jwt_expiry` = 1h). Trade-off intrinseco della scelta architetturale AD-11 di leggere i Ruoli dal JWT invece che da una query Prisma ad ogni richiesta. [proxy.ts]
 - Nessuna funzionalità di logout in nessuna pagina di questo diff. Fuori scope per gli AC di questa storia (login/registrazione/route guard). [app/page.tsx]
 
+## Deferred from: code review of 9-15-assegnazione-atlete-da-allenatore (2026-07-30)
+
+- Doppia chiamata a `supabase.auth.getUser()` per invocazione (`requireRuolo` + `risolviPossessoGruppo`) — stesso pattern già presente e accettato in `app/(partite-campionati)/campionati/actions.ts` (Epic 10), non specifico di questa storia. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- Enumerazione minima: un Allenatore può distinguere "Gruppo inesistente" (VALIDATION) da "Gruppo non tuo" (FORBIDDEN) in base all'ordine dei controlli — rischio basso (id UUID non enumerabili, utenti già autenticati, dato non sensibile). [app/(gruppi-allenatori)/gruppi/actions.ts]
+- Selettore Atlete in `MioGruppoCard.tsx` senza ricerca/filtro né indicazione di quali siano già assegnate altrove — usabilità peggiorata su un elenco fino a ~200 righe, richiederebbe una feature di ricerca non specificata negli AC. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
+- `elencaAtlete(supabase)` eseguita incondizionatamente anche quando l'Allenatore non gestisce alcun Gruppo (a differenza della query `gruppoAtleteRows`, correttamente gated) — inefficienza minima su una tabella di ~200 righe. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
+- `prisma.allenatore.findFirst` assume un solo Allenatore per Utente, senza asserzione esplicita — stesso identico pattern già usato in `presenze/page.tsx`, `campionati/page.tsx`, `dati-fisici/page.tsx`. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
+- Nessun `try/catch` attorno alle letture in `Promise.all` di `page.tsx` — stesso identico pattern non-guardato già usato in `presenze/page.tsx` per le letture GET. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
+
 ## Deferred from: code review of 1-2-gestione-utenti-e-ruoli-admin (2026-07-16)
 
 - Nessuna normalizzazione case dell'email prima delle chiamate Supabase/Prisma — stesso pattern non normalizzato già presente in `registrati/actions.ts` di Story 1.1. [app/(amministrazione)/admin/actions.ts]
