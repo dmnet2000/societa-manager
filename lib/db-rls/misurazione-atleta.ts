@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DatiMisurazione = {
   tipo: string;
-  valore: number;
+  // Story 9.16 (AC #3): array invece di un singolo numero - un parametro a
+  // "tentativi: 3" (salto con rincorsa/salto a muro) genera piu' righe con
+  // lo stesso tipo/data/unitaMisura in un solo invio del form. Un parametro
+  // a tentativo singolo (o "Altro") resta un array di lunghezza 1 - stesso
+  // identico comportamento di prima (Story 6.1), non una regressione.
+  valori: number[];
   unitaMisura: string;
   data: string;
 };
@@ -25,16 +30,29 @@ export type Misurazione = {
 // si applica quando si scrive tramite supabase-js (stessa lezione di ogni
 // altra tabella di questo progetto). Log append-only: nessun update/delete,
 // nessun AC lo richiede.
+//
+// Story 9.16 (AC #3): un insert multi-riga (un array, non N chiamate
+// separate) - stesso numero di round-trip di prima per il caso a valore
+// singolo. Review fix: un solo round-trip HTTP verso PostgREST, non una
+// garanzia transazionale con rollback lato client in caso di fallimento
+// parziale - non e' una vera atomicita' applicativa, solo una singola
+// richiesta.
 export async function inserisciMisurazione(
   supabase: SupabaseClient,
   atletaId: string,
   dati: DatiMisurazione
 ): Promise<void> {
-  const { error } = await supabase.from("misurazioni_atleta").insert({
+  const { tipo, valori, unitaMisura, data } = dati;
+  const righe = valori.map((valore) => ({
     id: randomUUID(),
     atletaId,
-    ...dati,
-  });
+    tipo,
+    valore,
+    unitaMisura,
+    data,
+  }));
+
+  const { error } = await supabase.from("misurazioni_atleta").insert(righe);
 
   if (error) {
     throw new Error(error.message);

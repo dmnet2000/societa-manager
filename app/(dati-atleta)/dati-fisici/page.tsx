@@ -5,7 +5,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiMisurazioniPerAtleta } from "@/lib/db-rls/misurazione-atleta";
-import { raggruppaPerTipo } from "@/lib/misurazioni";
+import { PARAMETRI_STANDARD, raggruppaPerTipo, riduciMiglioreProData } from "@/lib/misurazioni";
 import { MisurazioneForm } from "./MisurazioneForm";
 import { GraficoMisurazione } from "./GraficoMisurazione";
 import styles from "./dati-fisici.module.css";
@@ -30,14 +30,30 @@ async function SezioneMisurazioni({
   return (
     <>
       <MisurazioneForm atletaId={atletaId} />
-      {gruppiGrafico.map((gruppo) => (
-        <GraficoMisurazione
-          key={gruppo.tipo}
-          tipo={gruppo.tipo}
-          unitaMisura={gruppo.unitaMisura}
-          punti={gruppo.punti}
-        />
-      ))}
+      {gruppiGrafico.map((gruppo) => {
+        // Review fix (AC #4): la riduzione "migliore per data" ha senso
+        // solo per i due parametri a piu' tentativi (test di elevazione,
+        // "piu' alto e' meglio") - applicarla a un tipo qualunque
+        // scarterebbe silenziosamente una correzione legittima per un
+        // parametro a tentativo singolo (es. Peso corretto due volte nello
+        // stesso giorno). Match esatto su gruppo.tipo: raggruppaPerTipo
+        // preserva il testo della prima occorrenza, che per un parametro
+        // standard e' sempre la stringa canonica del catalogo.
+        const eATreTentativi =
+          PARAMETRI_STANDARD.find((p) => p.tipo === gruppo.tipo)?.tentativi === 3;
+        const puntiGrafico = eATreTentativi
+          ? riduciMiglioreProData(gruppo.punti)
+          : gruppo.punti;
+
+        return (
+          <GraficoMisurazione
+            key={gruppo.tipo}
+            tipo={gruppo.tipo}
+            unitaMisura={gruppo.unitaMisura}
+            punti={puntiGrafico}
+          />
+        );
+      })}
       {misurazioni.length === 0 ? (
         <p className={styles.messaggioVuoto}>Nessuna misurazione registrata.</p>
       ) : (

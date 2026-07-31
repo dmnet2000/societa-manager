@@ -15,6 +15,12 @@
 - `prisma.allenatore.findFirst` assume un solo Allenatore per Utente, senza asserzione esplicita — stesso identico pattern già usato in `presenze/page.tsx`, `campionati/page.tsx`, `dati-fisici/page.tsx`. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
 - Nessun `try/catch` attorno alle letture in `Promise.all` di `page.tsx` — stesso identico pattern non-guardato già usato in `presenze/page.tsx` per le letture GET. [app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
 
+## Deferred from: code review of 9-16-parametri-standard-dati-fisici (2026-07-31)
+
+- `PARAMETRI_STANDARD` confronta `tipo` per uguaglianza esatta nel form, mentre `raggruppaPerTipo` normalizza (trim/lowercase) per il raggruppamento — un tipo "Altro" digitato con maiuscole/spazi diversi da uno standard (es. " Peso") si raggruppa con quello standard nel grafico/tabella ma non verrebbe mai riconosciuto come parametro standard dal selettore. Impatto pratico nullo oggi (nessun flusso di modifica/ripresentazione esiste). [lib/misurazioni/parametri-standard.ts]
+- Nessun annuncio per screen reader quando i campi tipo/unità diventano read-only dopo la scelta di un parametro standard — nessun'altra pagina di questo progetto usa `aria-live` per scenari simili, stesso livello di accessibilità di base già esistente. [app/(dati-atleta)/dati-fisici/MisurazioneForm.tsx]
+- L'errore di validazione sui 3 tentativi è un unico messaggio generico, non indica quale dei tre campi è invalido — coerente con la convenzione già stabilita in tutto il progetto (un solo messaggio di errore per form). [app/(dati-atleta)/dati-fisici/actions.ts]
+
 ## Deferred from: code review of 1-2-gestione-utenti-e-ruoli-admin (2026-07-16)
 
 - Nessuna normalizzazione case dell'email prima delle chiamate Supabase/Prisma — stesso pattern non normalizzato già presente in `registrati/actions.ts` di Story 1.1. [app/(amministrazione)/admin/actions.ts]

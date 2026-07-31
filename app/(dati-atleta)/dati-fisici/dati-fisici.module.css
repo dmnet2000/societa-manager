@@ -77,6 +77,20 @@
   outline-offset: 2px;
 }
 
+/* Story 9.16: tre campi "Tentativo" in riga per i parametri standard con
+   tentativi multipli (Salto con rincorsa/Salto a muro) - stesso principio
+   di .campiRiga (Story 9.13, SlotRow.tsx/NuovoSlotForm.tsx) per non
+   impilare verticalmente piu' campi dello stesso form. */
+.campiTentativo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.campiTentativo .campo {
+  flex: 1 1 100px;
+}
+
 .bottone {
   margin-top: var(--space-4);
   align-self: flex-start;
