@@ -1127,6 +1127,30 @@ so that non devo aspettare che la Segreteria la registri altrove prima di poterl
 
 **And** nessuna regressione sul comportamento esistente di creazione Atleta da Onboarding-Import (Story 1.2) né di assegnazione Atleta a Gruppo (Story 2.4/9.15) — suite Vitest invariata
 
+### Story 9.19: Badge "certificato in scadenza" nell'elenco Atlete di Gruppo e in Vista Dirigente
+
+As a Allenatore, Admin/Dirigente,
+I want vedere subito quali Atlete di un Gruppo hanno il certificato medico in scadenza entro un mese, ovunque sia mostrato l'elenco delle Atlete del Gruppo (o un suo riepilogo aggregato),
+so that posso sollecitare per tempo il rinnovo senza dover controllare atleta per atleta.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-07-31), emersa durante la review di Story 9.17. Perimetro deciso con l'utente: solo `/gruppi` (Admin/Dirigente), `/i-miei-gruppi` (Allenatore, Story 9.15) e `/vista-dirigente` (Story 5.1/5.2, il "riepilogo" — già mostra un conteggio aggregato "in scadenza" per Gruppo, non ancora i nomi) — escluse deliberatamente le altre pagine che citano nomi di Atlete (roster `/presenze`, select `/dati-fisici`, `/conferma-iscrizioni`, `/conferma-certificati`, griglia `/storico-presenze`). Il progetto ha già, in tre punti diversi, la stessa logica "giorni alla scadenza" con soglia di 30 giorni (`calcolaGiorniAScadenza`, Story 4.6, già riusata due volte cross-modulo) — questa storia la riusa una volta di più (nessuna nuova soglia/funzione di calcolo da zero) e riusa il pattern di drill-down già esistente in `/vista-dirigente` (Story 5.1 AC #6) per il secondo bucket "in scadenza".
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore o un Admin/Dirigente sulla pagina `/i-miei-gruppi` o `/gruppi`
+**When** visualizza l'elenco delle Atlete assegnate a un Gruppo
+**Then** ogni Atleta con il certificato medico che scade tra 0 e 30 giorni da oggi mostra un badge "Certificato in scadenza" accanto al nome (stesso stile del badge "Certificato scaduto" già esistente in `/presenze`, variante warning)
+
+**Given** un'Atleta senza certificato, con certificato scaduto, o con certificato in regola (oltre 30 giorni)
+**When** visualizzata nello stesso elenco
+**Then** nessun badge "in scadenza" viene mostrato
+
+**Given** un Dirigente sulla pagina `/vista-dirigente`
+**When** visualizza la card di un Gruppo con almeno un'Atleta "in scadenza"
+**Then** lo stat-tile "in scadenza" diventa cliccabile/espandibile e mostra i nomi delle Atlete in scadenza, stesso identico pattern del drill-down "scaduto" già esistente (Story 5.1 AC #6)
+
+**And** nessuna regressione sul comportamento esistente di `/gruppi`, `/i-miei-gruppi`, `/vista-dirigente` (Story 2.4/9.9/9.14/9.15/5.1/5.2) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

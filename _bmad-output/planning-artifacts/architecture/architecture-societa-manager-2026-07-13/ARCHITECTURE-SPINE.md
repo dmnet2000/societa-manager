@@ -76,10 +76,10 @@ Servizi condivisi trasversali (Auth, Email, Storage, Motore Matching Codice Fisc
 - **Prevents:** Prisma, connesso direttamente a Postgres, bypassa PostgREST — i claim del JWT (AD-4) non sono automaticamente nella sessione, quindi le policy RLS rischiano di essere valutate senza il contesto utente corretto
 - **Rule:** le query a runtime sulle tabelle protette da RLS passano dal client Supabase (`supabase-js`) con la sessione dell'utente autenticato, così PostgREST inoltra i claim e le policy si applicano correttamente; Prisma resta il proprietario dello schema/migrazioni (AD-3) per tutte le tabelle e viene usato a runtime, con connessione privilegiata, solo per le tabelle non protette da RLS (Palestra, Campo, Slot, Gruppo, Allenatore, Utente, UtenteRuolo).
 
-### AD-10 — Atleta: proprietario unico dell'entità
+### AD-10 — Atleta: proprietari autorizzati dei campi identitari `[AGGIORNATO, 2026-07-31 — Story 9.18]`
 - **Binds:** Atleta
-- **Prevents:** più moduli (Certificati-Medici, Iscrizioni, Dati-Atleta, Onboarding-Import) che scrivono in modo scoordinato sulle stesse colonne di Atleta
-- **Rule:** Onboarding-Import è l'unico proprietario della creazione/aggiornamento dei campi identitari di Atleta (nome, Codice Fiscale, categoria, ecc.); Certificati-Medici, Iscrizioni e Dati-Atleta creano/aggiornano solo le proprie entità correlate (CertificatoMedico, Iscrizione, dati fisici) via FK verso Atleta, mai colonne di Atleta stessa.
+- **Prevents:** più moduli (Certificati-Medici, Iscrizioni, Dati-Atleta) che scrivono in modo scoordinato sulle stesse colonne di Atleta al di fuori dei due punti esplicitamente autorizzati sotto
+- **Rule:** la creazione/aggiornamento dei campi identitari di Atleta (nome, Codice Fiscale, categoria, ecc.) passa sempre dalla stessa funzione condivisa `creaAtleta`/`aggiornaAtleta` (`lib/db-rls/atleta.ts`) — mai duplicata. Due soli moduli sono autorizzati a richiamarla: **Onboarding-Import** (import federale/precaricamento, flusso originale) e, dalla Story 9.18, **Gruppi-Allenatori** (un Allenatore può creare una nuova Atleta non ancora in anagrafica direttamente dalla pagina del proprio Gruppo, `/i-miei-gruppi`, assegnandola contestualmente). Decisione presa esplicitamente con l'utente in fase di creazione della Story 9.18 — non dedurre in una futura review che questo sia un confine rotto per errore. Certificati-Medici, Iscrizioni e Dati-Atleta restano esclusi: creano/aggiornano solo le proprie entità correlate (CertificatoMedico, Iscrizione, dati fisici) via FK verso Atleta, mai colonne di Atleta stessa.
 
 ### AD-11 — Ruoli specchiati su Supabase `app_metadata`, Prisma resta fonte di verità
 - **Binds:** Utente, UtenteRuolo (relazione molti-a-molti, un Utente può avere più Ruoli)
@@ -171,7 +171,7 @@ prisma/
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
 | Orari, Palestre, Campi, Slot (FR-1..FR-5) | `app/(orari-palestre)/` | AD-2, AD-8 |
-| Gruppi e Allenatori (FR-6, FR-7) | `app/(gruppi-allenatori)/` | AD-2, AD-8 |
+| Gruppi e Allenatori (FR-6, FR-7) | `app/(gruppi-allenatori)/` | AD-2, AD-8, AD-10 |
 | Presenze (FR-8..FR-10) | `app/(presenze)/`, `lib/db-rls/` | AD-2, AD-4, AD-9 |
 | Certificati Medici (FR-11..FR-16) | `app/(certificati-medici)/`, `lib/storage/`, `lib/email/`, `lib/db-rls/` | AD-2, AD-4, AD-6, AD-7, AD-9, AD-10, AD-12 |
 | Iscrizioni (FR-17) | `app/(iscrizioni)/`, `lib/db-rls/` | AD-2, AD-4, AD-9 |

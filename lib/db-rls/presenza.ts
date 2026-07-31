@@ -95,3 +95,42 @@ export async function leggiStoricoPresenzePerAtleta(
 
   return righe ?? [];
 }
+
+export type PresenzaGriglia = { atletaId: string; data: string; presente: boolean };
+
+// Story 9.17 (AC #1, #2, #3): presenze di piu' Atlete su un intervallo di
+// date (un mese), filtrate anche per gli Slot di UN Gruppo specifico - a
+// differenza di leggiStoricoPresenzePerAtleta (storico completo di una sola
+// Atleta, Gruppo per Gruppo), qui il filtro su slotIds evita che le Presenze
+// di un Gruppo precedente (Atleta riassegnata, Story 9.15) compaiano nella
+// griglia del nuovo Gruppo. `giorni` e' l'array gia' ordinato prodotto da
+// giorniDelMese() - si usa solo il primo/ultimo elemento come range.
+export async function leggiPresenzeGriglia(
+  supabase: SupabaseClient,
+  slotIds: string[],
+  atletaIds: string[],
+  giorni: string[]
+): Promise<PresenzaGriglia[]> {
+  // Guardia esplicita: .in(col, []) ha semantica non affidabile in
+  // PostgREST - un Gruppo senza Slot o senza Atlete non ha comunque nulla
+  // da mostrare, nessuna query necessaria. Review fix: anche giorni vuoto
+  // va guardato - senza, giorni[0]/giorni[giorni.length-1] sarebbero
+  // entrambi undefined, passati a .gte("data", undefined).lte(...).
+  if (slotIds.length === 0 || atletaIds.length === 0 || giorni.length === 0) {
+    return [];
+  }
+
+  const { data: righe, error } = await supabase
+    .from("presenze")
+    .select("atletaId, data, presente")
+    .in("slotId", slotIds)
+    .in("atletaId", atletaIds)
+    .gte("data", giorni[0])
+    .lte("data", giorni[giorni.length - 1]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return righe ?? [];
+}

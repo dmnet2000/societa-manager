@@ -12,6 +12,12 @@ const gruppoAtletaUpsertMock = vi.fn();
 const gruppoAtletaDeleteManyMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const getUserMock = vi.fn();
+const creaAtletaMock = vi.fn();
+const creaNotificaMock = vi.fn();
+// Review fix (code review Story 9.18): il controllo Codice Fiscale duplicato
+// in creaEAssegnaAtleta usa il client supabase (RLS, AD-9), non piu'
+// prisma.atleta.findUnique - mockato qui come .from("atlete")...maybeSingle().
+const atletaMaybeSingleMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -34,12 +40,30 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+// Story 9.18: creaEAssegnaAtleta riusa creaAtleta/creaNotifica condivise -
+// mockate qui come funzioni intere (non i dettagli interni supabase-js di
+// quei moduli, gia' testati per conto proprio in lib/db-rls/*.test.ts).
+vi.mock("@/lib/db-rls/atleta", () => ({
+  creaAtleta: creaAtletaMock,
+}));
+
+vi.mock("@/lib/db-rls/notifica", () => ({
+  creaNotifica: creaNotificaMock,
+}));
+
 // Story 9.15: assegnaAtleta/rimuoviAtleta ora chiamano risolviPossessoGruppo,
 // che legge la sessione tramite createClient() - stesso pattern di mock gia'
 // usato in app/(partite-campionati)/campionati/actions.test.ts.
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: getUserMock },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: atletaMaybeSingleMock,
+        }),
+      }),
+    }),
   }),
 }));
 
@@ -47,9 +71,8 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaGruppo, assegnaAllenatore, assegnaAtleta, rimuoviAtleta } = await import(
-  "./actions"
-);
+const { creaGruppo, assegnaAllenatore, assegnaAtleta, rimuoviAtleta, creaEAssegnaAtleta } =
+  await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -72,6 +95,9 @@ beforeEach(() => {
   allenatoreFindFirstMock.mockReset();
   gruppoAtletaUpsertMock.mockReset();
   gruppoAtletaDeleteManyMock.mockReset();
+  atletaMaybeSingleMock.mockReset();
+  creaAtletaMock.mockReset();
+  creaNotificaMock.mockReset();
   revalidatePathMock.mockReset();
   // Default: sessione ADMIN, cosi' i test gia' esistenti (scritti prima di
   // Story 9.15) che non configurano esplicitamente getUserMock continuano a
@@ -685,5 +711,285 @@ describe("rimuoviAtleta", () => {
       error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
     });
     expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("creaEAssegnaAtleta", () => {
+  // "RSSMRA85M01H501U" decodifica giorno 01 -> M; "...M41..." -> F (Story 9.18).
+  const campiValidi = {
+    gruppoId: "g1",
+    cognome: "Rossi",
+    nome: "Maria",
+    dataNascita: "2012-05-01",
+    codiceFiscale: "RSSMRA85M01H501U",
+  };
+
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente/Allenatore", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when gruppoId is missing", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, gruppoId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when cognome is missing", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, cognome: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il cognome è obbligatorio." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when nome is missing", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, nome: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome è obbligatorio." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when dataNascita is missing", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, dataNascita: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La data di nascita è obbligatoria." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale is missing", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il codice fiscale è obbligatorio." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale format is invalid", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "troppo-corto" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Codice fiscale non valido." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the sesso cannot be derived from codiceFiscale (review: giorno fuori range)", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "RSSMRA85M99H501U" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Impossibile determinare il sesso dal codice fiscale inserito. Verifica il codice fiscale.",
+      },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Gruppo does not exist", async () => {
+    gruppoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE who does not manage the Gruppo, no write (AC #4)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale already belongs to an existing Atleta (AC #2)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: { id: "atleta-esistente" }, error: null });
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Esiste già un'Atleta con questo Codice Fiscale." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("creates, assigns and notifies on success (AC #1, #3)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-1");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat1" });
+    creaNotificaMock.mockResolvedValue(undefined);
+
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, email: "maria@example.com", cellulare: "3331234567" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        codiceFiscale: "RSSMRA85M01H501U",
+        nome: "Rossi Maria",
+        sesso: "M",
+        email: "maria@example.com",
+        cellulare: "3331234567",
+      })
+    );
+    expect(gruppoAtletaUpsertMock).toHaveBeenCalledWith({
+      where: {
+        atletaId_annoAgonisticoId: { atletaId: "nuova-atleta-1", annoAgonisticoId: "anno-1" },
+      },
+      create: { atletaId: "nuova-atleta-1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
+      update: { gruppoId: "g1" },
+    });
+    expect(creaNotificaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "nuova-atleta-1",
+      "NUOVO_ATLETA"
+    );
+    // Review fix (code review Story 9.18): ADMIN/DIRIGENTE possono chiamare
+    // questa action e vedono anche /gruppi, non solo /i-miei-gruppi.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/i-miei-gruppi");
+  });
+
+  it("treats email/cellulare as null when omitted (comportamento opzionale)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-2");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat2" });
+    creaNotificaMock.mockResolvedValue(undefined);
+
+    await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(creaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ email: null, cellulare: null })
+    );
+  });
+
+  it("returns INTERNAL, no crash, when creaAtleta fails, no assignment attempted", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockRejectedValue(new Error("db down"));
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile creare l'Atleta. Riprova." },
+    });
+    expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL when assignment fails after a successful creation", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-3");
+    gruppoAtletaUpsertMock.mockRejectedValue(new Error("db down"));
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile assegnare la nuova Atleta al Gruppo. Riprova." },
+    });
+  });
+
+  it("does not fail the action when creaNotifica fails (non-blocking side effect, same pattern as certificato-medico)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-4");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat4" });
+    creaNotificaMock.mockRejectedValue(new Error("notifica fallita"));
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a validation error when dataNascita cannot be parsed (review: bypass del widget date)", async () => {
+    const result = await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, dataNascita: "non-una-data" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data di nascita non valida." },
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (code review Story 9.18): nessun test precedente esercitava il
+  // percorso di successo con un vero attore ALLENATORE proprietario del
+  // Gruppo - tutti giravano sotto la sessione ADMIN di default (beforeEach).
+  it("creates, assigns and notifies on success for an ALLENATORE who owns the Gruppo (AC #1, #4)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ gruppoId: "g1", allenatoreId: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-5");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat5" });
+    creaNotificaMock.mockResolvedValue(undefined);
+
+    const result = await creaEAssegnaAtleta(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(creaAtletaMock).toHaveBeenCalled();
   });
 });

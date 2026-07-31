@@ -14,7 +14,13 @@ const orderMock = vi.fn(() => ({ order: orderIdMock }));
 // .eq("slotId").eq("data")) sia .order() (leggiStoricoPresenzePerAtleta:
 // .eq("atletaId").order("data").order("id")).
 const eqSlotMock = vi.fn(() => ({ eq: eqDataMock, order: orderMock }));
-const selectMock = vi.fn(() => ({ eq: eqSlotMock }));
+// Story 9.17: leggiPresenzeGriglia usa .select().in().in().gte().lte() -
+// catena separata da .eq(), non interferisce con le altre due funzioni.
+const lteMock = vi.fn();
+const gteMock = vi.fn(() => ({ lte: lteMock }));
+const inAtletaMock = vi.fn(() => ({ gte: gteMock }));
+const inSlotMock = vi.fn(() => ({ in: inAtletaMock }));
+const selectMock = vi.fn(() => ({ eq: eqSlotMock, in: inSlotMock }));
 
 const fromMock = vi.fn(() => ({
   upsert: upsertMock,
@@ -27,6 +33,7 @@ const {
   registraPresenze,
   leggiPresenzePerSlotEData,
   leggiStoricoPresenzePerAtleta,
+  leggiPresenzeGriglia,
 } = await import("./presenza");
 
 describe("registraPresenze", () => {
@@ -149,6 +156,74 @@ describe("leggiStoricoPresenzePerAtleta", () => {
 
     await expect(
       leggiStoricoPresenzePerAtleta(supabase, "a1")
+    ).rejects.toThrow("boom");
+  });
+});
+
+describe("leggiPresenzeGriglia", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    selectMock.mockClear();
+    inSlotMock.mockClear();
+    inAtletaMock.mockClear();
+    gteMock.mockClear();
+    lteMock.mockReset();
+  });
+
+  it("returns le presenze filtrate per Slot/Atlete/intervallo di date (Story 9.17 AC #1, #2)", async () => {
+    lteMock.mockResolvedValue({
+      data: [
+        { atletaId: "a1", data: "2026-07-06", presente: true },
+        { atletaId: "a2", data: "2026-07-13", presente: false },
+      ],
+      error: null,
+    });
+
+    const result = await leggiPresenzeGriglia(
+      supabase,
+      ["s1", "s2"],
+      ["a1", "a2"],
+      ["2026-07-01", "2026-07-02", "2026-07-31"]
+    );
+
+    expect(fromMock).toHaveBeenCalledWith("presenze");
+    expect(selectMock).toHaveBeenCalledWith("atletaId, data, presente");
+    expect(inSlotMock).toHaveBeenCalledWith("slotId", ["s1", "s2"]);
+    expect(inAtletaMock).toHaveBeenCalledWith("atletaId", ["a1", "a2"]);
+    expect(gteMock).toHaveBeenCalledWith("data", "2026-07-01");
+    expect(lteMock).toHaveBeenCalledWith("data", "2026-07-31");
+    expect(result).toEqual([
+      { atletaId: "a1", data: "2026-07-06", presente: true },
+      { atletaId: "a2", data: "2026-07-13", presente: false },
+    ]);
+  });
+
+  it("returns [] senza interrogare Supabase quando slotIds è vuoto (AC #3, nessun Gruppo senza Slot)", async () => {
+    const result = await leggiPresenzeGriglia(supabase, [], ["a1"], ["2026-07-01"]);
+
+    expect(result).toEqual([]);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("returns [] senza interrogare Supabase quando atletaIds è vuoto", async () => {
+    const result = await leggiPresenzeGriglia(supabase, ["s1"], [], ["2026-07-01"]);
+
+    expect(result).toEqual([]);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("returns [] senza interrogare Supabase quando giorni è vuoto (review fix)", async () => {
+    const result = await leggiPresenzeGriglia(supabase, ["s1"], ["a1"], []);
+
+    expect(result).toEqual([]);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when the query fails", async () => {
+    lteMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(
+      leggiPresenzeGriglia(supabase, ["s1"], ["a1"], ["2026-07-01", "2026-07-31"])
     ).rejects.toThrow("boom");
   });
 });

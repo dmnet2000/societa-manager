@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TipoNotifica } from "@prisma/client";
 
 // AD-4/AD-9: Notifica e' protetta da RLS (Story 4.2) - il client Supabase
 // passato deve avere la sessione dell'utente autenticato. `id` va generato
@@ -9,13 +10,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // tabella di questo progetto). `createdAt` NON va nel payload: ha
 // `DEFAULT CURRENT_TIMESTAMP` a livello Postgres (unico caso in questo
 // schema con un default DB-side per una colonna diversa da un id).
+// Story 9.18: terzo parametro opzionale con default - il chiamante
+// esistente (certificato-medico/actions.ts, Story 4.2) continua a
+// compilare invariato, senza passare `tipo`.
 export async function creaNotifica(
   supabase: SupabaseClient,
-  atletaId: string
+  atletaId: string,
+  tipo: TipoNotifica = "CERTIFICATO_CARICATO"
 ): Promise<void> {
   const { error } = await supabase.from("notifiche").insert({
     id: randomUUID(),
     atletaId,
+    tipo,
   });
 
   if (error) {
@@ -26,6 +32,7 @@ export async function creaNotifica(
 export type NotificaElenco = {
   id: string;
   atletaId: string;
+  tipo: TipoNotifica;
   createdAt: string;
 };
 
@@ -41,7 +48,7 @@ export async function elencaNotifiche(
 ): Promise<NotificaElenco[]> {
   const { data, error } = await supabase
     .from("notifiche")
-    .select("id, atletaId, createdAt")
+    .select("id, atletaId, tipo, createdAt")
     .order("createdAt", { ascending: false })
     .limit(50);
 

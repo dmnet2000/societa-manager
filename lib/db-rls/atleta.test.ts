@@ -54,6 +54,20 @@ describe("creaAtleta", () => {
       "insert failed"
     );
   });
+
+  it("includes email/cellulare when provided (Story 9.18)", async () => {
+    insertMock.mockResolvedValue({ error: null });
+
+    await creaAtleta(supabase, {
+      ...datiEsempio,
+      email: "genitore@example.com",
+      cellulare: "3331234567",
+    });
+
+    const payload = insertMock.mock.calls[0][0];
+    expect(payload.email).toBe("genitore@example.com");
+    expect(payload.cellulare).toBe("3331234567");
+  });
 });
 
 describe("aggiornaAtleta", () => {

@@ -42,8 +42,14 @@ export default async function NotifichePage() {
         <ul className={styles.lista}>
           {righe.map(({ notifica, atleta }) => (
             <li key={notifica.id} className={styles.riga}>
-              Nuovo certificato caricato per {atleta.nome}, il{" "}
-              {new Date(notifica.createdAt).toLocaleString("it-IT")}
+              {/* Story 9.18 (AC #3): testo distinto per tipo - default
+                  CERTIFICATO_CARICATO invariato (Story 4.2). Review fix:
+                  nessuna attribuzione di Ruolo nel testo - creaEAssegnaAtleta
+                  e' chiamabile anche da ADMIN/DIRIGENTE, non solo Allenatore. */}
+              {notifica.tipo === "NUOVO_ATLETA"
+                ? `Nuova Atleta inserita: ${atleta.nome}`
+                : `Nuovo certificato caricato per ${atleta.nome}`}
+              , il {new Date(notifica.createdAt).toLocaleString("it-IT")}
             </li>
           ))}
         </ul>

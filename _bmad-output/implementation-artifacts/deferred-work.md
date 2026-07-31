@@ -21,6 +21,16 @@
 - Nessun annuncio per screen reader quando i campi tipo/unità diventano read-only dopo la scelta di un parametro standard — nessun'altra pagina di questo progetto usa `aria-live` per scenari simili, stesso livello di accessibilità di base già esistente. [app/(dati-atleta)/dati-fisici/MisurazioneForm.tsx]
 - L'errore di validazione sui 3 tentativi è un unico messaggio generico, non indica quale dei tre campi è invalido — coerente con la convenzione già stabilita in tutto il progetto (un solo messaggio di errore per form). [app/(dati-atleta)/dati-fisici/actions.ts]
 
+## Deferred from: code review of 9-17-griglia-mensile-presenze-per-gruppo (2026-07-31)
+
+- `<input type="month">` ha supporto browser non universale e nessun `min`/`max` — mitigato in buona parte dal fallback al mese corrente per input malformato, un `min`/`max` resta un miglioramento cosmetico. [app/(presenze)/storico-presenze/page.tsx]
+- Il ramo di autorizzazione `gruppoValido` (AC #4) non ha test dedicati — nessuna pagina di questo progetto ha mai avuto test per la propria logica di autorizzazione lato GET (stesso limite di `presenze/page.tsx`, `dati-fisici/page.tsx`). [app/(presenze)/storico-presenze/page.tsx]
+- Stesso messaggio "Gruppo non trovato tra i tuoi" mostrato sia per un Gruppo manomesso sia per un link obsoleto quando non esiste un Anno Agonistico corrente — casistica rara. [app/(presenze)/storico-presenze/page.tsx]
+- `leggiPresenzeGriglia` riceve l'intero array `giorni` (28-31 elementi) ma usa solo il primo/ultimo — un parametro `{ inizio, fine }` sarebbe più esplicito, refactor di forma dell'API senza impatto funzionale. [lib/db-rls/presenza.ts]
+- `prisma.slot.findMany` legge tutti gli Slot mai creati per il Gruppo, non filtrati per il mese selezionato, solo per costruire `slotIds` — inefficienza minima, scala ridotta del progetto. [app/(presenze)/storico-presenze/page.tsx]
+- Nessun `<caption>`/legenda sulla tabella della griglia per screen reader — stesso livello di accessibilità di base già esistente in ogni altra tabella del progetto. [app/(presenze)/storico-presenze/page.tsx]
+- Due righe Presenza per la stessa Atleta+data da due Slot diversi dello stesso Gruppo lo stesso giorno di calendario — la `Map` tiene silenziosamente solo l'ultima incontrata; casistica rara, la rappresentazione corretta richiederebbe una decisione di prodotto non coperta da alcun AC. [app/(presenze)/storico-presenze/page.tsx]
+
 ## Deferred from: code review of 1-2-gestione-utenti-e-ruoli-admin (2026-07-16)
 
 - Nessuna normalizzazione case dell'email prima delle chiamate Supabase/Prisma — stesso pattern non normalizzato già presente in `registrati/actions.ts` di Story 1.1. [app/(amministrazione)/admin/actions.ts]
@@ -428,6 +438,12 @@
 - Nessun controllo di sovrapposizione oraria per lo stesso Campo raggiungibile dalla modifica — stesso limite pre-esistente di `creaSlot`. [app/(orari-palestre)/slot/actions.ts]
 - Nessun test dedicato per `aggiornaSlot` su uno Slot cancellato concorrentemente (Prisma P2025) — il `catch` generico gestisce già il caso in sicurezza, solo non testato esplicitamente. [app/(orari-palestre)/slot/actions.test.ts]
 - Margine superiore raddoppiato nel form di modifica (`.form` e il primo `.campo` hanno entrambi `margin-top: var(--space-4)`) — stesso identico pattern già presente in `precaricamento-allenatori.module.css` (Story 9.9). [app/(orari-palestre)/slot/slot.module.css]
+
+## Deferred from: code review of 9-18-creazione-nuova-atleta-da-allenatore (2026-07-31)
+
+- Race TOCTOU sul controllo Codice Fiscale duplicato in `creaEAssegnaAtleta` (check-then-insert, non atomico) — stessa classe di rischio a bassa probabilità già accettata in Story 1.4/1.5/9.5/9.9 (singolo Admin/piccola società). Un submit perdente in una race concorrente riceve il messaggio generico INTERNAL invece di quello specifico "Esiste già un'Atleta con questo Codice Fiscale.". [app/(gruppi-allenatori)/gruppi/actions.ts]
+- Nessun rollback se l'upsert di assegnazione al Gruppo fallisce dopo la creazione riuscita dell'Atleta in `creaEAssegnaAtleta` — mitigato: l'Atleta orfana (creata ma non assegnata) ricompare comunque nel form "Assegna Atleta" esistente per un tentativo successivo. Stesso principio "nessun rollback automatico" già accettato ovunque nel progetto fin da Story 1.1. [app/(gruppi-allenatori)/gruppi/actions.ts]
+- `isCodiceFiscaleValido` non fa un controllo del checksum, solo del formato (16 caratteri alfanumerici) — limite preesistente da Story 1.4, riusato senza modifiche da `creaEAssegnaAtleta` per gating della creazione di una nuova identità Atleta. [lib/matching-codice-fiscale/valida-codice-fiscale.ts]
 
 ## Deferred from: code review of 9-14-rimozione-atleta-da-gruppo (2026-07-29)
 

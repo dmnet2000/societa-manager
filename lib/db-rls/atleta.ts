@@ -2,8 +2,11 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// AD-10: solo i campi identitari di Atleta, di proprieta' esclusiva di
-// Onboarding-Import - nessun altro modulo scrive qui.
+// AD-10 (esteso, Story 9.18): campi identitari di Atleta - creazione/
+// aggiornamento passano sempre da qui, mai duplicati altrove. Due soli
+// moduli autorizzati a chiamare creaAtleta/aggiornaAtleta: Onboarding-Import
+// (proprietario originale) e, dalla Story 9.18, Gruppi-Allenatori
+// (creaEAssegnaAtleta, /i-miei-gruppi) - vedi ARCHITECTURE-SPINE.md.
 export type DatiAtletaIdentitari = {
   codiceFiscale: string;
   nome: string;
@@ -18,6 +21,11 @@ export type DatiAtletaIdentitari = {
   categoria?: string | null;
   matricola?: string | null;
   dataPrimoTesseramento?: Date | null;
+  // Story 9.18: contatti opzionali, valorizzati quando un Allenatore crea
+  // una nuova Atleta dalla pagina del proprio Gruppo - assenti per
+  // l'import federale (Onboarding-Import), che non li fornisce.
+  email?: string | null;
+  cellulare?: string | null;
 };
 
 function serializza(dati: DatiAtletaIdentitari) {

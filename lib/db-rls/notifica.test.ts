@@ -21,7 +21,7 @@ describe("creaNotifica", () => {
     insertMock.mockReset();
   });
 
-  it("inserisce una notifica per l'Atleta con un id generato esplicitamente (AC #1)", async () => {
+  it("inserisce una notifica per l'Atleta con un id generato esplicitamente, tipo CERTIFICATO_CARICATO di default (AC #1, comportamento invariato Story 4.2)", async () => {
     insertMock.mockResolvedValue({ error: null });
 
     await creaNotifica(supabase, "atleta-1");
@@ -29,12 +29,23 @@ describe("creaNotifica", () => {
     expect(fromMock).toHaveBeenCalledWith("notifiche");
     const payload = insertMock.mock.calls[0][0];
     expect(payload.atletaId).toBe("atleta-1");
+    expect(payload.tipo).toBe("CERTIFICATO_CARICATO");
     expect(typeof payload.id).toBe("string");
     expect(payload.id.length).toBeGreaterThan(0);
     // createdAt ha DEFAULT CURRENT_TIMESTAMP a livello Postgres - non deve
     // essere nel payload (unico caso in questo schema con un default
     // DB-side per una colonna diversa da un id).
     expect(payload).not.toHaveProperty("createdAt");
+  });
+
+  it("inserisce una notifica con tipo NUOVO_ATLETA quando esplicitato (Story 9.18)", async () => {
+    insertMock.mockResolvedValue({ error: null });
+
+    await creaNotifica(supabase, "atleta-2", "NUOVO_ATLETA");
+
+    const payload = insertMock.mock.calls[0][0];
+    expect(payload.atletaId).toBe("atleta-2");
+    expect(payload.tipo).toBe("NUOVO_ATLETA");
   });
 
   it("throws when the insert fails (incluso un rifiuto RLS, AC #2/#3)", async () => {
@@ -56,10 +67,10 @@ describe("elencaNotifiche", () => {
     limitMock.mockReset();
   });
 
-  it("elenca le notifiche ordinate per data decrescente, colonne esplicite, limitate (AC #1, #5, review fix)", async () => {
+  it("elenca le notifiche ordinate per data decrescente, colonne esplicite (incluso tipo), limitate (AC #1, #5, review fix)", async () => {
     const righe = [
-      { id: "n2", atletaId: "atleta-2", createdAt: "2026-07-18T10:00:00.000Z" },
-      { id: "n1", atletaId: "atleta-1", createdAt: "2026-07-17T10:00:00.000Z" },
+      { id: "n2", atletaId: "atleta-2", tipo: "NUOVO_ATLETA", createdAt: "2026-07-18T10:00:00.000Z" },
+      { id: "n1", atletaId: "atleta-1", tipo: "CERTIFICATO_CARICATO", createdAt: "2026-07-17T10:00:00.000Z" },
     ];
     limitMock.mockResolvedValue({ data: righe, error: null });
 
@@ -70,7 +81,7 @@ describe("elencaNotifiche", () => {
     // ogni altra funzione di lettura in lib/db-rls/, es. elencaAtlete), cosi'
     // un futuro campo aggiunto alla tabella non viene esposto al client senza
     // una decisione consapevole in code review.
-    expect(selectQueryMock).toHaveBeenCalledWith("id, atletaId, createdAt");
+    expect(selectQueryMock).toHaveBeenCalledWith("id, atletaId, tipo, createdAt");
     expect(orderMock).toHaveBeenCalledWith("createdAt", { ascending: false });
     // review fix: limite alla lista - la tabella cresce senza limite (nessuna
     // deduplicazione/stato "letta", scelta deliberata di questa storia), un

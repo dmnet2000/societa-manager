@@ -84,6 +84,12 @@ model Atleta {
   categoria             String?
   matricola             String?
   dataPrimoTesseramento DateTime?
+  // Story 9.18: contatti opzionali, valorizzabili quando un Allenatore
+  // crea una nuova Atleta dalla pagina del proprio Gruppo (email/cellulare
+  // per comunicazioni) - nullable, nessun impatto sull'anagrafica esistente
+  // (import federale, Story 1.2, non li fornisce).
+  email                 String?
+  cellulare             String?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
   genitori              GenitoreAtleta[]
@@ -250,18 +256,27 @@ enum StatoCertificato {
   CONFERMATO
 }
 
+// Story 9.18: secondo evento possibile oltre al caricamento certificato -
+// default CERTIFICATO_CARICATO retrocompatibile, le righe esistenti (Story
+// 4.2) restano implicitamente di quel tipo senza alcun backfill.
+enum TipoNotifica {
+  CERTIFICATO_CARICATO
+  NUOVO_ATLETA
+}
+
 // Story 4.2 (FR-12): protetta da RLS - rivela quale Atleta ha avuto un
-// evento di caricamento certificato, visibile solo ad Allenatore (proprio
-// Gruppo) e Dirigente (accesso ampio). Deliberatamente minimale: nessun
-// campo "letta"/stato (nessun AC lo richiede) e nessun campo "messaggio"/
-// "tipo" (un solo evento possibile oggi - nome Atleta e data si ricavano a
-// lettura via join applicativo, mai un `include` Prisma diretto su questa
-// tabella RLS-protetta).
+// evento rilevante (caricamento certificato, o dalla Story 9.18 anche
+// creazione di una nuova Atleta da parte di un Allenatore), visibile solo
+// ad Allenatore (proprio Gruppo) e Dirigente (accesso ampio). Deliberatamente
+// minimale oltre a "tipo": nessun campo "letta"/stato (nessun AC lo
+// richiede) - nome Atleta e data si ricavano a lettura via join applicativo,
+// mai un `include` Prisma diretto su questa tabella RLS-protetta.
 model Notifica {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   atletaId  String
-  atleta    Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  atleta    Atleta       @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  tipo      TipoNotifica @default(CERTIFICATO_CARICATO)
+  createdAt DateTime     @default(now())
 
   @@map("notifiche")
 }

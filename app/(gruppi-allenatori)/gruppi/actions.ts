@@ -9,6 +9,10 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
+import { creaAtleta } from "@/lib/db-rls/atleta";
+import { creaNotifica } from "@/lib/db-rls/notifica";
+import { isCodiceFiscaleValido } from "@/lib/matching-codice-fiscale/valida-codice-fiscale";
+import { estraiSessoDaCodiceFiscale } from "@/lib/matching-codice-fiscale/estrai-sesso-da-codice-fiscale";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -316,6 +320,202 @@ export async function rimuoviAtleta(
     };
   }
 
+  revalidatePath("/gruppi");
+  revalidatePath("/i-miei-gruppi");
+  return { success: true };
+}
+
+// Story 9.18 (AC #1-#4): un Allenatore crea una nuova Atleta non ancora in
+// anagrafica direttamente dalla pagina del proprio Gruppo (/i-miei-gruppi)
+// e la assegna contestualmente - AD-10 esteso (deciso con l'utente, vedi
+// ARCHITECTURE-SPINE.md): questa e' la seconda funzione, oltre a
+// Onboarding-Import, autorizzata a richiamare creaAtleta() condivisa.
+export async function creaEAssegnaAtleta(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  const cognome = String(formData.get("cognome") ?? "").trim();
+  const nome = String(formData.get("nome") ?? "").trim();
+  const dataNascitaGrezza = String(formData.get("dataNascita") ?? "").trim();
+  const codiceFiscale = String(formData.get("codiceFiscale") ?? "")
+    .trim()
+    .toUpperCase();
+  const email = String(formData.get("email") ?? "").trim();
+  const cellulare = String(formData.get("cellulare") ?? "").trim();
+
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  if (!cognome) {
+    return { error: { code: "VALIDATION", message: "Il cognome è obbligatorio." } };
+  }
+  if (!nome) {
+    return { error: { code: "VALIDATION", message: "Il nome è obbligatorio." } };
+  }
+  if (!dataNascitaGrezza) {
+    return {
+      error: { code: "VALIDATION", message: "La data di nascita è obbligatoria." },
+    };
+  }
+  // Review fix (code review Story 9.18): un valore non parsabile (bypass del
+  // widget <input type="date">) produceva un Invalid Date che poi lanciava un
+  // RangeError dentro creaAtleta/serializza (.toISOString()), mascherato
+  // dall'errore generico INTERNAL invece di un errore di validazione chiaro.
+  const dataNascita = new Date(dataNascitaGrezza);
+  if (Number.isNaN(dataNascita.getTime())) {
+    return {
+      error: { code: "VALIDATION", message: "Data di nascita non valida." },
+    };
+  }
+  if (!codiceFiscale) {
+    return {
+      error: { code: "VALIDATION", message: "Il codice fiscale è obbligatorio." },
+    };
+  }
+  if (!isCodiceFiscaleValido(codiceFiscale)) {
+    return { error: { code: "VALIDATION", message: "Codice fiscale non valido." } };
+  }
+
+  // AC #1: sesso derivato dal Codice Fiscale (posizioni 9-10), non richiesto
+  // esplicitamente all'Allenatore - vedi Dev Notes story file per i limiti
+  // (omocodia non gestita).
+  const sesso = estraiSessoDaCodiceFiscale(codiceFiscale);
+  if (!sesso) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile determinare il sesso dal codice fiscale inserito. Verifica il codice fiscale.",
+      },
+    };
+  }
+
+  let gruppo: { annoAgonisticoId: string } | null;
+  try {
+    // Stesso blocco di risoluzione dell'annoAgonisticoId gia' usato in
+    // assegnaAtleta - non reinventarlo.
+    gruppo = await prisma.gruppo.findUnique({
+      where: { id: gruppoId },
+      select: { annoAgonisticoId: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile creare l'Atleta. Riprova." },
+    };
+  }
+  if (!gruppo) {
+    return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+  }
+
+  // AC #4: stesso principio di autorizzazione di assegnaAtleta/rimuoviAtleta
+  // - un Allenatore puo' creare/assegnare solo sul proprio Gruppo.
+  const possesso = await risolviPossessoGruppo(gruppoId, gruppo.annoAgonisticoId);
+  if (!possesso.ok) {
+    return { error: possesso.error };
+  }
+
+  const supabase = await createClient();
+
+  // AC #2: Codice Fiscale duplicato - Atleta.codiceFiscale e' gia' @unique,
+  // ma un controllo esplicito qui produce un messaggio chiaro invece di un
+  // errore generico di vincolo DB propagato da creaAtleta. Review fix (code
+  // review Story 9.18): usa il client supabase (RLS, AD-9) invece di Prisma
+  // diretto - Atleta e' protetta da RLS e non e' tra le tabelle ammesse per
+  // l'accesso privilegiato a runtime; le policy SELECT esistenti coprono gia'
+  // sia ADMIN/DIRIGENTE/SEGRETERIA sia ALLENATORE (Story 9.16).
+  let esistente: { id: string } | null;
+  try {
+    const { data, error } = await supabase
+      .from("atlete")
+      .select("id")
+      .eq("codiceFiscale", codiceFiscale)
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    esistente = data;
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile creare l'Atleta. Riprova." },
+    };
+  }
+  if (esistente) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Esiste già un'Atleta con questo Codice Fiscale.",
+      },
+    };
+  }
+
+  let nuovaAtletaId: string;
+  try {
+    // "nome" resta un'unica colonna (nessuna colonna "cognome" separata,
+    // Dev Notes) - stesso formato "Cognome e Nome" gia' usato dall'import
+    // federale (Story 1.2, import-atlete/parser.ts).
+    nuovaAtletaId = await creaAtleta(supabase, {
+      codiceFiscale,
+      nome: `${cognome} ${nome}`,
+      sesso,
+      dataNascita,
+      email: email || null,
+      cellulare: cellulare || null,
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile creare l'Atleta. Riprova." },
+    };
+  }
+
+  try {
+    // Stesso upsert atomico sulla chiave composita gia' usato in
+    // assegnaAtleta - l'assegnazione e' parte della garanzia primaria di
+    // AC #1 ("...creata e assegnata..."), un suo fallimento va riportato
+    // come errore (a differenza della notifica sotto, effetto collaterale).
+    await prisma.gruppoAtleta.upsert({
+      where: {
+        atletaId_annoAgonisticoId: {
+          atletaId: nuovaAtletaId,
+          annoAgonisticoId: gruppo.annoAgonisticoId,
+        },
+      },
+      create: {
+        atletaId: nuovaAtletaId,
+        gruppoId,
+        annoAgonisticoId: gruppo.annoAgonisticoId,
+      },
+      update: { gruppoId },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile assegnare la nuova Atleta al Gruppo. Riprova.",
+      },
+    };
+  }
+
+  // AC #3: effetto collaterale non bloccante, stesso identico pattern gia'
+  // stabilito in certificato-medico/actions.ts (Story 4.2/4.3) - un
+  // fallimento qui non deve mai far fallire la creazione+assegnazione gia'
+  // riuscita.
+  try {
+    await creaNotifica(supabase, nuovaAtletaId, "NUOVO_ATLETA");
+  } catch (err) {
+    console.error(err);
+  }
+
+  // Review fix (code review Story 9.18): stessa coppia di revalidatePath gia'
+  // usata da assegnaAtleta/rimuoviAtleta - requireRuolo ammette anche
+  // ADMIN/DIRIGENTE per questa action, che vedono il roster anche in /gruppi.
   revalidatePath("/gruppi");
   revalidatePath("/i-miei-gruppi");
   return { success: true };
