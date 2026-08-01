@@ -110,33 +110,38 @@ export async function aggiornaCertificato(
   }
 }
 
-// Story 4.1: collega il file appena caricato (lib/storage/certificati.ts)
-// alla riga CertificatoMedico dell'Atleta, senza toccare i campi di
-// validita'. Upsert su atletaId (chiave unica esistente): il payload
-// include DELIBERATAMENTE solo id/atletaId/filePath/updatedAt - mai
-// dataFineValidita/dataInizioValidita/mesiValidita/modulo, cosi' su un
-// conflitto (AC #4, ri-caricamento) i valori di validita' esistenti restano
-// intatti (semantica standard di upsert PostgREST: solo le colonne presenti
-// nel payload vengono aggiornate); se la riga non esiste ancora, viene
-// creata con dataFineValidita implicitamente NULL (colonna nullable dalla
-// migrazione di questa storia) - "in attesa di validazione" (Story 4.4).
+// Story 4.1, invertito da Story 9.20: collega il file appena caricato
+// (lib/storage/certificati.ts) alla riga CertificatoMedico dell'Atleta,
+// scrivendo anche le due date fornite dal Genitore/Atleta in fase di upload.
+// Upsert su atletaId (chiave unica esistente) - a differenza del vecchio
+// comportamento (Story 4.1 AC #4, "mai i campi di validita'"), il payload
+// ora include SEMPRE dataInizioValidita/dataFineValidita: entrambe
+// obbligatorie lato Server Action chiamante, un ri-caricamento sovrascrive
+// sempre eventuali date precedentemente confermate (invariante cambiata
+// deliberatamente, decisione esplicita dell'utente - non piu' "mai
+// preservato un valore precedente" come prima). Quello che NON cambia:
+// stato forza sempre IN_ATTESA, le nuove date non sono "ufficiali" finche'
+// non confermate (Story 4.4/5.1/9.19).
 // Stesso "churn" accettato dell'id sull'upsert gia' documentato per
 // Presenza (Story 3.1): nessuna FK punta a CertificatoMedico.id.
 export async function collegaFileCertificato(
   supabase: SupabaseClient,
   atletaId: string,
-  filePath: string
+  filePath: string,
+  dataInizioValidita: Date,
+  dataFineValidita: Date
 ): Promise<void> {
   const { error } = await supabase.from("certificati_medici").upsert(
     {
       id: randomUUID(),
       atletaId,
       filePath,
+      dataInizioValidita: dataInizioValidita.toISOString(),
+      dataFineValidita: dataFineValidita.toISOString(),
       // Story 4.4: ogni upload (primo o ri-caricamento) forza IN_ATTESA -
       // un Certificato appena caricato non e' mai gia' verificato da un
       // umano; un ri-caricamento di uno gia' CONFERMATO richiede una nuova
-      // conferma (AC #3), le vecchie date restano a sistema ma non sono
-      // piu' garantite valide per il nuovo documento.
+      // conferma (AC #3).
       stato: "IN_ATTESA",
       updatedAt: new Date().toISOString(),
     },

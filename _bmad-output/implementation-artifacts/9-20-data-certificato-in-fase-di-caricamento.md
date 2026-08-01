@@ -4,7 +4,7 @@ baseline_commit: ec718f3f76907f81233eb4fc95916b40bb77c033
 
 # Story 9.20: Data del nuovo certificato già in fase di caricamento
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,26 +32,36 @@ so that il sistema conosce subito la data corretta, invece di aspettare che la S
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Estendere `collegaFileCertificato` per accettare e scrivere le due date (AC: #1, #2)
-  - [ ] `lib/db-rls/certificato-medico.ts`: firma estesa a `collegaFileCertificato(supabase, atletaId, filePath, dataInizioValidita: Date, dataFineValidita: Date)` — entrambe obbligatorie (nessun parametro opzionale, decisione utente).
-  - [ ] Il payload dell'upsert include ora anche `dataInizioValidita: dataInizioValidita.toISOString()` e `dataFineValidita: dataFineValidita.toISOString()`, oltre a `id`/`atletaId`/`filePath`/`stato: "IN_ATTESA"`/`updatedAt` già esistenti — **rimuovere** il commento esistente che dichiara "mai i campi di validità" (Story 4.1 AC #4, ora invertito da questa storia) e sostituirlo con uno che spiega la nuova garanzia (le date sono sempre quelle appena fornite, non un merge parziale).
-  - [ ] `mesiValidita`/`modulo` restano non toccati da questa funzione (invariato — quei due campi restano un concetto esclusivo della Segreteria in fase di conferma, l'utente non li ha richiesti qui).
-- [ ] Task 2: Validare le due date nella Server Action `caricaCertificato` (AC: #1)
-  - [ ] `app/(certificati-medici)/certificato-medico/actions.ts`: leggere `dataInizioValidita`/`dataFineValidita` da `formData` (stessi nomi campo di `ConfermaCertificatoRow.tsx`, per coerenza). Validazione in ordine, subito dopo il controllo `atletaId` esistente e prima dei controlli sul file (stesso principio "controlli economici prima" già seguito nella funzione): entrambe presenti (`VALIDATION` se mancante), parsabili come data (`new Date(stringa)`, `Number.isNaN(.getTime())` → `VALIDATION` — stessa lezione della validazione `dataNascita` in Story 9.18), `dataFineValidita >= dataInizioValidita` (altrimenti `VALIDATION` con messaggio dedicato "La data di scadenza non può precedere la data di inizio validità.").
-  - [ ] Passare le due `Date` risultanti a `collegaFileCertificato` nel blocco `try` esistente (stessa posizione della chiamata attuale).
-- [ ] Task 3: Nuovi campi nel form di upload (AC: #1)
-  - [ ] `app/(certificati-medici)/certificato-medico/CaricaCertificatoForm.tsx`: due nuovi `<input type="date" required>` (`name="dataInizioValidita"`/`name="dataFineValidita"`) prima del campo file esistente, con `<label>` "Data del certificato" / "Data di scadenza" — stesso pattern `<div className={styles.campo}><label>...<input .../></label></div>` già usato in `ConfermaCertificatoRow.tsx`.
-  - [ ] `app/(certificati-medici)/certificato-medico/certificato-medico.module.css`: la regola `.campo` esiste già ma styla solo `select` (nessuna regola `input`) — aggiungere `.campo input` + `.campo input:focus-visible`, copiando esattamente il blocco già presente in `app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css` (righe 71-84).
-  - [ ] Nessuna modifica al reset del form al successo (`useEffect` esistente, righe 16-20) — `formRef.current?.reset()` pulisce già tutti i campi del form, incluse le due nuove date.
-- [ ] Task 4: Aggiornare i test esistenti impattati dal cambio di comportamento (AC: #1, #2, #4)
-  - [ ] `lib/db-rls/certificato-medico.test.ts`: il test `"upserts solo id/atletaId/filePath/stato/updatedAt, mai i campi di validita' (Story 4.1 AC #4)"` (righe 150-170) **verifica esattamente il comportamento che questa storia inverte** — riscriverlo per il nuovo comportamento: `collegaFileCertificato(supabase, "a1", "a1/file.pdf", dataInizio, dataFine)` con `dataInizio`/`dataFine` come parametri obbligatori, e assert che il payload include ora `dataInizioValidita`/`dataFineValidita` serializzate. Aggiornare anche `Object.keys(payload).sort()` atteso.
-  - [ ] `app/(certificati-medici)/certificato-medico/actions.test.ts`: `buildFormData` (righe 79-84) estesa con `dataInizioValidita`/`dataFineValidita` opzionali; tutti i test esistenti di successo per `caricaCertificato` aggiornati per passare date valide (altrimenti falliranno con la nuova validazione `VALIDATION`); nuovi test per: data mancante (una delle due), data non parsabile, `dataFineValidita < dataInizioValidita`.
-- [ ] Task 5: Verifica RLS e regressione (AC: #2, #3, #4)
-  - [ ] Confermare (lettura, non nuova migrazione) che le policy `genitore_atleta_gestisce_certificato_insert`/`_update` (migrazione `20260718020000_certificati_storage_e_rls`) non hanno restrizioni per colonna — coprono già la scrittura di `dataInizioValidita`/`dataFineValidita` da parte di GENITORE/ATLETA sulla propria Atleta, nessuna nuova policy necessaria (RLS di Postgres è per riga, non per colonna).
-  - [ ] Verificare che `conferma-certificati/page.tsx`/`ConfermaCertificatoRow.tsx` non richiedano alcuna modifica (precompilazione già esistente, Task 3 della loro storia originale, Story 4.4) — solo lettura di conferma, nessun file toccato.
-  - [ ] Suite Vitest completa eseguita — nessuna regressione sui casi esistenti non toccati (`confermaCertificato`, `categorizzaStatoCertificato`, `certificato-scaduto.ts`, `calcolaAtleteConCertificatoInScadenza`/Story 9.19).
-  - [ ] `npx tsc --noEmit` ed ESLint puliti sui file toccati.
-  - [ ] Verifica manuale dal vivo dopo il deploy (nessuna istanza Supabase locale disponibile in questa sessione, stesso limite già incontrato in molte storie recenti): un Genitore carica un certificato con le due date, la Segreteria apre `/conferma-certificati` e vede le date già precompilate, conferma, il certificato appare "in regola"/"in scadenza" in base alla nuova data.
+- [x] Task 1: Estendere `collegaFileCertificato` per accettare e scrivere le due date (AC: #1, #2)
+  - [x] `lib/db-rls/certificato-medico.ts`: firma estesa a `collegaFileCertificato(supabase, atletaId, filePath, dataInizioValidita: Date, dataFineValidita: Date)` — entrambe obbligatorie (nessun parametro opzionale, decisione utente).
+  - [x] Il payload dell'upsert include ora anche `dataInizioValidita: dataInizioValidita.toISOString()` e `dataFineValidita: dataFineValidita.toISOString()`, oltre a `id`/`atletaId`/`filePath`/`stato: "IN_ATTESA"`/`updatedAt` già esistenti — commento "mai i campi di validità" (Story 4.1 AC #4) rimosso e sostituito spiegando la nuova garanzia.
+  - [x] `mesiValidita`/`modulo` non toccati da questa funzione (invariato).
+- [x] Task 2: Validare le due date nella Server Action `caricaCertificato` (AC: #1)
+  - [x] `app/(certificati-medici)/certificato-medico/actions.ts`: legge `dataInizioValidita`/`dataFineValidita` da `formData`. Validazione in ordine, subito dopo il controllo `atletaId` e prima dei controlli sul file: entrambe presenti (`VALIDATION` se mancante), parsabili come data (`Number.isNaN(.getTime())` → `VALIDATION`), `dataFineValidita >= dataInizioValidita` (altrimenti `VALIDATION` con messaggio dedicato).
+  - [x] Le due `Date` risultanti passate a `collegaFileCertificato` nel blocco `try` esistente.
+- [x] Task 3: Nuovi campi nel form di upload (AC: #1)
+  - [x] `app/(certificati-medici)/certificato-medico/CaricaCertificatoForm.tsx`: due nuovi `<input type="date" required>` (`name="dataInizioValidita"`/`name="dataFineValidita"`) prima del campo file esistente, con `<label>` "Data del certificato" / "Data di scadenza".
+  - [x] `app/(certificati-medici)/certificato-medico/certificato-medico.module.css`: aggiunta `.campo input` + `.campo input:focus-visible`, copiate da `conferma-certificati.module.css`.
+  - [x] Nessuna modifica al reset del form al successo — `formRef.current?.reset()` pulisce già tutti i campi.
+- [x] Task 4: Aggiornare i test esistenti impattati dal cambio di comportamento (AC: #1, #2, #4)
+  - [x] `lib/db-rls/certificato-medico.test.ts`: test `collegaFileCertificato` riscritto per il nuovo comportamento (firma con 2 parametri data obbligatori, payload include `dataInizioValidita`/`dataFineValidita` serializzate, `Object.keys(payload).sort()` aggiornato).
+  - [x] `app/(certificati-medici)/certificato-medico/actions.test.ts`: `buildFormData` estesa con `dataInizioValidita`/`dataFineValidita` opzionali (default a due date valide, cosi' i test esistenti restano invariati senza doverle passare esplicitamente una per una; `null` per ometterle nei test di validazione dedicati). 2 assert esistenti su `collegaFileCertificatoMock` estesi con le nuove date attese. 4 nuovi test: `dataInizioValidita` mancante, `dataFineValidita` mancante, data non parsabile, `dataFineValidita < dataInizioValidita`.
+- [x] Task 5: Verifica RLS e regressione (AC: #2, #3, #4)
+  - [x] Confermato (lettura, nessuna nuova migrazione) che le policy `genitore_atleta_gestisce_certificato_insert`/`_update` (migrazione `20260718020000_certificati_storage_e_rls`) non hanno restrizioni per colonna — coprono già la scrittura di `dataInizioValidita`/`dataFineValidita` da parte di GENITORE/ATLETA sulla propria Atleta.
+  - [x] Confermato che `conferma-certificati/page.tsx`/`ConfermaCertificatoRow.tsx` non richiedono alcuna modifica — nessun file toccato (verificato via `git status`).
+  - [x] Suite Vitest completa eseguita: 787/787 test passati (+4 nuovi rispetto a 783 precedenti), nessuna regressione.
+  - [x] `npx tsc --noEmit` ed ESLint puliti sui file toccati.
+  - [x] Verifica manuale dal vivo: non eseguibile in questa sessione (nessuna istanza Supabase locale disponibile) — stesso limite già incontrato in molte storie recenti, coperta qui da tsc/ESLint/suite Vitest sopra; da confermare con l'utente dopo il deploy: un Genitore carica un certificato con le due date, la Segreteria apre `/conferma-certificati` e vede le date già precompilate, conferma, il certificato appare "in regola"/"in scadenza" in base alla nuova data.
+
+### Review Findings
+
+- [x] [Review][Patch] `caricaCertificato` accetta date calendarialmente inesistenti (es. "2026-02-30") senza errore — **risolto**: estratto il pattern già esistente in `conferma-certificati/actions.ts` (`FORMATO_DATA`/`parseDataValida`, con round-trip verso ISO) in un nuovo modulo condiviso `lib/parse-data-iso.ts` (`FORMATO_DATA_ISO`/`parseDataIsoValida`, 7 nuovi test), riusato ora da entrambe le Server Action che scrivono `dataInizioValidita`/`dataFineValidita` su `certificati_medici`. Aggiunto anche 1 nuovo test in `actions.test.ts` che pin-a il caso "30 febbraio". [lib/parse-data-iso.ts, app/(certificati-medici)/certificato-medico/actions.ts, app/(certificati-medici)/conferma-certificati/actions.ts]
+- [x] [Review][Patch] Etichette dei campi disallineate da quelle che la Segreteria vedrà in conferma — **risolto**: rinominate "Data del certificato"/"Data di scadenza" → "Data inizio validità"/"Data fine validità", identiche a `ConfermaCertificatoRow.tsx`. [app/(certificati-medici)/certificato-medico/CaricaCertificatoForm.tsx]
+- [x] [Review][Patch] Commento di `collegaFileCertificato` affermava "la garanzia di fondo non cambia" mentre descriveva un cambiamento reale di invariante — **risolto**: commento riformulato per essere esplicito su cosa cambia (le date vengono sempre sovrascritte) e cosa resta invariato (stato sempre `IN_ATTESA`). [lib/db-rls/certificato-medico.ts]
+- [x] [Review][Defer] Nessun limite di plausibilità (min/max) sulle date, né client né server — deferred, coerente con `confermaCertificato` (stesso limite pre-esistente sulla funzione gemella, nessun AC di questa storia lo richiede). [app/(certificati-medici)/certificato-medico/actions.ts, CaricaCertificatoForm.tsx]
+- [x] [Review][Defer] Messaggio di validazione generico non identifica quale dei due campi data manca — deferred, coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto (es. Story 9.16). [app/(certificati-medici)/certificato-medico/actions.ts]
+- [x] [Review][Defer] Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — deferred, stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
+- [x] [Review][Dismiss] Blocco CSS `.campo input` duplicato invece di condiviso tra i due moduli — falso positivo/rumore: è esattamente quanto istruito dalla storia stessa (Task 3, "copiare esattamente"), stesso pattern già deliberato in Story 9.19 per il badge "in scadenza" (CSS Modules non condivide facilmente regole cross-modulo in questo progetto).
 
 ## Dev Notes
 
@@ -87,8 +97,41 @@ so that il sistema conosce subito la data corretta, invece di aspettare che la S
 
 ### Agent Model Used
 
+Claude Sonnet 5
+
 ### Debug Log References
+
+Nessuno — implementazione lineare, nessuna sorpresa rispetto ai Dev Notes scritti in fase di create-story.
 
 ### Completion Notes List
 
+- **`collegaFileCertificato`**: firma estesa con `dataInizioValidita`/`dataFineValidita: Date` obbligatori, scritte sempre nell'upsert (mai preservato un valore precedente) — inverte esplicitamente il comportamento di Story 4.1 AC #4.
+- **`caricaCertificato`**: validazione delle due date (presenza, parsabilità, ordine) subito dopo il controllo `atletaId`, prima dei controlli sul file più costosi. Messaggi di errore dedicati per ciascun caso.
+- **`CaricaCertificatoForm.tsx`**: due nuovi campi data obbligatori ("Data del certificato", "Data di scadenza") prima del campo file, stesso pattern `.campo` già usato in `ConfermaCertificatoRow.tsx`.
+- **Nessuna migrazione**: colonne già nullable dalla Story 4.1. Nessuna nuova policy RLS: le policy INSERT/UPDATE esistenti per GENITORE/ATLETA non hanno restrizioni per colonna.
+- **Zero modifiche a `conferma-certificati/page.tsx`/`ConfermaCertificatoRow.tsx`**: la precompilazione del form di conferma con le nuove date è un effetto automatico di dati migliori in ingresso, non una modifica di codice — verificato che nessuno dei due file compaia in `git status`.
+- **Nessun impatto sul badge "in scadenza"/calcolo stato**: `categorizzaStatoCertificato`/`certificato-scaduto.ts`/`stato-certificato-visualizzato.ts`/`calcolaAtleteConCertificatoInScadenza` (Story 9.19) invariati per costruzione — tutti già gated su `stato === "CONFERMATO"`, che questa storia non tocca (`collegaFileCertificato` forza sempre `IN_ATTESA`).
+- 795/795 test passati dopo la code review (+8 nuovi rispetto ai 787 dell'implementazione iniziale: 7 per il nuovo modulo condiviso `parse-data-iso.ts` + 1 per il caso "30 febbraio" in `actions.test.ts`), `npx tsc --noEmit` pulito, ESLint pulito su tutti i file toccati.
+- **Code review**: 0 decision-needed, 3 patch applicate (validazione data calendarialmente inesistente corretta riusando/estraendo il pattern già esistente in `conferma-certificati/actions.ts`; etichette dei campi allineate a quelle della conferma; commento fuorviante riformulato), 3 defer (nessun limite min/max sulle date, messaggio di validazione non field-specific, round-trip multipli se JS bypassato — tutti pre-esistenti/coerenti con la convenzione del progetto, vedi `deferred-work.md`), 1 scartato come falso positivo (CSS duplicato, era esattamente quanto la storia stessa istruiva).
+
 ### File List
+
+**Nuovi:**
+
+- `lib/parse-data-iso.ts`
+- `lib/parse-data-iso.test.ts`
+
+**Modificati:**
+
+- `lib/db-rls/certificato-medico.ts`
+- `lib/db-rls/certificato-medico.test.ts`
+- `app/(certificati-medici)/certificato-medico/actions.ts`
+- `app/(certificati-medici)/certificato-medico/actions.test.ts`
+- `app/(certificati-medici)/certificato-medico/CaricaCertificatoForm.tsx`
+- `app/(certificati-medici)/certificato-medico/certificato-medico.module.css`
+- `app/(certificati-medici)/conferma-certificati/actions.ts`
+
+## Change Log
+
+- 2026-08-01: Implementata Story 9.20 — due nuovi campi obbligatori (data inizio/fine validità) nel form di upload del certificato medico lato Genitore/Atleta. `collegaFileCertificato` estesa per scriverle sempre (inverte Story 4.1 AC #4); validazione dedicata in `caricaCertificato` (presenza, parsabilità, ordine). Nessuna migrazione, nessuna modifica a `/conferma-certificati` (beneficia automaticamente della precompilazione già esistente). Stato certificato resta `IN_ATTESA` fino a conferma esplicita (invariato) — nessun impatto sul badge "in scadenza" (Story 9.19). 787/787 test passati, 0 errori tsc/eslint. Status: review.
+- 2026-08-01: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, Acceptance Auditor: 0 violazioni) — 3 patch applicate: validazione date corretta (estratto `lib/parse-data-iso.ts` dal pattern già esistente in `conferma-certificati/actions.ts`, verificato dal vivo che `new Date("2026-02-30")` si normalizza silenziosamente invece di fallire), etichette dei campi allineate a `ConfermaCertificatoRow.tsx`, commento fuorviante riformulato. 3 defer (pre-esistenti, coerenti con la convenzione del progetto), 1 scartato come falso positivo. 795/795 test passati, 0 errori tsc/eslint dopo i fix. Status: done.

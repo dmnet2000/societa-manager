@@ -142,21 +142,29 @@ describe("aggiornaCertificato", () => {
 });
 
 describe("collegaFileCertificato", () => {
+  const dataInizio = new Date("2026-01-01");
+  const dataFine = new Date("2027-01-01");
+
   beforeEach(() => {
     fromMock.mockClear();
     upsertMock.mockReset();
   });
 
-  it("upserts solo id/atletaId/filePath/stato/updatedAt, mai i campi di validita' (Story 4.1 AC #4)", async () => {
+  // Story 9.20: inverte il vecchio comportamento (Story 4.1 AC #4, "mai i
+  // campi di validita'") - ora le due date fornite dal Genitore/Atleta
+  // vengono sempre scritte, mai preservato un valore precedente.
+  it("upserts id/atletaId/filePath/dataInizioValidita/dataFineValidita/stato/updatedAt (Story 9.20)", async () => {
     upsertMock.mockResolvedValue({ error: null });
 
-    await collegaFileCertificato(supabase, "a1", "a1/file.pdf");
+    await collegaFileCertificato(supabase, "a1", "a1/file.pdf", dataInizio, dataFine);
 
     expect(fromMock).toHaveBeenCalledWith("certificati_medici");
     const [payload, opzioni] = upsertMock.mock.calls[0];
     expect(payload.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(payload.atletaId).toBe("a1");
     expect(payload.filePath).toBe("a1/file.pdf");
+    expect(payload.dataInizioValidita).toBe(dataInizio.toISOString());
+    expect(payload.dataFineValidita).toBe(dataFine.toISOString());
     // Story 4.4: ogni upload (primo o ri-caricamento) forza IN_ATTESA - un
     // Certificato appena caricato non puo' essere gia' CONFERMATO, e un
     // ri-caricamento di uno gia' confermato richiede una nuova verifica
@@ -164,7 +172,15 @@ describe("collegaFileCertificato", () => {
     expect(payload.stato).toBe("IN_ATTESA");
     expect(typeof payload.updatedAt).toBe("string");
     expect(Object.keys(payload).sort()).toEqual(
-      ["atletaId", "filePath", "id", "stato", "updatedAt"].sort()
+      [
+        "atletaId",
+        "dataFineValidita",
+        "dataInizioValidita",
+        "filePath",
+        "id",
+        "stato",
+        "updatedAt",
+      ].sort()
     );
     expect(opzioni).toEqual({ onConflict: "atletaId" });
   });
@@ -175,7 +191,7 @@ describe("collegaFileCertificato", () => {
     });
 
     await expect(
-      collegaFileCertificato(supabase, "a1", "a1/file.pdf")
+      collegaFileCertificato(supabase, "a1", "a1/file.pdf", dataInizio, dataFine)
     ).rejects.toThrow("row-level security");
   });
 });

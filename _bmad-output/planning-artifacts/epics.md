@@ -1171,6 +1171,23 @@ so that il sistema conosce subito la scadenza corretta, invece di aspettare che 
 
 **And** nessuna regressione sul comportamento esistente di caricamento (Story 4.1), conferma (Story 4.4) e calcolo stato certificato (Story 4.5/4.6/5.1) — suite Vitest invariata
 
+### Story 9.21: Un'Atleta in più Gruppi contemporaneamente (investigazione impatto)
+
+As a Allenatore/Dirigente,
+I want poter assegnare un'Atleta a più di un Gruppo nella stessa stagione (es. Under 16 e anche Under 19, "aggregata" a una categoria superiore),
+so that il sistema rispecchi un caso reale del volley giovanile, oggi non gestibile.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-01), emersa discutendo la Story 10.6/10.7. **Oggi non è possibile**: `GruppoAtleta` ha un vincolo di unicità a livello di database su `(atletaId, annoAgonisticoId)` (`prisma/schema.prisma`) — un'Atleta sta in un solo Gruppo per stagione; `assegnaAtleta` (Story 2.4/9.15) sposta l'assegnazione esistente invece di aggiungerne una seconda.
+
+**Impatto atteso, da confermare in fase di analisi — questa è una storia di investigazione, non ancora di implementazione**: il presupposto "un'Atleta → un Gruppo" è tessuto in gran parte del progetto, non solo nella tabella di giunzione:
+- **Presenze** (`/presenze`, Story 3.1): il roster di uno Slot è oggi "le Atlete del Gruppo dello Slot" — con più Gruppi, un'Atleta dovrebbe comparire nel roster di più Slot/Gruppi diversi, potenzialmente con più Slot nello stesso giorno/ora da gestire.
+- **Storico presenze** (`/storico-presenze`, Story 3.2/9.17): la griglia mensile è per Gruppo — un'Atleta in più Gruppi avrebbe più righe/storie da consultare, non un'unica vista.
+- **Dati fisici** (`/dati-fisici`, Story 6.1/9.16): l'elenco "le mie Atlete" per un Allenatore dovrebbe includere le Atlete di tutti i suoi Gruppi, già oggi possibile per Allenatori con più Gruppi — ma un'Atleta condivisa tra due Allenatori di Gruppi diversi comparirebbe nell'elenco di entrambi, da confermare se voluto.
+- **Vista Dirigente** (`/vista-dirigente`, Story 5.1/5.2) e **badge certificato in scadenza** (Story 9.19): i conteggi per Gruppo (es. "3 in scadenza") conterebbero la stessa Atleta più volte se assegnata a più Gruppi — comportamento da decidere esplicitamente (conteggio duplicato voluto, o deduplica per Atleta a livello di intero club).
+- **Wizard nuova stagione** (Story 5.3/8.7): la copia delle assegnazioni Gruppo↔Atleta dalla stagione precedente andrebbe estesa a copiare tutte le righe, non una sola per Atleta.
+
+**Acceptance Criteria:** *(nessuno ancora — questa storia è un'investigazione: l'obiettivo del primo passaggio è produrre un elenco completo e confermato con l'utente di tutti i moduli impattati e le decisioni di comportamento da prendere, prima di scrivere qualunque AC implementativo)*
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -1301,6 +1318,46 @@ so that so quando e dove si gioca, con indicazioni per raggiungere il luogo.
 - **Autorizzazione**: Allenatore del proprio Gruppo + Admin/Dirigente ad accesso ampio su tutti i Gruppi — stesso pattern già usato per la gestione dei Gruppi (Story 2.2), qui esteso per includere anche l'Allenatore come gestore dei propri Campionati/Partite (a differenza della gestione Gruppi, oggi riservata a soli Admin/Dirigente).
 - **RLS**: `Campionato`/`Partita` sono dato **strutturale** (non RLS), stesso trattamento di `Gruppo`/`Slot` (AD-9) — non riguardano dati sanitari/personali.
 - **Anno Agonistico**: `Campionato` ha una FK diretta verso `AnnoAgonistico` (come `Gruppo`, AD-8) — un Campionato non sopravvive al cambio di stagione.
+
+### Story 10.6: Cancellazione di una Partita o di un Campionato
+
+As a Allenatore del Gruppo (o Admin/Dirigente),
+I want poter cancellare una singola Partita inserita per errore, o cancellare un intero Campionato con le sue Partite importate,
+so that posso correggere un import sbagliato o di test senza lasciare dati sporchi a sistema — oggi (Story 10.1/10.2) non esiste alcuna funzionalità di cancellazione per Campionato/Partita, solo creazione/import/aggiornamento.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-01), emersa mentre chiedeva come ripulire i dati di un import Excel di test. Oggi l'import (`importaGare`, Story 10.2) è idempotente sulle righe (ricaricare lo stesso file aggiorna, non duplica) ma non esiste alcun modo — né per Allenatore né per Admin/Dirigente — di rimuovere una Partita o un Campionato dall'app stessa.
+
+**Dipendenza: richiede Story 10.7 già completata.** Il dubbio originale di questa storia (cancellare l'intero Campionato è rischioso se condiviso tra più Gruppi, `GruppoCampionato` molti-a-molti) è stato risolto dall'utente (2026-08-01): un Campionato appartiene a un solo Gruppo per definizione di dominio (due squadre nello stesso girone federale sono due Campionati distinti a sistema, es. "U19 Girone 1"/"U19 Girone 2"). Story 10.7 corregge il modello dati di conseguenza — **questa storia va implementata dopo la 10.7**, non prima: solo allora cancellare un Campionato è sempre sicuro (nessun altro Gruppo può esserne proprietario).
+
+**Acceptance Criteria:** *(da affinare in fase di creazione storia)*
+
+**Given** un Allenatore del Gruppo (o Admin/Dirigente) su una Partita esistente
+**When** la cancella
+**Then** la Partita viene rimossa, stessa autorizzazione a due livelli già stabilita per la modifica (Story 10.4)
+
+**Given** un Allenatore del Gruppo (o Admin/Dirigente) su un proprio Campionato (dopo Story 10.7, un Campionato ha sempre un solo Gruppo proprietario)
+**When** lo cancella
+**Then** il Campionato e tutte le sue Partite vengono rimossi (cascata semplice, nessun rischio di impattare altri Gruppi)
+
+**And** stessa conferma esplicita (`window.confirm` o equivalente) già richiesta per altre cancellazioni distruttive del progetto (Slot/Allenatore/Atleta, Story 9.9/9.13/9.14)
+
+### Story 10.7: Il Campionato appartiene a un solo Gruppo (rimozione della condivisione)
+
+As a Allenatore/Admin/Dirigente che gestisce i Campionati del proprio Gruppo,
+I want che ogni Campionato appartenga esclusivamente al Gruppo che lo ha creato,
+so that il modello rispecchi la realtà federale: due squadre della stessa società nello stesso girone (es. "U19 Girone 1") sono due iscrizioni distinte, non la stessa iscrizione condivisa.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-01), emersa discutendo la Story 10.6. **Corregge una decisione presa in Story 10.1** ("`GruppoCampionato` tabella di giunzione molti-a-molti — un Campionato può essere condiviso da più Gruppi", commento esplicito in `prisma/schema.prisma`) che non rispecchia il dominio reale secondo l'utente: un Gruppo partecipa solo ai propri Campionati; se due Gruppi della stessa società giocano nello stesso girone, restano comunque due Campionati distinti a sistema (stesso nome possibile, ma due righe). Resta invece confermato **senza modifiche** che un Gruppo può partecipare a più Campionati contemporaneamente (già supportato oggi, Story 10.1 AC #5) — la relazione molti-a-molti va quindi ristretta a "molti Campionati per Gruppo", non "molti Gruppi per Campionato".
+
+**Decisione presa con l'utente (2026-08-01)**: rimuovere anche la funzionalità "Collega Campionato esistente" (`collegaCampionatoEsistente`, `CollegaCampionatoForm.tsx` in `/campionati`) — pensata apposta per condividere un Campionato tra Gruppi, non ha più senso d'uso con il modello 1:1.
+
+**Acceptance Criteria:** *(da affinare in fase di creazione storia — punti da decidere: come trattare a livello di migrazione gli eventuali `GruppoCampionato` con più di un Gruppo già esistenti a sistema, se rari/assenti in produzione; se rimuovere del tutto la tabella `GruppoCampionato` sostituendola con un `gruppoId` diretto e obbligatorio su `Campionato`, o vietarne solo l'uso condiviso lasciando la tabella; conferma esplicita se due Campionati con lo stesso nome per Gruppi diversi devono restare permessi — oggi `creaCampionato` blocca solo i duplicati per nome *nello stesso Gruppo/stagione*, comportamento già corretto e da preservare)*
+
+**Given** un Allenatore (o Admin/Dirigente) che vuole aggiungere un Campionato al proprio Gruppo
+**When** visita `/campionati`
+**Then** può solo creare un nuovo Campionato per il proprio Gruppo — nessuna opzione per collegarsi a un Campionato di un altro Gruppo
+
+**And** nessuna regressione sulla possibilità di un Gruppo di partecipare a più Campionati contemporaneamente (Story 10.1 AC #5) né sull'import gare (Story 10.2) — suite Vitest invariata sui casi esistenti non impattati da questa correzione
 
 ## Epic 11: Bug di Produzione
 

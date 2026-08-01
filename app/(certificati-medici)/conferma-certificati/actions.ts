@@ -12,6 +12,7 @@ import {
   contenutoCorrispondeAlMimeDichiarato,
 } from "@/lib/storage/certificati";
 import { confermaCertificato as salvaCertificatoConfermato } from "@/lib/db-rls/certificato-medico";
+import { FORMATO_DATA_ISO, parseDataIsoValida } from "@/lib/parse-data-iso";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -20,20 +21,6 @@ export type ConfermaCertificatoActionState =
   | { error: { code: string; message: string } }
   | { success: true }
   | undefined;
-
-const FORMATO_DATA = /^\d{4}-\d{2}-\d{2}$/;
-
-// Review fix: `new Date("2026-02-30")` non produce un Invalid Date - JS
-// normalizza silenziosamente al 2 marzo. Il round-trip verso ISO (stesso
-// giorno/mese/anno) e' l'unico modo affidabile per rifiutare una data
-// calendarialmente inesistente, il solo controllo di formato/regex non basta.
-function parseDataValida(raw: string): Date | null {
-  const data = new Date(`${raw}T00:00:00.000Z`);
-  if (Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== raw) {
-    return null;
-  }
-  return data;
-}
 
 // FR-14, AC #1/#2: un solo Server Action copre sia la conferma di un
 // Certificato gia' caricato (Story 4.1) sia l'inserimento manuale ex-novo
@@ -68,12 +55,12 @@ export async function confermaCertificato(
       },
     };
   }
-  if (!FORMATO_DATA.test(dataFineValiditaRaw)) {
+  if (!FORMATO_DATA_ISO.test(dataFineValiditaRaw)) {
     return {
       error: { code: "VALIDATION", message: "Data di fine validità non valida." },
     };
   }
-  const dataFineValidita = parseDataValida(dataFineValiditaRaw);
+  const dataFineValidita = parseDataIsoValida(dataFineValiditaRaw);
   if (!dataFineValidita) {
     return {
       error: { code: "VALIDATION", message: "Data di fine validità non valida." },
@@ -82,7 +69,7 @@ export async function confermaCertificato(
 
   let dataInizioValidita: Date | null = null;
   if (dataInizioValiditaRaw) {
-    if (!FORMATO_DATA.test(dataInizioValiditaRaw)) {
+    if (!FORMATO_DATA_ISO.test(dataInizioValiditaRaw)) {
       return {
         error: {
           code: "VALIDATION",
@@ -90,7 +77,7 @@ export async function confermaCertificato(
         },
       };
     }
-    dataInizioValidita = parseDataValida(dataInizioValiditaRaw);
+    dataInizioValidita = parseDataIsoValida(dataInizioValiditaRaw);
     if (!dataInizioValidita) {
       return {
         error: {

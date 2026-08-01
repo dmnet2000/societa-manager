@@ -21,6 +21,7 @@ import { creaNotifica } from "@/lib/db-rls/notifica";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
 import { inviaEmail } from "@/lib/email/invia-email";
+import { parseDataIsoValida } from "@/lib/parse-data-iso";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -44,6 +45,8 @@ export async function caricaCertificato(
   if (forbidden) return forbidden;
 
   const atletaId = String(formData.get("atletaId") ?? "");
+  const dataInizioValiditaRaw = String(formData.get("dataInizioValidita") ?? "");
+  const dataFineValiditaRaw = String(formData.get("dataFineValidita") ?? "");
   const file = formData.get("file");
 
   if (!atletaId) {
@@ -51,6 +54,39 @@ export async function caricaCertificato(
       error: { code: "VALIDATION", message: "Atleta non specificata." },
     };
   }
+
+  // Story 9.20 (AC #1): entrambe le date obbligatorie, controlli economici
+  // prima dei controlli sul file (piu' costosi, in particolare la verifica
+  // del contenuto piu' sotto).
+  if (!dataInizioValiditaRaw || !dataFineValiditaRaw) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Indica sia la data del certificato sia la data di scadenza.",
+      },
+    };
+  }
+  // Review fix (code review Story 9.20): riusa lo stesso validatore gia'
+  // stabilito in conferma-certificati/actions.ts per le stesse due colonne -
+  // un semplice `new Date(stringa)` + Number.isNaN(.getTime()) NON basta,
+  // `new Date("2026-02-30")` non produce un Invalid Date, JS la normalizza
+  // silenziosamente al 2 marzo (verificato dal vivo).
+  const dataInizioValidita = parseDataIsoValida(dataInizioValiditaRaw);
+  const dataFineValidita = parseDataIsoValida(dataFineValiditaRaw);
+  if (!dataInizioValidita || !dataFineValidita) {
+    return {
+      error: { code: "VALIDATION", message: "Data non valida." },
+    };
+  }
+  if (dataFineValidita < dataInizioValidita) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "La data di scadenza non può precedere la data di inizio validità.",
+      },
+    };
+  }
+
   if (!(file instanceof File) || file.size === 0) {
     return {
       error: { code: "VALIDATION", message: "Seleziona un file da caricare." },
@@ -87,7 +123,13 @@ export async function caricaCertificato(
     const vecchioFilePath = certificatoEsistente?.filePath as string | undefined;
 
     const filePath = await caricaFileCertificato(supabase, atletaId, file);
-    await collegaFileCertificato(supabase, atletaId, filePath);
+    await collegaFileCertificato(
+      supabase,
+      atletaId,
+      filePath,
+      dataInizioValidita,
+      dataFineValidita
+    );
 
     if (vecchioFilePath) {
       try {

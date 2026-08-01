@@ -76,10 +76,25 @@ const { caricaCertificato, ottieniUrlCertificato } = await import("./actions");
 
 const supabaseFinto = { finto: true };
 
-function buildFormData(fields: { atletaId?: string; file?: File | null }) {
+// Story 9.20: dataInizioValidita/dataFineValidita di default valide (`null`
+// per ometterle esplicitamente, usato solo dai test di validazione dedicati)
+// - cosi' ogni test esistente che non se ne occupa continua a passare senza
+// doverle specificare una per una.
+function buildFormData(fields: {
+  atletaId?: string;
+  file?: File | null;
+  dataInizioValidita?: string | null;
+  dataFineValidita?: string | null;
+}) {
   const formData = new FormData();
   if (fields.atletaId !== undefined) formData.append("atletaId", fields.atletaId);
   if (fields.file) formData.append("file", fields.file);
+  const dataInizio =
+    fields.dataInizioValidita === undefined ? "2026-01-01" : fields.dataInizioValidita;
+  if (dataInizio !== null) formData.append("dataInizioValidita", dataInizio);
+  const dataFine =
+    fields.dataFineValidita === undefined ? "2027-01-01" : fields.dataFineValidita;
+  if (dataFine !== null) formData.append("dataFineValidita", dataFine);
   return formData;
 }
 
@@ -195,6 +210,88 @@ describe("caricaCertificato (Server Action)", () => {
     });
   });
 
+  it("returns VALIDATION when dataInizioValidita is missing (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido(), dataInizioValidita: null })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Indica sia la data del certificato sia la data di scadenza.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataFineValidita is missing (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido(), dataFineValidita: null })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Indica sia la data del certificato sia la data di scadenza.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when a date is not parsable (Story 9.20, stessa lezione di Story 9.18 review fix)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "non-una-data",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data non valida." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for a calendar-invalid date, es. 30 febbraio (code review Story 9.20: new Date() da sola non basta)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "2026-02-30",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data non valida." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataFineValidita precede dataInizioValidita (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "2026-06-01",
+        dataFineValidita: "2026-01-01",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La data di scadenza non può precedere la data di inizio validità.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
   it("returns VALIDATION for a disallowed MIME type (mai fidarsi solo dell'attributo accept del client)", async () => {
     const result = await caricaCertificato(
       undefined,
@@ -247,7 +344,9 @@ describe("caricaCertificato (Server Action)", () => {
     expect(collegaFileCertificatoMock).toHaveBeenCalledWith(
       supabaseFinto,
       "atleta-1",
-      "atleta-1/file.pdf"
+      "atleta-1/file.pdf",
+      new Date("2026-01-01"),
+      new Date("2027-01-01")
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/certificato-medico");
     expect(result).toEqual({ success: true });
@@ -345,7 +444,9 @@ describe("caricaCertificato (Server Action)", () => {
     expect(collegaFileCertificatoMock).toHaveBeenCalledWith(
       supabaseFinto,
       "atleta-1",
-      "atleta-1/nuovo.pdf"
+      "atleta-1/nuovo.pdf",
+      new Date("2026-01-01"),
+      new Date("2027-01-01")
     );
     expect(rimuoviFileCertificatoMock).toHaveBeenCalledWith(
       supabaseFinto,

@@ -23,6 +23,23 @@ export function CaricaCertificatoForm({ atletaId }: { atletaId: string }) {
     <form ref={formRef} action={formAction}>
       <input type="hidden" name="atletaId" value={atletaId} />
       <p className={styles.uploadLabel}>Carica un nuovo certificato</p>
+      {/* Review fix (code review Story 9.20): etichette allineate a quelle
+          che la Segreteria vede in conferma (ConfermaCertificatoRow.tsx) -
+          stesso dato, stesso nome, per non creare confusione visto che le
+          date inserite qui ricompaiono precompilate li'. */}
+      <div className={styles.campo}>
+        <label htmlFor="certificato-data-inizio">Data inizio validità</label>
+        <input
+          id="certificato-data-inizio"
+          name="dataInizioValidita"
+          type="date"
+          required
+        />
+      </div>
+      <div className={styles.campo}>
+        <label htmlFor="certificato-data-fine">Data fine validità</label>
+        <input id="certificato-data-fine" name="dataFineValidita" type="date" required />
+      </div>
       <div className={styles.dropzone}>
         <label htmlFor="certificato-file">
           File Certificato (PDF, JPG, PNG — max 10MB)

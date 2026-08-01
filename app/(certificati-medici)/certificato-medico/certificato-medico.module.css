@@ -38,6 +38,22 @@
   outline-offset: 2px;
 }
 
+/* Story 9.20 - stesso blocco di conferma-certificati.module.css (righe 71-84). */
+.campo input {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .bottone {
   margin-top: var(--space-4);
   align-self: flex-start;

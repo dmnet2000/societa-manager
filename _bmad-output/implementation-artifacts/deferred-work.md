@@ -463,3 +463,9 @@
 - `aria-controls` punta a un id che non esiste nel DOM quando il drill-down è chiuso — pre-esistente sul tile "scaduto" (Story 5.1), ora duplicato anche sul nuovo tile "in scadenza" seguendo lo stesso pattern. [app/(amministrazione)/vista-dirigente/GruppoCard.tsx]
 - Nessuno stile `:disabled` (opacità/dimming) su `.statTile` — gap pre-esistente, ora presente anche sul nuovo pulsante "in scadenza" quando il conteggio è 0. [app/(amministrazione)/vista-dirigente/vista-dirigente.module.css]
 - Fallback "Atleta sconosciuta" silenzioso (solo `console.warn`, nessun monitoraggio) esteso a un secondo bucket — pre-esistente per `atleteScadute`, ora replicato per `atleteInScadenza`. [app/(amministrazione)/vista-dirigente/page.tsx]
+
+## Deferred from: code review of 9-20-data-certificato-in-fase-di-caricamento (2026-08-01)
+
+- Nessun limite di plausibilità (min/max) sulle due date del certificato, né client né server — pre-esistente, coerente con `confermaCertificato` (stessa mancanza sulla funzione gemella), nessun AC di questa storia lo richiede. [app/(certificati-medici)/certificato-medico/actions.ts, CaricaCertificatoForm.tsx]
+- Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
+- Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
