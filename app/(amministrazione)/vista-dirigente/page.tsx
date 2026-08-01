@@ -105,6 +105,9 @@ export default async function VistaDirigentePage() {
         slotFormattati: slotFormattatiEsclusi,
         conteggi: null,
         atleteScadute: [],
+        // Story 9.19: nessun dato calcolabile per un Gruppo escluso (i
+        // Certificati non sono leggibili) - coerente con atleteScadute: [].
+        atleteInScadenza: [],
         numeroAtlete: atleteIdDelGruppo.length,
       };
     }
@@ -116,6 +119,9 @@ export default async function VistaDirigentePage() {
       SENZA_CERTIFICATO: 0,
     };
     const atleteScadute: string[] = [];
+    // Story 9.19: stesso ciclo esistente, nessuna nuova query - popolato in
+    // parallelo ad atleteScadute quando lo stato e' IN_SCADENZA.
+    const atleteInScadenza: string[] = [];
 
     for (const atletaId of atleteIdDelGruppo) {
       const certificato = certificatoPerAtletaId.get(atletaId);
@@ -125,7 +131,7 @@ export default async function VistaDirigentePage() {
         oggi
       );
       conteggi[stato] += 1;
-      if (stato === "SCADUTO") {
+      if (stato === "SCADUTO" || stato === "IN_SCADENZA") {
         const atleta = atletaPerId.get(atletaId);
         if (!atleta) {
           // Review fix: caso limite difensivo (mai osservato in pratica) -
@@ -136,13 +142,18 @@ export default async function VistaDirigentePage() {
             `Story 5.1: Atleta ${atletaId} non risolvibile nell'elenco per la Vista d'insieme.`
           );
         }
-        atleteScadute.push(atleta?.nome ?? "Atleta sconosciuta");
+        if (stato === "SCADUTO") {
+          atleteScadute.push(atleta?.nome ?? "Atleta sconosciuta");
+        } else {
+          atleteInScadenza.push(atleta?.nome ?? "Atleta sconosciuta");
+        }
       }
     }
     // Review fix: ordine altrimenti non deterministico (nessun orderBy su
     // gruppoAtleta.findMany) - a differenza di ogni altra lista della
     // pagina, gia' ordinata per nome.
     atleteScadute.sort((a, b) => a.localeCompare(b));
+    atleteInScadenza.sort((a, b) => a.localeCompare(b));
 
     const slotFormattati = gruppo.slot.map((slot) => ({
       id: slot.id,
@@ -156,6 +167,7 @@ export default async function VistaDirigentePage() {
       slotFormattati,
       conteggi,
       atleteScadute,
+      atleteInScadenza,
       numeroAtlete: atleteIdDelGruppo.length,
     };
   });

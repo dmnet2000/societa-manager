@@ -456,3 +456,10 @@
 - Il messaggio di errore precedente resta visibile mentre un nuovo tentativo è `pending` — comportamento intrinseco dello stesso pattern `useActionState` già usato in ogni altro Client Component del progetto. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
 - `String(formData.get(...) ?? "")` non verifica che il valore non sia un `File` — stessa identica conversione già usata in ogni altra Server Action del progetto. [app/(gruppi-allenatori)/gruppi/actions.ts]
 - `aria-label` identico per due Atlete con lo stesso `nome` nello stesso Gruppo — l'elenco mostra solo `nome` (mai `cognome`) fin da Story 2.4, stessa ambiguità di visualizzazione pre-esistente. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx]
+
+## Deferred from: code review of 9-19-badge-certificato-in-scadenza (2026-08-01)
+
+- Cast non verificati su `certificato.dataFineValidita`/`stato` da `elencaCertificati` (client Supabase non tipizzato) — pre-esistente (stesso pattern già presente in `vista-dirigente/page.tsx` prima di questa storia), ora replicato in 2 nuovi punti; un cambiamento di forma della riga fallirebbe silenziosamente a runtime. [app/(gruppi-allenatori)/gruppi/page.tsx:79-80, app/(gruppi-allenatori)/i-miei-gruppi/page.tsx:93-94]
+- `aria-controls` punta a un id che non esiste nel DOM quando il drill-down è chiuso — pre-esistente sul tile "scaduto" (Story 5.1), ora duplicato anche sul nuovo tile "in scadenza" seguendo lo stesso pattern. [app/(amministrazione)/vista-dirigente/GruppoCard.tsx]
+- Nessuno stile `:disabled` (opacità/dimming) su `.statTile` — gap pre-esistente, ora presente anche sul nuovo pulsante "in scadenza" quando il conteggio è 0. [app/(amministrazione)/vista-dirigente/vista-dirigente.module.css]
+- Fallback "Atleta sconosciuta" silenzioso (solo `console.warn`, nessun monitoraggio) esteso a un secondo bucket — pre-esistente per `atleteScadute`, ora replicato per `atleteInScadenza`. [app/(amministrazione)/vista-dirigente/page.tsx]

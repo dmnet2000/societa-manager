@@ -210,3 +210,18 @@
   cursor: default;
   opacity: 0.6;
 }
+
+/* Story 9.19 - Componente badge (DESIGN.md -> Componenti): variante warning,
+   stesso blocco di app/(presenze)/presenze/presenze.module.css (Story 4.5) -
+   copiato invece di importato cross-modulo, mai danger (informativo, non
+   deve allarmare). */
+.badge {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  white-space: nowrap;
+}

@@ -7,9 +7,14 @@ import styles from "./gruppi.module.css";
 // Review fix: esportato invece di ridichiarato indipendentemente in
 // GruppoRow.tsx - un futuro campo aggiunto qui non si disallineerebbe
 // silenziosamente dall'altra copia.
+// Story 9.19: certificatoInScadenza calcolato una volta per l'intero elenco
+// Atlete della pagina chiamante (gruppi/page.tsx, i-miei-gruppi/page.tsx) -
+// qui e' innocuo anche per le Atlete mostrate solo nel <select> "disponibili"
+// (mai renderizzato li').
 export type Atleta = {
   id: string;
   nome: string;
+  certificatoInScadenza: boolean;
 };
 
 // Story 9.14: componente separato (non un ciclo dentro GruppoRow.tsx) perche'
@@ -31,6 +36,12 @@ export function AtletaAssegnata({
   return (
     <li className={styles.atletaAssegnata}>
       <span>{atleta.nome}</span>
+      {/* Story 9.19 (AC #1): informativo, nessun aria-live/role="alert" -
+          stesso principio gia' documentato per il badge "scaduto" in
+          PresenzeForm.tsx (Story 4.5). */}
+      {atleta.certificatoInScadenza && (
+        <span className={styles.badge}>Certificato in scadenza</span>
+      )}
       <form
         action={formAction}
         onSubmit={(e) => {

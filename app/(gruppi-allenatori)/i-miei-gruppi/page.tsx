@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
+import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { MioGruppoCard } from "./MioGruppoCard";
 import styles from "./i-miei-gruppi.module.css";
 
@@ -60,7 +62,11 @@ export default async function IMieiGruppiPage() {
   // (client Supabase autenticato), mai con un include Prisma su
   // GruppoAtleta.atleta (vedi Dev Notes Story 2.4). Ora "tutte le Atlete"
   // grazie alla nuova policy allenatore_tutte_atlete_select (Task 1).
-  const [atlete, gruppoAtleteRows] = await Promise.all([
+  // Story 9.19: elencaCertificati aggiunta allo stesso Promise.all - la
+  // policy allenatore_proprie_atlete_certificato_select (Story 4.5) resta
+  // scoped ai Gruppi dell'Allenatore (non la nuova policy ampia su "atlete"),
+  // nessuno scoping applicativo aggiuntivo necessario qui.
+  const [atlete, gruppoAtleteRows, certificati] = await Promise.all([
     elencaAtlete(supabase),
     gruppiPropri.length > 0
       ? prisma.gruppoAtleta.findMany({
@@ -71,9 +77,18 @@ export default async function IMieiGruppiPage() {
           select: { atletaId: true, gruppoId: true },
         })
       : Promise.resolve([]),
+    elencaCertificati(supabase),
   ]);
 
-  const atleteMinime = atlete.map(({ id, nome }) => ({ id, nome }));
+  // Story 9.19: stesso helper condiviso di gruppi/page.tsx - una volta per
+  // l'intero elenco Atlete, badge "in scadenza" solo se CONFERMATO
+  // (categorizzaStatoCertificato, deciso con l'utente in fase di creazione
+  // storia).
+  const atleteMinime = calcolaAtleteConCertificatoInScadenza(
+    atlete.map(({ id, nome }) => ({ id, nome })),
+    certificati,
+    new Date()
+  );
   const atletaPerId = new Map(atleteMinime.map((a) => [a.id, a]));
 
   return (
@@ -88,7 +103,10 @@ export default async function IMieiGruppiPage() {
           const atleteGruppo = gruppoAtleteRows
             .filter((riga) => riga.gruppoId === gruppo.id)
             .map((riga) => atletaPerId.get(riga.atletaId))
-            .filter((a): a is { id: string; nome: string } => a !== undefined)
+            .filter(
+              (a): a is { id: string; nome: string; certificatoInScadenza: boolean } =>
+                a !== undefined
+            )
             .sort((a, b) => a.nome.localeCompare(b.nome));
 
           // Esclude dal <select> solo le Atlete gia' in QUESTO Gruppo (non

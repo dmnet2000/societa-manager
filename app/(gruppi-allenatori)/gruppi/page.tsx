@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
+import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
 import styles from "./gruppi.module.css";
@@ -30,7 +32,7 @@ export default async function GruppiPage() {
   // elencaAtlete(supabase) (client Supabase autenticato), mai con un
   // include Prisma su GruppoAtleta.atleta, che bypasserebbe le policy RLS
   // usando la connessione privilegiata di Prisma (vedi Dev Notes Story 2.4).
-  const [gruppi, allenatori, atlete, gruppoAtleteRows] = await Promise.all([
+  const [gruppi, allenatori, atlete, gruppoAtleteRows, certificati] = await Promise.all([
     annoCorrente
       ? prisma.gruppo.findMany({
           where: { annoAgonisticoId: annoCorrente.id },
@@ -51,6 +53,10 @@ export default async function GruppiPage() {
           select: { atletaId: true, gruppoId: true },
         })
       : Promise.resolve([]),
+    // Story 9.19: stesso pattern di join in memoria gia' usato in
+    // vista-dirigente/page.tsx - CertificatoMedico e' RLS-protetta (AD-4/
+    // AD-9), mai un include Prisma diretto.
+    elencaCertificati(supabase),
   ]);
 
   // Mappa costruita lato server per abbinare le Atlete (lette via RLS) alle
@@ -59,7 +65,15 @@ export default async function GruppiPage() {
   // (review fix): elencaAtlete espone anche codiceFiscale/categoria, dati
   // sensibili non necessari a questa pagina - il payload RSC verso il
   // client non deve portare piu' dati di quelli che il <select> usa.
-  const atleteMinime = atlete.map(({ id, nome }) => ({ id, nome }));
+  // Story 9.19: certificatoInScadenza calcolato una sola volta per l'intero
+  // elenco Atlete (non solo per il roster assegnato) tramite l'helper
+  // condiviso con /i-miei-gruppi (code review: era duplicato identico nei
+  // due file).
+  const atleteMinime = calcolaAtleteConCertificatoInScadenza(
+    atlete.map(({ id, nome }) => ({ id, nome })),
+    certificati,
+    new Date()
+  );
   const atletaPerId = new Map(atleteMinime.map((atleta) => [atleta.id, atleta]));
 
   return (
@@ -88,7 +102,12 @@ export default async function GruppiPage() {
                 const atleteGruppo = gruppoAtleteRows
                   .filter((riga) => riga.gruppoId === gruppo.id)
                   .map((riga) => atletaPerId.get(riga.atletaId))
-                  .filter((atleta): atleta is { id: string; nome: string } => atleta !== undefined)
+                  .filter(
+                    (
+                      atleta
+                    ): atleta is { id: string; nome: string; certificatoInScadenza: boolean } =>
+                      atleta !== undefined
+                  )
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 
                 return (

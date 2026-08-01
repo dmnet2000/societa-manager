@@ -1151,6 +1151,26 @@ so that posso sollecitare per tempo il rinnovo senza dover controllare atleta pe
 
 **And** nessuna regressione sul comportamento esistente di `/gruppi`, `/i-miei-gruppi`, `/vista-dirigente` (Story 2.4/9.9/9.14/9.15/5.1/5.2) — suite Vitest invariata
 
+### Story 9.20: Data del nuovo certificato già in fase di caricamento
+
+As a Genitore/Atleta che carica un nuovo Certificato medico,
+I want poter indicare già in fase di caricamento la data (presumibilmente inizio/fine validità) del nuovo certificato,
+so that il sistema conosce subito la scadenza corretta, invece di aspettare che la Segreteria/Admin/Dirigente la inserisca manualmente in un secondo momento tramite conferma.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-01), emersa durante la creazione di Story 9.19. Oggi (Story 4.1) `caricaCertificato` (`app/(certificati-medici)/certificato-medico/actions.ts`) accetta solo il file — `collegaFileCertificato` imposta lo stato `IN_ATTESA` senza toccare `dataFineValidita` (resta quella precedente, o `null` al primo upload); la data viene inserita solo in seguito da Segreteria/Admin/Dirigente tramite `confermaCertificato` (Story 4.4). Richiesta dell'utente: aggiungere un campo data al form di upload stesso lato Genitore/Atleta, così il certificato risulta con la data corretta fin da subito — resta comunque necessaria una conferma esplicita lato Dirigente/Admin (`stato` `CONFERMATO`) prima che il certificato sia trattato come valido/in regola nei conteggi e badge esistenti (`categorizzaStatoCertificato`, Story 5.1; `certificato-scaduto.ts`, Story 4.5). Decisioni di dettaglio non ancora chiarite con l'utente, da affrontare in fase di creazione storia: quali campi esatti (solo data fine validità, o anche data inizio come già previsto dal modello `dataInizioValidita`?), se il form deve validare la coerenza tra le date, se la Segreteria/Admin/Dirigente in fase di conferma può ancora correggere la data inserita dal Genitore/Atleta (probabile sì, stesso principio di `confermaCertificato` oggi) o deve solo confermarla invariata.
+
+**Acceptance Criteria:** *(da affinare in fase di creazione storia)*
+
+**Given** un Genitore/Atleta che carica un nuovo Certificato medico
+**When** compila il form di upload
+**Then** oltre al file può indicare la data di scadenza (ed eventualmente di inizio validità) del nuovo certificato, salvata insieme al file con stato `IN_ATTESA` (invariato)
+
+**Given** un certificato caricato con la nuova data indicata dall'utente
+**When** Segreteria/Admin/Dirigente lo rivede nel flusso di conferma esistente (Story 4.4)
+**Then** la data proposta è già precompilata/visibile, la conferma resta un passaggio esplicito separato (nessuna auto-conferma all'upload)
+
+**And** nessuna regressione sul comportamento esistente di caricamento (Story 4.1), conferma (Story 4.4) e calcolo stato certificato (Story 4.5/4.6/5.1) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
