@@ -1188,6 +1188,80 @@ so that il sistema rispecchi un caso reale del volley giovanile, oggi non gestib
 
 **Acceptance Criteria:** *(nessuno ancora — questa storia è un'investigazione: l'obiettivo del primo passaggio è produrre un elenco completo e confermato con l'utente di tutti i moduli impattati e le decisioni di comportamento da prendere, prima di scrivere qualunque AC implementativo)*
 
+### Story 9.22: Rimozione dell'accesso Dirigente al precaricamento Allenatori
+
+As a Admin,
+I want che solo il Ruolo ADMIN possa precaricare, modificare o cancellare un Allenatore da `/precaricamento-allenatori`,
+so that questa funzionalità resti riservata a chi ne ha davvero bisogno, come richiesto esplicitamente dall'utente.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02). Oggi `/precaricamento-allenatori` (Story 1.4, elenco/modifica/cancellazione aggiunti da Story 9.9) ammette sia ADMIN sia DIRIGENTE, sia a livello di route-guard (`lib/auth/route-guard.ts`) sia nelle tre Server Action (`precaricaAllenatore`/`aggiornaAllenatore`/`cancellaAllenatore`, tutte `requireRuolo(["ADMIN", "DIRIGENTE"])`). Questa storia restringe l'accesso al solo Ruolo ADMIN — nessun'altra rotta che ammette DIRIGENTE (`/import-atlete`, `/palestre`, `/gruppi`, `/conferma-iscrizioni`, ecc.) viene toccata.
+
+**Acceptance Criteria:**
+
+**Given** un Utente con Ruolo DIRIGENTE (senza anche ADMIN)
+**When** tenta di visitare `/precaricamento-allenatori`
+**Then** viene rediretto a `/non-autorizzato`, stesso comportamento già stabilito per ogni altra rotta ADMIN-only (es. `/admin`)
+
+**Given** un Utente con Ruolo DIRIGENTE (senza anche ADMIN)
+**When** invoca direttamente `precaricaAllenatore`, `aggiornaAllenatore` o `cancellaAllenatore`
+**Then** l'operazione viene rifiutata (`FORBIDDEN`) — difesa in profondità lato Server Action, non solo route-guard
+
+**Given** un Utente con Ruolo DIRIGENTE (senza anche ADMIN)
+**When** visita una qualunque pagina dell'app
+**Then** la voce di navigazione "Precaricamento allenatori" (Story 8.1) non compare più
+
+**And** nessuna regressione per ADMIN (comportamento identico a oggi) né per le altre rotte/funzionalità che ammettono DIRIGENTE — suite Vitest invariata sui casi esistenti non impattati da questa correzione
+
+### Story 9.23: Colore semantico sui certificati confermati (verde/giallo/rosso)
+
+As a Admin/Dirigente/Segreteria che consulta `/conferma-certificati`,
+I want vedere a colpo d'occhio, nella sezione "Confermati", quali certificati sono in regola (verde), in scadenza entro un mese (giallo) o già scaduti (rosso),
+so that posso dare priorità a chi richiede un rinnovo urgente senza dover controllare una per una le date di ogni Atleta.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02). Riusa `categorizzaStatoCertificato` (Story 5.1/9.19, `app/(amministrazione)/vista-dirigente/categorizza-stato-certificato.ts`) — stessa soglia di 30 giorni, nessun nuovo calcolo. Ambito confermato con l'utente in fase di creazione: **solo** la sezione "Confermati" (ogni riga lì ha sempre una `dataFineValidita` reale, obbligatoria in `confermaCertificato` — mai `SENZA_CERTIFICATO` in pratica); la sezione "Da confermare" resta invariata, nessun colore.
+
+**Decisione presa con l'utente (2026-08-02) — eccezione al design system**: `DESIGN.md` ha una regola esplicita "non negoziabile" (Componenti → Badge) per cui il badge "Certificato scaduto" a livello di singola atleta usa il tono **warning**, mai **danger**, motivata da FR-15 (il flusso presenze non deve mai sembrare "allarmante"). `/conferma-certificati` è un contesto diverso — qui la Segreteria sta gestendo attivamente i certificati, non registrando presenze per un altro motivo — l'utente ha confermato esplicitamente di voler un rosso pieno (`{colors.danger}`) per gli scaduti in **questa pagina soltanto**. `DESIGN.md` va aggiornato con un'eccezione esplicita e motivata (stesso trattamento riservato finora solo al magenta come singolo accento eccezionale) — non toccare il badge "Certificato in scadenza" già esistente altrove (`/gruppi`, `/i-miei-gruppi`, Story 9.19), che resta in tono warning.
+
+**Acceptance Criteria:**
+
+**Given** un certificato confermato con più di 30 giorni alla scadenza
+**When** mostrato nella sezione "Confermati"
+**Then** appare con un badge/indicatore verde ({colors.success})
+
+**Given** un certificato confermato in scadenza entro 30 giorni
+**When** mostrato nella sezione "Confermati"
+**Then** appare con un badge/indicatore giallo/ambra ({colors.warning})
+
+**Given** un certificato confermato con data di fine validità già passata
+**When** mostrato nella sezione "Confermati"
+**Then** appare con un badge/indicatore rosso ({colors.danger}) — eccezione esplicita alla regola generale "mai danger a livello di singola riga", motivata e documentata in `DESIGN.md`
+
+**And** la sezione "Da confermare" resta invariata (nessun colore) — nessuna regressione sul comportamento esistente di conferma/inserimento manuale (Story 4.4/9.20), suite Vitest invariata
+
+### Story 9.24: Menu principale "Impostazioni" (raggruppa SMTP e Logo)
+
+As a Admin,
+I want una voce di navigazione principale "Impostazioni" che raggruppi "Configurazione SMTP" e "Configurazione logo",
+so that la barra di navigazione resti pulita invece di avere due voci separate per due impostazioni correlate.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02). Oggi `/smtp` e `/logo` (Story 7.1/7.2) sono due voci separate e piatte in `PROTECTED_ROUTES` (`lib/auth/route-guard.ts`), entrambe ADMIN-only. **Decisione tecnica presa con l'utente in fase di creazione**: implementare come **pagina hub** `/impostazioni` (nuova voce di navigazione unica, ADMIN-only) con due link a `/smtp` e `/logo` — non come sottomenu espandibile nella barra laterale (che sarebbe il primo pattern di navigazione annidata del progetto, oggi una lista piatta). `/smtp` e `/logo` restano esattamente come sono (stesse rotte, stessa route-guard, stesso comportamento) ma **spariscono dalla barra di navigazione come voci dirette** — raggiungibili solo passando da `/impostazioni`. Nessun'altra voce (es. `/permessi-certificati`, anch'essa ADMIN-only) viene inclusa in questo raggruppamento — solo SMTP e Logo, come richiesto esplicitamente.
+
+**Acceptance Criteria:**
+
+**Given** un Admin
+**When** guarda la barra di navigazione
+**Then** vede una sola voce "Impostazioni" al posto delle due voci separate "Configurazione SMTP" e "Configurazione logo"
+
+**Given** un Admin
+**When** visita `/impostazioni`
+**Then** vede due link/card verso "Configurazione SMTP" (`/smtp`) e "Configurazione logo" (`/logo`)
+
+**Given** un Admin
+**When** visita direttamente `/smtp` o `/logo` (es. link salvato, indirizzo digitato a mano)
+**Then** la pagina funziona esattamente come oggi, nessuna regressione — queste rotte restano protette e raggiungibili, solo non più elencate direttamente in barra
+
+**And** nessuna regressione sul comportamento di autorizzazione esistente (Admin-only su `/smtp`/`/logo`, invariato) né sulle altre voci di navigazione — suite Vitest invariata sui casi esistenti non impattati
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -1434,5 +1508,21 @@ so that le email automatiche/di prova arrivino davvero a destinazione.
 **Given** la causa reale viene identificata in fase di sviluppo (credenziali errate salvate vs. limitazione del provider)
 **When** viene corretta o chiarita
 **Then** la causa e la correzione (o le istruzioni per l'Admin, se la causa è una password per-app da generare presso il provider) vengono documentate in questa storia
+
+## Epic 12: Permessi Configurabili da Admin
+
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, emersa discutendo la Story 9.22. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo l'obiettivo generale catturato per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10.)*
+
+**Requisito originale (testo dell'utente, 2026-08-02):** oggi le autorizzazioni per Ruolo sono un elenco statico nel codice (`lib/auth/route-guard.ts` per le rotte + `requireRuolo([...])` ripetuto in ogni Server Action, AD-11) — cambiare quali funzionalità un Ruolo può usare richiede una modifica di codice e un deploy. L'utente vuole invece poter **abilitare/disabilitare da `/admin` quali funzionalità sono disponibili per Ruolo** (in particolare lato Dirigente, ma non necessariamente solo quello), senza dover chiedere una modifica di codice ogni volta che cambia idea su cosa un Ruolo debba poter fare. Esempio concreto che ha innescato la richiesta: la Story 9.22 (rimozione dell'accesso Dirigente a `/precaricamento-allenatori`) è una correzione hardcoded — con questo epic, la stessa modifica diventerebbe un toggle in una UI, senza richiedere una nuova storia/deploy per ogni cambio di permesso.
+
+**Punti aperti da chiarire in fase di analisi (non ancora decisi con l'utente, da NON assumere):**
+- **Granularità**: una funzionalità = una rotta intera (`/precaricamento-allenatori`), o un'azione specifica dentro una rotta (es. solo "cancella" ma non "modifica")? Le rotte oggi hanno spesso più Server Action con permessi identici (stesso `requireRuolo`), ma non sempre (es. `/conferma-iscrizioni` ammette SEGRETERIA oltre ad ADMIN/DIRIGENTE) — la funzionalità menzionata dall'utente come esempio aggiuntivo durante la richiesta.
+- **Superficie coperta**: tutti i Ruoli (ADMIN, DIRIGENTE, ALLENATORE, SEGRETERIA, ATLETA, GENITORE) o solo le funzionalità "lato Dirigente" come richiesto esplicitamente? Se solo Dirigente, come si tratta la lettura (route-guard) vs la scrittura (Server Action) quando lo stesso Dirigente ha accesso più ampio di un Allenatore su alcune rotte condivise (es. `/gruppi`, `/campionati`)?
+- **Chi gestisce i permessi di ADMIN stesso**: un Admin può togliersi/togliere ad altri Admin l'accesso a una funzionalità? Rischio di autoesclusione o di un sistema che si blocca da solo se configurato male.
+- **Fallback/fail-safe**: se la tabella permessi non fosse raggiungibile o una funzionalità non avesse ancora una riga di configurazione, il default deve essere "consentito" (fail-open, come il comportamento attuale di `route-guard.ts` per rotte non elencate, già documentato come gap noto) o "negato" (fail-closed, più sicuro ma può bloccare funzionalità legittime non ancora configurate)?
+- **Impatto su AD-11**: oggi i Ruoli vivono nel JWT (`app_metadata`), letti da `route-guard.ts`/`requireRuolo` senza query DB ad ogni richiesta (scelta architetturale esplicita per performance). Un sistema di permessi per-funzionalità configurabile richiederebbe invece una query (o una cache) ad ogni richiesta protetta — da riconciliare con quella scelta, non ignorarla.
+- **Migrazione dei permessi esistenti**: tutte le rotte/Server Action già hardcoded in `route-guard.ts`/`requireRuolo` andrebbero convertite in righe di configurazione iniziali equivalenti (nessuna regressione silenziosa sul comportamento attuale al momento del rollout).
+
+**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10 e Epic 11 all'apertura).
 
 **Risolto (2026-07-27):** causa confermata — entrambe le ipotesi erano corrette in sequenza: prima le credenziali SMTP salvate erano sbagliate (`AUTH`/"Invalid login"), poi, dopo averle corrette, l'"Indirizzo mittente" configurato era diverso dall'account SMTP autenticato ("Utente"), causando il rifiuto del comando `MAIL FROM`. Nessun difetto di codice: entrambe cause di configurazione, corrette dall'utente direttamente in `/smtp`. Email di prova inviata con successo.

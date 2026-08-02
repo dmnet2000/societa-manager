@@ -64,7 +64,7 @@ beforeEach(() => {
 
 describe("precaricaAllenatore", () => {
 
-  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin (Story 9.22: Dirigente rimosso)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -165,6 +165,11 @@ describe("precaricaAllenatore", () => {
     );
 
     expect(result).toEqual({ success: true });
+    // Review fix (Story 9.22): senza questa asserzione, la restrizione a
+    // solo ADMIN (rimozione di DIRIGENTE) non era verificata da alcun test
+    // a livello di Server Action - stesso pattern gia' usato altrove nel
+    // progetto per verificare i Ruoli richiesti (import-atlete/actions.test.ts).
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
     expect(createMock).toHaveBeenCalledWith({
       data: {
         nome: "Mario",
@@ -195,7 +200,7 @@ describe("precaricaAllenatore", () => {
 });
 
 describe("aggiornaAllenatore", () => {
-  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin (Story 9.22: Dirigente rimosso)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -310,6 +315,8 @@ describe("aggiornaAllenatore", () => {
     );
 
     expect(result).toEqual({ success: true });
+    // Review fix (Story 9.22): vedi commento gemello in precaricaAllenatore.
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
     expect(updateMock).toHaveBeenCalledWith({
       where: { id: "a1" },
       data: {
@@ -345,7 +352,7 @@ describe("aggiornaAllenatore", () => {
 });
 
 describe("cancellaAllenatore", () => {
-  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin (Story 9.22: Dirigente rimosso)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -364,6 +371,8 @@ describe("cancellaAllenatore", () => {
     const result = await cancellaAllenatore(undefined, buildFormData({ id: "a1" }));
 
     expect(result).toEqual({ success: true });
+    // Review fix (Story 9.22): vedi commento gemello in precaricaAllenatore.
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
     expect(deleteManyMock).toHaveBeenCalledWith({
       where: { id: "a1", utenteId: null, gruppi: { none: {} } },
     });

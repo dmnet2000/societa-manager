@@ -16,11 +16,13 @@ export type AllenatoreActionState =
 // AC #1, #2, #5: Allenatore non e' protetta da RLS (AD-9) - Prisma diretto,
 // come Utente (Story 1.1/1.2), non un client Supabase/lib/db-rls (quello e'
 // riservato alle tabelle RLS-protette come Atleta, Story 1.3).
+// Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta esplicita
+// dell'utente (soluzione temporanea, vedi Epic 12 futuro).
 export async function precaricaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN"]);
   if (forbidden) return forbidden;
 
   const nome = String(formData.get("nome") ?? "").trim();
@@ -86,7 +88,7 @@ export async function aggiornaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN"]);
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");
@@ -153,7 +155,7 @@ export async function cancellaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN"]);
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");

@@ -25,8 +25,10 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
   {
+    // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta
+    // esplicita dell'utente (soluzione temporanea, vedi Epic 12 futuro).
     prefix: "/precaricamento-allenatori",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    ruoliAmmessi: ["ADMIN"],
     navLabel: "Precaricamento allenatori",
   },
   {

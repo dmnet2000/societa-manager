@@ -470,6 +470,10 @@
 - Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 - Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 
+## Deferred from: code review of 9-22-precaricamento-allenatori-solo-admin (2026-08-02)
+
+- Nessun test copre `getRouteDecision` con un array di Ruoli vuoto (Utente autenticato ma senza alcun Ruolo) su `/precaricamento-allenatori` — gap pre-esistente e trasversale a ogni voce di `PROTECTED_ROUTES`, non introdotto da questa storia. [lib/auth/route-guard.test.ts]
+
 ## Deferred from: code review of 10-7-campionato-un-solo-gruppo (2026-08-02)
 
 - Il nuovo `onDelete: Cascade` da `Campionato` a `Gruppo` fa sì che cancellare un Gruppo cancellerebbe ora a cascata anche i suoi Campionati (prima, con la relazione molti-a-molti, un Campionato condiviso sarebbe sopravvissuto) — nessuna funzionalità di cancellazione Gruppo esiste oggi, rischio dormiente rilevante solo se una storia futura la introducesse. Le Partite venivano già cancellate a cascata direttamente tramite `Partita.gruppoId` indipendentemente da questo cambiamento (Story 10.2) - l'aumento reale del raggio d'azione è limitato alle sole righe `Campionato`. [prisma/schema.prisma]

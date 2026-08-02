@@ -67,18 +67,24 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("allows either Admin or Dirigente on /precaricamento-allenatori (Story 1.4)", () => {
-    expect(
-      getRouteDecision("/precaricamento-allenatori", true, ["DIRIGENTE"])
-    ).toEqual({ action: "allow" });
+  it("allows only Admin on /precaricamento-allenatori (Story 9.22: Dirigente rimosso)", () => {
     expect(
       getRouteDecision("/precaricamento-allenatori", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
   });
 
-  it("redirects to /non-autorizzato on /precaricamento-allenatori for other roles", () => {
+  it("allows a user holding both Admin and Dirigente on /precaricamento-allenatori (review fix Story 9.22)", () => {
+    expect(
+      getRouteDecision("/precaricamento-allenatori", true, ["ADMIN", "DIRIGENTE"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects to /non-autorizzato on /precaricamento-allenatori for other roles, incluso Dirigente (Story 9.22)", () => {
     expect(
       getRouteDecision("/precaricamento-allenatori", true, ["ALLENATORE"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+    expect(
+      getRouteDecision("/precaricamento-allenatori", true, ["DIRIGENTE"])
     ).toEqual({ action: "redirect", location: "/non-autorizzato" });
   });
 
