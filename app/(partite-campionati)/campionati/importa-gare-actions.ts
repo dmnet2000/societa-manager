@@ -14,9 +14,9 @@ export type ImportaGareState =
 // AC #1/#2: import idempotente - una Partita esistente (stesso gruppoId +
 // garaNumero) viene aggiornata, non duplicata, cosi' un reimport dello
 // stesso file dopo un aggiornamento del calendario resta sicuro.
-// AC #6: il Gruppo deve essere effettivamente iscritto al Campionato scelto
-// (gruppo_campionati) - un mismatch qui indicherebbe un form manomesso,
-// non un caso d'uso legittimo dell'UI.
+// AC #6: il Gruppo deve essere effettivamente proprietario del Campionato
+// scelto (Campionato.gruppoId, Story 10.7) - un mismatch qui indicherebbe un
+// form manomesso, non un caso d'uso legittimo dell'UI.
 export async function importaGare(
   _prevState: ImportaGareState,
   formData: FormData
@@ -41,10 +41,14 @@ export async function importaGare(
   const autorizzazione = await risolviAutorizzazioneGruppo(gruppoId);
   if (!autorizzazione.autorizzato) return { error: autorizzazione.error };
 
-  const collegamento = await prisma.gruppoCampionato.findUnique({
-    where: { gruppoId_campionatoId: { gruppoId, campionatoId } },
+  // Story 10.7: Campionato ha ora un gruppoId diretto (non più una riga
+  // gruppo_campionati separata) - stesso controllo, stessa sorgente di
+  // errore, solo il modello dati sottostante cambia.
+  const campionato = await prisma.campionato.findUnique({
+    where: { id: campionatoId },
+    select: { gruppoId: true },
   });
-  if (!collegamento) {
+  if (!campionato || campionato.gruppoId !== gruppoId) {
     return {
       error: { code: "VALIDATION", message: "Questo Gruppo non è iscritto a questo Campionato." },
     };

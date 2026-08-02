@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { NuovoCampionatoForm } from "./NuovoCampionatoForm";
-import { CollegaCampionatoForm } from "./CollegaCampionatoForm";
 import { ImportaGareForm } from "./ImportaGareForm";
 import styles from "./campionati.module.css";
 
@@ -54,23 +53,17 @@ export default async function CampionatiPage() {
     ? undefined
     : { allenatori: { some: { allenatoreId: allenatore!.id } } };
 
-  // Gruppo/Campionato/GruppoCampionato/Allenatore non sono protetti da RLS
-  // (AD-9) - Prisma diretto, stesso pattern di /gruppi.
-  const [gruppi, tuttiCampionati] = await Promise.all([
-    annoCorrente
-      ? prisma.gruppo.findMany({
-          where: { annoAgonisticoId: annoCorrente.id, ...filtroAllenatore },
-          orderBy: { nome: "asc" },
-          include: { campionati: { include: { campionato: true } } },
-        })
-      : Promise.resolve([]),
-    annoCorrente
-      ? prisma.campionato.findMany({
-          where: { annoAgonisticoId: annoCorrente.id },
-          orderBy: { nome: "asc" },
-        })
-      : Promise.resolve([]),
-  ]);
+  // Gruppo/Campionato/Allenatore non sono protetti da RLS (AD-9) - Prisma
+  // diretto, stesso pattern di /gruppi. Story 10.7: Campionato ha ora un
+  // gruppoId diretto - una sola query basta, nessun secondo giro per
+  // calcolare i Campionati "disponibili" da collegare (funzionalità rimossa).
+  const gruppi = annoCorrente
+    ? await prisma.gruppo.findMany({
+        where: { annoAgonisticoId: annoCorrente.id, ...filtroAllenatore },
+        orderBy: { nome: "asc" },
+        include: { campionati: { orderBy: { nome: "asc" } } },
+      })
+    : [];
 
   return (
     <main>
@@ -84,37 +77,25 @@ export default async function CampionatiPage() {
             </tr>
           </thead>
           <tbody>
-            {gruppi.map((gruppo) => {
-              const collegati = gruppo.campionati.map((gc) => gc.campionato);
-              const collegatiIds = new Set(collegati.map((c) => c.id));
-              const disponibili = tuttiCampionati.filter(
-                (c) => !collegatiIds.has(c.id)
-              );
-
-              return (
-                <tr key={gruppo.id}>
-                  <td>{gruppo.nome}</td>
-                  <td>
-                    <ul className={styles.listaAssegnati}>
-                      {collegati.map((campionato) => (
-                        <li key={campionato.id}>
-                          {campionato.nome}
-                          <ImportaGareForm
-                            gruppoId={gruppo.id}
-                            campionatoId={campionato.id}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                    <NuovoCampionatoForm gruppoId={gruppo.id} />
-                    <CollegaCampionatoForm
-                      gruppoId={gruppo.id}
-                      campionatiDisponibili={disponibili}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
+            {gruppi.map((gruppo) => (
+              <tr key={gruppo.id}>
+                <td>{gruppo.nome}</td>
+                <td>
+                  <ul className={styles.listaAssegnati}>
+                    {gruppo.campionati.map((campionato) => (
+                      <li key={campionato.id}>
+                        {campionato.nome}
+                        <ImportaGareForm
+                          gruppoId={gruppo.id}
+                          campionatoId={campionato.id}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                  <NuovoCampionatoForm gruppoId={gruppo.id} />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

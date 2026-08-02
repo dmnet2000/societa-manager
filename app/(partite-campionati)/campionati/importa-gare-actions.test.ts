@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const requireRuoloMock = vi.fn();
 const risolviAutorizzazioneGruppoMock = vi.fn();
-const gruppoCampionatoFindUniqueMock = vi.fn();
+const campionatoFindUniqueMock = vi.fn();
 const partitaFindUniqueMock = vi.fn();
 const partitaFindUniqueOrThrowMock = vi.fn();
 const partitaCreateMock = vi.fn();
@@ -22,7 +22,7 @@ vi.mock("@/app/(partite-campionati)/autorizzazione", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    gruppoCampionato: { findUnique: gruppoCampionatoFindUniqueMock },
+    campionato: { findUnique: campionatoFindUniqueMock },
     partita: {
       findUnique: partitaFindUniqueMock,
       findUniqueOrThrow: partitaFindUniqueOrThrowMock,
@@ -83,8 +83,8 @@ describe("importaGare", () => {
       autorizzato: true,
       annoCorrenteId: "anno-1",
     });
-    gruppoCampionatoFindUniqueMock.mockReset();
-    gruppoCampionatoFindUniqueMock.mockResolvedValue({ id: "gc-1" });
+    campionatoFindUniqueMock.mockReset();
+    campionatoFindUniqueMock.mockResolvedValue({ gruppoId: "gruppo-1" });
     partitaFindUniqueMock.mockReset();
     partitaFindUniqueMock.mockResolvedValue(null);
     partitaFindUniqueOrThrowMock.mockReset();
@@ -161,20 +161,35 @@ describe("importaGare", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
     });
-    expect(gruppoCampionatoFindUniqueMock).not.toHaveBeenCalled();
+    expect(campionatoFindUniqueMock).not.toHaveBeenCalled();
   });
 
-  it("returns a validation error when the Gruppo is not linked to the Campionato (AC #6)", async () => {
-    gruppoCampionatoFindUniqueMock.mockResolvedValue(null);
+  it("returns a validation error when the Campionato does not exist (AC #6)", async () => {
+    campionatoFindUniqueMock.mockResolvedValue(null);
 
     const result = await importaGare(
       undefined,
       buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1", file: buildFile() })
     );
 
-    expect(gruppoCampionatoFindUniqueMock).toHaveBeenCalledWith({
-      where: { gruppoId_campionatoId: { gruppoId: "gruppo-1", campionatoId: "campionato-1" } },
+    expect(campionatoFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      select: { gruppoId: true },
     });
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Questo Gruppo non è iscritto a questo Campionato." },
+    });
+    expect(analizzaFileGareMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Campionato belongs to a different Gruppo (Story 10.7, AC #6)", async () => {
+    campionatoFindUniqueMock.mockResolvedValue({ gruppoId: "altro-gruppo" });
+
+    const result = await importaGare(
+      undefined,
+      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1", file: buildFile() })
+    );
+
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Questo Gruppo non è iscritto a questo Campionato." },
     });

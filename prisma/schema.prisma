@@ -371,7 +371,7 @@ model Gruppo {
   atlete           GruppoAtleta[]
   slot             Slot[]
   visibileDirigente GruppoVisibileDirigente?
-  campionati       GruppoCampionato[]
+  campionati       Campionato[]
   partite          Partita[]
 
   @@map("gruppi")
@@ -381,31 +381,24 @@ model Gruppo {
 // (AD-9) - dato strutturale, stesso trattamento di Gruppo/Slot, nessun dato
 // sanitario/personale. FK diretta verso AnnoAgonistico (come Gruppo, AD-8):
 // un Campionato non sopravvive al cambio di stagione.
+// Story 10.7: FK diretta a Gruppo - un Campionato appartiene esclusivamente
+// al Gruppo che lo ha creato (corregge la relazione molti-a-molti originaria
+// di questa storia, che non rispecchiava il dominio reale: due squadre
+// della stessa societa' nello stesso girone federale sono due Campionati
+// distinti a sistema, mai condivisi). Un Gruppo puo' comunque partecipare a
+// piu' Campionati (relazione inversa Gruppo.campionati, invariato da AC #5).
+// onDelete: Cascade - un Campionato non ha senso senza il suo Gruppo.
 model Campionato {
-  id               String             @id @default(uuid())
+  id               String         @id @default(uuid())
   nome             String
   annoAgonisticoId String
-  annoAgonistico   AnnoAgonistico     @relation(fields: [annoAgonisticoId], references: [id])
-  createdAt        DateTime           @default(now())
-  gruppi           GruppoCampionato[]
+  annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
+  gruppoId         String
+  gruppo           Gruppo         @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
   partite          Partita[]
 
   @@map("campionati")
-}
-
-// Tabella di giunzione molti-a-molti (un Gruppo puo' partecipare a piu'
-// Campionati contemporaneamente, un Campionato puo' essere condiviso da piu'
-// Gruppi) - stesso pattern di GruppoAllenatore (Story 2.3).
-model GruppoCampionato {
-  id           String     @id @default(uuid())
-  gruppoId     String
-  campionatoId String
-  gruppo       Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
-  campionato   Campionato @relation(fields: [campionatoId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-
-  @@unique([gruppoId, campionatoId])
-  @@map("gruppo_campionati")
 }
 
 // Story 10.2 (Epic 10): non protetta da RLS (AD-9), stesso trattamento di

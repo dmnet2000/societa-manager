@@ -4,9 +4,9 @@ import { useActionState, useEffect, useRef } from "react";
 import { importaGare } from "./importa-gare-actions";
 import styles from "./campionati.module.css";
 
-// Stesso pattern di NuovoCampionatoForm/CollegaCampionatoForm (Story 10.1):
-// gruppoId/campionatoId passati come campi hidden, autorizzazione/possesso
-// verificati comunque lato server in importaGare.
+// Stesso pattern di NuovoCampionatoForm (Story 10.1): gruppoId/campionatoId
+// passati come campi hidden, autorizzazione/possesso verificati comunque
+// lato server in importaGare.
 export function ImportaGareForm({
   gruppoId,
   campionatoId,

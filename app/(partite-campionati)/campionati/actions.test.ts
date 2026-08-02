@@ -8,17 +8,7 @@ const gruppoFindUniqueMock = vi.fn();
 const allenatoreFindFirstMock = vi.fn();
 const gruppoAllenatoreFindUniqueMock = vi.fn();
 const campionatoFindFirstMock = vi.fn();
-const campionatoFindUniqueMock = vi.fn();
-const gruppoCampionatoCreateMock = vi.fn();
-const txCampionatoCreateMock = vi.fn();
-const txGruppoCampionatoCreateMock = vi.fn();
-const transactionMock = vi.fn(
-  async (callback: (tx: unknown) => Promise<unknown>) =>
-    callback({
-      campionato: { create: txCampionatoCreateMock },
-      gruppoCampionato: { create: txGruppoCampionatoCreateMock },
-    })
-);
+const campionatoCreateMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -38,9 +28,7 @@ vi.mock("@/lib/prisma", () => ({
     gruppo: { findUnique: gruppoFindUniqueMock },
     allenatore: { findFirst: allenatoreFindFirstMock },
     gruppoAllenatore: { findUnique: gruppoAllenatoreFindUniqueMock },
-    campionato: { findFirst: campionatoFindFirstMock, findUnique: campionatoFindUniqueMock },
-    gruppoCampionato: { create: gruppoCampionatoCreateMock },
-    $transaction: transactionMock,
+    campionato: { findFirst: campionatoFindFirstMock, create: campionatoCreateMock },
   },
 }));
 
@@ -53,7 +41,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaCampionato, collegaCampionatoEsistente } = await import("./actions");
+const { creaCampionato } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -81,11 +69,8 @@ describe("creaCampionato", () => {
     gruppoAllenatoreFindUniqueMock.mockReset();
     campionatoFindFirstMock.mockReset();
     campionatoFindFirstMock.mockResolvedValue(null);
-    txCampionatoCreateMock.mockReset();
-    txCampionatoCreateMock.mockResolvedValue({ id: "campionato-1" });
-    txGruppoCampionatoCreateMock.mockReset();
-    txGruppoCampionatoCreateMock.mockResolvedValue({});
-    transactionMock.mockClear();
+    campionatoCreateMock.mockReset();
+    campionatoCreateMock.mockResolvedValue({ id: "campionato-1" });
     trovaAnnoAgonisticoCorrenteMock.mockReset();
     trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(ANNO_CORRENTE);
     risolviAnnoAgonisticoCorrenteMock.mockReset();
@@ -104,7 +89,7 @@ describe("creaCampionato", () => {
     );
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when nome is missing, no downstream call", async () => {
@@ -137,7 +122,7 @@ describe("creaCampionato", () => {
       error: { code: "VALIDATION", message: "Gruppo non trovato per la stagione corrente." },
     });
     expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
   it("returns a clear error when the Gruppo does not exist", async () => {
@@ -151,7 +136,7 @@ describe("creaCampionato", () => {
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Gruppo non trovato per la stagione corrente." },
     });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
   it("returns a clear error when the Gruppo belongs to a past season (review fix)", async () => {
@@ -165,10 +150,10 @@ describe("creaCampionato", () => {
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Gruppo non trovato per la stagione corrente." },
     });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
-  it("refuses an Allenatore who does not coach the target Gruppo (AC #4)", async () => {
+  it("refuses an Allenatore who does not coach the target Gruppo (AC #4 storia 10.1)", async () => {
     getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
     allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
     gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
@@ -184,7 +169,7 @@ describe("creaCampionato", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
     });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
   it("refuses a Ruolo ALLENATORE caller with no Allenatore linked at all", async () => {
@@ -200,10 +185,10 @@ describe("creaCampionato", () => {
       error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
     });
     expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
-  it("allows an Allenatore who coaches the target Gruppo, creates Campionato + link inside a transaction", async () => {
+  it("allows an Allenatore who coaches the target Gruppo, creates the Campionato with gruppoId directly (Story 10.7)", async () => {
     getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
     allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
     gruppoAllenatoreFindUniqueMock.mockResolvedValue({ id: "ga-1" });
@@ -214,21 +199,21 @@ describe("creaCampionato", () => {
     );
 
     expect(campionatoFindFirstMock).toHaveBeenCalledWith({
-      where: { nome: { equals: "Serie D", mode: "insensitive" }, annoAgonisticoId: "anno-1" },
+      where: {
+        nome: { equals: "Serie D", mode: "insensitive" },
+        annoAgonisticoId: "anno-1",
+        gruppoId: "gruppo-1",
+      },
     });
     expect(risolviAnnoAgonisticoCorrenteMock).toHaveBeenCalled();
-    expect(transactionMock).toHaveBeenCalledTimes(1);
-    expect(txCampionatoCreateMock).toHaveBeenCalledWith({
-      data: { nome: "Serie D", annoAgonisticoId: "anno-1" },
-    });
-    expect(txGruppoCampionatoCreateMock).toHaveBeenCalledWith({
-      data: { gruppoId: "gruppo-1", campionatoId: "campionato-1" },
+    expect(campionatoCreateMock).toHaveBeenCalledWith({
+      data: { nome: "Serie D", annoAgonisticoId: "anno-1", gruppoId: "gruppo-1" },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
     expect(result).toEqual({ success: true });
   });
 
-  it("allows Admin without checking Gruppo ownership, but still validates the Gruppo exists in the current season (AC #3)", async () => {
+  it("allows Admin without checking Gruppo ownership, but still validates the Gruppo exists in the current season (AC #3 storia 10.1)", async () => {
     getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
 
     const result = await creaCampionato(
@@ -238,11 +223,11 @@ describe("creaCampionato", () => {
 
     expect(allenatoreFindFirstMock).not.toHaveBeenCalled();
     expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
-    expect(transactionMock).toHaveBeenCalled();
+    expect(campionatoCreateMock).toHaveBeenCalled();
     expect(result).toEqual({ success: true });
   });
 
-  it("allows Dirigente without checking Gruppo ownership (AC #3)", async () => {
+  it("allows Dirigente without checking Gruppo ownership (AC #3 storia 10.1)", async () => {
     getUserMock.mockResolvedValue(buildUser(["DIRIGENTE"]));
 
     const result = await creaCampionato(
@@ -254,7 +239,7 @@ describe("creaCampionato", () => {
     expect(result).toEqual({ success: true });
   });
 
-  it("returns a validation error when a Campionato with the same name already exists this season (review fix, case-insensitive)", async () => {
+  it("returns a validation error when a Campionato with the same name already exists for this Gruppo this season (AC #4, case-insensitive)", async () => {
     getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
     campionatoFindFirstMock.mockResolvedValue({ id: "campionato-esistente" });
 
@@ -266,16 +251,42 @@ describe("creaCampionato", () => {
     expect(result).toEqual({
       error: {
         code: "VALIDATION",
-        message:
-          "Esiste già un Campionato con questo nome in questa stagione - collegalo invece di crearne uno nuovo.",
+        message: "Esiste già un Campionato con questo nome per questo Gruppo in questa stagione.",
       },
     });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 
-  it("returns a friendly error, no crash, when the transaction throws", async () => {
+  it("allows two different Gruppi to create a Campionato with the same name in the same season (AC #3)", async () => {
     getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-    transactionMock.mockRejectedValueOnce(new Error("db down"));
+    // Il duplicato è scoped al Gruppo (AC #3/#4): nessun Campionato
+    // omonimo esiste per QUESTO gruppoId, anche se un altro Gruppo ne ha
+    // già uno con lo stesso nome nella stessa stagione (query is scoped by
+    // gruppoId, quindi il mock semplicemente non trova nulla per questo
+    // gruppoId).
+    campionatoFindFirstMock.mockResolvedValue(null);
+
+    const result = await creaCampionato(
+      undefined,
+      buildFormData({ nome: "Under 19", gruppoId: "gruppo-2" })
+    );
+
+    expect(campionatoFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        nome: { equals: "Under 19", mode: "insensitive" },
+        annoAgonisticoId: "anno-1",
+        gruppoId: "gruppo-2",
+      },
+    });
+    expect(campionatoCreateMock).toHaveBeenCalledWith({
+      data: { nome: "Under 19", annoAgonisticoId: "anno-1", gruppoId: "gruppo-2" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a friendly error, no crash, when campionato.create throws", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
+    campionatoCreateMock.mockRejectedValueOnce(new Error("db down"));
 
     const result = await creaCampionato(
       undefined,
@@ -298,136 +309,6 @@ describe("creaCampionato", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
     });
-    expect(transactionMock).not.toHaveBeenCalled();
-  });
-});
-
-describe("collegaCampionatoEsistente", () => {
-  beforeEach(() => {
-    requireRuoloMock.mockReset();
-    requireRuoloMock.mockResolvedValue(null);
-    getUserMock.mockReset();
-    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-    gruppoFindUniqueMock.mockReset();
-    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
-    allenatoreFindFirstMock.mockReset();
-    gruppoAllenatoreFindUniqueMock.mockReset();
-    campionatoFindUniqueMock.mockReset();
-    campionatoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
-    gruppoCampionatoCreateMock.mockReset();
-    gruppoCampionatoCreateMock.mockResolvedValue({});
-    trovaAnnoAgonisticoCorrenteMock.mockReset();
-    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(ANNO_CORRENTE);
-    revalidatePathMock.mockReset();
-  });
-
-  it("returns FORBIDDEN and touches nothing when the caller lacks the required Ruolo", async () => {
-    requireRuoloMock.mockResolvedValue({
-      error: { code: "FORBIDDEN", message: "Non autorizzato." },
-    });
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1" })
-    );
-
-    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(gruppoCampionatoCreateMock).not.toHaveBeenCalled();
-  });
-
-  it("returns a validation error when gruppoId is missing", async () => {
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ campionatoId: "campionato-1" })
-    );
-
-    expect(result).toEqual({
-      error: { code: "VALIDATION", message: "Gruppo non specificato." },
-    });
-    expect(getUserMock).not.toHaveBeenCalled();
-  });
-
-  it("returns a validation error when campionatoId is missing", async () => {
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1" })
-    );
-
-    expect(result).toEqual({
-      error: { code: "VALIDATION", message: "Campionato non specificato." },
-    });
-    expect(getUserMock).not.toHaveBeenCalled();
-  });
-
-  it("refuses an Allenatore who does not coach the target Gruppo", async () => {
-    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
-    allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
-    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1" })
-    );
-
-    expect(result).toEqual({
-      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
-    });
-    expect(gruppoCampionatoCreateMock).not.toHaveBeenCalled();
-  });
-
-  it("returns a validation error when the Campionato belongs to a different season (review fix)", async () => {
-    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-    campionatoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-passato" });
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-vecchio" })
-    );
-
-    expect(result).toEqual({
-      error: { code: "VALIDATION", message: "Campionato non trovato per la stagione corrente." },
-    });
-    expect(gruppoCampionatoCreateMock).not.toHaveBeenCalled();
-  });
-
-  it("links an existing Campionato to the Gruppo (Admin, no ownership check)", async () => {
-    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1" })
-    );
-
-    expect(gruppoCampionatoCreateMock).toHaveBeenCalledWith({
-      data: { gruppoId: "gruppo-1", campionatoId: "campionato-1" },
-    });
-    expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
-    expect(result).toEqual({ success: true });
-  });
-
-  it("treats an already-existing link (P2002) as idempotent success", async () => {
-    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-    gruppoCampionatoCreateMock.mockRejectedValue({ code: "P2002" });
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1" })
-    );
-
-    expect(result).toEqual({ success: true });
-  });
-
-  it("returns a friendly error, no crash, for a non-P2002 Prisma failure", async () => {
-    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
-    gruppoCampionatoCreateMock.mockRejectedValue(new Error("db down"));
-
-    const result = await collegaCampionatoEsistente(
-      undefined,
-      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1" })
-    );
-
-    expect(result).toEqual({
-      error: { code: "INTERNAL", message: "Impossibile collegare il Campionato. Riprova." },
-    });
+    expect(campionatoCreateMock).not.toHaveBeenCalled();
   });
 });
