@@ -36,7 +36,8 @@ export type AutorizzazioneGruppo =
 // Server Action invece del contratto { error: { code, message } }
 // rispettato ovunque nel progetto.
 export async function risolviAutorizzazioneGruppo(
-  gruppoId: string
+  gruppoId: string,
+  opzioni?: { permettiStagionePassata?: boolean }
 ): Promise<AutorizzazioneGruppo> {
   try {
     const supabase = await createClient();
@@ -52,12 +53,25 @@ export async function risolviAutorizzazioneGruppo(
         })
       : null;
 
-    if (!anno || !gruppo || gruppo.annoAgonisticoId !== anno.id) {
+    if (!anno || !gruppo) {
       return { autorizzato: false, error: GRUPPO_NON_TROVATO };
     }
 
     const ruoli = parseRuoli(user?.app_metadata?.ruoli);
-    if (ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE")) {
+    const eGestionale = ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE");
+    const stagioneCorrente = gruppo.annoAgonisticoId === anno.id;
+
+    // Story 10.6 (review fix): a differenza di create/import (Story 10.1/10.2,
+    // dove un Gruppo di stagione passata va sempre rifiutato), la
+    // cancellazione serve anche a correggere/pulire dati di stagioni
+    // precedenti - Admin/Dirigente possono quindi cancellare anche lì,
+    // passando esplicitamente opzioni.permettiStagionePassata. L'Allenatore
+    // resta comunque vincolato alla stagione corrente in ogni caso.
+    if (!stagioneCorrente && !(eGestionale && opzioni?.permettiStagionePassata)) {
+      return { autorizzato: false, error: GRUPPO_NON_TROVATO };
+    }
+
+    if (eGestionale) {
       return { autorizzato: true, annoCorrenteId: anno.id };
     }
 

@@ -9,6 +9,8 @@ const allenatoreFindFirstMock = vi.fn();
 const gruppoAllenatoreFindUniqueMock = vi.fn();
 const campionatoFindFirstMock = vi.fn();
 const campionatoCreateMock = vi.fn();
+const campionatoFindUniqueMock = vi.fn();
+const campionatoDeleteMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -28,7 +30,12 @@ vi.mock("@/lib/prisma", () => ({
     gruppo: { findUnique: gruppoFindUniqueMock },
     allenatore: { findFirst: allenatoreFindFirstMock },
     gruppoAllenatore: { findUnique: gruppoAllenatoreFindUniqueMock },
-    campionato: { findFirst: campionatoFindFirstMock, create: campionatoCreateMock },
+    campionato: {
+      findFirst: campionatoFindFirstMock,
+      create: campionatoCreateMock,
+      findUnique: campionatoFindUniqueMock,
+      delete: campionatoDeleteMock,
+    },
   },
 }));
 
@@ -41,7 +48,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaCampionato } = await import("./actions");
+const { creaCampionato, cancellaCampionato } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -310,5 +317,165 @@ describe("creaCampionato", () => {
       error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
     });
     expect(campionatoCreateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("cancellaCampionato", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
+    gruppoFindUniqueMock.mockReset();
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    allenatoreFindFirstMock.mockReset();
+    gruppoAllenatoreFindUniqueMock.mockReset();
+    campionatoFindUniqueMock.mockReset();
+    campionatoFindUniqueMock.mockResolvedValue({ gruppoId: "gruppo-1" });
+    campionatoDeleteMock.mockReset();
+    campionatoDeleteMock.mockResolvedValue({});
+    trovaAnnoAgonisticoCorrenteMock.mockReset();
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(ANNO_CORRENTE);
+    revalidatePathMock.mockReset();
+  });
+
+  it("returns FORBIDDEN and touches nothing when the caller lacks the required Ruolo", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(campionatoDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when campionatoId is missing", async () => {
+    const result = await cancellaCampionato(undefined, buildFormData({}));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Campionato non specificato." },
+    });
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Campionato does not exist", async () => {
+    campionatoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-inesistente" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Campionato non trovato." },
+    });
+    expect(campionatoDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an Allenatore who does not coach the Gruppo owning the Campionato", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(campionatoDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("allows an Allenatore who coaches the Gruppo owning the Campionato to delete it", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ id: "ga-1" });
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(campionatoFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      select: { gruppoId: true },
+    });
+    expect(campionatoDeleteMock).toHaveBeenCalledWith({ where: { id: "campionato-1" } });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("allows Admin/Dirigente to delete any Campionato without ownership check", async () => {
+    getUserMock.mockResolvedValue(buildUser(["DIRIGENTE"]));
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(allenatoreFindFirstMock).not.toHaveBeenCalled();
+    expect(campionatoDeleteMock).toHaveBeenCalledWith({ where: { id: "campionato-1" } });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("allows Admin/Dirigente to delete a Campionato of a Gruppo from a past season (review fix)", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-passato" });
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(campionatoDeleteMock).toHaveBeenCalledWith({ where: { id: "campionato-1" } });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("still refuses an Allenatore trying to delete a Campionato of a Gruppo from a past season", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-passato" });
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato per la stagione corrente." },
+    });
+    expect(campionatoDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when campionato.delete throws", async () => {
+    campionatoDeleteMock.mockRejectedValueOnce(new Error("db down"));
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile cancellare il Campionato. Riprova." },
+    });
+  });
+
+  it("treats a concurrent double-delete (Prisma P2025) as idempotent success (review fix)", async () => {
+    campionatoDeleteMock.mockRejectedValueOnce(
+      Object.assign(new Error("Record to delete does not exist."), { code: "P2025" })
+    );
+
+    const result = await cancellaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1" })
+    );
+
+    expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
+    expect(result).toEqual({ success: true });
   });
 });

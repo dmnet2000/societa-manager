@@ -4,6 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
+import { EliminaPartitaForm } from "./EliminaPartitaForm";
 import styles from "./partite.module.css";
 
 // Un import riuscito su /campionati (Story 10.2, importaGare) revalida solo
@@ -105,6 +106,7 @@ export default async function PartitePage() {
                     <th>Luogo</th>
                     <th>Gruppo</th>
                     <th>Campionato</th>
+                    <th>Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -138,6 +140,14 @@ export default async function PartitePage() {
                         </td>
                         <td>{partita.gruppo.nome}</td>
                         <td>{partita.campionato.nome}</td>
+                        <td>
+                          <EliminaPartitaForm
+                            partitaId={partita.id}
+                            squadraCasa={partita.squadraCasa}
+                            squadraOspite={partita.squadraOspite}
+                            data={formattaData(partita.data)}
+                          />
+                        </td>
                       </tr>
                     );
                   })}

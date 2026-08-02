@@ -77,3 +77,60 @@ export async function creaCampionato(
   revalidatePath("/campionati");
   return { success: true };
 }
+
+// Story 10.6 (AC #2/#4): cancella un Campionato e, a cascata, tutte le sue
+// Partite - Campionato.gruppoId e' una FK diretta (Story 10.7), quindi
+// cancellarlo non impatta mai un altro Gruppo. Partita.campionatoId ha
+// ON DELETE CASCADE (prisma/schema.prisma, Story 10.2) - un solo delete
+// basta, Postgres rimuove automaticamente le Partite collegate.
+export async function cancellaCampionato(
+  _prevState: CampionatoActionState,
+  formData: FormData
+): Promise<CampionatoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+  if (forbidden) return forbidden;
+
+  const campionatoId = String(formData.get("campionatoId") ?? "").trim();
+  if (!campionatoId) {
+    return { error: { code: "VALIDATION", message: "Campionato non specificato." } };
+  }
+
+  const campionato = await prisma.campionato.findUnique({
+    where: { id: campionatoId },
+    select: { gruppoId: true },
+  });
+  if (!campionato) {
+    return { error: { code: "VALIDATION", message: "Campionato non trovato." } };
+  }
+
+  const autorizzazione = await risolviAutorizzazioneGruppo(campionato.gruppoId, {
+    permettiStagionePassata: true,
+  });
+  if (!autorizzazione.autorizzato) return { error: autorizzazione.error };
+
+  try {
+    await prisma.campionato.delete({ where: { id: campionatoId } });
+  } catch (err) {
+    // Review fix: race TOCTOU (due cancellazioni concorrenti sullo stesso
+    // Campionato) - P2002 su un secondo delete non esiste, Prisma solleva
+    // P2025 ("Record to delete does not exist") se la riga e' gia' sparita.
+    // Trattato come successo idempotente: lo stato desiderato (Campionato
+    // non piu' esistente) e' comunque gia' raggiunto, stesso principio gia'
+    // usato per P2002 in collegaCampionatoEsistente (Story 10.1, ora rimossa
+    // ma il pattern resta il riferimento per le race su scritture Campionato).
+    if ((err as { code?: string }).code === "P2025") {
+      revalidatePath("/campionati");
+      return { success: true };
+    }
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile cancellare il Campionato. Riprova." },
+    };
+  }
+
+  // Stesso pattern di importaGare (Story 10.2): revalida solo /campionati,
+  // non /partite (che si affida a force-dynamic per restare aggiornata,
+  // Dev Notes Story 10.3) - nessuna incoerenza nuova introdotta qui.
+  revalidatePath("/campionati");
+  return { success: true };
+}
