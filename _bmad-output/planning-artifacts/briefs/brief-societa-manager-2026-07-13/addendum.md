@@ -16,7 +16,7 @@ File di esempio fornito dall'utente, 1 foglio, intestazioni alla riga 5, 143 rig
 - `Categ.` — categoria età/attività (confermato dall'utente: l'export reale copre tutte le categorie insieme, incluse le Under 13, non filtrato per categoria)
 - `Data 1° Tess.` — data primo tesseramento storico
 - Campi società (appartenenza/tesseramento/provenienza + denominazioni), incluso eventuale prestito ad altra società — non rilevanti per il perimetro attuale
-- `Data Validità Tess.` — validità tesseramento federativo. **Confermato dall'utente: non correlata alla conferma iscrizione, che resta un passaggio manuale separato in segreteria. Campo da NON tracciare.**
+- `Data Validità Tess.` — validità tesseramento federativo. ~~Confermato dall'utente: non correlata alla conferma iscrizione, che resta un passaggio manuale separato in segreteria. Campo da NON tracciare.~~ **Ribaltato (2026-08-02)**: l'utente ha richiesto una vera Conferma Tesseramento in-app, distinta da Conferma Iscrizione, gestita solo da Admin/Dirigente — vedi Epic 13 in `epics.md`. La data di validità/scadenza in sé resta da precisare in fase di analisi dell'epic (non è detto vada tracciata, solo la conferma dell'avvenuto tesseramento).
 - `Campionato` — categoria di campionato disputato
 - `Data Inizio Val.Cert`, `Data Fine Val.Cert`, `Mesi Validità Cert` — validità certificato medico: più ricco di quanto ipotizzato in fase di brainstorming (non solo una data di scadenza, ma inizio + durata in mesi + fine)
 - `Modulo` — codice modulo idoneità (presumibilmente agonistica/non agonistica)

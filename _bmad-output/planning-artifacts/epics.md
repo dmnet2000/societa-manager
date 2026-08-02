@@ -1282,6 +1282,30 @@ so that posso portare in cima chi richiede attenzione più urgente invece di sco
 
 **And** nessuna regressione sulla sezione "Da confermare" né sul comportamento di conferma esistente (Story 4.4/9.20/9.23) — suite Vitest invariata sui casi esistenti non impattati
 
+### Story 9.26: Vista d'insieme per l'Allenatore sui propri Gruppi
+
+As a Allenatore,
+I want una "Vista d'insieme" sui Gruppi che gestisco (conteggi in regola/in scadenza/scaduto dei certificati, come già esiste per il Dirigente),
+so that posso valutare a colpo d'occhio la situazione certificati delle mie Atlete senza aprire ogni singola scheda.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02). Specchio diretto di `/vista-dirigente` (Story 5.1/5.2) ma scoped ai soli Gruppi dell'Allenatore, non a tutti i Gruppi del club. **Decisione tecnica presa con l'utente in fase di richiesta**: nuova pagina dedicata `/vista-allenatore` (non integrata in `/i-miei-gruppi`, che resta invariata per la gestione assegnazione Atlete). Riuso diretto del componente `GruppoCard`/`categorizzaStatoCertificato` già esistenti in `app/(amministrazione)/vista-dirigente/` — stesso pattern di cross-import già stabilito in questo progetto (`conferma-certificati/page.tsx`, Story 9.23/9.25, importa già `categorizzaStatoCertificato` da quel modulo). Nessuna restrizione granulare tipo `GruppoVisibileDirigente` (Story 5.2) si applica qui: un Allenatore ha già accesso pieno ai certificati delle Atlete dei propri Gruppi (policy RLS esistenti, Story 9.12/9.15), quindi `conteggi` non sarà mai `null` per questa pagina — il ramo "fuori dai permessi configurati" di `GruppoCard` semplicemente non si attiva mai qui, nessuna modifica al componente necessaria.
+
+**Acceptance Criteria:**
+
+**Given** un Allenatore agganciato al proprio profilo
+**When** visita `/vista-allenatore`
+**Then** vede una card per ciascun proprio Gruppo (stagione corrente) con i conteggi in regola/in scadenza/scaduto delle proprie Atlete, stesso drill-down cliccabile già esistente in `/vista-dirigente`
+
+**Given** un Allenatore che non gestisce ancora nessun Gruppo
+**When** visita la pagina
+**Then** vede un messaggio esplicito, nessun errore
+
+**Given** un Utente con un Ruolo diverso da ALLENATORE
+**When** tenta di visitare `/vista-allenatore`
+**Then** l'operazione viene rifiutata (route-guard, stesso pattern di ogni altra rotta a Ruolo singolo)
+
+**And** nessuna regressione su `/vista-dirigente` né su `/i-miei-gruppi` (entrambe invariate) — suite Vitest invariata sui casi esistenti non impattati
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -1529,6 +1553,8 @@ so that le email automatiche/di prova arrivino davvero a destinazione.
 **When** viene corretta o chiarita
 **Then** la causa e la correzione (o le istruzioni per l'Admin, se la causa è una password per-app da generare presso il provider) vengono documentate in questa storia
 
+**Risolto (2026-07-27):** causa confermata — entrambe le ipotesi erano corrette in sequenza: prima le credenziali SMTP salvate erano sbagliate (`AUTH`/"Invalid login"), poi, dopo averle corrette, l'"Indirizzo mittente" configurato era diverso dall'account SMTP autenticato ("Utente"), causando il rifiuto del comando `MAIL FROM`. Nessun difetto di codice: entrambe cause di configurazione, corrette dall'utente direttamente in `/smtp`. Email di prova inviata con successo.
+
 ## Epic 12: Permessi Configurabili da Admin
 
 *(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, emersa discutendo la Story 9.22. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo l'obiettivo generale catturato per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10.)*
@@ -1543,6 +1569,22 @@ so that le email automatiche/di prova arrivino davvero a destinazione.
 - **Impatto su AD-11**: oggi i Ruoli vivono nel JWT (`app_metadata`), letti da `route-guard.ts`/`requireRuolo` senza query DB ad ogni richiesta (scelta architetturale esplicita per performance). Un sistema di permessi per-funzionalità configurabile richiederebbe invece una query (o una cache) ad ogni richiesta protetta — da riconciliare con quella scelta, non ignorarla.
 - **Migrazione dei permessi esistenti**: tutte le rotte/Server Action già hardcoded in `route-guard.ts`/`requireRuolo` andrebbero convertite in righe di configurazione iniziali equivalenti (nessuna regressione silenziosa sul comportamento attuale al momento del rollout).
 
-**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10 e Epic 11 all'apertura).
+## Epic 13: Conferma Tesseramento
 
-**Risolto (2026-07-27):** causa confermata — entrambe le ipotesi erano corrette in sequenza: prima le credenziali SMTP salvate erano sbagliate (`AUTH`/"Invalid login"), poi, dopo averle corrette, l'"Indirizzo mittente" configurato era diverso dall'account SMTP autenticato ("Utente"), causando il rifiuto del comando `MAIL FROM`. Nessun difetto di codice: entrambe cause di configurazione, corrette dall'utente direttamente in `/smtp`. Email di prova inviata con successo.
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo l'obiettivo generale catturato per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10/11/12.)*
+
+**Decisione importante — ribalta un Non-Obiettivo esplicito del PRD**: il PRD (§5 Non-Obiettivi) e il Brief addendum dichiaravano esplicitamente "il sistema non traccia la Data Validità Tesseramento federale: confermato non correlata all'Iscrizione" — decisione presa alla cattura iniziale dei requisiti. L'utente ha ora confermato esplicitamente (2026-08-02) di voler ribaltare questa decisione: vuole un vero tracciamento/conferma del Tesseramento in-app. **PRD e Brief addendum sono già stati aggiornati** con una nota che documenta il ribaltamento (barrato + nota, stesso stile già usato altrove nel progetto per decisioni superate).
+
+**Requisito originale (testo dell'utente, 2026-08-02):** oggi esiste solo la Conferma Iscrizione (Story 1.6/1.8, FR-17, `/conferma-iscrizioni`, a cura della Segreteria) — serve aggiungere, per ogni Atleta, anche una **Conferma Tesseramento**, distinta dalla Conferma Iscrizione. Il Tesseramento può essere gestito **solo da Admin e Dirigente** (esplicitamente **non** Segreteria, a differenza dell'Iscrizione che oggi ammette anche Admin/Dirigente in lettura/esclusione ma riserva la conferma alla sola Segreteria, FR-17/Story 1.8).
+
+**Punti aperti da chiarire in fase di analisi (non ancora decisi con l'utente, da NON assumere):**
+- **Modello dati**: nuova entità `Tesseramento` (specchio di `Iscrizione`: `atletaId`+`annoAgonisticoId`, `@@unique`, scoped per stagione come Iscrizione, AD-8) o un campo aggiuntivo sulla riga `Iscrizione` esistente (es. `tesseramentoConfermato`, `tesseramentoConfermatoIl`)? Il Brief originale suggerisce che il tesseramento ha una propria "Data Validità" distinta — se tracciata, servirebbe comunque una struttura propria, non un semplice booleano.
+- **Relazione con Iscrizione**: il Tesseramento richiede che l'Iscrizione sia già confermata (ordine naturale: prima iscrizione al club, poi tesseramento alla federazione), o sono indipendenti? Cosa succede se un'Iscrizione viene esclusa (Story 1.8) dopo che il Tesseramento era già stato confermato?
+- **Cosa si traccia esattamente**: solo un flag "confermato/non confermato" (come Iscrizione), oppure anche una data di conferma, un numero di tesseramento, una data di validità/scadenza (il Brief addendum menzionava `Data Validità Tess.` come campo distinto dall'export federale, `Data 1° Tess.` come data storica del primo tesseramento mai fatto)?
+- **UI**: nuova pagina dedicata `/conferma-tesseramento` (specchio di `/conferma-iscrizioni`), o integrata nella stessa pagina/tabella di Conferma Iscrizioni con una colonna aggiuntiva? Data la differenza di Ruoli ammessi (Segreteria esclusa qui), una pagina separata è probabilmente più semplice per l'autorizzazione, da confermare.
+- **RLS vs dato strutturale**: `Iscrizione` è protetta da RLS (AD-4). Il Tesseramento tocca lo stesso perimetro di dati (Atleta, non sanitario) — verificare se debba seguire lo stesso trattamento RLS o possa essere strutturale (AD-9) dato che i Ruoli coinvolti (Admin/Dirigente) hanno già accesso ampio ovunque.
+- **Wizard nuova stagione**: se il Tesseramento è per-stagione come l'Iscrizione, il rollover (Story 5.3/6.3) dovrebbe/non dovrebbe riportare lo stato di conferma alla stagione successiva? L'Iscrizione oggi non viene riportata (va riconfermata ogni anno) — probabilmente lo stesso vale per Tesseramento, da confermare non assumere.
+
+**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10/11/12 all'apertura).
+
+**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10 e Epic 11 all'apertura).

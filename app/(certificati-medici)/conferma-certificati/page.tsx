@@ -4,28 +4,8 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
+import { ListaConfermati } from "./ListaConfermati";
 import styles from "./conferma-certificati.module.css";
-
-// Story 9.23: mappa stato -> classe badge. SENZA_CERTIFICATO non e'
-// raggiungibile in pratica per la sezione "Confermati" (dataFineValidita e'
-// sempre obbligatoria in confermaCertificato) ma gestito comunque in modo
-// difensivo (nessun badge), coerente col tipo di ritorno della funzione.
-const CLASSE_BADGE: Record<
-  ReturnType<typeof categorizzaStatoCertificato>,
-  string | null
-> = {
-  IN_REGOLA: styles.badgeInRegola,
-  IN_SCADENZA: styles.badgeInScadenza,
-  SCADUTO: styles.badgeScaduto,
-  SENZA_CERTIFICATO: null,
-};
-
-const ETICHETTA_BADGE: Record<ReturnType<typeof categorizzaStatoCertificato>, string> = {
-  IN_REGOLA: "In regola",
-  IN_SCADENZA: "In scadenza",
-  SCADUTO: "Scaduto",
-  SENZA_CERTIFICATO: "",
-};
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
 // pagina) - stesso motivo di /presenze, /certificato-medico.
@@ -118,17 +98,15 @@ export default async function ConfermaCertificatiPage() {
         {confermati.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessun Certificato ancora confermato.</p>
         ) : (
-          <ul className={styles.listaConfermati}>
-            {confermati.map(({ atleta, certificato }) => {
-              const dataFineValidita = certificato?.dataFineValidita as
-                | string
-                | undefined;
+          <ListaConfermati
+            righe={confermati.map(({ atleta, certificato }) => {
+              const dataFineValidita =
+                (certificato?.dataFineValidita as string | undefined) ?? null;
               const stato = categorizzaStatoCertificato(
-                dataFineValidita ?? null,
+                dataFineValidita,
                 (certificato?.stato as StatoCertificato | null) ?? null,
                 oggi
               );
-              const classeBadge = CLASSE_BADGE[stato];
               if (stato === "SENZA_CERTIFICATO") {
                 // Review fix (Story 9.23): non raggiungibile tramite il
                 // percorso di scrittura attuale (confermaCertificato impone
@@ -140,21 +118,27 @@ export default async function ConfermaCertificatiPage() {
                   `Story 9.23: Certificato CONFERMATO senza dataFineValidita valida per Atleta ${atleta.id}.`
                 );
               }
-              return (
-                <li key={atleta.id} className={styles.rigaConfermata}>
-                  <span className={styles.nomeConData}>
-                    {atleta.nome}
-                    {dataFineValidita
-                      ? ` — valido fino al ${new Date(dataFineValidita).toLocaleDateString("it-IT")}`
-                      : null}
-                  </span>
-                  {classeBadge && (
-                    <span className={classeBadge}>{ETICHETTA_BADGE[stato]}</span>
-                  )}
-                </li>
-              );
+              // Review fix (Story 9.25): formattata qui, non nel Client
+              // Component - un Server Component non idrata mai (nessun
+              // rischio di mismatch), ma ListaConfermati si', e la stessa
+              // chiamata new Date(...).toLocaleDateString() rieseguita in
+              // hydration userebbe il fuso orario del browser invece di
+              // quello del server, con un possibile disallineamento intorno
+              // alla mezzanotte locale (stesso principio gia' corretto con
+              // timeZone: "UTC" in raggruppa-per-settimana.ts, Story 10.3).
+              const dataFineValiditaFormattata = dataFineValidita
+                ? new Date(dataFineValidita).toLocaleDateString("it-IT", {
+                    timeZone: "UTC",
+                  })
+                : null;
+              return {
+                atletaId: atleta.id,
+                nome: atleta.nome,
+                dataFineValiditaFormattata,
+                stato,
+              };
             })}
-          </ul>
+          />
         )}
       </section>
     </main>

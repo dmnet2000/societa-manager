@@ -46,6 +46,7 @@ Nasce da un'esigenza pratica e personale di chi lo costruisce: recuperare il tem
 - **Gruppo** — insieme di atlete che si allenano insieme, associato a uno o più Allenatori, per un dato Anno Agonistico.
 - **Certificato Medico** — documento di idoneità sportiva di un'Atleta, con validità su anno solare (non sull'Anno Agonistico), tracciato con data inizio/fine validità.
 - **Iscrizione** — conferma amministrativa (a cura della Segreteria) che un'Atleta è regolarmente iscritta per l'Anno Agonistico corrente. Concetto distinto e non derivabile dalla validità del tesseramento federale.
+- **Tesseramento** — **(2026-08-02, ribalta il Non-Obiettivo originale sotto, vedi Epic 13)** conferma amministrativa, distinta dall'Iscrizione, che il tesseramento federale di un'Atleta per l'Anno Agonistico corrente è stato completato — gestita esclusivamente da Admin/Dirigente (non Segreteria).
 - **Codice Fiscale** — chiave di matching univoca usata in import, onboarding e rollover stagionale per riconoscere Atlete, Allenatori e il legame Genitore-Atleta.
 
 ## 4. Feature
@@ -221,7 +222,7 @@ L'Admin può caricare/aggiornare il logo dell'applicazione dall'interfaccia di c
 - Il sistema non introduce il ruolo Gestore palestra/impianto: gli slot orari delle palestre sono un dato già assegnato esternamente alla polisportiva, non deciso da essa.
 - Il sistema non introduce il ruolo Medico sportivo/Staff sanitario: nessuno ricopre oggi questo ruolo in polisportiva — da riconsiderare se la situazione cambia.
 - Il sistema non replica le funzioni gestionali complete della Segreteria (pagamenti, iscrizioni federali): restano nel gestionale esterno esistente; qui la Segreteria opera solo su FR-14 e FR-17.
-- Il sistema non traccia la Data Validità Tesseramento federale: confermato non correlata all'Iscrizione (§3 Glossario).
+- ~~Il sistema non traccia la Data Validità Tesseramento federale: confermato non correlata all'Iscrizione (§3 Glossario).~~ — **Ribaltato (2026-08-02)**: l'utente ha richiesto esplicitamente un vero tracciamento/conferma del Tesseramento in-app, distinto da Iscrizione, gestito solo da Admin/Dirigente. Vedi Epic 13 "Conferma Tesseramento" in `epics.md` (futuro, analisi di dettaglio rimandata all'apertura). Non tracciata comunque la Data Validità Tesseramento in sé (scadenza), solo la conferma che è stato completato — da confermare/precisare in fase di analisi dell'epic.
 
 ## 6. Perimetro MVP
 

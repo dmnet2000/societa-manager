@@ -470,6 +470,15 @@
 - Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 - Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 
+## Deferred from: code review of 9-25-ordinamento-stato-confermati (2026-08-02)
+
+- Nessun indicatore visivo di direzione sull'etichetta "Stato" (solo `aria-pressed`) — un Utente vedente non ha modo di sapere se l'ordinamento è attivo senza cliccare e osservare il riordino. [app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx]
+- Nessun `aria-controls`/relazione esplicita tra il bottone "Stato" e la lista che governa — nessun precedente di questo pattern nel progetto. [app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx]
+- Nessun test di interazione per `ListaConfermati.tsx` (click sul bottone, verifica riordino renderizzato) — coerente con la convenzione "nessun test di rendering" già stabilita per i Client Component, solo la funzione pura di ordinamento è testata.
+- Il bottone "Stato" compare anche con una sola riga confermata, dove l'ordinamento non ha alcun effetto osservabile — cosmetico.
+- `localeCompare(nome, "it")` senza opzioni esplicite di sensitivity, copertura di test minima sugli accenti — coerente col livello già accettato altrove nel progetto.
+- `StatoCertificatoAggregato` enumerato in tre punti indipendenti (mappa priorità + mappa classe badge + mappa etichetta badge) — l'esaustività di `Record<...>` di TypeScript previene chiavi dimenticate, ma restano tre punti di manutenzione per lo stesso concetto. [lib/ordina-certificati-per-stato.ts, app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx]
+
 ## Deferred from: code review of 9-24-menu-impostazioni-smtp-logo (2026-08-02)
 
 - Nessun link/breadcrumb di ritorno da `/smtp`/`/logo` verso `/impostazioni` — richiederebbe toccare quelle due pagine, esplicitamente fuori scope della Story 9.24; mitigato dal pulsante "indietro" del browser. [app/(configurazione)/smtp/page.tsx, app/(configurazione)/logo/page.tsx]

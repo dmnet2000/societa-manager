@@ -4,7 +4,7 @@ baseline_commit: ff94776815aac8cd3efa3963301d31237871993b
 
 # Story 9.25: Ordinamento per stato nella sezione "Confermati"
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,7 +24,7 @@ so that posso portare in cima chi richiede attenzione più urgente invece di sco
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Nuova utility pura di ordinamento (AC: #2)
+- [x] Task 1: Nuova utility pura di ordinamento (AC: #2)
   - [ ] Nuovo `lib/ordina-certificati-per-stato.ts`:
     ```ts
     import type { StatoCertificatoAggregato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
@@ -51,25 +51,41 @@ so that posso portare in cima chi richiede attenzione più urgente invece di sco
     }
     ```
     Nota: `categorizza-stato-certificato.ts` deve esportare `StatoCertificatoAggregato` (già definito lì, verificare che sia `export type`, non solo interno al modulo)
-  - [ ] Nuovo `lib/ordina-certificati-per-stato.test.ts`: righe miste riordinate correttamente (SCADUTO prima di IN_SCADENZA prima di IN_REGOLA), parità di stato → ordine alfabetico per nome (case-sensitivity/accenti gestiti da `localeCompare("it")`), array vuoto → `[]`, array già ordinato → invariato, **non muta l'array originale** (verificare che l'input passato non venga modificato, `[...righe].sort` crea una copia)
-- [ ] Task 2: Estrarre `ListaConfermati.tsx` (Client Component) (AC: #1, #2)
-  - [ ] Nuovo `app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx`, `"use client"`. Riceve `righe: { atletaId: string; nome: string; dataFineValidita: string | null; stato: StatoCertificatoAggregato }[]` come prop (dati già serializzabili, nessuna Date/oggetto Prisma)
-  - [ ] Spostare qui `CLASSE_BADGE`/`ETICHETTA_BADGE` (oggi in `page.tsx`, righe 13-28) — invariati nel contenuto, solo il file cambia
-  - [ ] Stato locale: `const [ordinatoPerStato, setOrdinatoPerStato] = useState(false);`
-  - [ ] `const righeVisualizzate = ordinatoPerStato ? ordinaPerPrioritaStato(righe) : righe;` (usare `useMemo` per evitare di riordinare ad ogni render se non necessario — dipendenze `[righe, ordinatoPerStato]`)
-  - [ ] Header sopra la lista: un `<button>` (mai un `<span>` cliccabile, per tastiera/screen reader) con testo "Stato", `aria-pressed={ordinatoPerStato}`, `onClick={() => setOrdinatoPerStato((v) => !v)}` — click attiva l'ordinamento per priorità, click successivo torna all'ordine per nome (toggle semplice, non un ciclo a più stati)
-  - [ ] Renderizzare `righeVisualizzate.map(...)` con lo stesso markup oggi in `page.tsx` (righe 144-155: `<li className={styles.rigaConfermata}>` con `<span className={styles.nomeConData}>` + badge condizionale) — **nessuna modifica visiva alle righe stesse**, solo l'header nuovo e l'origine dei dati (`righeVisualizzate` invece di `confermati` iterato direttamente)
-- [ ] Task 3: Aggiornare `page.tsx` (AC: #1, #3)
-  - [ ] Rimuovere `CLASSE_BADGE`/`ETICHETTA_BADGE` da `page.tsx` (spostati in `ListaConfermati.tsx`)
-  - [ ] Nel blocco "Confermati", **mantenere invariato** il calcolo server-side di `categorizzaStatoCertificato` per riga (incluso il `console.warn` difensivo per `SENZA_CERTIFICATO`, Story 9.23 review fix) — costruire un array `righeConfermati: { atletaId: string; nome: string; dataFineValidita: string | null; stato: StatoCertificatoAggregato }[]` e passarlo a `<ListaConfermati righe={righeConfermati} />` invece del `.map` JSX diretto oggi presente (righe 121-157)
-  - [ ] Il ramo "nessun certificato confermato" (`confermati.length === 0`, messaggio vuoto) resta invariato e **fuori** da `ListaConfermati` — quel componente viene montato solo quando c'è almeno una riga
-  - [ ] **Non toccare** la sezione "Da confermare" (righe 79-114) né `ConfermaCertificatoRow.tsx`
-- [ ] Task 4: CSS — header e bottone "Stato" (AC: #1, #2)
-  - [ ] `app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css`: nuove classi `.headerConfermati` (flex, `justify-content: space-between`, `align-items: center`, stesso font/colore di `.sezione h2` per l'etichetta statica a sinistra se presente, o solo il bottone a destra allineato con la colonna badge) e `.bottoneOrdina` (bottone senza bordo/sfondo proprio, `font-size: 11px`, `font-weight: 700`, `text-transform: uppercase`, `color: var(--color-text-secondary)`, `cursor: pointer`, `focus-visible` con `outline: 2px solid var(--color-focus-ring); outline-offset: 2px;` — stesso pattern accessibilità di ogni altro bottone del progetto). Nessun'icona/freccia necessaria per l'AC di questa storia (solo il testo "Stato" cliccabile)
-- [ ] Task 5: Verifica regressione (AC: #3)
-  - [ ] Suite Vitest completa: tutti i test esistenti devono continuare a passare, più i nuovi test di `ordina-certificati-per-stato.test.ts`
-  - [ ] `npx tsc --noEmit` ed ESLint puliti
-  - [ ] Nessun test di rendering per `ListaConfermati.tsx` (coerente con la convenzione "nessun test di rendering" già stabilita nel progetto per i Client Component) — solo la funzione pura di ordinamento è testata
+  - [x] Nuovo `lib/ordina-certificati-per-stato.test.ts`: 7 test (priorità, parità nome, accenti, array vuoto, già ordinato, non muta l'originale, SENZA_CERTIFICATO ultimo) — tutti passano
+- [x] Task 2: Estrarre `ListaConfermati.tsx` (Client Component) (AC: #1, #2)
+  - [x] Nuovo `app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx`, `"use client"`, riceve `righe` serializzabili
+  - [x] `CLASSE_BADGE`/`ETICHETTA_BADGE` spostati qui, invariati
+  - [x] Stato locale `ordinatoPerStato` + `useMemo` per `righeVisualizzate`
+  - [x] Header con `<button aria-pressed>` "Stato", toggle semplice
+  - [x] Stesso markup di riga di prima, solo origine dati diversa
+- [x] Task 3: Aggiornare `page.tsx` (AC: #1, #3)
+  - [x] `CLASSE_BADGE`/`ETICHETTA_BADGE` rimossi da `page.tsx` (spostati)
+  - [x] Calcolo server-side di `categorizzaStatoCertificato` + `console.warn` difensivo mantenuti invariati, ora passati come prop a `<ListaConfermati righe={...} />`
+  - [x] Ramo "nessun certificato confermato" invariato, fuori da `ListaConfermati`
+  - [x] Sezione "Da confermare"/`ConfermaCertificatoRow.tsx` non toccate
+- [x] Task 4: CSS — header e bottone "Stato" (AC: #1, #2)
+  - [x] Nuove classi `.headerConfermati` (allineato a destra, sopra la lista) e `.bottoneOrdina` (bottone senza bordo/sfondo, focus-visible standard)
+- [x] Task 5: Verifica regressione (AC: #3)
+  - [x] Suite Vitest completa: 802/802 test passati (+7 nuovi)
+  - [x] `npx tsc --noEmit` pulito (0 errori); ESLint pulito su tutti i file modificati/nuovi
+  - [x] Nessun test di rendering per `ListaConfermati.tsx` (convenzione già stabilita)
+
+### Review Findings
+
+- [x] [Review][Patch] La formattazione della data (`new Date(dataFineValidita).toLocaleDateString("it-IT")`) era stata spostata dentro `ListaConfermati.tsx` (Client Component) — a differenza di un Server Component (mai idratato), questo codice si riesegue anche in hydration nel browser: se il fuso orario del server differisse da quello del browser, il valore renderizzato lato server e quello ricalcolato in hydration potrebbero non coincidere (mismatch di idratazione), specialmente vicino alla mezzanotte locale. [app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx, page.tsx] — risolto: la formattazione avviene ora in `page.tsx` (`timeZone: "UTC"` esplicito, stesso principio già applicato in `lib/raggruppa-per-settimana.ts`, Story 10.3), il Client Component riceve solo `dataFineValiditaFormattata: string | null` già pronta, nessuna chiamata a `new Date()`/`toLocaleDateString` lato client.
+- [x] [Review][Defer] Nessun indicatore visivo di direzione sull'etichetta "Stato" (solo `aria-pressed`, il testo del bottone resta identico) — un Utente vedente non ha modo di sapere se l'ordinamento è attivo senza cliccare e osservare il riordino. Miglioramento UX, nessun AC lo richiede.
+- [x] [Review][Defer] Nessun `aria-controls`/relazione esplicita tra il bottone "Stato" e la lista che governa — solo prossimità visiva. Nessun precedente di questo pattern nel progetto (es. il menu profilo non lo usa nemmeno).
+- [x] [Review][Defer] Nessun test di interazione per `ListaConfermati.tsx` (click sul bottone, verifica che l'ordine renderizzato cambi) — coerente con la convenzione "nessun test di rendering" già stabilita per i Client Component in questo progetto, solo la funzione pura di ordinamento è testata.
+- [x] [Review][Defer] Il bottone "Stato" compare anche con una sola riga confermata, dove l'ordinamento non ha alcun effetto osservabile — cosmetico, nessun danno.
+- [x] [Review][Defer] `localeCompare(nome, "it")` senza opzioni esplicite di sensitivity, solo un caso di test per gli accenti — copertura minima ma coerente con il livello di test già accettato altrove nel progetto per confronti stringa simili.
+- [x] [Review][Defer] `StatoCertificatoAggregato` è enumerato in tre punti indipendenti (mappa priorità in `ordina-certificati-per-stato.ts`, mappa classe badge e mappa etichetta badge in `ListaConfermati.tsx`) — l'esaustività di `Record<...>` di TypeScript impedisce di dimenticare una chiave, ma restano comunque tre punti di manutenzione per lo stesso concetto.
+- [x] [Review][Dismiss] Il toggle non inverte l'ordine per stato al secondo click (torna all'ordine per nome, non a un ordine per stato invertito) — comportamento deliberato e già documentato esplicitamente nella storia ("Toggle semplice, non un ciclo", deciso con l'utente in fase di creazione), non un difetto.
+- [x] [Review][Dismiss] "L'ordine di default per nome non è mai stabilito esplicitamente nel codice di questa storia" — verificato falso: `elencaAtlete` (`lib/db-rls/atleta.ts`) ordina già lato server per `nome` ascendente (`.order("nome", { ascending: true })`), comportamento preesistente non introdotto né da ristabilire in questa storia.
+- [x] [Review][Dismiss] Allineamento CSS di `.headerConfermati` con la colonna badge "asserito solo in un commento, non verificato" — verificato: né `.headerConfermati` né `.rigaConfermata` hanno padding orizzontale proprio, quindi i bordi destri si allineano naturalmente sullo stesso contenitore; nessun disallineamento reale.
+- [x] [Review][Dismiss] Rischio di divergenza tra `ReturnType<typeof categorizzaStatoCertificato>` (uso precedente in `page.tsx`) e `StatoCertificatoAggregato` (nuovo import diretto) — verificato falso: `categorizzaStatoCertificato` dichiara già esplicitamente `: StatoCertificatoAggregato` come tipo di ritorno, i due tipi sono garantiti identici da TypeScript, non solo coincidentalmente uguali oggi.
+- [x] [Review][Dismiss] Nessun test di regressione dedicato per l'estrazione stessa (spostamento di ~40 righe da `page.tsx` a `ListaConfermati.tsx`) — coperto dalla suite Vitest completa (802/802 invariata/estesa) e dalla convenzione "nessun test di rendering" già accettata nel progetto.
+- [x] [Review][Dismiss] Commento "SENZA_CERTIFICATO non raggiungibile in pratica" duplicato in due file — stesso stile di commenti contestuali duplicati già accettato ovunque nel progetto.
+- [x] [Review][Dismiss] Una riga con stato anomalo (`SENZA_CERTIFICATO`) viene comunque ordinata e mostrata (in fondo, per priorità) — comportamento preesistente da Story 9.23 (già accettato con `console.warn` difensivo), non introdotto da questa storia.
 
 ## Dev Notes
 
@@ -99,8 +115,28 @@ so that posso portare in cima chi richiede attenzione più urgente invece di sco
 
 ### Agent Model Used
 
+Claude Sonnet 5
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 1: nuova utility pura `ordinaPerPrioritaStato` (`lib/ordina-certificati-per-stato.ts`), priorità SCADUTO→IN_SCADENZA→IN_REGOLA→SENZA_CERTIFICATO, tie-break `localeCompare("it")`. 7 test, tutti passano (inclusa non-mutazione dell'array originale).
+- Task 2: nuovo Client Component `ListaConfermati.tsx` — `CLASSE_BADGE`/`ETICHETTA_BADGE` spostati da `page.tsx`, stato locale `ordinatoPerStato` + `useMemo`, header con `<button aria-pressed>` "Stato" (toggle semplice nome↔priorità).
+- Task 3: `page.tsx` calcola ancora `categorizzaStatoCertificato`/il `console.warn` difensivo lato server (invariato da Story 9.23), passa un array serializzabile a `ListaConfermati`. Sezione "Da confermare" non toccata.
+- Task 4: nuove classi CSS `.headerConfermati`/`.bottoneOrdina`, stesso registro di focus-visible del resto del progetto.
+- Task 5: 802/802 test passati (+7 nuovi), `tsc --noEmit` pulito, ESLint pulito. Nessun test di rendering per il nuovo Client Component (convenzione già stabilita).
+- Code review (2026-08-02): Blind Hunter + Edge Case Hunter + Acceptance Auditor — 0 decision-needed, 1 patch applicato (formattazione data spostata da `ListaConfermati.tsx`/Client Component, dove si sarebbe riesguita anche in hydration con rischio di mismatch se il fuso orario del server differisse da quello del browser, a `page.tsx`/Server Component con `timeZone: "UTC"` esplicito — stesso principio già applicato in Story 10.3). 7 defer (nessun indicatore visivo di direzione, nessun `aria-controls`, nessun test di interazione — convenzione, bottone visibile anche con 1 riga, `localeCompare` senza opzioni esplicite, `StatoCertificatoAggregato` enumerato in 3 punti), 6 scartati come falsi positivi verificati (toggle non-ciclico è deliberato, ordine di default per nome già garantito da `elencaAtlete`, allineamento CSS verificato corretto, nessun rischio di drift tra i due riferimenti di tipo — `categorizzaStatoCertificato` già dichiara esplicitamente `StatoCertificatoAggregato`, estrazione coperta dalla suite completa, commento duplicato già accettato). 802/802 test passati, 0 errori tsc/eslint dopo il fix.
+
 ### File List
+
+- `lib/ordina-certificati-per-stato.ts` (nuovo)
+- `lib/ordina-certificati-per-stato.test.ts` (nuovo)
+- `app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx` (nuovo — formattazione data rimossa in review)
+- `app/(certificati-medici)/conferma-certificati/page.tsx` (modificato — CLASSE_BADGE/ETICHETTA_BADGE rimossi, sezione "Confermati" delegata a ListaConfermati, formattazione data con timeZone:"UTC" aggiunta in review)
+- `app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css` (modificato — nuove classi header/bottone ordina)
+
+## Change Log
+
+- 2026-08-02: Implementata Story 9.25 — etichetta cliccabile "Stato" in testa alla lista "Confermati" di `/conferma-certificati`, ordina per priorità Scaduto→In scadenza→In regola (tie-break alfabetico). Prima interazione client-side di ordinamento su una lista in questo progetto — sezione "Confermati" estratta in un nuovo Client Component `ListaConfermati.tsx`, `categorizzaStatoCertificato` resta calcolata lato server (Story 9.23, invariata). "Da confermare" non toccata. 802/802 test passati, 0 errori tsc/eslint.
+- 2026-08-02: Code review completata — 1 patch applicato (formattazione data spostata lato server con `timeZone: "UTC"` esplicito, evita un rischio di mismatch di idratazione introdotto dall'estrazione in Client Component), 7 defer, 6 scartati come falsi positivi verificati. 802/802 test passati, 0 errori tsc/eslint dopo il fix. Status: done.

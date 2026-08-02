@@ -114,9 +114,34 @@
   opacity: 0.6;
 }
 
+/* Story 9.25: header sopra la lista "Confermati" con l'etichetta cliccabile
+   "Stato" - allineata a destra, in corrispondenza della colonna badge. */
+.headerConfermati {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.bottoneOrdina {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.bottoneOrdina:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .listaConfermati {
   list-style: none;
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .rigaConfermata {
