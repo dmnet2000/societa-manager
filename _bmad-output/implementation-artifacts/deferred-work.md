@@ -470,6 +470,10 @@
 - Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 - Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 
+## Deferred from: code review of 9-23-colore-semantico-certificati-confermati (2026-08-02)
+
+- Lo stesso stato `SCADUTO` viene mostrato in tono warning (giallo) altrove nell'app (badge "Certificato in scadenza", vista-dirigente) e in tono danger (rosso) in `/conferma-certificati`, senza alcun segnale che la scala colore sia dipendente dal contesto — osservazione UX legittima, nessuna correzione di codice non ambigua possibile senza una decisione di prodotto. [app/(certificati-medici)/conferma-certificati/page.tsx]
+
 ## Deferred from: code review of 9-22-precaricamento-allenatori-solo-admin (2026-08-02)
 
 - Nessun test copre `getRouteDecision` con un array di Ruoli vuoto (Utente autenticato ma senza alcun Ruolo) su `/precaricamento-allenatori` — gap pre-esistente e trasversale a ogni voce di `PROTECTED_ROUTES`, non introdotto da questa storia. [lib/auth/route-guard.test.ts]

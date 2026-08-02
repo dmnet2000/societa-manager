@@ -4,7 +4,7 @@ baseline_commit: b66c22acc1fcd7abc29b6a1fd5985eaa8f6f1526
 
 # Story 9.23: Colore semantico sui certificati confermati (verde/giallo/rosso)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -27,21 +27,37 @@ so that posso dare priorità a chi richiede un rinnovo urgente senza dover contr
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Aggiornare `DESIGN.md` con l'eccezione (AC: #3)
-  - [ ] In `_bmad-output/planning-artifacts/ux-designs/ux-societa-manager-2026-07-22/DESIGN.md`, sezione **Componenti → Badge di stato**: dopo la frase "La variante danger è riservata al conteggio aggregato (vedi stat-tile)", aggiungere una frase di eccezione esplicita, motivata: `/conferma-certificati` (Story 9.23) è l'unica pagina in cui il badge "Scaduto" a livello di singola atleta usa la variante **danger** invece di warning — contesto di gestione attiva dei certificati da parte di Admin/Dirigente/Segreteria, non il flusso presenze (FR-15) che motiva la regola generale altrove
-  - [ ] Aggiornare anche la tabella **Cose da fare e da evitare** (riga "Badge 'certificato scaduto' a livello di singola atleta in tono warning...") con un rimando a questa eccezione, per non renderla apparentemente contraddittoria a chi legge solo quella tabella
-- [ ] Task 2: Calcolo dello stato in `page.tsx` (AC: #1, #2, #3)
-  - [ ] `app/(certificati-medici)/conferma-certificati/page.tsx`: importare `categorizzaStatoCertificato` da `@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato` (riuso diretto, nessuna nuova funzione di calcolo)
-  - [ ] Calcolare `const oggi = new Date();` una sola volta nella funzione della pagina (stesso pattern di `vista-dirigente/page.tsx`)
-  - [ ] Nel `.map` della sezione "Confermati" (righe 93-105 circa), per ciascuna riga calcolare `const stato = categorizzaStatoCertificato(dataFineValidita ?? null, certificato?.stato as StatoCertificato | null ?? null, oggi);` e passarlo come prop a `ConfermaCertificatoRow` (o renderizzare il badge direttamente in `page.tsx`, essendo la sezione "Confermati" oggi renderizzata inline in `page.tsx`, non tramite `ConfermaCertificatoRow` — verificare la struttura attuale prima di scegliere dove mettere la logica, non duplicare markup)
-  - [ ] **Non toccare** la sezione "Da confermare" né il componente `ConfermaCertificatoRow.tsx` usato lì (AC #4) — quel componente resta per il form di conferma, indipendente da questa storia
-- [ ] Task 3: Badge CSS — 3 varianti (AC: #1, #2, #3)
-  - [ ] `app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css`: nuove classi `.badgeInRegola` (`background: var(--color-success-bg); color: var(--color-success);`), `.badgeInScadenza` (`background: var(--color-warning-bg); color: var(--color-warning);`), `.badgeScaduto` (`background: var(--color-danger-bg); color: var(--color-danger);`) — stessa struttura del pattern `.badge` già esistente altrove (`gruppi.module.css` riga 218, `presenze.module.css` riga 142: `font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-sm); white-space: nowrap;`), solo il colore cambia per variante — **non** introdurre una quarta variante generica riusabile cross-modulo: questo progetto duplica deliberatamente questo pattern per modulo (nessun componente Badge condiviso esiste), coerente con ogni occorrenza precedente
-  - [ ] `.rigaConfermata` (riga 122 di `conferma-certificati.module.css`) va esteso con `display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);` per allineare il nome dell'Atleta a sinistra e il badge a destra (oggi è un blocco di solo testo)
-- [ ] Task 4: Verifica regressione (AC: #4)
-  - [ ] Suite Vitest completa: nessun test esistente tocca `page.tsx` (nessun file di test per questa pagina, coerente con la convenzione "nessun test di rendering" già stabilita nel progetto) — verificare comunque che `actions.test.ts` (Server Action, non toccate da questa storia) resti verde
-  - [ ] `npx tsc --noEmit` ed ESLint puliti
-  - [ ] Nessun nuovo file di test atteso (nessuna nuova funzione pura introdotta, `categorizzaStatoCertificato` è già testata da `categorizza-stato-certificato.test.ts`, Story 5.1/9.19)
+- [x] Task 1: Aggiornare `DESIGN.md` con l'eccezione (AC: #3)
+  - [x] Aggiunta frase di eccezione esplicita e motivata dopo la regola "non negoziabile" in **Componenti → Badge di stato**
+  - [x] Aggiornata anche la tabella **Cose da fare e da evitare** con il rimando all'eccezione
+- [x] Task 2: Calcolo dello stato in `page.tsx` (AC: #1, #2, #3)
+  - [x] Importato `categorizzaStatoCertificato` e `type StatoCertificato`, riuso diretto
+  - [x] `const oggi = new Date();` calcolata una sola volta in cima alla funzione
+  - [x] Nel `.map` della sezione "Confermati", calcolato lo stato per riga e renderizzato il badge inline (nessuna modifica a `ConfermaCertificatoRow.tsx`, non usato in quella sezione)
+  - [x] Sezione "Da confermare" non toccata (AC #4)
+- [x] Task 3: Badge CSS — 3 varianti (AC: #1, #2, #3)
+  - [x] Nuove classi `.badgeInRegola`/`.badgeInScadenza`/`.badgeScaduto`, stessa struttura del pattern `.badge` esistente altrove
+  - [x] `.rigaConfermata` estesa con `display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);`
+- [x] Task 4: Verifica regressione (AC: #4)
+  - [x] Suite Vitest completa: 790/790 test passati (invariato)
+  - [x] `npx tsc --noEmit` pulito (0 errori); ESLint pulito su `page.tsx`
+  - [x] Nessun nuovo file di test (nessuna nuova funzione pura introdotta)
+
+### Review Findings
+
+- [x] [Review][Patch] Il `<span>` con nome Atleta + data di validità non aveva `flex:1`/`min-width:0` accanto al badge (`flex-shrink:0`) — un nome lungo + suffisso data poteva sfondare la riga invece di andare a capo, stesso bug già incontrato e corretto in questo stesso progetto (`presenze.module.css` `.etichetta`). [app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css] — risolto: nuova classe `.nomeConData` (`flex: 1; min-width: 0;`) applicata al `<span>`.
+- [x] [Review][Patch] `const oggi = new Date()` era calcolata **prima** del `Promise.all` (fetch Atlete/Certificati), non dopo come nel precedente citato nel commento stesso (`vista-dirigente/page.tsx`) — un fetch lento a cavallo della mezzanotte locale avrebbe classificato i certificati contro un "oggi" stantio. [app/(certificati-medici)/conferma-certificati/page.tsx] — risolto: spostata dopo il `Promise.all`.
+- [x] [Review][Patch] `categorizzaStatoCertificato` può restituire `SENZA_CERTIFICATO` anche per una riga già filtrata su `stato === "CONFERMATO"`, se `dataFineValidita` fosse `null` (colonna nullable a livello di schema, nessun vincolo CHECK — non raggiungibile tramite il percorso di scrittura attuale ma non impedito dal DB) — renderizzava silenziosamente senza badge, nessun segnale dell'anomalia. [app/(certificati-medici)/conferma-certificati/page.tsx] — risolto: aggiunto un `console.warn` distintivo per questo ramo difensivo, stesso pattern già usato in `vista-dirigente/page.tsx`.
+- [x] [Review][Defer] Lo stesso stato `SCADUTO` viene mostrato in tono warning (giallo) altrove nell'app (badge "Certificato in scadenza"/vista-dirigente) e in tono danger (rosso) qui, senza alcun segnale che la scala colore sia dipendente dal contesto — osservazione UX legittima, nessuna correzione di codice non ambigua possibile senza una decisione di prodotto, non bloccante.
+- [x] [Review][Dismiss] Diff di review scoped ai soli file della File List della storia (esclusi `sprint-status.yaml`/il file storia stesso) — scelta deliberata di scoping della review, non un difetto del codice.
+- [x] [Review][Dismiss] Eccezione al design system "auto-approvata" dalla stessa storia che la introduce — decisione presa esplicitamente con l'utente in fase di creazione (non un'invenzione unilaterale), già documentata come tale.
+- [x] [Review][Dismiss] Terzo blocco CSS badge quasi identico duplicato tra moduli — stesso pattern di duplicazione deliberata già accettato ovunque in questo progetto (nessun componente Badge condiviso esiste).
+- [x] [Review][Dismiss] Commenti "mai danger" in `gruppi.module.css`/`presenze.module.css` presunti ora falsi — verificato: sono claim locali sul badge di **quel file**, non un'affermazione trasversale a tutto il progetto; restano vere per il proprio contesto, nessuna modifica necessaria.
+- [x] [Review][Dismiss] Nessun test per `CLASSE_BADGE`/`ETICHETTA_BADGE`/il ramo di rendering condizionale — coerente con la convenzione "nessun test di rendering" già stabilita e accettata in tutto il progetto.
+- [x] [Review][Dismiss] Cast `as StatoCertificato | null` su un valore Supabase non validato a runtime — stesso pattern identico già usato ovunque nel progetto (es. `vista-dirigente/page.tsx`), non introdotto da questa storia.
+- [x] [Review][Dismiss] Tabella "Cose da fare e da evitare" di `DESIGN.md` richiede ora di leggere un rimando incrociato per l'eccezione — nitpick cosmetico sulla leggibilità della documentazione, non un difetto di codice.
+- [x] [Review][Dismiss] Riuso di `categorizzaStatoCertificato` in un contesto dove 2 dei 4 rami possibili non sono mai raggiungibili, non documentato a sufficienza — già spiegato nel commento di codice esistente ("SENZA_CERTIFICATO non e' raggiungibile in pratica... gestito comunque in modo difensivo").
+- [x] [Review][Dismiss] Stile di datazione incoerente tra l'eccezione nuova (datata) e quella preesistente del magenta (non datata) in `DESIGN.md` — nitpick stilistico cosmetico.
 
 ## Dev Notes
 
@@ -72,8 +88,25 @@ so that posso dare priorità a chi richiede un rinnovo urgente senza dover contr
 
 ### Agent Model Used
 
+Claude Sonnet 5
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 1: aggiunta eccezione esplicita e motivata in `DESIGN.md` (Componenti → Badge di stato + tabella Cose da fare e da evitare) per il badge danger a livello di singola atleta, limitata a `/conferma-certificati`.
+- Task 2: `page.tsx` calcola `oggi` una sola volta, riusa `categorizzaStatoCertificato` per ogni riga della sezione "Confermati" (badge inline, nessuna modifica a `ConfermaCertificatoRow.tsx`/sezione "Da confermare"). Gestito difensivamente anche `SENZA_CERTIFICATO` (nessun badge) pur non essendo raggiungibile in pratica.
+- Task 3: 3 nuove classi badge (`.badgeInRegola`/`.badgeInScadenza`/`.badgeScaduto`) in `conferma-certificati.module.css`, stesso pattern strutturale già usato altrove nel progetto; `.rigaConfermata` estesa a flex per allineare nome e badge.
+- Task 4: 790/790 test passati (invariato), `tsc --noEmit` pulito, ESLint pulito. Nessun nuovo test (nessuna nuova funzione pura, `categorizzaStatoCertificato` già coperta da Story 5.1/9.19).
+- Code review (2026-08-02): Blind Hunter + Edge Case Hunter + Acceptance Auditor — 0 decision-needed, 3 patch applicati (nuova classe `.nomeConData` con `flex:1`/`min-width:0` per evitare overflow su nome+data lunghi accanto al badge, stesso bug già corretto altrove nel progetto; `oggi` spostata dopo il `Promise.all` invece che prima; `console.warn` aggiunto per il ramo difensivo `SENZA_CERTIFICATO` non raggiungibile in pratica ma non impedito dallo schema). 1 defer (inconsistenza percettiva cross-pagina sullo stesso stato SCADUTO, warning altrove/danger qui — osservazione UX, non bloccante). 10 scartati come rumore/già accettati esplicitamente. 790/790 test passati, 0 errori tsc/eslint dopo i fix.
+
 ### File List
+
+- `_bmad-output/planning-artifacts/ux-designs/ux-societa-manager-2026-07-22/DESIGN.md` (modificato — eccezione danger documentata)
+- `app/(certificati-medici)/conferma-certificati/page.tsx` (modificato — calcolo stato + badge sezione "Confermati", ordine `oggi` corretto in review, `console.warn` difensivo aggiunto)
+- `app/(certificati-medici)/conferma-certificati/conferma-certificati.module.css` (modificato — 3 nuove classi badge + `.rigaConfermata` estesa + `.nomeConData` aggiunta in review)
+
+## Change Log
+
+- 2026-08-02: Implementata Story 9.23 — badge verde/giallo/rosso sulla sezione "Confermati" di `/conferma-certificati`, riusando `categorizzaStatoCertificato` (Story 5.1/9.19). Aggiunta un'eccezione esplicita e motivata in `DESIGN.md` per il tono danger a livello di singola atleta, limitata a questa pagina. Sezione "Da confermare" invariata. 790/790 test passati, 0 errori tsc/eslint.
+- 2026-08-02: Code review completata — 3 patch applicati (overflow layout su nome+badge, ordine di calcolo di `oggi`, log difensivo per anomalia dati), 1 defer, 10 scartati come rumore. 790/790 test passati, 0 errori tsc/eslint dopo i fix. Status: done.

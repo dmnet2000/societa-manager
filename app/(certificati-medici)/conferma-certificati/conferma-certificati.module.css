@@ -120,10 +120,56 @@
 }
 
 .rigaConfermata {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-2) 0;
   font-size: 13.5px;
   color: var(--color-text-primary);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* Review fix (Story 9.23): senza flex:1 + min-width:0, un flex item non si
+   restringe mai sotto la dimensione del proprio contenuto - un nome lungo +
+   suffisso data accanto al badge (flex-shrink:0) potrebbe sfondare la riga
+   invece di andare a capo. Stesso pattern gia' stabilito in questo progetto
+   per lo stesso problema (presenze.module.css .etichetta). */
+.nomeConData {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Story 9.23: 3 varianti di colore per lo stato del certificato confermato -
+   stessa struttura del pattern .badge gia' esistente altrove (gruppi.module.css,
+   presenze.module.css), duplicato deliberatamente per modulo (nessun
+   componente Badge condiviso in questo progetto). .badgeScaduto usa danger
+   pieno - eccezione esplicita e motivata in DESIGN.md (Componenti -> Badge),
+   non applicabile altrove. */
+.badgeInRegola,
+.badgeInScadenza,
+.badgeScaduto {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badgeInRegola {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeInScadenza {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.badgeScaduto {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .messaggioVuoto {

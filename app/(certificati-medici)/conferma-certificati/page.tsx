@@ -1,8 +1,31 @@
+import type { StatoCertificato } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
 import styles from "./conferma-certificati.module.css";
+
+// Story 9.23: mappa stato -> classe badge. SENZA_CERTIFICATO non e'
+// raggiungibile in pratica per la sezione "Confermati" (dataFineValidita e'
+// sempre obbligatoria in confermaCertificato) ma gestito comunque in modo
+// difensivo (nessun badge), coerente col tipo di ritorno della funzione.
+const CLASSE_BADGE: Record<
+  ReturnType<typeof categorizzaStatoCertificato>,
+  string | null
+> = {
+  IN_REGOLA: styles.badgeInRegola,
+  IN_SCADENZA: styles.badgeInScadenza,
+  SCADUTO: styles.badgeScaduto,
+  SENZA_CERTIFICATO: null,
+};
+
+const ETICHETTA_BADGE: Record<ReturnType<typeof categorizzaStatoCertificato>, string> = {
+  IN_REGOLA: "In regola",
+  IN_SCADENZA: "In scadenza",
+  SCADUTO: "Scaduto",
+  SENZA_CERTIFICATO: "",
+};
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
 // pagina) - stesso motivo di /presenze, /certificato-medico.
@@ -22,6 +45,12 @@ export default async function ConfermaCertificatiPage() {
     elencaAtlete(supabase),
     elencaCertificati(supabase),
   ]);
+
+  // Story 9.23 (review fix): calcolata dopo le letture, non prima - stesso
+  // pattern di vista-dirigente/page.tsx. Evita che un fetch lento faccia
+  // classificare i certificati contro un "oggi" stantio se la richiesta
+  // attraversasse la mezzanotte locale.
+  const oggi = new Date();
 
   const certificatoPerAtleta = new Map(
     certificati.map((c) => [c.atletaId as string, c])
@@ -94,12 +123,34 @@ export default async function ConfermaCertificatiPage() {
               const dataFineValidita = certificato?.dataFineValidita as
                 | string
                 | undefined;
+              const stato = categorizzaStatoCertificato(
+                dataFineValidita ?? null,
+                (certificato?.stato as StatoCertificato | null) ?? null,
+                oggi
+              );
+              const classeBadge = CLASSE_BADGE[stato];
+              if (stato === "SENZA_CERTIFICATO") {
+                // Review fix (Story 9.23): non raggiungibile tramite il
+                // percorso di scrittura attuale (confermaCertificato impone
+                // dataFineValidita obbligatoria), ma dataFineValidita resta
+                // nullable a livello di schema - un log distintivo segnala
+                // l'anomalia invece di renderizzare silenziosamente senza
+                // badge, stesso pattern gia' usato in vista-dirigente/page.tsx.
+                console.warn(
+                  `Story 9.23: Certificato CONFERMATO senza dataFineValidita valida per Atleta ${atleta.id}.`
+                );
+              }
               return (
                 <li key={atleta.id} className={styles.rigaConfermata}>
-                  {atleta.nome}
-                  {dataFineValidita
-                    ? ` — valido fino al ${new Date(dataFineValidita).toLocaleDateString("it-IT")}`
-                    : null}
+                  <span className={styles.nomeConData}>
+                    {atleta.nome}
+                    {dataFineValidita
+                      ? ` — valido fino al ${new Date(dataFineValidita).toLocaleDateString("it-IT")}`
+                      : null}
+                  </span>
+                  {classeBadge && (
+                    <span className={classeBadge}>{ETICHETTA_BADGE[stato]}</span>
+                  )}
                 </li>
               );
             })}
