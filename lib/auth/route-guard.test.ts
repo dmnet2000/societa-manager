@@ -383,6 +383,23 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows only Allenatore on /vista-allenatore (Story 9.26)", () => {
+    expect(getRouteDecision("/vista-allenatore", true, ["ALLENATORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /vista-allenatore for other roles (Story 9.26)", () => {
+    expect(getRouteDecision("/vista-allenatore", true, ["ADMIN"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/vista-allenatore", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
   it("allows only Admin on /permessi-certificati (Story 5.2, FR-27)", () => {
     expect(getRouteDecision("/permessi-certificati", true, ["ADMIN"])).toEqual({
       action: "allow",

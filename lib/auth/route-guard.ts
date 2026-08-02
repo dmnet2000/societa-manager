@@ -86,6 +86,14 @@ export const PROTECTED_ROUTES: {
     nascostaDallaNav: true,
   },
   { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"], navLabel: "Vista d'insieme" },
+  {
+    // Story 9.26: specchio di /vista-dirigente ma scoped ai Gruppi propri
+    // dell'Allenatore - stessa navLabel (Ruoli mutuamente esclusivi nel
+    // caso comune, caso limite ADMIN+ALLENATORE accettato, vedi story file).
+    prefix: "/vista-allenatore",
+    ruoliAmmessi: ["ALLENATORE"],
+    navLabel: "Vista d'insieme",
+  },
   { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"], navLabel: "Permessi certificati" },
   { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },
   {

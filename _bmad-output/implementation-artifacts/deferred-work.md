@@ -470,6 +470,13 @@
 - Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 - Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 
+## Deferred from: code review of 9-26-vista-insieme-allenatore (2026-08-02)
+
+- `supabase.auth.getUser()` in errore viene solo loggato, poi trattato come "nessuna sessione" — un Utente con una sessione realmente autenticata ma un errore transitorio vedrebbe il messaggio "account non collegato a un profilo Allenatore" invece di un errore distinto. Pattern preesistente identico già in `i-miei-gruppi/page.tsx` (Story 9.15), replicato deliberatamente. [app/(gruppi-allenatori)/vista-allenatore/page.tsx]
+- Nessun test dedicato alla logica di scoping/aggregazione della pagina (solo `route-guard` è testato) — coerente con la convenzione "nessun test di rendering" già stabilita, `vista-dirigente/page.tsx` non ne ha mai avuto uno. [app/(gruppi-allenatori)/vista-allenatore/page.tsx]
+- `.filter()` dentro `.map()` per associare Atlete a Gruppo (O(gruppi × atlete)) — stesso pattern identico già presente invariato in `vista-dirigente/page.tsx`, scala ridotta. [app/(gruppi-allenatori)/vista-allenatore/page.tsx]
+- Cast `as string | null`/`as StatoCertificato | null` sui campi di `certificato` — stesso pattern identico già presente in `vista-dirigente/page.tsx`. [app/(gruppi-allenatori)/vista-allenatore/page.tsx]
+
 ## Deferred from: code review of 9-25-ordinamento-stato-confermati (2026-08-02)
 
 - Nessun indicatore visivo di direzione sull'etichetta "Stato" (solo `aria-pressed`) — un Utente vedente non ha modo di sapere se l'ordinamento è attivo senza cliccare e osservare il riordino. [app/(certificati-medici)/conferma-certificati/ListaConfermati.tsx]

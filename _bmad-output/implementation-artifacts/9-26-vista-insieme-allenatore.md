@@ -4,7 +4,7 @@ baseline_commit: 4b05ac9c63e4ef425f43806ec7cb191b3f9b8d4a
 
 # Story 9.26: Vista d'insieme per l'Allenatore sui propri Gruppi
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,25 +25,38 @@ so that posso valutare a colpo d'occhio la situazione certificati delle mie Atle
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Route-guard (AC: #3)
-  - [ ] `lib/auth/route-guard.ts`: nuova voce `{ prefix: "/vista-allenatore", ruoliAmmessi: ["ALLENATORE"], navLabel: "Vista d'insieme" }` — stessa `navLabel` di `/vista-dirigente` (riga 88, `ruoliAmmessi: ["DIRIGENTE"]`) per coerenza semantica: un Utente vede solo una delle due voci nella pratica (Ruoli mutuamente esclusivi nel caso comune). **Caso limite noto e accettato**: un Utente con **entrambi** i Ruoli ALLENATORE e DIRIGENTE vedrebbe due voci di navigazione identiche ("Vista d'insieme") che puntano a pagine diverse — nessuna azione richiesta, stesso livello di tolleranza già accettato altrove nel progetto per casi multi-Ruolo a bassa probabilità
-  - [ ] `lib/auth/route-guard.test.ts`: nuovo test — ALLENATORE ammesso, altri Ruoli (es. ADMIN, DIRIGENTE) rediretti a `/non-autorizzato`
-  - [ ] `lib/auth/voci-navigazione.test.ts`: **nessuna modifica necessaria** — `filtraVociNavigazione`/`isVoceAttiva` sono già generici, derivano automaticamente dalla nuova voce di `PROTECTED_ROUTES` senza bisogno di codice nuovo (verificare comunque che i test esistenti restino verdi)
-- [ ] Task 2: Nuova pagina `/vista-allenatore` (AC: #1, #2)
-  - [ ] Nuova cartella `app/(gruppi-allenatori)/vista-allenatore/page.tsx` (stesso route group `(gruppi-allenatori)` di `/i-miei-gruppi`, non `(amministrazione)`: questa pagina è self-service Allenatore, non gestione Admin/Dirigente — AD-2, stesso principio già seguito per `/i-miei-gruppi`)
-  - [ ] `export const dynamic = "force-dynamic"` (i conteggi dipendono da "oggi", stesso motivo di `/vista-dirigente`)
-  - [ ] Risolvere l'Allenatore dalla sessione (`prisma.allenatore.findFirst({ where: { utente: { supabaseAuthId: user.id } } })`, stesso pattern esatto di `i-miei-gruppi/page.tsx` righe 29-33) — se nullo, stesso messaggio "account non ancora collegato a un profilo Allenatore" già usato lì
-  - [ ] Risolvere `annoCorrente` (`trovaAnnoAgonisticoCorrente()`, mai `risolviAnnoAgonisticoCorrente()` in una pagina GET — Dev Notes Story 1.6/2.2)
-  - [ ] Query Gruppi propri: `prisma.gruppo.findMany({ where: { annoAgonisticoId: annoCorrente.id, allenatori: { some: { allenatoreId: allenatore.id } } }, orderBy: { nome: "asc" }, include: { slot: { include: { campo: { include: { palestra: true } } }, orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }] } } })` — combina il filtro di possesso di `i-miei-gruppi/page.tsx` (righe 51-59) con l'`include` di `vista-dirigente/page.tsx` (righe 48-57, necessario per popolare `slotFormattati` di `GruppoCard`)
-  - [ ] `Promise.all` per `gruppoAtleteRows` (scoped a `gruppoId: { in: gruppiPropri.map(g => g.id) }`, stesso pattern di `i-miei-gruppi/page.tsx` righe 71-79), `elencaAtlete(supabase)`, `elencaCertificati(supabase)` — **nessuna query `gruppoVisibileDirigente`** (non applicabile ad Allenatore, vedi Note aggiuntive)
-  - [ ] Costruire `GruppoCardData[]` con lo stesso identico ciclo di calcolo di `vista-dirigente/page.tsx` (righe 82-173: `oggi`, mappe per id, ciclo `categorizzaStatoCertificato` per Atleta, popolamento `atleteScadute`/`atleteInScadenza` ordinati alfabeticamente, `console.warn` difensivo se un'Atleta non risolvibile) — **`conteggi` calcolato sempre** (mai il ramo `null` di Story 5.2, che non si applica qui)
-  - [ ] Import diretti: `import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato"` e `import { GruppoCard, type GruppoCardData } from "@/app/(amministrazione)/vista-dirigente/GruppoCard"` — **nessuna copia**, riuso letterale
-  - [ ] Markup: `<h1>Vista d'insieme</h1>`, messaggio vuoto se `gruppiPropri.length === 0` ("Non gestisci ancora nessun Gruppo."), altrimenti `<div className={stylesVistaDirigente.lista}>{cardData.map(...)}</div>` — riusando la classe `.lista` da `@/app/(amministrazione)/vista-dirigente/vista-dirigente.module.css` (stesso import cross-modulo di `GruppoCard`, nessun nuovo file CSS necessario per questa storia)
-- [ ] Task 3: Verifica regressione (AC: #4)
-  - [ ] Suite Vitest completa: tutti i test esistenti devono continuare a passare, più il nuovo test di `route-guard.test.ts`
-  - [ ] `npx tsc --noEmit` ed ESLint puliti
-  - [ ] Nessuna modifica a `/vista-dirigente` (pagina, `GruppoCard.tsx`, `categorizza-stato-certificato.ts`) né a `/i-miei-gruppi` — solo lettura/riuso
-  - [ ] Nessun test di rendering per la nuova pagina (coerente con la convenzione già stabilita nel progetto)
+- [x] Task 1: Route-guard (AC: #3)
+  - [x] Nuova voce `/vista-allenatore` (`ruoliAmmessi: ["ALLENATORE"]`, stessa `navLabel` di `/vista-dirigente`)
+  - [x] 2 nuovi test in `route-guard.test.ts` (ALLENATORE allow, ADMIN/DIRIGENTE redirect)
+  - [x] `voci-navigazione.test.ts`: nessuna modifica necessaria, verificato che i test esistenti restino verdi
+- [x] Task 2: Nuova pagina `/vista-allenatore` (AC: #1, #2)
+  - [x] Nuova cartella `app/(gruppi-allenatori)/vista-allenatore/page.tsx`, `force-dynamic`
+  - [x] Risoluzione Allenatore identica a `i-miei-gruppi/page.tsx` (stesso messaggio se non collegato)
+  - [x] `annoCorrente` via `trovaAnnoAgonisticoCorrente()` (sola lettura)
+  - [x] Query Gruppi propri con `include` Slot/Campo/Palestra (per `GruppoCard`)
+  - [x] `Promise.all` per `gruppoAtleteRows`/`elencaAtlete`/`elencaCertificati` — nessuna query `gruppoVisibileDirigente`
+  - [x] Stesso ciclo di calcolo conteggi/drill-down di `vista-dirigente/page.tsx`, `conteggi` sempre calcolato (mai `null`)
+  - [x] `GruppoCard`/`categorizzaStatoCertificato`/`.lista` importati cross-modulo da `vista-dirigente/`, nessuna copia
+- [x] Task 3: Verifica regressione (AC: #4)
+  - [x] Suite Vitest completa: 804/804 test passati (+2 nuovi)
+  - [x] `npx tsc --noEmit` pulito (0 errori); ESLint pulito su tutti i file
+  - [x] Confermato: nessuna modifica a `/vista-dirigente`/`/i-miei-gruppi`
+  - [x] Nessun test di rendering per la nuova pagina (convenzione già stabilita)
+
+### Review Findings
+
+- [x] [Review][Patch] Nessun Anno Agonistico corrente (`annoCorrente === null`) veniva confuso con "l'Allenatore non gestisce nessun Gruppo" — entrambi collassavano nello stesso messaggio "Non gestisci ancora nessun Gruppo.", fattualmente impreciso nel primo caso (a differenza di `vista-dirigente/page.tsx`, che distingue esplicitamente i due casi). Questo forzava anche un'asserzione non-null (`annoCorrente!.id`) tenuta in piedi solo da un controllo su una variabile diversa (`gruppiPropri.length`), senza che TypeScript potesse verificarlo. [app/(gruppi-allenatori)/vista-allenatore/page.tsx] — risolto: aggiunto un `if (!annoCorrente) return ...` esplicito con lo stesso messaggio di `vista-dirigente/page.tsx` ("Nessun Anno Agonistico corrente..."), prima della query dei Gruppi — il narrowing di TypeScript elimina anche il bisogno dell'asserzione `!`.
+- [x] [Review][Patch] `GIORNO_BREVE` e il template di formattazione dello slot erano duplicati identici in due file (`vista-dirigente/page.tsx` e il nuovo `vista-allenatore/page.tsx`) — stesso principio di estrazione già seguito in questo progetto quando la stessa logica serve in ≥2 punti (Story 9.19, `calcolaAtleteConCertificatoInScadenza`). [app/(amministrazione)/vista-dirigente/page.tsx, app/(gruppi-allenatori)/vista-allenatore/page.tsx] — risolto: estratta in nuova utility pura condivisa `lib/formatta-slot-orario.ts` (2 test), riusata da entrambe le pagine — nessun cambio di comportamento osservabile.
+- [x] [Review][Defer] `supabase.auth.getUser()` in errore viene solo loggato, poi trattato come "nessuna sessione" — un Utente con una sessione realmente autenticata ma un errore transitorio vedrebbe il messaggio "account non collegato a un profilo Allenatore" invece di un errore distinto. Pattern preesistente identico già presente in `i-miei-gruppi/page.tsx` (Story 9.15), replicato qui deliberatamente per coerenza (vedi Dev Notes "stesso pattern esatto"), non introdotto da questa storia.
+- [x] [Review][Defer] Nessun test dedicato alla logica di scoping/aggregazione della pagina (solo `route-guard` è testato) — coerente con la convenzione "nessun test di rendering" già stabilita nel progetto per le pagine, `vista-dirigente/page.tsx` stessa non ha mai avuto un test dedicato.
+- [x] [Review][Defer] `.filter()` dentro `.map()` per associare Atlete a Gruppo (O(gruppi × atlete) invece di una `Map` pre-raggruppata) — stesso pattern identico già presente invariato in `vista-dirigente/page.tsx`, scala ridotta (poche decine di Atlete per Gruppo).
+- [x] [Review][Defer] Cast `as string | null`/`as StatoCertificato | null` sui campi di `certificato` — stesso pattern identico già presente in `vista-dirigente/page.tsx`, non introdotto da questa storia.
+- [x] [Review][Dismiss] `certificatoPerAtletaId` (una `Map` per `atletaId`) sovrascriverebbe silenziosamente in caso di Certificati duplicati per la stessa Atleta — verificato falso: `CertificatoMedico.atletaId` è univoco per costruzione (Story 1.7, "un solo Certificato corrente per Atleta"), nessun duplicato possibile.
+- [x] [Review][Dismiss] Un Certificato nascosto da una policy RLS (non da `GruppoVisibileDirigente`, che non si applica qui) verrebbe letto come "senza certificato" invece che segnalato come "fuori permessi" — scenario puramente teorico (bug ipotetico di una policy RLS), l'assunzione "un Allenatore ha già accesso pieno ai certificati dei propri Gruppi" è una decisione architetturale esplicita già validata in fase di creazione storia, non un gap di questo diff.
+- [x] [Review][Dismiss] Due voci di navigazione con la stessa etichetta "Vista d'insieme" per un Utente con entrambi i Ruoli ALLENATORE e DIRIGENTE — caso limite già esplicitamente accettato e documentato nella storia stessa (Task 1) e nel commento in `route-guard.ts`.
+- [x] [Review][Dismiss] `numeroAtlete` potrebbe gonfiarsi con righe `GruppoAtleta` duplicate — verificato falso: `@@unique([atletaId, annoAgonisticoId])` sullo schema impedisce più righe per la stessa Atleta nella stessa stagione, indipendentemente dal Gruppo.
+- [x] [Review][Dismiss] Nessuna verifica che la voce di navigazione sia effettivamente raggiungibile/derivata correttamente — meccanismo generico (`filtraVociNavigazione`/`PROTECTED_ROUTES`) già ampiamente testato altrove nel progetto (Story 8.1/9.10/9.24), non specifico di questa storia.
+- [x] [Review][Dismiss] Rischio di collisione di prefissi tra rotte — speculativo, nessuna collisione reale esiste tra `/vista-allenatore` e le rotte esistenti, il matching a prefisso è già testato estensivamente altrove.
 
 ## Dev Notes
 
@@ -74,8 +87,27 @@ so that posso valutare a colpo d'occhio la situazione certificati delle mie Atle
 
 ### Agent Model Used
 
+Claude Sonnet 5
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 1: nuova voce `/vista-allenatore` (ALLENATORE-only) in `PROTECTED_ROUTES`, stessa `navLabel` di `/vista-dirigente`. 2 nuovi test.
+- Task 2: nuova pagina `app/(gruppi-allenatori)/vista-allenatore/page.tsx` — risoluzione Allenatore identica a `i-miei-gruppi/page.tsx`, query Gruppi propri con `include` Slot/Campo/Palestra, stesso ciclo di calcolo conteggi/drill-down di `vista-dirigente/page.tsx` (incluso il `console.warn` difensivo). `GruppoCard`/`categorizzaStatoCertificato`/`.lista` riusati invariati via import cross-modulo — zero modifiche a `vista-dirigente/*`.
+- Task 3: 804/804 test passati (+2 nuovi), `tsc --noEmit` pulito, ESLint pulito. Nessuna modifica a `/vista-dirigente`/`/i-miei-gruppi`.
+- Code review (2026-08-02): Blind Hunter + Edge Case Hunter + Acceptance Auditor — 0 decision-needed, 2 patch applicati (caso "nessun Anno Agonistico corrente" distinto da "nessun Gruppo assegnato" con messaggio esplicito dedicato, come in `vista-dirigente/page.tsx`, eliminando anche un'asserzione non-null non sicura; `GIORNO_BREVE`/formattazione slot duplicati in due file estratti in una nuova utility pura condivisa `lib/formatta-slot-orario.ts`, riusata anche da `vista-dirigente/page.tsx` — stesso principio di estrazione già seguito in Story 9.19). 4 defer (gestione errore `getUser()` — pattern preesistente replicato deliberatamente, nessun test dedicato alla logica della pagina — convenzione, filter-in-map O(gruppi×atlete) — pattern preesistente, cast di tipo sui campi certificato — pattern preesistente), 5 scartati come falsi positivi verificati (Map certificatoPerAtletaId sicura per vincolo univoco su schema, scenario RLS ipotetico fuori scope, doppia etichetta nav già accettata esplicitamente, numeroAtlete protetto da vincolo univoco su schema, raggiungibilità nav già garantita dal meccanismo generico testato altrove). 806/806 test passati, 0 errori tsc/eslint dopo i fix.
+
 ### File List
+
+- `lib/auth/route-guard.ts` (modificato — nuova voce `/vista-allenatore`)
+- `lib/auth/route-guard.test.ts` (modificato — 2 nuovi test)
+- `app/(gruppi-allenatori)/vista-allenatore/page.tsx` (nuovo — messaggio "nessun Anno Agonistico" e riuso di `formattaSlotOrario` aggiunti in review)
+- `lib/formatta-slot-orario.ts` (nuovo, in review — estrazione condivisa)
+- `lib/formatta-slot-orario.test.ts` (nuovo, in review)
+- `app/(amministrazione)/vista-dirigente/page.tsx` (modificato in review — riusa `formattaSlotOrario` invece della duplicazione locale, nessun cambio di comportamento)
+
+## Change Log
+
+- 2026-08-02: Implementata Story 9.26 — nuova pagina `/vista-allenatore` (ALLENATORE-only), specchio di `/vista-dirigente` scoped ai propri Gruppi. Riuso diretto di `GruppoCard`/`categorizzaStatoCertificato`, nessuna modifica a quei file. Nessuna restrizione granulare tipo `GruppoVisibileDirigente` (non applicabile). 804/804 test passati, 0 errori tsc/eslint.
+- 2026-08-02: Code review completata — 2 patch applicati (messaggio distinto per "nessun Anno Agonistico corrente" + rimozione asserzione non-null; estrazione di `formattaSlotOrario` condivisa, riusata anche da `vista-dirigente/page.tsx`), 4 defer, 5 scartati come falsi positivi verificati. 806/806 test passati, 0 errori tsc/eslint dopo i fix. Status: done.

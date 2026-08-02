@@ -7,20 +7,11 @@ import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { categorizzaStatoCertificato } from "./categorizza-stato-certificato";
 import { GruppoCard, type GruppoCardData } from "./GruppoCard";
 import styles from "./vista-dirigente.module.css";
+import { formattaSlotOrario } from "@/lib/formatta-slot-orario";
 
 // Dati che cambiano ogni giorno per il solo passare del tempo (i bucket di
 // scadenza dipendono da "oggi") - stesso motivo di orari/page.tsx (Story 2.8).
 export const dynamic = "force-dynamic";
-
-const GIORNO_BREVE: Record<string, string> = {
-  LUNEDI: "Lun",
-  MARTEDI: "Mar",
-  MERCOLEDI: "Mer",
-  GIOVEDI: "Gio",
-  VENERDI: "Ven",
-  SABATO: "Sab",
-  DOMENICA: "Dom",
-};
 
 export default async function VistaDirigentePage() {
   // Sola lettura (Dev Notes Story 1.6): mai risolviAnnoAgonisticoCorrente in
@@ -96,7 +87,7 @@ export default async function VistaDirigentePage() {
     if (restrizioneAttiva && !gruppoIdsVisibiliDirigente.includes(gruppo.id)) {
       const slotFormattatiEsclusi = gruppo.slot.map((slot) => ({
         id: slot.id,
-        testo: `${GIORNO_BREVE[slot.giorno] ?? slot.giorno} ${slot.oraInizio}-${slot.oraFine} · ${slot.campo.palestra.nome} - ${slot.campo.nome}`,
+        testo: formattaSlotOrario(slot),
       }));
       return {
         id: gruppo.id,
@@ -157,7 +148,7 @@ export default async function VistaDirigentePage() {
 
     const slotFormattati = gruppo.slot.map((slot) => ({
       id: slot.id,
-      testo: `${GIORNO_BREVE[slot.giorno] ?? slot.giorno} ${slot.oraInizio}-${slot.oraFine} · ${slot.campo.palestra.nome} - ${slot.campo.nome}`,
+      testo: formattaSlotOrario(slot),
     }));
 
     return {
