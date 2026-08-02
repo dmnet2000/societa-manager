@@ -21,7 +21,16 @@ export const PUBLIC_ROUTES = [
 // l'autorizzazione sia per le voci della barra di navigazione
 // (lib/auth/voci-navigazione.ts) - evita una lista di voci duplicata e
 // mantenuta a mano separatamente da questa.
-export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel: string }[] = [
+export const PROTECTED_ROUTES: {
+  prefix: string;
+  ruoliAmmessi: Ruolo[];
+  navLabel: string;
+  // Story 9.24: la rotta resta protetta (getRouteDecision non legge questo
+  // campo) ma non compare nell'elenco di navigazione (filtraVociNavigazione,
+  // lib/auth/voci-navigazione.ts) - usato per /smtp e /logo, raggiungibili
+  // solo passando dalla pagina hub /impostazioni.
+  nascostaDallaNav?: boolean;
+}[] = [
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
   {
@@ -63,8 +72,19 @@ export const PROTECTED_ROUTES: { prefix: string; ruoliAmmessi: Ruolo[]; navLabel
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     navLabel: "Conferma certificati",
   },
-  { prefix: "/smtp", ruoliAmmessi: ["ADMIN"], navLabel: "Configurazione SMTP" },
-  { prefix: "/logo", ruoliAmmessi: ["ADMIN"], navLabel: "Configurazione logo" },
+  { prefix: "/impostazioni", ruoliAmmessi: ["ADMIN"], navLabel: "Impostazioni" },
+  {
+    prefix: "/smtp",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Configurazione SMTP",
+    nascostaDallaNav: true,
+  },
+  {
+    prefix: "/logo",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Configurazione logo",
+    nascostaDallaNav: true,
+  },
   { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"], navLabel: "Vista d'insieme" },
   { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"], navLabel: "Permessi certificati" },
   { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },

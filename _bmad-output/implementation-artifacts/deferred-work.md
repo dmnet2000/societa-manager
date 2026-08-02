@@ -470,6 +470,14 @@
 - Messaggio di validazione generico non identifica quale dei due campi data manca — coerente con la convenzione a un solo messaggio per form già stabilita in tutto il progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 - Round-trip multipli se la validazione HTML5 lato client viene bypassata (nessun controllo aggregato di tutti gli errori in un colpo solo) — stesso pattern di validazione sequenziale già usato in ogni Server Action del progetto. [app/(certificati-medici)/certificato-medico/actions.ts]
 
+## Deferred from: code review of 9-24-menu-impostazioni-smtp-logo (2026-08-02)
+
+- Nessun link/breadcrumb di ritorno da `/smtp`/`/logo` verso `/impostazioni` — richiederebbe toccare quelle due pagine, esplicitamente fuori scope della Story 9.24; mitigato dal pulsante "indietro" del browser. [app/(configurazione)/smtp/page.tsx, app/(configurazione)/logo/page.tsx]
+- `<ul>` con `list-style: none` senza `role="list"` in `/impostazioni` (VoiceOver/Safari possono perdere il ruolo implicito di lista) — stesso pattern identico replicato in ogni altra lista di questo progetto, non specifico di questa storia. [app/(configurazione)/impostazioni/impostazioni.module.css]
+- Il tipo inline di `PROTECTED_ROUTES` (4 campi, commento multi-riga) inizia a essere poco leggibile nel punto di dichiarazione — refactor di forma (estrarre un `type RouteDefinition` nominato), da valutare se un quinto campo venisse aggiunto. [lib/auth/route-guard.ts]
+- Nessun test per `/impostazioni` con un Utente ADMIN+DIRIGENTE combinati — la logica di intersezione `.some()` è generica e già coperta da test analoghi su altre rotte, duplicazione di basso valore. [lib/auth/route-guard.test.ts]
+- L'ordine preservato di `/impostazioni` in `PROTECTED_ROUTES` è verificato solo in prosa, mai da un test (`arrayContaining` è intenzionalmente order-insensitive) — nessun impatto comportamentale osservabile oggi. [lib/auth/voci-navigazione.test.ts]
+
 ## Deferred from: code review of 9-23-colore-semantico-certificati-confermati (2026-08-02)
 
 - Lo stesso stato `SCADUTO` viene mostrato in tono warning (giallo) altrove nell'app (badge "Certificato in scadenza", vista-dirigente) e in tono danger (rosso) in `/conferma-certificati`, senza alcun segnale che la scala colore sia dipendente dal contesto — osservazione UX legittima, nessuna correzione di codice non ambigua possibile senza una decisione di prodotto. [app/(certificati-medici)/conferma-certificati/page.tsx]

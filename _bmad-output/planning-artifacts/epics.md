@@ -1262,6 +1262,26 @@ so that la barra di navigazione resti pulita invece di avere due voci separate p
 
 **And** nessuna regressione sul comportamento di autorizzazione esistente (Admin-only su `/smtp`/`/logo`, invariato) né sulle altre voci di navigazione — suite Vitest invariata sui casi esistenti non impattati
 
+### Story 9.25: Ordinamento per stato nella sezione "Confermati"
+
+As a Admin/Dirigente/Segreteria che consulta `/conferma-certificati`,
+I want poter ordinare la sezione "Confermati" cliccando su un'etichetta "Stato" in testa alla lista, con priorità Scaduto → In scadenza → In regola,
+so that posso portare in cima chi richiede attenzione più urgente invece di scorrere l'intera lista in ordine alfabetico.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02), estensione diretta della Story 9.23 (badge verde/giallo/rosso). **Decisione presa con l'utente in fase di richiesta**: un'etichetta cliccabile "Stato" in testa alla lista "Confermati" applica l'ordinamento per priorità (Scaduto, poi In scadenza, poi In regola; a parità di stato, ordine alfabetico per nome) — non un controllo di ordinamento generico multi-colonna, solo questo singolo criterio. Riusa `categorizzaStatoCertificato` (Story 5.1/9.19/9.23), nessun nuovo calcolo di stato. Introduce la prima interazione client-side di ordinamento su una lista di questo progetto — la sezione "Confermati" (oggi renderizzata interamente lato server in `page.tsx`) va estratta in un nuovo Client Component per ospitare lo stato locale (ordinato per stato sì/no). La sezione "Da confermare" non è toccata.
+
+**Acceptance Criteria:**
+
+**Given** la sezione "Confermati" di `/conferma-certificati`
+**When** la pagina si carica per la prima volta
+**Then** l'ordine è quello attuale (per nome Atleta), un'etichetta cliccabile "Stato" è visibile in testa alla lista
+
+**Given** la sezione "Confermati"
+**When** un Admin/Dirigente/Segreteria clicca l'etichetta "Stato"
+**Then** la lista si riordina mostrando prima i certificati Scaduti, poi quelli In scadenza, poi quelli In regola (a parità di stato, ordine alfabetico per nome)
+
+**And** nessuna regressione sulla sezione "Da confermare" né sul comportamento di conferma esistente (Story 4.4/9.20/9.23) — suite Vitest invariata sui casi esistenti non impattati
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

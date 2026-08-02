@@ -43,12 +43,21 @@ describe("filtraVociNavigazione", () => {
         "/gruppi",
         "/slot",
         "/conferma-certificati",
-        "/smtp",
-        "/logo",
+        "/impostazioni",
         "/permessi-certificati",
         "/wizard-nuova-stagione",
       ])
     );
+  });
+
+  // Story 9.24: /smtp e /logo restano rotte accessibili (route-guard
+  // invariata) ma non devono piu' comparire come voci dirette in barra -
+  // raggiungibili solo passando dalla pagina hub /impostazioni.
+  it("un Admin non vede più /smtp e /logo come voci dirette, nonostante l'accesso resti consentito (Story 9.24)", () => {
+    const voci = filtraVociNavigazione(["ADMIN"]);
+    const href = voci.map((v) => v.href);
+    expect(href).not.toContain("/smtp");
+    expect(href).not.toContain("/logo");
   });
 
   it("ogni voce ha un href e una label non vuoti", () => {
@@ -83,5 +92,15 @@ describe("isVoceAttiva", () => {
     // il separatore "/" esplicito, non un semplice startsWith su tutta la
     // stringa.
     expect(isVoceAttiva("/palestreX", "/palestre")).toBe(false);
+  });
+
+  it("e' attiva per /impostazioni quando il pathname e' /smtp o /logo, nonostante non compaiano piu' come voci dirette (review fix Story 9.24)", () => {
+    expect(isVoceAttiva("/smtp", "/impostazioni")).toBe(true);
+    expect(isVoceAttiva("/logo", "/impostazioni")).toBe(true);
+    expect(isVoceAttiva("/logo/qualcosa", "/impostazioni")).toBe(true);
+  });
+
+  it("non e' attiva per /impostazioni su un pathname estraneo", () => {
+    expect(isVoceAttiva("/admin", "/impostazioni")).toBe(false);
   });
 });

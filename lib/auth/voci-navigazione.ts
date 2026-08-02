@@ -10,15 +10,29 @@ export type VoceNavigazione = { href: string; label: string };
 // PROTECTED_ROUTES per costruzione, quindi un Utente con piu' Ruoli vede
 // automaticamente l'unione senza ripetizioni.
 export function filtraVociNavigazione(ruoli: Ruolo[]): VoceNavigazione[] {
-  return PROTECTED_ROUTES.filter((route) =>
-    route.ruoliAmmessi.some((r) => ruoli.includes(r))
+  return PROTECTED_ROUTES.filter(
+    (route) =>
+      !route.nascostaDallaNav && route.ruoliAmmessi.some((r) => ruoli.includes(r))
   ).map((route) => ({ href: route.prefix, label: route.navLabel }));
 }
+
+// Story 9.24 (review fix): /smtp e /logo hanno nascostaDallaNav:true - non
+// compaiono piu' come voci dirette, ma senza questa mappa nessuna voce
+// risulterebbe evidenziata visitandole (raggiunte solo tramite la pagina hub
+// /impostazioni), perdendo l'orientamento "dove mi trovo" gia' garantito per
+// ogni altra pagina dell'app.
+const VOCI_FIGLIE_NASCOSTE: Record<string, string[]> = {
+  "/impostazioni": ["/smtp", "/logo"],
+};
 
 // Story 9.10 (Review fix): estratta come funzione pura testabile - va
 // chiamata lato client (usePathname() in NavBarClient.tsx), non lato server
 // (il layout radice resta nella Client Cache di Next.js e non si
 // ri-esegue ad ogni navigazione, vedi Story 9.7/9.10).
 export function isVoceAttiva(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
+  const figlie = VOCI_FIGLIE_NASCOSTE[href] ?? [];
+  return figlie.some(
+    (figlia) => pathname === figlia || pathname.startsWith(`${figlia}/`)
+  );
 }

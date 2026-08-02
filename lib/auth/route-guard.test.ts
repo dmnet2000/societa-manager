@@ -88,6 +88,19 @@ describe("getRouteDecision", () => {
     ).toEqual({ action: "redirect", location: "/non-autorizzato" });
   });
 
+  it("allows only Admin on /impostazioni (Story 9.24)", () => {
+    expect(getRouteDecision("/impostazioni", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /impostazioni for other roles (Story 9.24)", () => {
+    expect(getRouteDecision("/impostazioni", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
   it("allows Admin, Dirigente or Segreteria on /conferma-iscrizioni (Story 1.6/1.8: esclusione FR-23 estende l'accesso oltre la sola Segreteria)", () => {
     expect(
       getRouteDecision("/conferma-iscrizioni", true, ["SEGRETERIA"])

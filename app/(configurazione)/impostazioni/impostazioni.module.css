@@ -1,0 +1,37 @@
+/* Story 9.24 - pagina hub, riusa .pagina-form/.riquadro-form globali
+   (app/globals.css). Nessun mockup key-screen per questa pagina - stesso
+   registro (bordo/padding/focus-visible) gia' stabilito in smtp.module.css. */
+
+.lista {
+  list-style: none;
+  margin-top: var(--space-4);
+}
+
+/* Review fix: display:flex + align-items:center + min-height:44px sul link
+   stesso (non sul <li> contenitore) - lezione gia' documentata in questo
+   progetto: min-height su un contenitore non basta se il figlio cliccabile
+   non riempie l'altezza dichiarata. */
+.link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-3) 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.link:last-child {
+  border-bottom: none;
+}
+
+.link:hover {
+  color: var(--color-button-bg);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
