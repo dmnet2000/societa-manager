@@ -173,7 +173,8 @@
   color: var(--color-text-secondary);
 }
 
-.formCompatto select {
+.formCompatto select,
+.formCompatto input {
   font: inherit;
   font-size: 13px;
   color: var(--color-text-primary);
@@ -183,9 +184,26 @@
   padding: var(--space-1) var(--space-2);
 }
 
-.formCompatto select:focus-visible {
+.formCompatto select:focus-visible,
+.formCompatto input:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+}
+
+/* Story 9.28 (review fix) - separatore visivo tra "Assegna Atleta" e
+   "Nuova Atleta" nella stessa cella: senza, i due form/bottoni "compatti"
+   risultavano indistinguibili, stesso identico principio del bordo/h3 gia'
+   presente in i-miei-gruppi.module.css (.formNuovaAtleta), scalato al
+   registro "compatto" di questo file (.tabella th). */
+.separatoreCompatto {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
 .bottoneCompatto {

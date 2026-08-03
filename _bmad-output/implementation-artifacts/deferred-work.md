@@ -515,3 +515,9 @@
 - Nessuna concorrenza ottimistica (`Partita.updatedAt` non verificato, last-write-wins silenzioso su modifiche concorrenti) — pattern sistemico assente in tutte le Server Action di modifica del progetto (`aggiornaSlot`, `aggiornaAllenatore`, `confermaCertificato`...), nessun precedente di optimistic locking da cui derogare qui. [app/(partite-campionati)/partite/actions.ts]
 - `impianto`/`indirizzoImpianto` senza limite di lunghezza lato server — coerente con la convenzione già in uso su ogni altro campo testo libero del progetto, nessun precedente di `maxLength` applicativo. [app/(partite-campionati)/partite/actions.ts]
 - Doppio round-trip per risolvere il Gruppo (`partita.findUnique` per `gruppoId` + `risolviAutorizzazioneGruppo` che rifà il proprio `gruppo.findUnique`) — rispecchia lo stesso pattern già presente in `cancellaPartita`, non peggiorato da questa storia. [app/(partite-campionati)/partite/actions.ts]
+
+## Deferred from: code review of 9-28-aggiunta-atleta-anche-da-admin (2026-08-03)
+
+- Nessun `maxLength`/`pattern`/`inputMode` sul Codice Fiscale lato client nel form "Nuova Atleta" — stesso gap identico già presente in `MioGruppoCard.tsx` (Story 9.18), duplicato non introdotto da questa storia. [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx]
+- Nessun `max` sulla data di nascita (`<input type="date">` accetta date future) — stesso gap identico già presente in `MioGruppoCard.tsx` (Story 9.18). [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx]
+- Doppio submit rapido prima che `disabled={nuovaAtletaPending}` si applichi può far collidere due chiamate concorrenti su Codice Fiscale duplicato (errore INTERNAL generico invece del messaggio duplicato chiaro) — stesso identico pattern del bottone già presente in `MioGruppoCard.tsx` (Story 9.18). [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx]
