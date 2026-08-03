@@ -2,9 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
-import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
-import { EliminaPartitaForm } from "./EliminaPartitaForm";
+import { PartitaRow } from "./PartitaRow";
 import styles from "./partite.module.css";
 
 // Un import riuscito su /campionati (Story 10.2, importaGare) revalida solo
@@ -110,47 +109,23 @@ export default async function PartitePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {settimana.partite.map((partita) => {
-                    const linkNaviga = costruisciLinkNaviga({
-                      indirizzo: partita.indirizzoImpianto,
-                    });
-                    return (
-                      <tr key={partita.id}>
-                        <td>{formattaData(partita.data)}</td>
-                        <td>{partita.ora}</td>
-                        <td>
-                          {partita.squadraCasa} - {partita.squadraOspite}
-                        </td>
-                        <td>
-                          {partita.impianto}
-                          {linkNaviga && (
-                            <>
-                              {" "}
-                              <a
-                                className={styles.linkNaviga}
-                                href={linkNaviga}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
-                              >
-                                Naviga
-                              </a>
-                            </>
-                          )}
-                        </td>
-                        <td>{partita.gruppo.nome}</td>
-                        <td>{partita.campionato.nome}</td>
-                        <td>
-                          <EliminaPartitaForm
-                            partitaId={partita.id}
-                            squadraCasa={partita.squadraCasa}
-                            squadraOspite={partita.squadraOspite}
-                            data={formattaData(partita.data)}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {settimana.partite.map((partita) => (
+                    <PartitaRow
+                      key={partita.id}
+                      partita={{
+                        id: partita.id,
+                        data: partita.data,
+                        dataFormattata: formattaData(partita.data),
+                        ora: partita.ora,
+                        impianto: partita.impianto,
+                        indirizzoImpianto: partita.indirizzoImpianto,
+                        squadraCasa: partita.squadraCasa,
+                        squadraOspite: partita.squadraOspite,
+                        gruppoNome: partita.gruppo.nome,
+                        campionatoNome: partita.campionato.nome,
+                      }}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>

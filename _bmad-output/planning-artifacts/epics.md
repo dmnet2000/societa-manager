@@ -157,6 +157,18 @@ Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un
 *(Aggiunto in corso d'opera — 2026-07-27, raccolta di difetti reali osservati in produzione (log di errore, comportamento scorretto), non richieste/miglioramenti. Elenco aperto come Epic 9.)*
 **FRs covered:** nessuno (correzioni di difetti, non nuove funzionalità)
 
+### Epic 12: Permessi Configurabili da Admin
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente. Epic futuro, nessuna storia ancora rotta in dettaglio.)* L'Admin potrà abilitare/disabilitare da `/admin` quali funzionalità sono disponibili per Ruolo, senza richiedere una modifica di codice/deploy per ogni cambio di permesso.
+**FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera)
+
+### Epic 13: Conferma Tesseramento
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, ribalta un Non-Obiettivo esplicito del PRD. Epic futuro, nessuna storia ancora rotta in dettaglio.)* Per ogni Atleta, Admin/Dirigente (esclusa Segreteria) potranno confermare il Tesseramento federale, distinto dalla Conferma Iscrizione esistente.
+**FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera)
+
+### Epic 14: Installabilità PWA
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente emersa durante la code review della Story 10.6.)* Il sito diventa installabile su mobile come un'app (icona in home, apertura a schermo intero) tramite Web App Manifest, e resta minimamente utilizzabile con connessione instabile tramite un Service Worker limitato al caching degli asset statici.
+**FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera, opera su NFR3 come Epic 8)
+
 ## Epic 1: Accesso, Popolamento e Iscrizioni
 
 Ogni ruolo può registrarsi e accedere; Admin/Dirigente popolano atlete e allenatori (import Excel, precaricamento, aggancio genitore-atleta), gestiscono utenti/ruoli, e la Segreteria conferma le iscrizioni — inclusa la corretta gestione del passaggio da una stagione all'altra (merge certificati per data più recente, riporto Under 13).
@@ -1306,6 +1318,46 @@ so that posso valutare a colpo d'occhio la situazione certificati delle mie Atle
 
 **And** nessuna regressione su `/vista-dirigente` né su `/i-miei-gruppi` (entrambe invariate) — suite Vitest invariata sui casi esistenti non impattati
 
+### Story 9.27: Modifica delle date di un Certificato già confermato
+
+As a Admin o Dirigente,
+I want poter aggiornare data inizio/data fine validità (e gli altri dati) di un Certificato Medico già confermato,
+so that posso correggere un errore o registrare un rinnovo senza dover prima "sconfermare" il Certificato.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-02). Verificato in analisi: la sezione "Confermati" di `/conferma-certificati` (Story 9.25, `ListaConfermati.tsx`) è oggi **di sola lettura** — l'unico form di conferma (`ConfermaCertificatoRow.tsx`/`confermaCertificato`) è mostrato solo nella sezione "Da confermare". La Server Action sottostante (`confermaCertificato`, upsert su `atletaId` in `certificati_medici`) sarebbe già tecnicamente in grado di aggiornare un Certificato esistente, ma non è raggiungibile dalla UI per una riga già `CONFERMATO`, ed è aperta anche a SEGRETERIA. **Decisioni prese con l'utente in fase di richiesta**: (1) questa modifica va riservata a **solo ADMIN/DIRIGENTE** (SEGRETERIA continua a poter confermare/caricare un Certificato per la prima volta, ma non a correggerne uno già confermato) — nuova Server Action dedicata, non un ampliamento del perimetro Ruoli di `confermaCertificato`; (2) il form di modifica espone **tutti** gli stessi campi già presenti in `ConfermaCertificatoRow` (data inizio/fine validità, mesi validità, modulo, ri-caricamento file), non solo le due date.
+
+**Acceptance Criteria:**
+
+**Given** un Admin o Dirigente sulla sezione "Confermati" di `/conferma-certificati`
+**When** apre la modifica di un Certificato già confermato e ne aggiorna i campi (date, mesi validità, modulo, file)
+**Then** i valori vengono salvati e riflessi immediatamente nella lista (badge di stato ricalcolato)
+
+**Given** una Segreteria sulla stessa pagina
+**When** guarda la sezione "Confermati"
+**Then** non vede alcuna possibilità di modifica (né in UI né lato server: un tentativo diretto di invocare l'azione viene comunque rifiutato)
+
+**And** nessuna regressione sulla conferma iniziale esistente (Story 4.4/9.20), sull'ordinamento per stato (Story 9.25) né sui badge colorati (Story 9.23) — suite Vitest invariata sui casi esistenti non impattati
+
+### Story 9.28: Aggiunta di un nuovo Atleta anche da parte di Admin/Dirigente in /gruppi
+
+As a Admin o Dirigente sulla pagina `/gruppi`,
+I want poter creare una nuova Atleta non ancora in anagrafica e assegnarla contestualmente a un Gruppo, esattamente come già può fare un Allenatore su `/i-miei-gruppi`,
+so that non devo passare dall'Onboarding-Import né chiedere a un Allenatore di farlo per me quando gestisco direttamente i Gruppi.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-03). Verificato in analisi: la Server Action condivisa `creaEAssegnaAtleta` (`app/(gruppi-allenatori)/gruppi/actions.ts`, Story 9.18) ammette **già** `requireRuolo(["ADMIN","DIRIGENTE","ALLENATORE"])` — il backend è già pronto, nessuna modifica lato server necessaria. Il form UI che la richiama è però cablato solo in `MioGruppoCard.tsx` (pagina `/i-miei-gruppi`, uso Allenatore). La pagina `/gruppi` (Admin/Dirigente, `GruppoRow.tsx`) oggi importa solo `assegnaAtleta` (assegna un'Atleta già esistente in anagrafica), non `creaEAssegnaAtleta` — Admin/Dirigente non hanno quindi, dalla UI, modo di creare una nuova Atleta e assegnarla contestualmente, pur potendolo già fare tecnicamente lato server. Scope: esporre lo stesso form "crea nuova Atleta" anche in `GruppoRow.tsx`/pagina `/gruppi`, riuso 1:1 di `creaEAssegnaAtleta` — nessuna nuova Server Action, nessuna migrazione.
+
+**Acceptance Criteria:**
+
+**Given** un Admin o Dirigente sulla pagina `/gruppi`, su una riga Gruppo dove non trova un'Atleta nell'elenco esistente
+**When** apre il form "nuova Atleta" (stesso trigger/campi già disponibili su `/i-miei-gruppi`: Cognome, Nome, data di nascita, Codice Fiscale obbligatori, email e cellulare opzionali) e lo compila
+**Then** una nuova Atleta viene creata (con `sesso` derivato dal Codice Fiscale, stesso comportamento di Story 9.18) e assegnata automaticamente a quel Gruppo per la stagione corrente
+
+**Given** lo stesso form su `/gruppi`
+**When** il Codice Fiscale inserito non rispetta il formato valido, oppure appartiene a un'Atleta già esistente in anagrafica
+**Then** l'inserimento viene rifiutato con lo stesso messaggio chiaro già usato su `/i-miei-gruppi`, nessuna Atleta duplicata viene creata
+
+**And** nessuna regressione sul comportamento esistente di `creaEAssegnaAtleta` da `/i-miei-gruppi` (Story 9.18), su `assegnaAtleta` (assegnazione di un'Atleta già esistente, invariata su entrambe le pagine) né sulla notifica already esistente alla Segreteria — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -1588,3 +1640,38 @@ so that le email automatiche/di prova arrivino davvero a destinazione.
 **Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10/11/12 all'apertura).
 
 **Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10 e Epic 11 all'apertura).
+
+## Epic 14: Installabilità PWA
+
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente ("è possibile far in modo che su mobile il sito venga installato come se fosse un'app?"), emersa durante la code review della Story 10.6. A differenza di Epic 12/13, questo epic è già stato rotto in storie concrete su richiesta dell'utente ("si nuova story o farei nuova epica" → confermato: nuova epica con 2 storie).)*
+
+**Contesto tecnico rilevante scoperto in analisi**: il progetto ha già un logo configurabile da Admin (`/logo`, `lib/storage/logo.ts`, `leggiInfoLogo`/`urlPubblicoLogo`, Supabase Storage) ma **senza vincoli di dimensione/formato** sull'immagine caricata — le icone di un manifest PWA richiedono invece dimensioni fisse (minimo 192×192 e 512×512 PNG). Il sito è inoltre quasi interamente dinamico (Server Components, molte pagine `force-dynamic`, Server Action per ogni mutazione) — un Service Worker che mettesse in cache pagine/dati rischierebbe di mostrare informazioni stantie (presenze, certificati) invece di un errore esplicito, inaccettabile per un gestionale.
+
+### Story 14.1: Web App Manifest e icone (installabilità base)
+
+As a Utente che visita il sito da mobile,
+I want poter installare l'app sulla schermata Home (icona, nome, apertura a schermo intero),
+so that vi acceda come farei con un'app nativa, senza dover riaprire il browser e digitare l'indirizzo ogni volta.
+
+**Note aggiuntive:** nessuna dipendenza da altri epic. Icone PWA dedicate e statiche in `public/` (non derivate dal logo configurabile in `/logo`, che non garantisce le dimensioni richieste) — limite da documentare esplicitamente: se l'Admin cambia il logo del club, le icone PWA non si aggiornano automaticamente, andrebbero sostituite manualmente nel codice. Valutare in fase di sviluppo se questo limite sia accettabile o se serva un epic separato per generare le icone dinamicamente dal logo caricato (fuori perimetro qui).
+
+**Acceptance Criteria:**
+
+1. **Given** un utente mobile (Chrome/Android o Safari/iOS) visita il sito **When** il browser valuta l'installabilità **Then** trova un `app/manifest.ts` (Next.js Metadata API) con `name`, `short_name`, `icons` (almeno 192×192 e 512×512 PNG), `start_url`, `display: "standalone"`, `background_color`/`theme_color` coerenti con `DESIGN.md`
+2. **Given** l'app è stata installata (Aggiungi a Home Screen) **When** viene aperta dall'icona **Then** si apre senza barra degli indirizzi del browser (modalità standalone)
+3. **And** nessuna regressione sulle pagine esistenti — il manifest è puramente additivo, nessun cambio a `layout.tsx` oltre al collegamento automatico gestito da Next.js quando il file è `app/manifest.ts`
+
+### Story 14.2: Service Worker (funzionamento minimo offline e aggiornamento)
+
+As a Utente che ha installato l'app,
+I want che l'app resti minimamente utilizzabile e si aggiorni in modo prevedibile anche con connessione instabile,
+so that non veda una schermata bianca/errore di rete generico ogni volta che la connessione cade per un istante.
+
+**Note aggiuntive:** dipende da Story 14.1 (un Service Worker senza manifest non abilita l'installabilità). **Ambito minimo deliberatamente limitato** (da confermare in fase di sviluppo, non ampliare senza nuova richiesta): cache-first solo per asset statici immutabili (JS/CSS/icone con hash nel nome file), **network-only per ogni navigazione HTML e ogni chiamata dati/Server Action** — nessuna pagina/dato viene mai servita dalla cache, per evitare di mostrare presenze/certificati/partite stantii in un gestionale. Una pagina di fallback offline minimale sostituisce l'errore di rete del browser solo quando la rete non risponde affatto.
+
+**Acceptance Criteria:**
+
+1. **Given** un utente con l'app installata perde la connessione **When** prova a navigare **Then** vede una pagina di fallback offline esplicita ("Connessione assente, riprova") invece dell'errore generico del browser
+2. **Given** una nuova versione del Service Worker viene deployata **When** l'utente riapre l'app **Then** la nuova versione viene attivata automaticamente (`skipWaiting`/`clients.claim`), senza richiedere una disinstallazione/reinstallazione manuale
+3. **And** nessun dato viene mai mostrato "stantio": il Service Worker non mette in cache HTML o risposte di chiamate dati/Server Action, solo asset statici immutabili
+4. **And** nessuna regressione sulle Server Action esistenti — le mutazioni continuano a richiedere connessione attiva, con un messaggio di errore chiaro (non un crash) in sua assenza
