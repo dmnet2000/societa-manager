@@ -45,9 +45,11 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
-const { confermaCertificato, ottieniUrlCertificatoConferma } = await import(
-  "./actions"
-);
+const {
+  confermaCertificato,
+  aggiornaCertificatoConfermato,
+  ottieniUrlCertificatoConferma,
+} = await import("./actions");
 
 const supabaseFinto = { finto: true };
 
@@ -331,6 +333,116 @@ describe("confermaCertificato (Server Action)", () => {
       error: {
         code: "INTERNAL",
         message: "Impossibile confermare il Certificato. Riprova.",
+      },
+    });
+  });
+});
+
+describe("aggiornaCertificatoConfermato (Server Action)", () => {
+  // Review fix (code review Story 9.27): rimosso un secondo test "FORBIDDEN
+  // per ALLENATORE/altri Ruoli" identico byte-per-byte a questo (stesso
+  // mock, stesse asserzioni) - requireRuolo e' completamente mockato qui,
+  // quindi nessun test puo' distinguere realmente "quale" Ruolo ha
+  // innescato il rifiuto a questo livello. Questo test da solo copre gia'
+  // per intero il percorso FORBIDDEN generico, inclusa l'asserzione
+  // sull'array esatto di Ruoli passato a requireRuolo (AC #2).
+  it("returns FORBIDDEN for SEGRETERIA (AC #2 - caso critico, perimetro Ruoli piu' ristretto di confermaCertificato)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", dataFineValidita: "2027-01-01" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when atletaId is missing", async () => {
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({ dataFineValidita: "2027-01-01" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataFineValidita is missing (riuso della validazione condivisa)", async () => {
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La data di fine validità è obbligatoria.",
+      },
+    });
+    expect(confermaCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("aggiorna con successo per ADMIN", async () => {
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        dataInizioValidita: "2026-01-01",
+        dataFineValidita: "2027-01-01",
+        mesiValidita: "12",
+        modulo: "A",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(confermaCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1",
+      {
+        dataInizioValidita: new Date("2026-01-01"),
+        dataFineValidita: new Date("2027-01-01"),
+        mesiValidita: 12,
+        modulo: "A",
+      }
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/conferma-certificati");
+  });
+
+  it("aggiorna con successo per DIRIGENTE", async () => {
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", dataFineValidita: "2027-01-01" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(confermaCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1",
+      expect.objectContaining({ dataFineValidita: new Date("2027-01-01") })
+    );
+  });
+
+  it("returns INTERNAL fail-closed quando confermaCertificato lancia", async () => {
+    confermaCertificatoMock.mockRejectedValue(new Error("RLS denial"));
+
+    const result = await aggiornaCertificatoConfermato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", dataFineValidita: "2027-01-01" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare il Certificato. Riprova.",
       },
     });
   });

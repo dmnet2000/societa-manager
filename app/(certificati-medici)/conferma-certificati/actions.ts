@@ -22,19 +22,26 @@ export type ConfermaCertificatoActionState =
   | { success: true }
   | undefined;
 
-// FR-14, AC #1/#2: un solo Server Action copre sia la conferma di un
-// Certificato gia' caricato (Story 4.1) sia l'inserimento manuale ex-novo
-// (file allegato opzionale - un certificato ricevuto cartaceo puo' non
-// avere mai una scansione digitale). Ruoli ammessi: stesso gruppo ad
-// accesso ampio delle policy RLS su "certificati_medici" (AD-4), non solo
-// Segreteria.
-export async function confermaCertificato(
-  _prevState: ConfermaCertificatoActionState,
-  formData: FormData
-): Promise<ConfermaCertificatoActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SEGRETERIA"]);
-  if (forbidden) return forbidden;
+type CampiCertificatoValidati = {
+  atletaId: string;
+  dataInizioValidita: Date | null;
+  dataFineValidita: Date;
+  mesiValidita: number | null;
+  modulo: string | null;
+  file: File | undefined;
+};
 
+// Story 9.27: validazione estratta da confermaCertificato (comportamento
+// identico, nessun cambio) per essere riusata anche da
+// aggiornaCertificatoConfermato - stesso principio di estrazione gia'
+// seguito in app/(orari-palestre)/slot/actions.ts (validaCampiSlot, Story
+// 9.13). Asincrona: la verifica del contenuto del file (magic byte) e'
+// gia' asincrona in confermaCertificato, invariata qui.
+async function validaCampiCertificato(
+  formData: FormData
+): Promise<
+  { error: { code: string; message: string } } | { valori: CampiCertificatoValidati }
+> {
   const atletaId = String(formData.get("atletaId") ?? "");
   const dataInizioValiditaRaw = String(formData.get("dataInizioValidita") ?? "");
   const dataFineValiditaRaw = String(formData.get("dataFineValidita") ?? "");
@@ -141,9 +148,39 @@ export async function confermaCertificato(
     }
   }
 
+  return {
+    valori: {
+      atletaId,
+      dataInizioValidita,
+      dataFineValidita,
+      mesiValidita,
+      modulo,
+      file: haFile ? (file as File) : undefined,
+    },
+  };
+}
+
+// FR-14, AC #1/#2: un solo Server Action copre sia la conferma di un
+// Certificato gia' caricato (Story 4.1) sia l'inserimento manuale ex-novo
+// (file allegato opzionale - un certificato ricevuto cartaceo puo' non
+// avere mai una scansione digitale). Ruoli ammessi: stesso gruppo ad
+// accesso ampio delle policy RLS su "certificati_medici" (AD-4), non solo
+// Segreteria.
+export async function confermaCertificato(
+  _prevState: ConfermaCertificatoActionState,
+  formData: FormData
+): Promise<ConfermaCertificatoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SEGRETERIA"]);
+  if (forbidden) return forbidden;
+
+  const validazione = await validaCampiCertificato(formData);
+  if ("error" in validazione) return validazione;
+  const { atletaId, dataInizioValidita, dataFineValidita, mesiValidita, modulo, file } =
+    validazione.valori;
+
   try {
     const supabase = await createClient();
-    const filePath = haFile
+    const filePath = file
       ? await caricaFileCertificato(supabase, atletaId, file)
       : undefined;
 
@@ -160,6 +197,52 @@ export async function confermaCertificato(
       error: {
         code: "INTERNAL",
         message: "Impossibile confermare il Certificato. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/conferma-certificati");
+  return { success: true };
+}
+
+// Story 9.27 (AC #1/#2): modifica di un Certificato gia' CONFERMATO - stessa
+// validazione condivisa (validaCampiCertificato) e lo stesso upsert
+// (salvaCertificatoConfermato) di confermaCertificato. CRITICO: perimetro
+// Ruoli PIU' RISTRETTO di confermaCertificato - SEGRETERIA esclusa
+// deliberatamente (puo' confermare/caricare la prima volta, ma non
+// correggere un Certificato gia' confermato) - non riusare la stessa
+// chiamata requireRuolo per copia-incolla (Dev Notes story file).
+export async function aggiornaCertificatoConfermato(
+  _prevState: ConfermaCertificatoActionState,
+  formData: FormData
+): Promise<ConfermaCertificatoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const validazione = await validaCampiCertificato(formData);
+  if ("error" in validazione) return validazione;
+  const { atletaId, dataInizioValidita, dataFineValidita, mesiValidita, modulo, file } =
+    validazione.valori;
+
+  try {
+    const supabase = await createClient();
+    const filePath = file
+      ? await caricaFileCertificato(supabase, atletaId, file)
+      : undefined;
+
+    await salvaCertificatoConfermato(supabase, atletaId, {
+      dataInizioValidita,
+      dataFineValidita,
+      mesiValidita,
+      modulo,
+      ...(filePath !== undefined ? { filePath } : {}),
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare il Certificato. Riprova.",
       },
     };
   }

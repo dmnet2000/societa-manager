@@ -3,27 +3,8 @@
 import { useMemo, useState } from "react";
 import type { StatoCertificatoAggregato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { ordinaPerPrioritaStato } from "@/lib/ordina-certificati-per-stato";
+import { CertificatoConfermatoRow } from "./CertificatoConfermatoRow";
 import styles from "./conferma-certificati.module.css";
-
-// Story 9.23: mappa stato -> classe/etichetta badge, spostata qui da page.tsx
-// (Story 9.25) insieme al resto del rendering interattivo della sezione
-// "Confermati". SENZA_CERTIFICATO non e' raggiungibile in pratica (la
-// dataFineValidita e' sempre obbligatoria in confermaCertificato) ma gestito
-// comunque in modo difensivo (nessun badge), coerente col tipo di ritorno di
-// categorizzaStatoCertificato.
-const CLASSE_BADGE: Record<StatoCertificatoAggregato, string | null> = {
-  IN_REGOLA: styles.badgeInRegola,
-  IN_SCADENZA: styles.badgeInScadenza,
-  SCADUTO: styles.badgeScaduto,
-  SENZA_CERTIFICATO: null,
-};
-
-const ETICHETTA_BADGE: Record<StatoCertificatoAggregato, string> = {
-  IN_REGOLA: "In regola",
-  IN_SCADENZA: "In scadenza",
-  SCADUTO: "Scaduto",
-  SENZA_CERTIFICATO: "",
-};
 
 type RigaConfermata = {
   atletaId: string;
@@ -35,6 +16,15 @@ type RigaConfermata = {
   // due differiscono intorno alla mezzanotte locale.
   dataFineValiditaFormattata: string | null;
   stato: StatoCertificatoAggregato;
+  // Story 9.27 (Task 3/4): campi grezzi necessari solo al form di modifica
+  // di CertificatoConfermatoRow - ordinaPerPrioritaStato (sotto) opera solo
+  // su nome/stato/dataFineValiditaFormattata, questi nuovi campi non lo
+  // riguardano.
+  dataInizioValidita: string;
+  dataFineValidita: string;
+  mesiValidita: number | null | undefined;
+  modulo: string | null | undefined;
+  filePath: string | null;
 };
 
 // Story 9.25: prima interazione client-side di ordinamento su una lista in
@@ -42,7 +32,13 @@ type RigaConfermata = {
 // restano lato server (page.tsx, Story 9.23), gia' calcolati una volta per
 // riga; questo componente riceve solo il risultato pronto e riordina in
 // memoria, nessuna nuova richiesta al server.
-export function ListaConfermati({ righe }: { righe: RigaConfermata[] }) {
+export function ListaConfermati({
+  righe,
+  puoModificare,
+}: {
+  righe: RigaConfermata[];
+  puoModificare: boolean;
+}) {
   const [ordinatoPerStato, setOrdinatoPerStato] = useState(false);
 
   const righeVisualizzate = useMemo(
@@ -63,22 +59,13 @@ export function ListaConfermati({ righe }: { righe: RigaConfermata[] }) {
         </button>
       </div>
       <ul className={styles.listaConfermati}>
-        {righeVisualizzate.map(({ atletaId, nome, dataFineValiditaFormattata, stato }) => {
-          const classeBadge = CLASSE_BADGE[stato];
-          return (
-            <li key={atletaId} className={styles.rigaConfermata}>
-              <span className={styles.nomeConData}>
-                {nome}
-                {dataFineValiditaFormattata
-                  ? ` — valido fino al ${dataFineValiditaFormattata}`
-                  : null}
-              </span>
-              {classeBadge && (
-                <span className={classeBadge}>{ETICHETTA_BADGE[stato]}</span>
-              )}
-            </li>
-          );
-        })}
+        {righeVisualizzate.map((riga) => (
+          <CertificatoConfermatoRow
+            key={riga.atletaId}
+            {...riga}
+            puoModificare={puoModificare}
+          />
+        ))}
       </ul>
     </>
   );

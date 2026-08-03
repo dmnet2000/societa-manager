@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
+import { parseRuoli } from "@/lib/ruoli";
 import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
 import { ListaConfermati } from "./ListaConfermati";
 import styles from "./conferma-certificati.module.css";
@@ -16,6 +17,22 @@ export const dynamic = "force-dynamic";
 // ogni altra pagina di lista di questa codebase.
 export default async function ConfermaCertificatiPage() {
   const supabase = await createClient();
+
+  // Story 9.27 (AC #2): questa pagina non risolveva finora alcun Ruolo del
+  // chiamante (nessuna chiamata a getUser()/parseRuoli esisteva) - serve
+  // per il gating UI del bottone "Modifica" sulla sezione "Confermati",
+  // stesso identico pattern di app/(partite-campionati)/partite/page.tsx
+  // righe 30-40.
+  const {
+    data: { user },
+    error: erroreUtente,
+  } = await supabase.auth.getUser();
+  if (erroreUtente) {
+    console.error(erroreUtente);
+  }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+  const puoModificareCertificatiConfermati =
+    ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE");
 
   // Story 4.4: un'unica lettura di tutti i Certificati (elencaCertificati,
   // evita N+1) + un join applicativo in memoria per atletaId - stesso
@@ -99,6 +116,7 @@ export default async function ConfermaCertificatiPage() {
           <p className={styles.messaggioVuoto}>Nessun Certificato ancora confermato.</p>
         ) : (
           <ListaConfermati
+            puoModificare={puoModificareCertificatiConfermati}
             righe={confermati.map(({ atleta, certificato }) => {
               const dataFineValidita =
                 (certificato?.dataFineValidita as string | undefined) ?? null;
@@ -131,11 +149,29 @@ export default async function ConfermaCertificatiPage() {
                     timeZone: "UTC",
                   })
                 : null;
+              // Story 9.27 (Task 3): elencaCertificati seleziona gia' tutte
+              // queste colonne (lib/db-rls/certificato-medico.ts riga 54) -
+              // prima scartate qui, ora necessarie per il form di modifica
+              // di CertificatoConfermatoRow. Stesso slicing/casting gia'
+              // usato sopra per daConfermare.
               return {
                 atletaId: atleta.id,
                 nome: atleta.nome,
                 dataFineValiditaFormattata,
                 stato,
+                dataInizioValidita:
+                  (certificato?.dataInizioValidita as string | undefined)?.slice(
+                    0,
+                    10
+                  ) ?? "",
+                dataFineValidita:
+                  (certificato?.dataFineValidita as string | undefined)?.slice(
+                    0,
+                    10
+                  ) ?? "",
+                mesiValidita: certificato?.mesiValidita as number | null | undefined,
+                modulo: certificato?.modulo as string | null | undefined,
+                filePath: (certificato?.filePath as string | undefined) ?? null,
               };
             })}
           />
