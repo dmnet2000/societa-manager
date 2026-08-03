@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const genitoreAtletaFindManyMock = vi.fn();
-const gruppoAtletaFindFirstMock = vi.fn();
+const gruppoAtletaFindManyMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -11,7 +11,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: genitoreAtletaFindManyMock,
     },
     gruppoAtleta: {
-      findFirst: gruppoAtletaFindFirstMock,
+      findMany: gruppoAtletaFindManyMock,
     },
   },
 }));
@@ -21,7 +21,7 @@ const { elencaEmailCollegateAdAtleta } = await import("./email-destinatari-atlet
 describe("elencaEmailCollegateAdAtleta", () => {
   beforeEach(() => {
     genitoreAtletaFindManyMock.mockReset();
-    gruppoAtletaFindFirstMock.mockReset();
+    gruppoAtletaFindManyMock.mockReset();
   });
 
   it("restituisce le email di Genitore e Atleta-se-stessa insieme a quelle dell'Allenatore del Gruppo (AC #5)", async () => {
@@ -29,17 +29,19 @@ describe("elencaEmailCollegateAdAtleta", () => {
       { utente: { email: "genitore@esempio.it", attivo: true } },
       { utente: { email: "atleta@esempio.it", attivo: true } },
     ]);
-    gruppoAtletaFindFirstMock.mockResolvedValue({
-      gruppo: {
-        allenatori: [
-          {
-            allenatore: {
-              utente: { email: "allenatore@esempio.it", attivo: true },
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      {
+        gruppo: {
+          allenatori: [
+            {
+              allenatore: {
+                utente: { email: "allenatore@esempio.it", attivo: true },
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    });
+    ]);
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
 
@@ -47,7 +49,7 @@ describe("elencaEmailCollegateAdAtleta", () => {
       where: { atletaId: "atleta-1" },
       select: { utente: { select: { email: true, attivo: true } } },
     });
-    expect(gruppoAtletaFindFirstMock).toHaveBeenCalledWith({
+    expect(gruppoAtletaFindManyMock).toHaveBeenCalledWith({
       where: { atletaId: "atleta-1", annoAgonisticoId: "anno-1" },
       select: {
         gruppo: {
@@ -68,12 +70,43 @@ describe("elencaEmailCollegateAdAtleta", () => {
     );
   });
 
+  // Story 9.21 (review fix): un'Atleta puo' ora essere assegnata a piu'
+  // Gruppi nella stessa stagione - il findMany deve raccogliere gli
+  // Allenatori di TUTTE le righe GruppoAtleta trovate, non solo della
+  // prima (il vecchio findFirst avrebbe notificato solo gli Allenatori di
+  // un Gruppo scelto arbitrariamente).
+  it("include gli Allenatori di TUTTI i Gruppi quando l'Atleta è assegnata a più Gruppi nella stessa stagione", async () => {
+    genitoreAtletaFindManyMock.mockResolvedValue([]);
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      {
+        gruppo: {
+          allenatori: [
+            { allenatore: { utente: { email: "allenatore-under16@esempio.it", attivo: true } } },
+          ],
+        },
+      },
+      {
+        gruppo: {
+          allenatori: [
+            { allenatore: { utente: { email: "allenatore-under19@esempio.it", attivo: true } } },
+          ],
+        },
+      },
+    ]);
+
+    const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
+
+    expect(risultato.sort()).toEqual(
+      ["allenatore-under16@esempio.it", "allenatore-under19@esempio.it"].sort()
+    );
+  });
+
   it("deduplica se la stessa persona compare piu' volte", async () => {
     genitoreAtletaFindManyMock.mockResolvedValue([
       { utente: { email: "genitore@esempio.it", attivo: true } },
       { utente: { email: "genitore@esempio.it", attivo: true } },
     ]);
-    gruppoAtletaFindFirstMock.mockResolvedValue(null);
+    gruppoAtletaFindManyMock.mockResolvedValue([]);
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
 
@@ -84,13 +117,15 @@ describe("elencaEmailCollegateAdAtleta", () => {
     genitoreAtletaFindManyMock.mockResolvedValue([
       { utente: { email: "Genitore@Esempio.it", attivo: true } },
     ]);
-    gruppoAtletaFindFirstMock.mockResolvedValue({
-      gruppo: {
-        allenatori: [
-          { allenatore: { utente: { email: "genitore@esempio.IT", attivo: true } } },
-        ],
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      {
+        gruppo: {
+          allenatori: [
+            { allenatore: { utente: { email: "genitore@esempio.IT", attivo: true } } },
+          ],
+        },
       },
-    });
+    ]);
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
 
@@ -101,11 +136,13 @@ describe("elencaEmailCollegateAdAtleta", () => {
     genitoreAtletaFindManyMock.mockResolvedValue([
       { utente: { email: "disattivato@esempio.it", attivo: false } },
     ]);
-    gruppoAtletaFindFirstMock.mockResolvedValue({
-      gruppo: {
-        allenatori: [{ allenatore: { utente: null } }],
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      {
+        gruppo: {
+          allenatori: [{ allenatore: { utente: null } }],
+        },
       },
-    });
+    ]);
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
 
@@ -114,7 +151,7 @@ describe("elencaEmailCollegateAdAtleta", () => {
 
   it("restituisce un array vuoto (mai un errore) se nessuna riga e' trovata", async () => {
     genitoreAtletaFindManyMock.mockResolvedValue([]);
-    gruppoAtletaFindFirstMock.mockResolvedValue(null);
+    gruppoAtletaFindManyMock.mockResolvedValue([]);
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", "anno-1");
 
@@ -128,7 +165,7 @@ describe("elencaEmailCollegateAdAtleta", () => {
 
     const risultato = await elencaEmailCollegateAdAtleta("atleta-1", null);
 
-    expect(gruppoAtletaFindFirstMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaFindManyMock).not.toHaveBeenCalled();
     expect(risultato).toEqual(["genitore@esempio.it"]);
   });
 });

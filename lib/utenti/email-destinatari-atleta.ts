@@ -5,10 +5,14 @@ import { prisma } from "@/lib/prisma";
 // per una singola Atleta - Genitore e Atleta-se-stessa vengono dalla stessa
 // tabella GenitoreAtleta (non RLS-protetta, AD-9), indistinti da autoAggancio
 // (entrambi sono persone da avvisare, nessun AC richiede di trattarli
-// diversamente qui). L'Allenatore e' scoped al Gruppo dell'Anno Agonistico
+// diversamente qui). L'Allenatore e' scoped ai Gruppi dell'Anno Agonistico
 // indicato (annoAgonisticoId), transitivamente via GruppoAtleta (AD-8) - se
 // annoAgonisticoId e' null (nessun Anno Agonistico corrente risolvibile),
 // nessuna query GruppoAtleta viene eseguita, solo Genitore/Atleta restano.
+// Review fix (code review Story 9.21): findMany, non findFirst - da quando
+// un'Atleta puo' essere assegnata a piu' Gruppi contemporaneamente nella
+// stessa stagione, un findFirst senza gruppoId avrebbe scelto una riga
+// arbitraria e notificato gli Allenatori di un solo Gruppo, non di tutti.
 // Dirigente NON e' incluso qui (a differenza di Genitore/Atleta/Allenatore):
 // non e' scoped all'Atleta, va risolto a parte con elencaEmailPerRuolo
 // ("DIRIGENTE") dal chiamante. Solo Utenti attivi (stesso principio di
@@ -37,7 +41,7 @@ export async function elencaEmailCollegateAdAtleta(
   }
 
   if (annoAgonisticoId) {
-    const gruppoAtleta = await prisma.gruppoAtleta.findFirst({
+    const righeGruppoAtleta = await prisma.gruppoAtleta.findMany({
       where: { atletaId, annoAgonisticoId },
       select: {
         gruppo: {
@@ -52,10 +56,12 @@ export async function elencaEmailCollegateAdAtleta(
       },
     });
 
-    for (const riga of gruppoAtleta?.gruppo.allenatori ?? []) {
-      const utente = riga.allenatore.utente;
-      if (utente?.attivo) {
-        email.add(utente.email.toLowerCase());
+    for (const riga of righeGruppoAtleta) {
+      for (const ga of riga.gruppo.allenatori) {
+        const utente = ga.allenatore.utente;
+        if (utente?.attivo) {
+          email.add(utente.email.toLowerCase());
+        }
       }
     }
   }

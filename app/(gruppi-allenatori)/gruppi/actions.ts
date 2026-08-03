@@ -230,15 +230,22 @@ export async function assegnaAtleta(
   }
 
   try {
-    // AC #2/#3: upsert sulla chiave composita (atletaId, annoAgonisticoId) -
-    // un'Atleta ha un solo Gruppo per Anno Agonistico (invariante, non solo
-    // una regola di inserimento). Riassegnare allo stesso Gruppo aggiorna
-    // gruppoId con lo stesso valore (no-op, AC #3); riassegnare a un Gruppo
-    // diverso sostituisce l'assegnazione precedente (AC #2) - un unico passo
-    // atomico, non un check-then-write con una finestra di race.
+    // Story 9.21: upsert sulla chiave composita (atletaId, gruppoId,
+    // annoAgonisticoId) - un'Atleta puo' ora essere assegnata a piu' Gruppi
+    // contemporaneamente nella stessa stagione (decisione esplicita
+    // dell'utente: assegnaAtleta non "sposta" piu' nulla, e' sempre
+    // additiva). Riassegnare allo stesso Gruppo trova la riga esistente e la
+    // "aggiorna" con gli stessi valori (no-op idempotente, AC #2/#3);
+    // assegnarla a un Gruppo diverso crea una nuova riga senza toccare le
+    // altre (AC #1) - un unico passo atomico, non un check-then-write con
+    // una finestra di race.
     await prisma.gruppoAtleta.upsert({
       where: {
-        atletaId_annoAgonisticoId: { atletaId, annoAgonisticoId: gruppo.annoAgonisticoId },
+        atletaId_gruppoId_annoAgonisticoId: {
+          atletaId,
+          gruppoId,
+          annoAgonisticoId: gruppo.annoAgonisticoId,
+        },
       },
       create: { atletaId, gruppoId, annoAgonisticoId: gruppo.annoAgonisticoId },
       update: { gruppoId },
@@ -476,13 +483,17 @@ export async function creaEAssegnaAtleta(
 
   try {
     // Stesso upsert atomico sulla chiave composita gia' usato in
-    // assegnaAtleta - l'assegnazione e' parte della garanzia primaria di
-    // AC #1 ("...creata e assegnata..."), un suo fallimento va riportato
-    // come errore (a differenza della notifica sotto, effetto collaterale).
+    // assegnaAtleta (Story 9.21: atletaId+gruppoId+annoAgonisticoId) -
+    // l'assegnazione e' parte della garanzia primaria di AC #1 ("...creata e
+    // assegnata..."), un suo fallimento va riportato come errore (a
+    // differenza della notifica sotto, effetto collaterale). Il ramo
+    // `update` resta di fatto irraggiungibile qui: nuovaAtletaId e' appena
+    // stata creata, non puo' gia' avere una riga GruppoAtleta.
     await prisma.gruppoAtleta.upsert({
       where: {
-        atletaId_annoAgonisticoId: {
+        atletaId_gruppoId_annoAgonisticoId: {
           atletaId: nuovaAtletaId,
+          gruppoId,
           annoAgonisticoId: gruppo.annoAgonisticoId,
         },
       },

@@ -75,10 +75,13 @@ export function MioGruppoCard({
         className={styles.formAssegna}
         onSubmit={(e) => {
           // Review fix (code review Story 9.15): stessa cautela gia' usata
-          // per la rimozione (AtletaAssegnata.tsx) - l'assegnazione puo'
-          // spostare un'Atleta dal Gruppo di un altro Allenatore (Dev Notes:
-          // riassegnazione self-service esplicitamente accettata), senza
-          // conferma un misclick nel <select> la sposterebbe in silenzio.
+          // per la rimozione (AtletaAssegnata.tsx) - il <select> include
+          // anche Atlete gia' assegnate al Gruppo di un altro Allenatore
+          // (riassegnazione self-service esplicitamente accettata), senza
+          // conferma un misclick le assegnerebbe in silenzio. Story 9.21:
+          // assegnaAtleta e' ora sempre additiva (non "sposta" piu' nulla),
+          // ma la stessa cautela resta valida per lo stesso motivo -
+          // un'assegnazione indesiderata a un Gruppo che non e' il suo.
           const select = e.currentTarget.elements.namedItem(
             "atletaId"
           ) as HTMLSelectElement | null;

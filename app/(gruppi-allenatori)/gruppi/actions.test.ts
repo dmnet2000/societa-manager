@@ -360,7 +360,7 @@ describe("assegnaAtleta", () => {
     expect(gruppoAtletaUpsertMock).not.toHaveBeenCalled();
   });
 
-  it("upserts on (atletaId, annoAgonisticoId) using the Gruppo's own season (AC #1, #2, #3)", async () => {
+  it("upserts on (atletaId, gruppoId, annoAgonisticoId) using the Gruppo's own season (Story 9.21, AC #1, #2, #3)", async () => {
     gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
     gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat1" });
 
@@ -371,11 +371,51 @@ describe("assegnaAtleta", () => {
 
     expect(result).toEqual({ success: true });
     expect(gruppoAtletaUpsertMock).toHaveBeenCalledWith({
-      where: { atletaId_annoAgonisticoId: { atletaId: "at1", annoAgonisticoId: "anno-1" } },
+      where: {
+        atletaId_gruppoId_annoAgonisticoId: {
+          atletaId: "at1",
+          gruppoId: "g1",
+          annoAgonisticoId: "anno-1",
+        },
+      },
       create: { atletaId: "at1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
       update: { gruppoId: "g1" },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+  });
+
+  // Story 9.21 (AC #1): decisione esplicita dell'utente - assegnaAtleta non
+  // "sposta" piu' nulla, e' sempre additiva. La chiave composita include ora
+  // gruppoId: assegnare un'Atleta gia' in un altro Gruppo della stessa
+  // stagione crea una SECONDA riga (chiave diversa, gruppoId diverso), senza
+  // toccare/cancellare la prima - verificato controllando che l'upsert usi
+  // esattamente la chiave del nuovo Gruppo, mai quella del vecchio.
+  it("assigning an Atleta already in a different Gruppo adds her there too, without touching the other assignment (Story 9.21, AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat2" });
+
+    const result = await assegnaAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g2", atletaId: "at1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAtletaUpsertMock).toHaveBeenCalledWith({
+      where: {
+        atletaId_gruppoId_annoAgonisticoId: {
+          atletaId: "at1",
+          gruppoId: "g2",
+          annoAgonisticoId: "anno-1",
+        },
+      },
+      create: { atletaId: "at1", gruppoId: "g2", annoAgonisticoId: "anno-1" },
+      update: { gruppoId: "g2" },
+    });
+    // Un solo upsert, mai un delete/update sulla riga del Gruppo precedente
+    // (nessun mock di delete esiste per gruppoAtleta in questo file - se il
+    // codice provasse a chiamarlo, il test fallirebbe con un errore di
+    // funzione non definita, non silenziosamente).
+    expect(gruppoAtletaUpsertMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns a friendly error, no crash, when the upsert fails (e.g. FK violation on atletaId)", async () => {
@@ -566,6 +606,30 @@ describe("rimuoviAtleta", () => {
       where: { atletaId: "at1", annoAgonisticoId: "anno-1", gruppoId: "g1" },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+    expect(result).toEqual({ success: true });
+  });
+
+  // Story 9.21 (AC #3, review fix): scenario esplicitamente citato dall'AC -
+  // un'Atleta in due Gruppi, rimossa da uno solo, deve restare assegnata
+  // all'altro. deleteMany e' gia' scoped su gruppoId (verificato per
+  // lettura, non solo assunto): il where composito qui sotto non puo'
+  // toccare la riga dell'altro Gruppo, che ha un gruppoId diverso.
+  it("removes only from the specified Gruppo, leaving the Atleta's other Gruppo assignment untouched (Story 9.21, AC #3)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaDeleteManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await rimuoviAtleta(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1" })
+    );
+
+    expect(gruppoAtletaDeleteManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", annoAgonisticoId: "anno-1", gruppoId: "g1" },
+    });
+    // Un solo delete, scoped esattamente su g1 - non un delete generico su
+    // (atletaId, annoAgonisticoId) che avrebbe cancellato anche la riga di
+    // un eventuale secondo Gruppo (es. "g2").
+    expect(gruppoAtletaDeleteManyMock).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ success: true });
   });
 
@@ -890,7 +954,11 @@ describe("creaEAssegnaAtleta", () => {
     );
     expect(gruppoAtletaUpsertMock).toHaveBeenCalledWith({
       where: {
-        atletaId_annoAgonisticoId: { atletaId: "nuova-atleta-1", annoAgonisticoId: "anno-1" },
+        atletaId_gruppoId_annoAgonisticoId: {
+          atletaId: "nuova-atleta-1",
+          gruppoId: "g1",
+          annoAgonisticoId: "anno-1",
+        },
       },
       create: { atletaId: "nuova-atleta-1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
       update: { gruppoId: "g1" },

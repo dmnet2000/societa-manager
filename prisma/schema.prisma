@@ -484,11 +484,13 @@ model GruppoAllenatore {
 // di Atleta deve mai passare da qui (vedi Dev Notes Story 2.4, usare
 // elencaAtlete via client Supabase autenticato, mai un include Prisma).
 // annoAgonisticoId e' denormalizzato dal Gruppo assegnato (non risolto
-// autonomamente) - e' l'unico modo per esprimere a livello DB il vincolo
-// "un'Atleta ha un solo Gruppo per Anno Agonistico" (AC #2): un @@unique
-// non puo' riferirsi a una colonna di Gruppo. Stesso principio di
-// Iscrizione (FK diretta a AnnoAgonistico sulla stessa riga), non il
-// pattern transitivo di Slot/Presenza.
+// autonomamente) - un @@unique non puo' riferirsi a una colonna di Gruppo,
+// quindi serve una colonna propria per esprimere il vincolo composito sotto.
+// Stesso principio di Iscrizione (FK diretta a AnnoAgonistico sulla stessa
+// riga), non il pattern transitivo di Slot/Presenza. Review fix (Story 9.21):
+// questo commento diceva ancora "un'Atleta ha un solo Gruppo per Anno
+// Agonistico (AC #2)" - non piu' vero, vedi il commento sul vincolo
+// @@unique sotto per il comportamento attuale.
 model GruppoAtleta {
   id               String         @id @default(uuid())
   atletaId         String
@@ -499,7 +501,13 @@ model GruppoAtleta {
   annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
   createdAt        DateTime       @default(now())
 
-  @@unique([atletaId, annoAgonisticoId])
+  // Story 9.21: allentato da [atletaId, annoAgonisticoId] - un'Atleta puo'
+  // ora essere assegnata a piu' Gruppi contemporaneamente nella stessa
+  // stagione (es. "aggregata" a una categoria superiore). Il vincolo
+  // composito include ora gruppoId: blocca ancora un duplicato esatto
+  // (stessa Atleta+Gruppo+stagione due volte) ma non piu' una seconda riga
+  // su un Gruppo diverso.
+  @@unique([atletaId, gruppoId, annoAgonisticoId])
   @@map("gruppo_atlete")
 }
 

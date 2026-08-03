@@ -1191,14 +1191,27 @@ so that il sistema rispecchi un caso reale del volley giovanile, oggi non gestib
 
 **Note aggiuntive:** richiesta esplicita dell'utente (2026-08-01), emersa discutendo la Story 10.6/10.7. **Oggi non è possibile**: `GruppoAtleta` ha un vincolo di unicità a livello di database su `(atletaId, annoAgonisticoId)` (`prisma/schema.prisma`) — un'Atleta sta in un solo Gruppo per stagione; `assegnaAtleta` (Story 2.4/9.15) sposta l'assegnazione esistente invece di aggiungerne una seconda.
 
-**Impatto atteso, da confermare in fase di analisi — questa è una storia di investigazione, non ancora di implementazione**: il presupposto "un'Atleta → un Gruppo" è tessuto in gran parte del progetto, non solo nella tabella di giunzione:
-- **Presenze** (`/presenze`, Story 3.1): il roster di uno Slot è oggi "le Atlete del Gruppo dello Slot" — con più Gruppi, un'Atleta dovrebbe comparire nel roster di più Slot/Gruppi diversi, potenzialmente con più Slot nello stesso giorno/ora da gestire.
-- **Storico presenze** (`/storico-presenze`, Story 3.2/9.17): la griglia mensile è per Gruppo — un'Atleta in più Gruppi avrebbe più righe/storie da consultare, non un'unica vista.
-- **Dati fisici** (`/dati-fisici`, Story 6.1/9.16): l'elenco "le mie Atlete" per un Allenatore dovrebbe includere le Atlete di tutti i suoi Gruppi, già oggi possibile per Allenatori con più Gruppi — ma un'Atleta condivisa tra due Allenatori di Gruppi diversi comparirebbe nell'elenco di entrambi, da confermare se voluto.
-- **Vista Dirigente** (`/vista-dirigente`, Story 5.1/5.2) e **badge certificato in scadenza** (Story 9.19): i conteggi per Gruppo (es. "3 in scadenza") conterebbero la stessa Atleta più volte se assegnata a più Gruppi — comportamento da decidere esplicitamente (conteggio duplicato voluto, o deduplica per Atleta a livello di intero club).
-- **Wizard nuova stagione** (Story 5.3/8.7): la copia delle assegnazioni Gruppo↔Atleta dalla stagione precedente andrebbe estesa a copiare tutte le righe, non una sola per Atleta.
+**Investigazione completata (2026-08-03), leggendo per intero ogni file coinvolto invece di assumere dal solo elenco sotto — risultato sorprendente: la maggior parte dei moduli elencati richiede ZERO modifiche.** Ogni query su `GruppoAtleta` nei moduli consumatori (`/presenze`, `/storico-presenze`, `/dati-fisici`, `/vista-dirigente`, `/vista-allenatore`, `/gruppi`) è **già** filtrata per `gruppoId` specifico (o già deduplicata correttamente per Allenatore in `/dati-fisici` tramite un `Set`) — nessuna di queste presuppone "un'Atleta ha un solo Gruppo" a livello di query. Il vero collo di bottiglia è **solo** il vincolo di unicità DB (`GruppoAtleta.@@unique([atletaId, annoAgonisticoId])`) e la semantica "sposta" di `assegnaAtleta`. Anche l'assunzione originale sul Wizard nuova stagione era **errata**: verificato leggendo `wizard-nuova-stagione/actions.ts` per intero, oggi **non copia affatto** le assegnazioni Gruppo↔Atleta dalla stagione precedente (copia solo Gruppi e Allenatori) — nessun cambiamento necessario lì.
 
-**Acceptance Criteria:** *(nessuno ancora — questa storia è un'investigazione: l'obiettivo del primo passaggio è produrre un elenco completo e confermato con l'utente di tutti i moduli impattati e le decisioni di comportamento da prendere, prima di scrivere qualunque AC implementativo)*
+**Decisioni prese con l'utente in fase di investigazione (2026-08-03):**
+- **Conteggio in Vista Dirigente/Vista Allenatore/badge certificato in scadenza**: duplicato per Gruppo (nessuna deduplica a livello di club) — già il comportamento naturale del codice esistente, nessun cambiamento.
+- **Presenze/roster**: nessun controllo di sovrapposizione oraria tra Slot di Gruppi diversi della stessa Atleta — comportamento naturale accettato, nessuna validazione automatica da introdurre.
+- **Dati fisici**: un'Atleta condivisa tra due Allenatori di Gruppi diversi compare nell'elenco "le mie Atlete" di entrambi — comportamento voluto, già il comportamento naturale del codice esistente (dedup solo se lo stesso Allenatore gestisce entrambi i Gruppi).
+- **assegnaAtleta diventa sempre additiva**: non deve più "spostare" un'Atleta da un Gruppo all'altro — deve poter essere assegnata a più Gruppi contemporaneamente. Per spostarla (rimuoverla da un Gruppo mentre resta nell'altro) si useranno due azioni separate già esistenti: `rimuoviAtleta` (Story 9.14) + `assegnaAtleta`.
+
+**Acceptance Criteria:**
+
+**Given** un'Atleta già assegnata a un Gruppo nella stagione corrente **When** un Admin/Dirigente/Allenatore la assegna a un secondo Gruppo della stessa stagione tramite `assegnaAtleta` **Then** viene aggiunta anche al nuovo Gruppo, resta assegnata anche al Gruppo precedente (nessuno spostamento, entrambe le righe `GruppoAtleta` coesistono)
+
+**Given** la stessa Atleta già assegnata a un Gruppo **When** la si "riassegna" allo stesso identico Gruppo **Then** nessuna riga duplicata viene creata (no-op idempotente, comportamento invariato rispetto ad oggi)
+
+**And** `rimuoviAtleta` continua a rimuovere solo l'assegnazione al Gruppo specifico indicato, senza toccare le assegnazioni della stessa Atleta in altri Gruppi (comportamento già corretto oggi, invariato — la query è già scoped su `gruppoId`)
+
+**And** l'Atleta compare nel roster di Presenze e nella griglia di Storico presenze di **ciascuno** dei Gruppi a cui è assegnata, senza alcun controllo di sovrapposizione oraria tra gli Slot — nessun codice nuovo necessario in quei moduli, il comportamento emerge naturalmente una volta rimosso il vincolo DB
+
+**And** l'elenco Dati fisici, Vista Dirigente, Vista Allenatore e il badge "certificato in scadenza" mostrano/contano l'Atleta per ciascun Gruppo a cui è assegnata (deduplica solo se lo stesso Allenatore gestisce entrambi i Gruppi in Dati fisici) — nessun codice nuovo necessario, comportamento già presente
+
+**And** nessuna regressione su `creaEAssegnaAtleta` (Story 9.18, creazione+assegnazione contestuale di una nuova Atleta) né sul Wizard nuova stagione (Story 5.3/8.7, non tocca le assegnazioni Gruppo↔Atleta, invariato) — suite Vitest invariata sui casi esistenti non impattati
 
 ### Story 9.22: Rimozione dell'accesso Dirigente al precaricamento Allenatori
 

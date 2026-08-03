@@ -110,10 +110,10 @@ export default async function IMieiGruppiPage() {
             .sort((a, b) => a.nome.localeCompare(b.nome));
 
           // Esclude dal <select> solo le Atlete gia' in QUESTO Gruppo (non
-          // quelle di un altro Gruppo/Allenatore: assegnarle sposta
-          // l'assegnazione, riassegnazione self-service esplicitamente
-          // accettata, vedi Dev Notes story file) - stesso calcolo
-          // "disponibili" di campionati/page.tsx.
+          // quelle di un altro Gruppo/Allenatore: assegnaAtleta e' sempre
+          // additiva, Story 9.21 - assegnare un'Atleta gia' in un altro
+          // Gruppo la aggiunge anche a questo, senza rimuoverla dall'altro)
+          // - stesso calcolo "disponibili" di campionati/page.tsx.
           const idAssegnati = new Set(atleteGruppo.map((a) => a.id));
           const atleteDisponibili = atleteMinime.filter(
             (a) => !idAssegnati.has(a.id)
