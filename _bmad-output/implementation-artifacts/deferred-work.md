@@ -531,3 +531,7 @@
 - Nessun modo di rimuovere (solo sostituire) un file già allegato — stessa limitazione già presente nel flusso `confermaCertificato`/"Da confermare". [app/(certificati-medici)/conferma-certificati/actions.ts]
 - `revalidatePath` non avvolta in try/catch dopo il commit del salvataggio — rispecchia la stessa identica struttura di `confermaCertificato`. [app/(certificati-medici)/conferma-certificati/actions.ts]
 - Campi FormData mancanti sovrascrivono i valori esistenti invece di preservarli — rispecchia lo stesso comportamento "sovrascrivi sempre, mai un merge per-campo" già di `confermaCertificato`; raggiungibile solo manomettendo l'API direttamente, la UI precompila sempre i valori esistenti. [app/(certificati-medici)/conferma-certificati/actions.ts]
+
+## Deferred from: code review of 10-5-vista-partite-atleta-e-genitore (2026-08-04)
+
+- Se una riga `GenitoreAtleta` esiste ma l'Atleta corrispondente non è leggibile via RLS (dato inconsistente/accesso revocato), l'utente supera il controllo iniziale (`atletaIds.length > 0`) ma `proprieAtlete` risulta vuoto — vede "Nessuna partita programmata" invece di un messaggio che spieghi la situazione. Stessa identica caratteristica già presente nel pattern mirror `certificato-medico/page.tsx`, non introdotta da questa storia. [app/(partite-campionati)/partite/page.tsx]

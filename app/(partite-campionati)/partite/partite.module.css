@@ -128,7 +128,8 @@
   color: var(--color-text-secondary);
 }
 
-.campo input {
+.campo input,
+.campo select {
   font: inherit;
   font-size: 13.5px;
   color: var(--color-text-primary);
@@ -138,7 +139,8 @@
   padding: var(--space-2) var(--space-3);
 }
 
-.campo input:focus-visible {
+.campo input:focus-visible,
+.campo select:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }

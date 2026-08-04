@@ -564,11 +564,18 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("redirects to /non-autorizzato on /partite for other roles", () => {
+  // Story 10.5: estesa ad ATLETA/GENITORE (sola lettura, gating UI in
+  // page.tsx) - stesso pattern gia' usato per /certificato-medico.
+  it("allows Atleta or Genitore on /partite (Story 10.5)", () => {
     expect(getRouteDecision("/partite", true, ["ATLETA"])).toEqual({
-      action: "redirect",
-      location: "/non-autorizzato",
+      action: "allow",
     });
+    expect(getRouteDecision("/partite", true, ["GENITORE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /partite for other roles", () => {
     expect(getRouteDecision("/partite", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
       location: "/non-autorizzato",

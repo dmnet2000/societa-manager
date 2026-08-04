@@ -112,8 +112,10 @@ export const PROTECTED_ROUTES: {
     navLabel: "Campionati",
   },
   {
+    // Story 10.5: estesa ad ATLETA/GENITORE (sola lettura, gating UI in
+    // page.tsx) - stesso pattern gia' usato per /certificato-medico.
     prefix: "/partite",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE"],
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE", "ATLETA", "GENITORE"],
     navLabel: "Partite",
   },
 ];
