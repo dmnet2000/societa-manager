@@ -113,7 +113,27 @@ export async function middleware(request: NextRequest) {
 }
 
 // Esclude asset statici e ottimizzazione immagini dal Proxy.
+// Story 14.1: aggiunti manifest.webmanifest e le due icone PWA - senza
+// questa esclusione un visitatore NON autenticato (es. sulla pagina
+// pubblica /accedi, dove il browser puo' comunque valutare
+// l'installabilita' PWA) riceverebbe un redirect HTML a /accedi anche per
+// la richiesta del manifest e delle icone, rompendo silenziosamente
+// l'installabilita' - stesso gap gia' previsto (mai concretizzato) nel
+// Defer di Story 1.1 in deferred-work.md ("altri eventuali asset in
+// /public verrebbero comunque fatti passare dal redirect di
+// autenticazione").
+// Review Story 14.1: "." escappato (letterale, non "qualunque carattere")
+// e icons/ ristretto ai due file attesi invece dell'intero prefisso, cosi'
+// un futuro file/rotta reale sotto /icons/ non salterebbe silenziosamente
+// l'autenticazione.
+// Story 14.2: aggiunti sw.js e offline.html, stesso identico motivo -
+// inoltre il Service Worker stesso fa un fetch verso /offline.html nel
+// proprio evento "install": se quel fetch passasse dal redirect di
+// autenticazione mentre l'utente non e' loggato, in cache finirebbe la
+// pagina di login invece della vera pagina offline.
 export const config = {
   runtime: "experimental-edge",
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|icons/(?:icon-192\\.png|icon-512\\.png)|sw\\.js|offline\\.html).*)",
+  ],
 };
