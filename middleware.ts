@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getRouteDecision } from "@/lib/auth/route-guard";
+import { getRouteDecision } from "@/lib/auth/route-decision";
 import { parseRuoli } from "@/lib/ruoli";
 import {
   SOGLIA_INATTIVITA_MS,
@@ -81,7 +81,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const ruoli = parseRuoli(user?.app_metadata?.ruoli);
-  const decision = getRouteDecision(
+  // Story 12.3: getRouteDecision e' ora async (consulta l'helper con cache
+  // di Story 12.2 per le rotte migrate) - middleware e' gia' una funzione
+  // async dalla Story 9.8, nessuna modifica strutturale necessaria oltre
+  // l'await.
+  const decision = await getRouteDecision(
     request.nextUrl.pathname,
     !!user,
     ruoli

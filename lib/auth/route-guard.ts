@@ -21,6 +21,17 @@ export const PUBLIC_ROUTES = [
 // l'autorizzazione sia per le voci della barra di navigazione
 // (lib/auth/voci-navigazione.ts) - evita una lista di voci duplicata e
 // mantenuta a mano separatamente da questa.
+//
+// Story 12.3: questo file (route-guard.ts) resta volutamente privo di
+// qualunque dipendenza da Prisma/"server-only" - e' importato anche da
+// lib/auth/voci-navigazione.ts, a sua volta importato da app/NavBarClient.tsx
+// ("use client"). Un `import "server-only"` (transitivo tramite
+// lib/auth/permessi-configurabili.ts -> lib/prisma.ts -> pg) qui romperebbe
+// la build del bundle client (verificato dal vivo con `npm run build`:
+// "Module not found: Can't resolve 'net'/'tls'" nel bundle browser). Per
+// questo la logica che consulta rottaAbilitataPerRuolo (Story 12.2) vive nel
+// nuovo file lib/auth/route-decision.ts, non qui - vedi quel file per
+// isAutorizzato/getRouteDecision.
 export const PROTECTED_ROUTES: {
   prefix: string;
   ruoliAmmessi: Ruolo[];
@@ -30,6 +41,15 @@ export const PROTECTED_ROUTES: {
   // lib/auth/voci-navigazione.ts) - usato per /smtp e /logo, raggiungibili
   // solo passando dalla pagina hub /impostazioni.
   nascostaDallaNav?: boolean;
+  // Story 12.3 (Epic 12): se true, questa rotta e' stata migrata al sistema
+  // di permessi configurabili (Story 12.1/12.2) - ruoliAmmessi diventa il
+  // valore di fallback iniziale del seed (Story 12.1), non piu' consultato
+  // direttamente da getRouteDecision (lib/auth/route-decision.ts), che
+  // interroga invece rottaAbilitataPerRuolo per ciascun Ruolo dell'utente.
+  // Nessuna voce di PROTECTED_ROUTES lo imposta ancora (nessuna rotta reale
+  // migrata in questa story - la prima e' Story 12.4,
+  // /precaricamento-allenatori).
+  permessiConfigurabili?: boolean;
 }[] = [
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
@@ -133,7 +153,9 @@ export type RouteDecision =
   | { action: "allow" }
   | { action: "redirect"; location: string };
 
-function isPublicRoute(pathname: string): boolean {
+// Story 12.3: esportata (era privata) - lib/auth/route-decision.ts la
+// riusa per non duplicare la logica di route pubbliche.
+export function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
@@ -154,7 +176,8 @@ function isPublicRoute(pathname: string): boolean {
 // frontend), che dimenticasse di reimplementare da solo il controllo di
 // Ruolo. Solo le rotte Cron, machine-to-machine per natura, hanno bisogno di
 // questa esenzione.
-function isRouteHandlerCron(pathname: string): boolean {
+// Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.
+export function isRouteHandlerCron(pathname: string): boolean {
   return pathname.startsWith("/api/cron/");
 }
 
@@ -164,46 +187,15 @@ function isRouteHandlerCron(pathname: string): boolean {
 // e' rotta, altrimenti non serve al suo scopo. Nessun dato sensibile
 // esposto (solo stato/latenza, vedi app/api/health/route.ts), stesso
 // principio di isRouteHandlerCron sopra.
-function isRouteHandlerHealth(pathname: string): boolean {
+// Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.
+export function isRouteHandlerHealth(pathname: string): boolean {
   return pathname === "/api/health";
 }
 
-function matchProtectedRoute(pathname: string) {
+// Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.
+export function matchProtectedRoute(pathname: string) {
   return PROTECTED_ROUTES.find(
     (route) =>
       pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)
   );
-}
-
-// Funzione pura (nessuna dipendenza da Next.js) cosi' e' testabile in
-// isolamento: proxy.ts si limita a leggere autenticazione/ruoli e applicare
-// la decisione.
-export function getRouteDecision(
-  pathname: string,
-  isAuthenticated: boolean,
-  ruoli: Ruolo[]
-): RouteDecision {
-  if (
-    isPublicRoute(pathname) ||
-    isRouteHandlerCron(pathname) ||
-    isRouteHandlerHealth(pathname)
-  ) {
-    return { action: "allow" };
-  }
-
-  if (!isAuthenticated) {
-    return { action: "redirect", location: LOGIN_PATH };
-  }
-
-  const protectedRoute = matchProtectedRoute(pathname);
-  if (protectedRoute) {
-    const autorizzato = protectedRoute.ruoliAmmessi.some((r) =>
-      ruoli.includes(r)
-    );
-    if (!autorizzato) {
-      return { action: "redirect", location: NON_AUTORIZZATO_PATH };
-    }
-  }
-
-  return { action: "allow" };
 }

@@ -5,7 +5,8 @@ export const SOGLIA_INATTIVITA_MS = 60 * 60 * 1000; // 1 ora, scelta con l'utent
 export const ULTIMA_ATTIVITA_COOKIE = "ultima-attivita";
 
 // Funzione pura (nessuna dipendenza da Next.js) cosi' e' testabile in
-// isolamento - stesso principio di getRouteDecision (lib/auth/route-guard.ts).
+// isolamento - stesso principio di getRouteDecision (lib/auth/route-decision.ts,
+// spostata li' dalla Story 12.3 - non piu' in route-guard.ts).
 // Assente o malformato -> false (AC #3): un Utente senza tracciamento
 // precedente (appena loggato, o gia' loggato prima che questa storia
 // esistesse) non va disconnesso immediatamente - il cookie viene scritto per
