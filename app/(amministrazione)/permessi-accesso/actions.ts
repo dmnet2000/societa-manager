@@ -6,6 +6,7 @@ import type { Ruolo } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
+import { invalidaCachePermessi } from "@/lib/auth/permessi-configurabili";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori come { error: { code,
 // message } }, "FORBIDDEN" riservato ai rifiuti di autorizzazione.
@@ -32,9 +33,15 @@ const RUOLI_CONFIGURABILI: Ruolo[] = [
 // stessa) potrebbe persistere "DIRIGENTE abilitato su /admin", righe che il
 // seed esclude deliberatamente perche' quelle rotte restano hardcoded
 // (Dev Notes: "solo ADMIN vi accede comunque").
+// Story 12.4: `|| r.permessiConfigurabili` aggiunto - una rotta migrata puo'
+// avere ruoliAmmessi storico ancora ADMIN-only (es.
+// /precaricamento-allenatori) pur essendo ora genuinamente configurabile;
+// senza questa condizione la Server Action scarterebbe come "rotta non
+// valida" un salvataggio legittimo per quella rotta, stessa ragione del fix
+// gemello in page.tsx.
 const ROTTE_VALIDE = new Set(
-  PROTECTED_ROUTES.filter((r) =>
-    r.ruoliAmmessi.some((ruolo) => ruolo !== "ADMIN")
+  PROTECTED_ROUTES.filter(
+    (r) => r.permessiConfigurabili || r.ruoliAmmessi.some((ruolo) => ruolo !== "ADMIN")
   ).map((r) => r.prefix)
 );
 
@@ -105,6 +112,17 @@ export async function salvaPermessiRotte(
       },
     };
   }
+
+  // Review fix (Blind Hunter + Edge Case Hunter + Acceptance Auditor,
+  // indipendentemente): il commento in permessi-configurabili.ts (Story 12.4)
+  // dichiarava gia' questa chiamata come esistente, ma non lo era - la cache
+  // restava valida fino alla scadenza naturale del TTL (fino a 90s) invece
+  // di riflettere subito un salvataggio riuscito. Limite noto: azzera solo
+  // la cache dell'isolate Cloudflare Workers che gestisce questa richiesta
+  // (Story 12.2/12.3 Dev Notes), non dell'intera flotta - un limite
+  // superiore piu' basso del TTL pieno, non una garanzia immediata a
+  // livello di flotta.
+  invalidaCachePermessi();
 
   revalidatePath("/permessi-accesso");
   return { success: true };

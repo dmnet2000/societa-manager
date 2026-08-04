@@ -5,6 +5,12 @@ const createManyMock = vi.fn();
 const transactionMock = vi.fn();
 const requireRuoloMock = vi.fn();
 const revalidatePathMock = vi.fn();
+// Review fix (Blind Hunter + Edge Case Hunter + Acceptance Auditor,
+// indipendentemente): salvaPermessiRotte ora chiama invalidaCachePermessi()
+// dopo un salvataggio riuscito - mockata qui perche' il modulo reale ha
+// "import server-only" (mai mockato in questo file finora, non serviva
+// prima di questa chiamata).
+const invalidaCachePermessiMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -18,6 +24,10 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
+}));
+
+vi.mock("@/lib/auth/permessi-configurabili", () => ({
+  invalidaCachePermessi: invalidaCachePermessiMock,
 }));
 
 vi.mock("next/cache", () => ({
@@ -39,6 +49,7 @@ describe("salvaPermessiRotte", () => {
     createManyMock.mockReset();
     transactionMock.mockReset();
     revalidatePathMock.mockReset();
+    invalidaCachePermessiMock.mockReset();
   });
 
   it("restituisce FORBIDDEN e non tocca Prisma se il chiamante non e' Admin (AC #5)", async () => {
@@ -57,6 +68,7 @@ describe("salvaPermessiRotte", () => {
     expect(transactionMock).not.toHaveBeenCalled();
     expect(deleteManyMock).not.toHaveBeenCalled();
     expect(createManyMock).not.toHaveBeenCalled();
+    expect(invalidaCachePermessiMock).not.toHaveBeenCalled();
   });
 
   it("salva le righe abilitate in una transazione delete-all + insert (AC #4)", async () => {
@@ -76,6 +88,11 @@ describe("salvaPermessiRotte", () => {
         expect.objectContaining({ rotta: "/mio-orario", ruolo: "ALLENATORE", abilitato: true }),
       ],
     });
+    // Review fix (Story 12.4, trovato indipendentemente da tutti e tre i
+    // layer di review): un salvataggio riuscito deve invalidare la cache di
+    // lettura, altrimenti l'effetto resterebbe invisibile fino alla
+    // scadenza naturale del TTL (fino a 90s) invece di quasi-immediato.
+    expect(invalidaCachePermessiMock).toHaveBeenCalledTimes(1);
     expect(revalidatePathMock).toHaveBeenCalledWith("/permessi-accesso");
   });
 
@@ -112,6 +129,25 @@ describe("salvaPermessiRotte", () => {
     await salvaPermessiRotte(undefined, buildFormData(["/admin|ADMIN"]));
 
     expect(createManyMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta una chiave su una rotta migrata (permessiConfigurabili:true) anche se ruoliAmmessi storico resta ADMIN-only (Story 12.4)", async () => {
+    requireRuoloMock.mockResolvedValue(null);
+    transactionMock.mockResolvedValue([{}, {}]);
+
+    await salvaPermessiRotte(
+      undefined,
+      buildFormData(["/precaricamento-allenatori|DIRIGENTE"])
+    );
+
+    expect(createManyMock).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          rotta: "/precaricamento-allenatori",
+          ruolo: "DIRIGENTE",
+        }),
+      ],
+    });
   });
 
   it("scarta una chiave con una rotta inesistente/non protetta (difesa in profondita')", async () => {
@@ -174,5 +210,9 @@ describe("salvaPermessiRotte", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile salvare la configurazione. Riprova." },
     });
+    // Review fix (Story 12.4): la cache non va invalidata se il salvataggio
+    // fallisce - resterebbe altrimenti sincronizzata con dati mai
+    // effettivamente persistiti.
+    expect(invalidaCachePermessiMock).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Ruolo } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { createAdminClient } from "@/lib/auth-admin/client";
 
 // Story 12.2: cache in-memory con TTL 60-120 secondi (decisione presa con
 // l'utente in apertura dell'Epic 12) - 90s e' il punto medio del range.
@@ -34,17 +34,55 @@ function chiave(rotta: string, ruolo: Ruolo): string {
   return `${rotta}|${ruolo}`;
 }
 
+type RigaPermesso = { rotta: string; ruolo: Ruolo };
+
+// Story 12.4 (fix architetturale, non piu' Prisma diretto): questo modulo e'
+// raggiunto anche dal Proxy (middleware.ts -> route-decision.ts), che DEVE
+// girare su runtime edge per essere compatibile con Cloudflare (vincolo di
+// @opennextjs/cloudflare) - Prisma/pg li' e' impossibile (richiede net/tls/
+// util Node nativi, assenti nell'edge: crash confermato dal vivo con
+// `next dev`, "Failed to load external module node:util/types", non solo
+// teorico). createAdminClient() (@supabase/supabase-js, fetch - compatibile
+// con l'edge) risolve il problema. Review fix (Blind Hunter): NON e' lo
+// stesso client di middleware.ts - quello usa createServerClient da
+// @supabase/ssr (chiave anon, sessione dell'utente via cookie) per
+// l'autenticazione, questo usa createAdminClient (chiave service-role,
+// nessuna sessione) per bypassare la RLS. Condividono solo la famiglia
+// (entrambi fetch-based, compatibili con l'edge), non l'istanza ne' le
+// credenziali. Service-role bypassa la RLS ma non i GRANT di base - vedi la
+// migrazione dedicata (stesso identico gap gia' incontrato per
+// "atlete"/Story 1.5, "configurazione_smtp"/Story 4.3,
+// "certificati_medici"/Story 4.x).
 async function leggiAbilitati(): Promise<Set<string>> {
-  // where: abilitato:true e' un no-op oggi (la Server Action di Story 12.1
+  // .eq("abilitato", true) e' un no-op oggi (la Server Action di Story 12.1
   // scrive sempre true, o non scrive affatto la riga - "assenza di riga" e'
   // l'unico meccanismo di "disabilitato" in uso), ma corretto per
   // costruzione se in futuro un flusso diverso scrivesse abilitato:false su
   // una riga esistente invece di cancellarla.
-  const righe = await prisma.permessoRotta.findMany({
-    where: { abilitato: true },
-    select: { rotta: true, ruolo: true },
-  });
-  return new Set(righe.map((r) => chiave(r.rotta, r.ruolo)));
+  const { data, error } = await createAdminClient()
+    .from("permessi_rotte")
+    .select("rotta, ruolo")
+    .eq("abilitato", true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  // Review fix (Blind Hunter): `data as RigaPermesso[]` senza verifica era
+  // un semplice type assertion - se la risposta di PostgREST fosse mai
+  // arrivata in una forma inattesa (schema cambiato, stringa .select() con
+  // un refuso, versione della libreria diversa), il .map() sottostante
+  // avrebbe lanciato un'eccezione generica indistinguibile da un'interruzione
+  // di rete nel log di errore. Un controllo esplicito rende la causa
+  // diagnosticabile senza cambiare il comportamento fail-closed (l'eccezione
+  // e' comunque catturata da rottaAbilitataPerRuolo, che nega l'accesso).
+  if (!Array.isArray(data)) {
+    throw new Error(
+      "permessi_rotte: risposta inattesa da Supabase REST (data non è un array)"
+    );
+  }
+
+  return new Set((data as RigaPermesso[]).map((r) => chiave(r.rotta, r.ruolo)));
 }
 
 // Story 12.2: helper centrale che route-guard.ts e requireRuolo potranno
@@ -68,7 +106,7 @@ export async function rottaAbilitataPerRuolo(
 
   if (!cache || ora >= cache.scadeIl) {
     // Review fix (Blind Hunter + Edge Case Hunter, indipendentemente): un
-    // errore Prisma (DB irraggiungibile, timeout) qui si propagherebbe
+    // errore di lettura (rete, service down) qui si propagherebbe
     // altrimenti non gestito al chiamante - un'eccezione non e' un `false`.
     // Per un modulo che si autodefinisce fail-closed (AC #3), lasciare che
     // un errore di lettura si propaghi rischierebbe di far *fallire aperto*
@@ -89,21 +127,17 @@ export async function rottaAbilitataPerRuolo(
   return cache.abilitati.has(chiave(rotta, ruolo));
 }
 
-// Nessun chiamante reale in questa story (nessun consumer collegato, vedi
-// Dev Notes) - serve per isolare i test tra loro (la cache e' stato di
-// modulo condiviso) ed e' gia' pronta per un futuro collegamento dopo un
-// salvataggio riuscito da salvaPermessiRotte (Story 12.3/12.4), senza dover
-// ritoccare questo modulo.
+// Chiamata da requireRuolo (Story 12.4) dopo un salvataggio riuscito da
+// salvaPermessiRotte - serve anche per isolare i test tra loro (la cache e'
+// stato di modulo condiviso).
 //
 // Limite noto (review fix, Blind Hunter): in produzione (Cloudflare
-// Workers, vedi lib/prisma.ts) un modulo viene valutato una volta per
-// isolate - questo azzera la cache SOLO dell'isolate che gestisce la
-// richiesta che la chiama, non degli altri isolate caldi della flotta, che
-// continueranno a servire permessi non aggiornati fino alla scadenza
-// naturale del loro TTL locale (fino a TTL_MS). Non e' un'invalidazione
-// immediata garantita a livello di flotta, solo un limite superiore
-// probabilistico piu' basso del TTL pieno - da tenere presente quando
-// Story 12.3/12.4 la collegheranno dopo un salvataggio riuscito.
+// Workers) un modulo viene valutato una volta per isolate - questo azzera
+// la cache SOLO dell'isolate che gestisce la richiesta che la chiama, non
+// degli altri isolate caldi della flotta, che continueranno a servire
+// permessi non aggiornati fino alla scadenza naturale del loro TTL locale
+// (fino a TTL_MS). Non e' un'invalidazione immediata garantita a livello di
+// flotta, solo un limite superiore probabilistico piu' basso del TTL pieno.
 export function invalidaCachePermessi(): void {
   cache = null;
 }

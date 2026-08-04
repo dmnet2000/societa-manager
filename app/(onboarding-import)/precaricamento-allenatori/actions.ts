@@ -17,12 +17,21 @@ export type AllenatoreActionState =
 // come Utente (Story 1.1/1.2), non un client Supabase/lib/db-rls (quello e'
 // riservato alle tabelle RLS-protette come Atleta, Story 1.3).
 // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta esplicita
-// dell'utente (soluzione temporanea, vedi Epic 12 futuro).
+// dell'utente (soluzione temporanea, sostituita da Story 12.4).
+// Story 12.4: il secondo argomento "/precaricamento-allenatori" collega
+// questa Server Action alla stessa fonte di verita' della pagina
+// (permessi_rotte via isAutorizzato, Story 12.2/12.3) - ["ADMIN"] resta come
+// fallback per il caso in cui la rotta non fosse trovata/migrata, ma con
+// permessiConfigurabili:true impostato su questa rotta (route-guard.ts)
+// l'autorizzazione reale passa ora da li', non piu' da questo array
+// hardcoded. Le tre Server Action di questo file condividono deliberatamente
+// la stessa rotta/configurazione (decisione "per rotta intera", non per
+// singola azione, presa in apertura dell'Epic 12).
 export async function precaricaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN"]);
+  const forbidden = await requireRuolo(["ADMIN"], "/precaricamento-allenatori");
   if (forbidden) return forbidden;
 
   const nome = String(formData.get("nome") ?? "").trim();
@@ -88,7 +97,7 @@ export async function aggiornaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN"]);
+  const forbidden = await requireRuolo(["ADMIN"], "/precaricamento-allenatori");
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");
@@ -155,7 +164,7 @@ export async function cancellaAllenatore(
   _prevState: AllenatoreActionState,
   formData: FormData
 ): Promise<AllenatoreActionState> {
-  const forbidden = await requireRuolo(["ADMIN"]);
+  const forbidden = await requireRuolo(["ADMIN"], "/precaricamento-allenatori");
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");

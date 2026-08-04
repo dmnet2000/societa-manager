@@ -2,11 +2,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Ruolo } from "@prisma/client";
 
 // Story 12.3: route-decision.ts importa lib/auth/permessi-configurabili.ts
-// (Story 12.2), che ha "server-only" in testa e tocca lib/prisma.ts - stesso
-// mock gia' stabilito in permessi-configurabili.test.ts, riusato identico
-// qui anche se i 63 test storici sotto esercitano solo il path statico
-// (nessuna voce reale di PROTECTED_ROUTES ha permessiConfigurabili:true,
-// quindi rottaAbilitataMock non viene mai chiamato da questi test).
+// (Story 12.2), che ha "server-only" in testa - stesso mock gia' stabilito
+// in permessi-configurabili.test.ts, riusato identico qui.
+// Review fix (Acceptance Auditor, Story 12.4): questo commento diceva
+// ancora "nessuna voce reale ha permessiConfigurabili:true, rottaAbilitataMock
+// non viene mai chiamato" - non piu' vero da quando /precaricamento-allenatori
+// e' stata migrata (Story 12.4): i 3 test dedicati a quella rotta, poco
+// sotto, ora configurano esplicitamente rottaAbilitataMock. Gli altri 60
+// test (le restanti 25 rotte statiche) continuano a non chiamarlo mai.
 vi.mock("server-only", () => ({}));
 
 const rottaAbilitataMock = vi.fn();
@@ -91,19 +94,37 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("allows only Admin on /precaricamento-allenatori (Story 9.22: Dirigente rimosso)", async () => {
+  // Story 12.4: /precaricamento-allenatori e' ora migrata
+  // (permessiConfigurabili:true) - getRouteDecision per questa rotta passa
+  // da isAutorizzato, che chiama il MOCK rottaAbilitataMock (l'intero
+  // modulo permessi-configurabili.ts e' mockato in testa a questo file),
+  // non la vera rottaAbilitataPerRuolo (che ha lo short-circuit ADMIN reale,
+  // Story 12.2, invariato in produzione). Questi 3 test riconfigurano
+  // esplicitamente il mock per replicare quel comportamento nello scenario
+  // di test - un mock "muto" risolverebbe undefined (falsy) anche per ADMIN.
+  it("allows only Admin on /precaricamento-allenatori (Story 9.22 + 12.4: migrata, ADMIN comunque sempre autorizzato)", async () => {
+    rottaAbilitataMock.mockImplementation(
+      async (_rotta: string, ruolo: string) => ruolo === "ADMIN"
+    );
+
     expect(
       await getRouteDecision("/precaricamento-allenatori", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
   });
 
-  it("allows a user holding both Admin and Dirigente on /precaricamento-allenatori (review fix Story 9.22)", async () => {
+  it("allows a user holding both Admin and Dirigente on /precaricamento-allenatori (review fix Story 9.22, Story 12.4)", async () => {
+    rottaAbilitataMock.mockImplementation(
+      async (_rotta: string, ruolo: string) => ruolo === "ADMIN"
+    );
+
     expect(
       await getRouteDecision("/precaricamento-allenatori", true, ["ADMIN", "DIRIGENTE"])
     ).toEqual({ action: "allow" });
   });
 
-  it("redirects to /non-autorizzato on /precaricamento-allenatori for other roles, incluso Dirigente (Story 9.22)", async () => {
+  it("redirects to /non-autorizzato on /precaricamento-allenatori for other roles, incluso Dirigente - nessuna riga permessi_rotte per questa rotta oggi, fail-closed (Story 9.22, Story 12.4)", async () => {
+    rottaAbilitataMock.mockResolvedValue(false);
+
     expect(
       await getRouteDecision("/precaricamento-allenatori", true, ["ALLENATORE"])
     ).toEqual({ action: "redirect", location: "/non-autorizzato" });
@@ -689,8 +710,14 @@ describe("isAutorizzato", () => {
     expect(risultato).toBe(true);
   });
 
-  it("nessuna voce reale di PROTECTED_ROUTES ha permessiConfigurabili:true in questa story (AC #6)", async () => {
-    expect(PROTECTED_ROUTES.every((r) => !r.permessiConfigurabili)).toBe(true);
+  // Story 12.4: aggiornato - prima di questa story nessuna rotta reale era
+  // migrata (AC #6 di Story 12.3); ora /precaricamento-allenatori lo e'
+  // (Story 12.4, PoC end-to-end), l'unica. Guardia esplicita contro una
+  // migrazione accidentale/prematura di un'ALTRA rotta reale.
+  it("solo /precaricamento-allenatori ha permessiConfigurabili:true in PROTECTED_ROUTES (Story 12.4)", async () => {
+    const migrate = PROTECTED_ROUTES.filter((r) => r.permessiConfigurabili);
+
+    expect(migrate.map((r) => r.prefix)).toEqual(["/precaricamento-allenatori"]);
   });
 });
 

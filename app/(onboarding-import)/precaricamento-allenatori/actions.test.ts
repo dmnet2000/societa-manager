@@ -169,7 +169,7 @@ describe("precaricaAllenatore", () => {
     // solo ADMIN (rimozione di DIRIGENTE) non era verificata da alcun test
     // a livello di Server Action - stesso pattern gia' usato altrove nel
     // progetto per verificare i Ruoli richiesti (import-atlete/actions.test.ts).
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"], "/precaricamento-allenatori");
     expect(createMock).toHaveBeenCalledWith({
       data: {
         nome: "Mario",
@@ -316,7 +316,7 @@ describe("aggiornaAllenatore", () => {
 
     expect(result).toEqual({ success: true });
     // Review fix (Story 9.22): vedi commento gemello in precaricaAllenatore.
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"], "/precaricamento-allenatori");
     expect(updateMock).toHaveBeenCalledWith({
       where: { id: "a1" },
       data: {
@@ -372,7 +372,7 @@ describe("cancellaAllenatore", () => {
 
     expect(result).toEqual({ success: true });
     // Review fix (Story 9.22): vedi commento gemello in precaricaAllenatore.
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"], "/precaricamento-allenatori");
     expect(deleteManyMock).toHaveBeenCalledWith({
       where: { id: "a1", utenteId: null, gruppi: { none: {} } },
     });

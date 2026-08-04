@@ -44,21 +44,31 @@ export const PROTECTED_ROUTES: {
   // Story 12.3 (Epic 12): se true, questa rotta e' stata migrata al sistema
   // di permessi configurabili (Story 12.1/12.2) - ruoliAmmessi diventa il
   // valore di fallback iniziale del seed (Story 12.1), non piu' consultato
-  // direttamente da getRouteDecision (lib/auth/route-decision.ts), che
-  // interroga invece rottaAbilitataPerRuolo per ciascun Ruolo dell'utente.
-  // Nessuna voce di PROTECTED_ROUTES lo imposta ancora (nessuna rotta reale
-  // migrata in questa story - la prima e' Story 12.4,
-  // /precaricamento-allenatori).
+  // direttamente da getRouteDecision (lib/auth/route-decision.ts) ne' da
+  // requireRuolo (lib/auth/require-ruolo.ts, Story 12.4), che interrogano
+  // invece rottaAbilitataPerRuolo per ciascun Ruolo dell'utente. Prima (e per
+  // ora unica) voce migrata: /precaricamento-allenatori, Story 12.4.
   permessiConfigurabili?: boolean;
 }[] = [
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
   {
     // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta
-    // esplicita dell'utente (soluzione temporanea, vedi Epic 12 futuro).
+    // esplicita dell'utente (soluzione temporanea, sostituita da Story 12.4).
+    // Story 12.4: prima rotta reale migrata al sistema di permessi
+    // configurabili (PoC end-to-end dell'Epic 12) - ruoliAmmessi resta
+    // scritto come fallback storico ma non e' piu' consultato da
+    // isAutorizzato (lib/auth/route-decision.ts) ne' da requireRuolo quando
+    // gli viene passata questa rotta: l'autorizzazione reale (pagina e
+    // Server Action) passa ora da rottaAbilitataPerRuolo/permessi_rotte.
+    // Nessuna riga esiste ancora per questa rotta nel seed di Story 12.1
+    // (era ADMIN-only) - comportamento invariato per costruzione (fail-closed
+    // su ogni Ruolo diverso da ADMIN, identico a oggi) finche' un Admin non
+    // abilita esplicitamente un altro Ruolo da /permessi-accesso.
     prefix: "/precaricamento-allenatori",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Precaricamento allenatori",
+    permessiConfigurabili: true,
   },
   {
     prefix: "/conferma-iscrizioni",

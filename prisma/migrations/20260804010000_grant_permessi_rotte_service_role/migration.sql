@@ -1,0 +1,13 @@
+-- Story 12.4 (fix architetturale, code review Story 12.2/12.3 + verifica dal
+-- vivo con `next dev`): "permessi_rotte" va ora letta anche via Supabase
+-- REST (client service-role, lib/auth-admin/client.ts) invece che solo via
+-- Prisma diretto - il Proxy (middleware.ts) DEVE girare su runtime edge per
+-- essere compatibile con Cloudflare (vincolo di @opennextjs/cloudflare) e
+-- non puo' usare Prisma/pg li' (richiede net/tls/util Node nativi, assenti
+-- nell'edge - crash confermato: "Failed to load external module
+-- node:util/types"). "service_role" bypassa la RLS ma non i GRANT di base -
+-- stesso identico gap gia' incontrato per "atlete" (Story 1.5),
+-- "configurazione_smtp" (Story 4.3) e "certificati_medici" (Story 4.x): le
+-- tabelle create via migrazione diretta non hanno GRANT di default per
+-- nessun ruolo Postgres (auto_expose_new_tables non attivo).
+GRANT SELECT ON "permessi_rotte" TO service_role;

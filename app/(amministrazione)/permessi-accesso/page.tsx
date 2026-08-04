@@ -17,18 +17,22 @@ export default async function PermessiAccessoPage() {
   // AC #6: l'elenco delle rotte gestibili e' derivato da PROTECTED_ROUTES
   // (route-guard.ts), non un elenco distinto mantenuto a mano qui - nessuna
   // rotta protetta puo' restare "orfana" (assente sia dal seed che dalla UI).
-  // Review fix: le rotte ADMIN-only (es. /admin, /permessi-certificati,
-  // /permessi-accesso stessa) sono escluse dalla matrice - i Dev Notes le
-  // descrivono come "hardcoded, solo ADMIN vi accede comunque" (stesso
-  // trattamento del seed, che non produce righe per queste rotte). Includerle
-  // permetterebbe di salvare "DIRIGENTE abilitato su /admin" - una riga che
-  // il seed esclude deliberatamente ma che restava altrimenti ricreabile
-  // dalla UI, una porta aperta per un'escalation di privilegi non voluta
-  // quando Story 12.3 collegera' questa tabella al controllo reale
-  // (incluso il rischio di auto-concedersi accesso al pannello permessi
-  // stesso). Trovato indipendentemente da Blind Hunter ed Edge Case Hunter.
-  const rotte = PROTECTED_ROUTES.filter((r) =>
-    r.ruoliAmmessi.some((ruolo) => ruolo !== "ADMIN")
+  // Review fix (Story 12.1): le rotte ADMIN-only (es. /admin,
+  // /permessi-certificati, /permessi-accesso stessa) sono escluse dalla
+  // matrice - i Dev Notes le descrivono come "hardcoded, solo ADMIN vi
+  // accede comunque". Includerle permetterebbe di salvare "DIRIGENTE
+  // abilitato su /admin", una porta aperta per un'escalation di privilegi
+  // non voluta.
+  // Story 12.4: `r.ruoliAmmessi.some(...)` da solo non basta piu' - una
+  // rotta migrata (permessiConfigurabili:true) puo' avere ruoliAmmessi
+  // storico ancora ADMIN-only (es. /precaricamento-allenatori, Story 9.22)
+  // pur essendo ora genuinamente configurabile: quel campo e' diventato solo
+  // un fallback storico, non piu' la fonte di verita' (vedi isAutorizzato,
+  // lib/auth/route-decision.ts). Senza `|| r.permessiConfigurabili`, una
+  // rotta migrata resterebbe esclusa dalla matrice e un Admin non avrebbe
+  // alcun modo di configurarla da UI.
+  const rotte = PROTECTED_ROUTES.filter(
+    (r) => r.permessiConfigurabili || r.ruoliAmmessi.some((ruolo) => ruolo !== "ADMIN")
   ).map((r) => ({
     prefix: r.prefix,
     navLabel: r.navLabel,

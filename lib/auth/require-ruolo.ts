@@ -2,6 +2,8 @@ import "server-only";
 import type { Ruolo } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
+import { matchProtectedRoute } from "@/lib/auth/route-guard";
+import { isAutorizzato } from "@/lib/auth/route-decision";
 
 export type ForbiddenState = { error: { code: "FORBIDDEN"; message: string } };
 
@@ -11,8 +13,22 @@ export type ForbiddenState = { error: { code: "FORBIDDEN"; message: string } };
 // riservata a uno o piu' Ruoli (basta averne uno tra quelli richiesti).
 // "FORBIDDEN" e' il code riservato in ARCHITECTURE-SPINE.md esattamente ai
 // rifiuti di autorizzazione.
+//
+// Story 12.4: secondo parametro opzionale `rotta` - meccanismo di
+// collegamento Server Action <-> permessi configurabili (Epic 12), lasciato
+// esplicitamente aperto fino a questa story. Se fornito e la rotta trovata
+// in PROTECTED_ROUTES ha permessiConfigurabili:true, l'autorizzazione passa
+// interamente da isAutorizzato (stessa fonte di verita' della pagina,
+// lib/auth/route-decision.ts, Story 12.3) - ruoliRichiesti viene IGNORATO in
+// quel caso, coerente con la decisione "per rotta intera" presa con l'utente
+// in apertura dell'Epic 12 (ogni Server Action sotto una rotta migrata
+// condivide la stessa configurazione, non la propria). Se `rotta` non e'
+// fornita, o la rotta non e' trovata/non e' migrata: comportamento
+// invariato, ruoliRichiesti hardcoded come sempre - rollout incrementale,
+// tutti gli altri call site esistenti restano cosi' invariati.
 export async function requireRuolo(
-  ruoliRichiesti: Ruolo | Ruolo[]
+  ruoliRichiesti: Ruolo | Ruolo[],
+  rotta?: string
 ): Promise<ForbiddenState | null> {
   const supabase = await createClient();
   const {
@@ -29,6 +45,18 @@ export async function requireRuolo(
   }
 
   const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+
+  if (rotta) {
+    const route = matchProtectedRoute(rotta);
+    if (route?.permessiConfigurabili) {
+      const autorizzato = await isAutorizzato(route, ruoli);
+      if (!autorizzato) {
+        return { error: { code: "FORBIDDEN", message: "Non autorizzato." } };
+      }
+      return null;
+    }
+  }
+
   const richiesti = Array.isArray(ruoliRichiesti)
     ? ruoliRichiesti
     : [ruoliRichiesti];
