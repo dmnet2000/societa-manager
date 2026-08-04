@@ -576,3 +576,30 @@ model Presenza {
   @@unique([atletaId, slotId, data])
   @@map("presenze")
 }
+
+// Story 12.1 (Epic 12, Permessi Configurabili da Admin): mappa
+// rotta x Ruolo -> abilitato. Non protetta da RLS (AD-9, stesso
+// trattamento di GruppoVisibileDirigente/Slot: dato puramente
+// strutturale/di configurazione, nessun GRANT verso "authenticated") -
+// gestita via Prisma diretto, letta/scritta solo da Server Action e
+// pagine Server Component Admin-only. ADMIN e' sempre escluso (accesso
+// pieno hardcoded, mai una riga per quel Ruolo - decisione presa con
+// l'utente in fase di apertura dell'Epic 12, elimina il rischio di
+// auto-esclusione). Assenza di riga per una combinazione rotta+ruolo =
+// non abilitato (fail-closed, decisione esplicita) una volta che Story
+// 12.3 collega questa configurazione al controllo di accesso reale -
+// fino ad allora lib/auth/route-guard.ts resta l'unica fonte di verita'
+// effettiva, questa tabella non e' ancora letta da nessun controllo.
+// `rotta` e' il `prefix` di PROTECTED_ROUTES (stringa libera, non enum):
+// un enum di database richiederebbe una migrazione ad ogni nuova rotta
+// protetta, in contraddizione con l'obiettivo dell'Epic 12.
+model PermessoRotta {
+  id        String   @id @default(uuid())
+  rotta     String
+  ruolo     Ruolo
+  abilitato Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([rotta, ruolo])
+  @@map("permessi_rotte")
+}

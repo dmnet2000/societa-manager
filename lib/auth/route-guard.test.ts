@@ -581,4 +581,21 @@ describe("getRouteDecision", () => {
       location: "/non-autorizzato",
     });
   });
+
+  it("allows only Admin on /permessi-accesso (Story 12.1)", () => {
+    expect(getRouteDecision("/permessi-accesso", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /permessi-accesso for other roles, incluso Dirigente (Story 12.1)", () => {
+    expect(getRouteDecision("/permessi-accesso", true, ["DIRIGENTE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(getRouteDecision("/permessi-accesso", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
 });

@@ -118,6 +118,15 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE", "ATLETA", "GENITORE"],
     navLabel: "Partite",
   },
+  {
+    // Story 12.1: pagina Admin-only di gestione dei permessi configurabili
+    // per rotta (Epic 12) - ADMIN sempre escluso dalle righe configurabili
+    // stesse (accesso pieno hardcoded), quindi questa rotta e' anch'essa
+    // ADMIN-only, stesso trattamento di /permessi-certificati.
+    prefix: "/permessi-accesso",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Permessi di accesso",
+  },
 ];
 
 export type RouteDecision =
