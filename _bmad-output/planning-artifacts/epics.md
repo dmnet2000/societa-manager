@@ -162,11 +162,15 @@ Atlete e allenatori tracciano dati fisici nel tempo con grafici di progresso; un
 **FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera)
 
 ### Epic 13: Conferma Tesseramento
-*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, ribalta un Non-Obiettivo esplicito del PRD. Epic futuro, nessuna storia ancora rotta in dettaglio.)* Per ogni Atleta, Admin/Dirigente (esclusa Segreteria) potranno confermare il Tesseramento federale, distinto dalla Conferma Iscrizione esistente.
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, ribalta un Non-Obiettivo esplicito del PRD. Analisi di apertura completata il 2026-08-04, rotto in 1 story.)* Per ogni Atleta, Admin/Dirigente (esclusa Segreteria) potranno confermare il Tesseramento federale, distinto dalla Conferma Iscrizione esistente e dipendente da essa.
 **FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera)
 
 ### Epic 14: Installabilità PWA
 *(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente emersa durante la code review della Story 10.6.)* Il sito diventa installabile su mobile come un'app (icona in home, apertura a schermo intero) tramite Web App Manifest, e resta minimamente utilizzabile con connessione instabile tramite un Service Worker limitato al caching degli asset statici.
+**FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera, opera su NFR3 come Epic 8)
+
+### Epic 15: Riorganizzazione Grafica — Navigazione e Slot
+*(Aggiunto in corso d'opera — 2026-08-04, richiesta esplicita dell'utente ("Epic grafica" da far gestire ad agenti UI). Epic futuro, nessuna storia ancora rotta in dettaglio.)* Riorganizzazione della navigazione principale in sotto-menu tematici (Orari/Palestre, Atleti, Accounting) e ridisegno compatto/tabellare della sezione Slot con modifica inline delle righe.
 **FRs covered:** nessuno nel PRD originale (epic aggiunto in corso d'opera, opera su NFR3 come Epic 8)
 
 ## Epic 1: Accesso, Popolamento e Iscrizioni
@@ -1656,23 +1660,25 @@ Prima rotta realmente migrata al nuovo sistema, end-to-end (route-guard + Server
 
 ## Epic 13: Conferma Tesseramento
 
-*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo l'obiettivo generale catturato per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10/11/12.)*
+*(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente. Analisi di apertura completata il 2026-08-04, stesso approccio già usato per Epic 10/12 — vedi decisioni sotto. Rotto in 1 story fondativa.)*
 
 **Decisione importante — ribalta un Non-Obiettivo esplicito del PRD**: il PRD (§5 Non-Obiettivi) e il Brief addendum dichiaravano esplicitamente "il sistema non traccia la Data Validità Tesseramento federale: confermato non correlata all'Iscrizione" — decisione presa alla cattura iniziale dei requisiti. L'utente ha ora confermato esplicitamente (2026-08-02) di voler ribaltare questa decisione: vuole un vero tracciamento/conferma del Tesseramento in-app. **PRD e Brief addendum sono già stati aggiornati** con una nota che documenta il ribaltamento (barrato + nota, stesso stile già usato altrove nel progetto per decisioni superate).
 
 **Requisito originale (testo dell'utente, 2026-08-02):** oggi esiste solo la Conferma Iscrizione (Story 1.6/1.8, FR-17, `/conferma-iscrizioni`, a cura della Segreteria) — serve aggiungere, per ogni Atleta, anche una **Conferma Tesseramento**, distinta dalla Conferma Iscrizione. Il Tesseramento può essere gestito **solo da Admin e Dirigente** (esplicitamente **non** Segreteria, a differenza dell'Iscrizione che oggi ammette anche Admin/Dirigente in lettura/esclusione ma riserva la conferma alla sola Segreteria, FR-17/Story 1.8).
 
-**Punti aperti da chiarire in fase di analisi (non ancora decisi con l'utente, da NON assumere):**
-- **Modello dati**: nuova entità `Tesseramento` (specchio di `Iscrizione`: `atletaId`+`annoAgonisticoId`, `@@unique`, scoped per stagione come Iscrizione, AD-8) o un campo aggiuntivo sulla riga `Iscrizione` esistente (es. `tesseramentoConfermato`, `tesseramentoConfermatoIl`)? Il Brief originale suggerisce che il tesseramento ha una propria "Data Validità" distinta — se tracciata, servirebbe comunque una struttura propria, non un semplice booleano.
-- **Relazione con Iscrizione**: il Tesseramento richiede che l'Iscrizione sia già confermata (ordine naturale: prima iscrizione al club, poi tesseramento alla federazione), o sono indipendenti? Cosa succede se un'Iscrizione viene esclusa (Story 1.8) dopo che il Tesseramento era già stato confermato?
-- **Cosa si traccia esattamente**: solo un flag "confermato/non confermato" (come Iscrizione), oppure anche una data di conferma, un numero di tesseramento, una data di validità/scadenza (il Brief addendum menzionava `Data Validità Tess.` come campo distinto dall'export federale, `Data 1° Tess.` come data storica del primo tesseramento mai fatto)?
-- **UI**: nuova pagina dedicata `/conferma-tesseramento` (specchio di `/conferma-iscrizioni`), o integrata nella stessa pagina/tabella di Conferma Iscrizioni con una colonna aggiuntiva? Data la differenza di Ruoli ammessi (Segreteria esclusa qui), una pagina separata è probabilmente più semplice per l'autorizzazione, da confermare.
-- **RLS vs dato strutturale**: `Iscrizione` è protetta da RLS (AD-4). Il Tesseramento tocca lo stesso perimetro di dati (Atleta, non sanitario) — verificare se debba seguire lo stesso trattamento RLS o possa essere strutturale (AD-9) dato che i Ruoli coinvolti (Admin/Dirigente) hanno già accesso ampio ovunque.
-- **Wizard nuova stagione**: se il Tesseramento è per-stagione come l'Iscrizione, il rollover (Story 5.3/6.3) dovrebbe/non dovrebbe riportare lo stato di conferma alla stagione successiva? L'Iscrizione oggi non viene riportata (va riconfermata ogni anno) — probabilmente lo stesso vale per Tesseramento, da confermare non assumere.
+**Decisioni prese con l'utente in fase di analisi (2026-08-04):**
+- **Cosa si traccia**: solo un flag "confermato/non confermato" — stesso modello minimo di Iscrizione oggi, nessun numero di tesseramento né data di validità/scadenza (esplicitamente fuori scope, nonostante il Brief originale li menzionasse come possibili campi).
+- **Relazione con Iscrizione**: dipendenza **obbligatoria** — il Tesseramento di un'Atleta può essere confermato solo se la sua Iscrizione per lo stesso Anno Agonistico è già confermata (ordine naturale: prima il club, poi la federazione). Da definire in fase di creazione storia cosa succede se un'Iscrizione già confermata viene esclusa (Story 1.8) dopo che il Tesseramento collegato era già stato confermato — comportamento non ancora deciso, non assumere.
+- **UI**: nuova pagina dedicata `/conferma-tesseramenti` (specchio di `/conferma-iscrizioni`), non integrata nella pagina di Conferma Iscrizioni — coerente con la differenza di Ruoli ammessi (Segreteria esclusa qui).
+- **Modello dati**: nuova entità `Tesseramento`, speculare a `Iscrizione` (`atletaId`+`annoAgonisticoId`, `@@unique`, stessa forma id/createdAt). Preferita a due colonne aggiuntive su `Iscrizione` per evitare che la policy RLS `UPDATE` di `Iscrizione` (già non column-scoped, gap noto) esponga il flag Tesseramento anche alla Segreteria, che deve restarne esplicitamente esclusa.
+- **RLS vs dato strutturale**: **strutturale, nessuna RLS** (AD-9) — a differenza di `Iscrizione` (RLS, AD-4, perché coinvolge anche Segreteria in lettura/scrittura parziale), il Tesseramento coinvolge solo Admin/Dirigente, Ruoli che hanno già accesso Prisma diretto ovunque nel progetto. Stesso trattamento della maggioranza delle tabelle Admin/Dirigente-only esistenti (es. `Gruppo`, `Slot`).
+- **Wizard nuova stagione**: **nessun riporto automatico** — come Iscrizione oggi, il Tesseramento va riconfermato ogni nuova stagione, il rollover (Story 5.3/6.3) non lo tocca.
 
-**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10/11/12 all'apertura).
+**Punto aperto residuo da chiarire in fase di creazione storia (non ancora deciso, da NON assumere):** se il Tesseramento debba avere anche una funzionalità di **esclusione** (mirror del comportamento `attiva: false` di Iscrizione, Story 1.8) o se sia solo confermabile senza un percorso di ripensamento — non richiesto esplicitamente dall'utente, da confermare prima di scrivere gli AC della storia.
 
-**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10 e Epic 11 all'apertura).
+### Story 13.1: Conferma Tesseramento
+
+Nuova entità `Tesseramento` (strutturale, non RLS — vedi decisioni sopra) e nuova pagina `/conferma-tesseramenti` (Admin/Dirigente, Segreteria esclusa) che elenca le Atlete con Iscrizione confermata per l'Anno Agonistico corrente e permette di confermarne il Tesseramento con un click, stesso principio di interazione di `/conferma-iscrizioni` (Story 1.6). Un'Atleta senza Iscrizione confermata non è confermabile per il Tesseramento (dipendenza obbligatoria) — la UI deve rendere questo vincolo esplicito, non un errore generico al submit. Nessun riporto al rollover di nuova stagione (Tesseramento sempre non confermato all'apertura di una nuova stagione, come Iscrizione).
 
 ## Epic 14: Installabilità PWA
 
@@ -1708,3 +1714,28 @@ so that non veda una schermata bianca/errore di rete generico ogni volta che la 
 2. **Given** una nuova versione del Service Worker viene deployata **When** l'utente riapre l'app **Then** la nuova versione viene attivata automaticamente (`skipWaiting`/`clients.claim`), senza richiedere una disinstallazione/reinstallazione manuale
 3. **And** nessun dato viene mai mostrato "stantio": il Service Worker non mette in cache HTML o risposte di chiamate dati/Server Action, solo asset statici immutabili
 4. **And** nessuna regressione sulle Server Action esistenti — le mutazioni continuano a richiedere connessione attiva, con un messaggio di errore chiaro (non un crash) in sua assenza
+
+## Epic 15: Riorganizzazione Grafica — Navigazione e Slot
+
+*(Aggiunto in corso d'opera — 2026-08-04, richiesta esplicita dell'utente: "Epic grafica" con specifiche da far gestire ad agenti UI. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo la cattura fedele della richiesta per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10/11/12/13.)*
+
+**Richiesta originale dell'utente (testo verbatim, 2026-08-04), organizzata in punti per riferimento:**
+
+1. **Sezione Slot** (`/slot`, oggi in `app/(orari-palestre)/slot/`):
+   - "Modificare Slot in Orari" — **chiarito dall'utente (2026-08-04): solo un cambio di label**, non uno spostamento/merge di pagine. Il `navLabel` di `/slot` passa da "Slot" a "Orari" (nessun impatto sulla pagina `/orari` esistente, che resta una rotta distinta con i propri Ruoli — SEGRETERIA — e la propria navLabel "Orari"; i due set di Ruoli non si sovrappongono oggi, quindi nessun utente vede entrambe le voci "Orari" contemporaneamente).
+   - Compattare la visualizzazione delle righe dei singoli Gruppi, anche in forma tabellare, con i pulsanti modifica/cancellazione a destra (con icone). Le righe diventano modificabili inline quando si seleziona il pulsante modifica. Il form "Nuovo Slot" resta in alto, invariato rispetto a oggi.
+2. Raggruppare le funzionalità "Orari" (`/orari`) e "Palestre" (`/palestre`) in un menu principale unico "Orari/Palestre".
+3. Rinominare la sezione "Amministrazione" (`/admin`, oggi navLabel "Amministrazione") in "Accounting" e spostarla come ultima voce del menu, in fondo.
+4. Spostare "Precaricamento allenatori" (`/precaricamento-allenatori`) dentro "Accounting" — richiesta troncata nel messaggio originale ("e anche" senza seguito, vedi Punti aperti).
+5. Nuovo menu "Atleti" che raggruppa: Import Atlete (`/import-atlete`), Conferma Iscrizioni (`/conferma-iscrizioni`), Conferma Certificati (`/conferma-certificati`).
+
+**Contesto tecnico rilevante scoperto in analisi**: la navigazione oggi (`lib/auth/voci-navigazione.ts` + `app/NavBarClient.tsx`) è una lista piatta filtrata per Ruolo, senza alcun concetto di sotto-menu/raggruppamento — introdurre "Orari/Palestre", "Atleti" e "Accounting" come menu con voci figlie richiede un cambio di modello dati (oggi `PROTECTED_ROUTES` produce un `VoceNavigazione = {href, label}` 1:1 per rotta) oltre che di markup/CSS del drawer mobile e della sidebar desktop. Esiste già un precedente parziale di "voce con figlie nascoste" (`/impostazioni` → `/smtp`, `/logo`, Story 9.24) ma è solo per l'evidenziazione "attiva" nella nav, non un vero sotto-menu visibile. La sezione Slot **ha già** modifica/cancellazione (Story 9.13, `aggiornaSlot`/`cancellaSlot` in `app/(orari-palestre)/slot/actions.ts`) — ma oggi ogni riga (`SlotRow.tsx`) è renderizzata come una card con il form di modifica **sempre espanso** (tutti i campi sempre visibili e modificabili, pulsanti Salva/Cancella testuali in basso), non come una riga di tabella compatta con pulsanti-icona a destra che entra in modalità modifica solo su richiesta — il punto 1 è quindi un ridisegno del componente esistente (collassare lo stato "sola lettura" vs "in modifica", passare a un layout tabellare, sostituire i pulsanti testuali con icone), non l'aggiunta di funzionalità mancanti. Nessuna libreria di icone risulta oggi tra le dipendenze del progetto (verificato in `package.json`).
+
+**Punti aperti da chiarire in fase di analisi (non ancora decisi con l'utente, da NON assumere):**
+- **Punto 4 troncato**: la frase "Precaricamento allenatore spostare in Accounting e anche" si interrompe — cosa doveva seguire "e anche"? (Es. spostare anche "Permessi di accesso" o "Permessi certificati" in Accounting?) Da chiedere esplicitamente, non indovinare.
+- **Struttura tecnica dei sotto-menu**: dropdown/accordion espandibile in sidebar, o pagine hub dedicate (come già esiste per `/impostazioni`)? Comportamento su mobile (drawer) vs desktop (sidebar sempre visibile) da definire.
+- **Ruoli e "Accounting"**: `/admin` è oggi ADMIN-only; `/precaricamento-allenatori` è oggi ADMIN-only per default ma è `permessiConfigurabili: true` (Epic 12) — un Admin potrebbe in futuro abilitare DIRIGENTE su quella rotta da `/permessi-accesso`, rendendo "Accounting" (presumibilmente concepito come sezione solo-Admin) non più omogeneo per Ruolo. Da chiarire se "Accounting" debba restare concettualmente ADMIN-only o generico.
+- **Menu "Atleti"**: le tre rotte non condividono lo stesso set di Ruoli ammessi (`/import-atlete` = ADMIN/DIRIGENTE; `/conferma-iscrizioni` e `/conferma-certificati` = ADMIN/DIRIGENTE/SEGRETERIA) — un utente Segreteria vedrebbe il menu "Atleti" con solo 2 delle 3 voci. Comportamento già coerente col filtraggio per-Ruolo esistente, ma da confermare che sia accettabile visivamente.
+- **Icone per modifica/cancellazione**: nessuna libreria di icone è oggi tra le dipendenze — scegliere un set (SVG inline, libreria da aggiungere, o Unicode come già fatto per l'hamburger `☰`) è una decisione tecnica da prendere in apertura.
+
+**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10/11/12/13 all'apertura).

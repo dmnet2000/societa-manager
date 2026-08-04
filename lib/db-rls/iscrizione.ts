@@ -73,6 +73,30 @@ export async function inserisciIscrizione(
   return !!data && data.length > 0;
 }
 
+// Story 13.1 (Epic 13): controllo puntuale per Atleta+Anno, usato dalla
+// Server Action confermaTesseramento per verificare la dipendenza
+// obbligatoria "Iscrizione gia' confermata" (AC #3) - a differenza di
+// elencaIscrizioniPerAnno (l'intero elenco, usato dalla pagina), qui serve
+// solo un booleano per una singola Atleta.
+export async function trovaIscrizioneAttiva(
+  supabase: SupabaseClient,
+  atletaId: string,
+  annoAgonisticoId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("iscrizioni")
+    .select("id")
+    .eq("atletaId", atletaId)
+    .eq("annoAgonisticoId", annoAgonisticoId)
+    .eq("attiva", true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return !!data && data.length > 0;
+}
+
 // Story 1.8 AC #4: esclusione manuale - UPDATE, non DELETE (Story 1.6 ha
 // deliberatamente rimosso ogni policy/GRANT DELETE su "iscrizioni"). Stesso
 // controllo "riga effettivamente modificata" gia' usato in

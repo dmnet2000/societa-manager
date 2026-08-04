@@ -75,6 +75,14 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     navLabel: "Conferma iscrizioni",
   },
+  {
+    // Story 13.1 (Epic 13): a differenza di /conferma-iscrizioni, Segreteria
+    // e' esplicitamente esclusa - solo Admin/Dirigente possono confermare il
+    // Tesseramento.
+    prefix: "/conferma-tesseramenti",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Conferma tesseramenti",
+  },
   { prefix: "/palestre", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Palestre" },
   { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
   {

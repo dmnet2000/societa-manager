@@ -5,7 +5,15 @@ vi.mock("server-only", () => ({}));
 const insertMock = vi.fn();
 const eqAttivaMock = vi.fn();
 const eqAnnoMock = vi.fn(() => ({ eq: eqAttivaMock }));
-const selectMock = vi.fn(() => ({ eq: eqAnnoMock }));
+// Story 13.1: trovaIscrizioneAttiva usa una catena a 3 .eq() (atletaId,
+// annoAgonisticoId, attiva) invece dei 2 di elencaIscrizioniPerAnno - la
+// stessa eqAnnoMock/eqAttivaMock viene riusata come coda della catena,
+// eqAtletaMock e' solo il primo anello aggiuntivo. select() distingue le
+// due chiamate dalla stringa di colonne passata ("id" vs "id, atletaId").
+const eqAtletaMock = vi.fn(() => ({ eq: eqAnnoMock }));
+const selectMock = vi.fn((colonne: string) =>
+  colonne === "id" ? { eq: eqAtletaMock } : { eq: eqAnnoMock }
+);
 
 // Catena chainable per update().eq()...eq().select() - supporta sia
 // disattivaIscrizione (un solo .eq()) sia la riattivazione dentro
@@ -25,8 +33,12 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock } as never;
 
-const { elencaIscrizioniPerAnno, inserisciIscrizione, disattivaIscrizione } =
-  await import("./iscrizione");
+const {
+  elencaIscrizioniPerAnno,
+  inserisciIscrizione,
+  disattivaIscrizione,
+  trovaIscrizioneAttiva,
+} = await import("./iscrizione");
 
 describe("elencaIscrizioniPerAnno", () => {
   beforeEach(() => {
@@ -175,5 +187,44 @@ describe("disattivaIscrizione", () => {
     await expect(disattivaIscrizione(supabase, "isc-1")).rejects.toThrow(
       /nessuna riga/i
     );
+  });
+});
+
+describe("trovaIscrizioneAttiva", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    selectMock.mockClear();
+    eqAtletaMock.mockClear();
+    eqAnnoMock.mockClear();
+    eqAttivaMock.mockReset();
+  });
+
+  it("returns true when an active Iscrizione row exists for the Atleta+Anno (Story 13.1 AC #3)", async () => {
+    eqAttivaMock.mockResolvedValue({ data: [{ id: "isc-1" }], error: null });
+
+    const risultato = await trovaIscrizioneAttiva(supabase, "atleta-1", "anno-1");
+
+    expect(fromMock).toHaveBeenCalledWith("iscrizioni");
+    expect(selectMock).toHaveBeenCalledWith("id");
+    expect(eqAtletaMock).toHaveBeenCalledWith("atletaId", "atleta-1");
+    expect(eqAnnoMock).toHaveBeenCalledWith("annoAgonisticoId", "anno-1");
+    expect(eqAttivaMock).toHaveBeenCalledWith("attiva", true);
+    expect(risultato).toBe(true);
+  });
+
+  it("returns false when no active Iscrizione row exists", async () => {
+    eqAttivaMock.mockResolvedValue({ data: [], error: null });
+
+    const risultato = await trovaIscrizioneAttiva(supabase, "atleta-1", "anno-1");
+
+    expect(risultato).toBe(false);
+  });
+
+  it("throws when the query fails", async () => {
+    eqAttivaMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(
+      trovaIscrizioneAttiva(supabase, "atleta-1", "anno-1")
+    ).rejects.toThrow("boom");
   });
 });

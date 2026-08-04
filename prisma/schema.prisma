@@ -94,6 +94,7 @@ model Atleta {
   updatedAt             DateTime           @updatedAt
   genitori              GenitoreAtleta[]
   iscrizioni            Iscrizione[]
+  tesseramenti          Tesseramento[]
   certificatoMedico     CertificatoMedico?
   gruppi                GruppoAtleta[]
   presenze              Presenza[]
@@ -182,6 +183,7 @@ model AnnoAgonistico {
   dataFine     DateTime
   createdAt    DateTime       @default(now())
   iscrizioni   Iscrizione[]
+  tesseramenti Tesseramento[]
   gruppi       Gruppo[]
   gruppoAtlete GruppoAtleta[]
   campionati   Campionato[]
@@ -209,6 +211,32 @@ model Iscrizione {
 
   @@unique([atletaId, annoAgonisticoId])
   @@map("iscrizioni")
+}
+
+// Story 13.1 (Epic 13): NON protetta da RLS - a differenza di Iscrizione,
+// coinvolge solo ADMIN/DIRIGENTE (Segreteria esplicitamente esclusa), Ruoli
+// che hanno gia' accesso Prisma diretto ovunque nel progetto - stesso
+// trattamento strutturale di Palestra/Gruppo (AD-9), non di Iscrizione/
+// Atleta. Nessun campo `attiva`: a differenza di Iscrizione, questa storia
+// non implementa un'esclusione (nessun bisogno di prodotto espresso in
+// apertura dell'Epic 13) - una futura storia potrebbe aggiungerlo con lo
+// stesso schema di Iscrizione, se il bisogno emergesse. Il Tesseramento e'
+// confermabile solo se l'Iscrizione per la stessa Atleta+Anno Agonistico e'
+// gia' confermata (dipendenza applicativa, verificata dalla Server Action -
+// nessun vincolo DB la esprime, la FK verso Iscrizione non esiste perche'
+// Tesseramento referenzia Atleta+AnnoAgonistico direttamente, non la riga
+// Iscrizione).
+model Tesseramento {
+  id               String         @id @default(uuid())
+  atletaId         String
+  annoAgonisticoId String
+  atleta           Atleta         @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id], onDelete: Cascade)
+  confermataIl     DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  @@unique([atletaId, annoAgonisticoId])
+  @@map("tesseramenti")
 }
 
 // Protetta da RLS (AD-4/AD-9, esplicitamente nel bind-list): letta/scritta a

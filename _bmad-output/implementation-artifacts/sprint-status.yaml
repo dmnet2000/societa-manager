@@ -329,10 +329,21 @@ development_status:
   # Epic 13 (Conferma Tesseramento) inserito il 2026-08-02 su richiesta
   # esplicita dell'utente - ribalta un Non-Obiettivo esplicito del PRD (mai
   # tracciare il Tesseramento, ora ribaltato con nota su PRD/Brief addendum).
-  # Epic FUTURO, nessuna storia ancora rotta/pianificata. Non avviare lo
-  # sviluppo senza un'analisi dedicata all'apertura (stesso approccio di
-  # Epic 10/11/12).
-  epic-13: backlog
+  # Analisi di apertura completata il 2026-08-04 (decisioni prese con
+  # l'utente: vedi epics.md) - solo un flag confermato/non confermato,
+  # dipendenza obbligatoria da Iscrizione gia' confermata, pagina dedicata
+  # /conferma-tesseramenti (Admin/Dirigente, Segreteria esclusa), nuova
+  # entita' Tesseramento strutturale (no RLS, AD-9) speculare a Iscrizione,
+  # nessun riporto al rollover di nuova stagione. Rotto in 1 story.
+  # Story 13.1 implementata il 2026-08-04: 901/901 test passati (era 889),
+  # eslint/tsc puliti, build riuscita. Migrazione scritta a mano (nessun
+  # accesso DB nel sandbox, stesso limite di Story 12.4).
+  # Code review completata il 2026-08-04 (3 layer adversariali): 1 patch
+  # (riga contraddittoria Iscrizione esclusa/Tesseramento confermato), 2
+  # defer (race non transazionale, indice non ottimale), 9 dismessi.
+  # EPIC 13 COMPLETO (unica story). Status: done.
+  epic-13: done
+  13-1-conferma-tesseramento: done
 
   # Epic 14 (Installabilità PWA) inserito il 2026-08-02, richiesta esplicita
   # dell'utente emersa durante la code review della Story 10.6. A differenza
@@ -341,3 +352,11 @@ development_status:
   epic-14: backlog
   14-1-manifest-e-icone-pwa: backlog
   14-2-service-worker-offline-e-aggiornamento: backlog
+
+  # Epic 15 (Riorganizzazione Grafica - Navigazione e Slot) inserito il
+  # 2026-08-04 su richiesta esplicita dell'utente ("Epic grafica" da far
+  # gestire ad agenti UI). Epic FUTURO, nessuna storia ancora rotta/
+  # pianificata - contiene diversi punti aperti non ancora chiariti con
+  # l'utente (vedi epics.md). Non avviare lo sviluppo senza un'analisi
+  # dedicata all'apertura (stesso approccio di Epic 10/11/12/13).
+  epic-15: backlog

@@ -164,6 +164,27 @@ describe("getRouteDecision", () => {
     ).toEqual({ action: "redirect", location: "/non-autorizzato" });
   });
 
+  it("allows Admin or Dirigente on /conferma-tesseramenti (Story 13.1)", async () => {
+    expect(
+      await getRouteDecision("/conferma-tesseramenti", true, ["ADMIN"])
+    ).toEqual({ action: "allow" });
+    expect(
+      await getRouteDecision("/conferma-tesseramenti", true, ["DIRIGENTE"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("redirects to /non-autorizzato on /conferma-tesseramenti for Segreteria (Story 13.1: esclusa esplicitamente, a differenza di /conferma-iscrizioni)", async () => {
+    expect(
+      await getRouteDecision("/conferma-tesseramenti", true, ["SEGRETERIA"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+  });
+
+  it("redirects to /non-autorizzato on /conferma-tesseramenti for other roles", async () => {
+    expect(
+      await getRouteDecision("/conferma-tesseramenti", true, ["ATLETA"])
+    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+  });
+
   it("allows either Admin or Dirigente on /palestre (Story 2.1, FR-1)", async () => {
     expect(await getRouteDecision("/palestre", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
