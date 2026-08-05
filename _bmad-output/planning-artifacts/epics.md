@@ -1778,7 +1778,7 @@ so that non le cerco sparse nella lista piatta della navigazione.
 **Acceptance Criteria:**
 
 1. **Given** un Ruolo con accesso ad almeno una delle quattro rotte **When** apre la navigazione **Then** vede la voce padre "Atleti" che, espansa, mostra solo le rotte a cui ha accesso
-2. **Given** un utente Segreteria (accesso a `/conferma-iscrizioni`, `/conferma-certificati`, `/conferma-tesseramenti` ma non a `/import-atlete`, riservata ad ADMIN/DIRIGENTE) **When** espande "Atleti" **Then** vede solo le 3 voci a cui ha accesso, non le 4 — comportamento atteso, non un difetto
+2. **Given** un utente Segreteria **When** espande "Atleti" **Then** vede solo le 2 voci a cui ha accesso (`/conferma-iscrizioni`, `/conferma-certificati`), non le 4 — `/import-atlete` è ADMIN/DIRIGENTE-only e `/conferma-tesseramenti` esclude esplicitamente Segreteria fin da Story 13.1 ("a differenza di /conferma-iscrizioni, Segreteria è esplicitamente esclusa"); **correzione post-analisi (2026-08-05)**: la stesura originale di questo AC assumeva erroneamente che Segreteria avesse accesso anche a `/conferma-tesseramenti` (3 voci su 4) — verificato falso leggendo `lib/auth/route-guard.ts`, corretto qui prima dell'implementazione. Comportamento atteso, non un difetto.
 3. **And** nessuna regressione sull'autorizzazione esistente delle quattro rotte
 
 ### Story 15.4: Sezione "Accounting"

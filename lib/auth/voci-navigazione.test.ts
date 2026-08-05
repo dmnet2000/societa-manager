@@ -61,22 +61,24 @@ describe("filtraVociNavigazione", () => {
     expect(href).toEqual(
       expect.arrayContaining([
         "/admin",
-        "/import-atlete",
         "/precaricamento-allenatori",
-        "/conferma-iscrizioni",
         "/gruppi",
         "/slot",
-        "/conferma-certificati",
         "/impostazioni",
         "/permessi-certificati",
         "/wizard-nuova-stagione",
       ])
     );
-    // Review fix: non basta non richiederle piu' - verificare esplicitamente
-    // che non siano "trapelate" sia nel gruppo sia come voce diretta (stesso
-    // pattern .not.toContain gia' in uso sotto per /smtp/logo, Story 9.24).
+    // Review fix (Story 15.2) + Story 15.3: non basta non richiederle piu' -
+    // verificare esplicitamente che non siano "trapelate" sia nel gruppo sia
+    // come voce diretta (stesso pattern .not.toContain gia' in uso sotto per
+    // /smtp/logo, Story 9.24).
     expect(href).not.toContain("/palestre");
     expect(href).not.toContain("/orari");
+    expect(href).not.toContain("/import-atlete");
+    expect(href).not.toContain("/conferma-iscrizioni");
+    expect(href).not.toContain("/conferma-certificati");
+    expect(href).not.toContain("/conferma-tesseramenti");
   });
 
   // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
@@ -140,19 +142,41 @@ describe("filtraVociNavigazione", () => {
   // oggi (Segreteria vs Admin/Dirigente), quindi il gruppo ha sempre
   // esattamente una figlia visibile per Ruolo (vedi test dedicati sotto).
   //
-  // Review fix: verificato direttamente su PROTECTED_ROUTES, non tramite
-  // l'output di filtraVociNavigazione per un solo Ruolo (ADMIN) - un test
-  // scoped a un Ruolo non intercetterebbe un "gruppo" valorizzato per
-  // errore su una rotta invisibile a quel Ruolo (es. una rotta solo-
+  // Review fix (Story 15.2): verificato direttamente su PROTECTED_ROUTES,
+  // non tramite l'output di filtraVociNavigazione per un solo Ruolo (ADMIN)
+  // - un test scoped a un Ruolo non intercetterebbe un "gruppo" valorizzato
+  // per errore su una rotta invisibile a quel Ruolo (es. una rotta solo-
   // Allenatore). Questa e' l'invariante indipendente dal Ruolo che il nome
   // del test promette davvero.
-  it("esiste esattamente un nodo gruppo con i dati reali del progetto: Orari/Palestre", () => {
+  //
+  // Story 15.3: generalizzato per due gruppi coesistenti ("Orari/Palestre" +
+  // "Atleti") invece di assumere che ne esista uno solo - stesso principio
+  // di prima, esteso invece di riscritto da zero (lezione applicata
+  // direttamente dai Dev Notes di questa story).
+  it("esistono esattamente i nodi gruppo attesi con i dati reali del progetto", () => {
     const routeConGruppo = PROTECTED_ROUTES.filter((r) => r.gruppo !== undefined);
-    expect(routeConGruppo.map((r) => r.prefix)).toEqual(
+    const orariPalestre = routeConGruppo.filter((r) => r.gruppo === "Orari/Palestre");
+    const atleti = routeConGruppo.filter((r) => r.gruppo === "Atleti");
+
+    expect(orariPalestre.map((r) => r.prefix)).toEqual(
       expect.arrayContaining(["/orari", "/palestre"])
     );
-    expect(routeConGruppo).toHaveLength(2);
-    expect(routeConGruppo.every((r) => r.gruppo === "Orari/Palestre")).toBe(true);
+    expect(orariPalestre).toHaveLength(2);
+
+    expect(atleti.map((r) => r.prefix)).toEqual(
+      expect.arrayContaining([
+        "/import-atlete",
+        "/conferma-iscrizioni",
+        "/conferma-certificati",
+        "/conferma-tesseramenti",
+      ])
+    );
+    expect(atleti).toHaveLength(4);
+
+    // Nessuna rotta ha un "gruppo" al di fuori dei due valori attesi - una
+    // futura Story 15.4 ("Accounting") aggiungera' un terzo valore e dovra'
+    // estendere questo test, non lasciarlo a rompersi silenziosamente.
+    expect(routeConGruppo).toHaveLength(orariPalestre.length + atleti.length);
   });
 
   // Review fix: i test sopra usano expect.arrayContaining, che ignora
@@ -218,6 +242,143 @@ describe("filtraVociNavigazione", () => {
     expect(gruppo?.figlie).toEqual([
       { href: "/orari", label: "Orari" },
       { href: "/palestre", label: "Palestre" },
+    ]);
+  });
+
+  // Story 15.3 (AC #2): Segreteria ha accesso a /conferma-iscrizioni e
+  // /conferma-certificati ma non a /import-atlete (ADMIN/DIRIGENTE-only) ne'
+  // a /conferma-tesseramenti (Segreteria esplicitamente esclusa, Story
+  // 13.1) - il gruppo "Atleti" deve mostrare solo le 2 figlie a cui ha
+  // accesso, non le 4. Uguaglianza esatta con ordine fin da subito (lezione
+  // dalla review di Story 15.2), coerente con l'ordine di dichiarazione in
+  // PROTECTED_ROUTES (Task 1 di questa story).
+  it("Segreteria vede il gruppo Atleti con solo 2 delle 4 figlie (conferma-iscrizioni, conferma-certificati)", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA"]), "Atleti");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([
+      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/conferma-certificati", label: "Conferma certificati" },
+    ]);
+  });
+
+  // Story 15.3 (AC #1): Admin e Dirigente hanno accesso a tutte e quattro le
+  // rotte - il gruppo "Atleti" mostra tutte e quattro le figlie, nell'ordine
+  // di dichiarazione del Task 1.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "%s vede il gruppo Atleti con tutte e quattro le figlie, in ordine",
+    (ruolo) => {
+      const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Atleti");
+      expect(gruppo).toBeDefined();
+      expect(gruppo?.figlie).toEqual([
+        { href: "/import-atlete", label: "Import atlete" },
+        { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+        { href: "/conferma-certificati", label: "Conferma certificati" },
+        { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+      ]);
+    }
+  );
+
+  // Story 15.3: stesso principio del test gemello per "Orari/Palestre"
+  // (review di Story 15.2) - un Ruolo senza accesso a nessuna delle quattro
+  // rotte non deve produrre un nodo gruppo "Atleti" spurio.
+  it("Allenatore non vede alcun gruppo Atleti (nessun accesso alle quattro rotte)", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ALLENATORE"]), "Atleti");
+    expect(gruppo).toBeUndefined();
+  });
+
+  // Story 15.3: stesso principio del test gemello per "Orari/Palestre"
+  // (dedup Admin+Dirigente su /palestre, review di Story 15.2) - qui con
+  // quattro rotte condivise invece di una sola: un Utente con entrambi i
+  // Ruoli deve vedere quattro figlie, non otto duplicate.
+  it("un Utente con Ruoli Admin e Dirigente vede quattro figlie del gruppo Atleti, non duplicate", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Atleti");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([
+      { href: "/import-atlete", label: "Import atlete" },
+      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/conferma-certificati", label: "Conferma certificati" },
+      { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+    ]);
+  });
+
+  // Review fix: il caso che questa storia introduce per la prima volta - due
+  // gruppi coesistenti per lo stesso Ruolo - non era mai verificato end-to-
+  // end (ogni test sopra usa trovaGruppo per isolare un solo gruppo).
+  // Segreteria vede oggi ENTRAMBI "Atleti" (2 figlie) e "Orari/Palestre" (1
+  // figlia) nello stesso array, senza alcuna voce diretta - comportamento di
+  // produzione reale, non ipotetico. Uguaglianza esatta sull'intero array
+  // (ordine tra i due nodi gruppo incluso, non solo il contenuto di ciascuno
+  // preso isolatamente).
+  it("Segreteria vede entrambi i gruppi coesistenti (Atleti e Orari/Palestre), nessun'altra voce", () => {
+    const voci = filtraVociNavigazione(["SEGRETERIA"]);
+    expect(voci).toEqual([
+      {
+        tipo: "gruppo",
+        label: "Atleti",
+        figlie: [
+          { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+          { href: "/conferma-certificati", label: "Conferma certificati" },
+        ],
+      },
+      {
+        tipo: "gruppo",
+        label: "Orari/Palestre",
+        figlie: [{ href: "/orari", label: "Orari" }],
+      },
+    ]);
+  });
+
+  // Review fix: a differenza di "Orari/Palestre" (Ruoli disgiunti, Segreteria
+  // vs Admin/Dirigente), qui Segreteria e Admin condividono 2 delle 4 rotte
+  // (conferma-iscrizioni, conferma-certificati) - caso di sovrapposizione
+  // PARZIALE mai testato. Un Utente con entrambi i Ruoli deve vedere
+  // l'unione (tutte e 4 le figlie), non le 2 di Segreteria ne' un duplicato
+  // sulle 2 condivise.
+  it("un Utente con Ruoli Segreteria e Admin vede l'unione delle 4 figlie del gruppo Atleti, senza duplicati sulle 2 condivise", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA", "ADMIN"]), "Atleti");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([
+      { href: "/import-atlete", label: "Import atlete" },
+      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/conferma-certificati", label: "Conferma certificati" },
+      { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+    ]);
+  });
+
+  // Review fix: nessuna guardia d'ordine di primo livello copriva un Ruolo
+  // che vede davvero "Atleti" - l'unico test con uguaglianza esatta
+  // sull'intero array era scoped ad Allenatore, che non ha accesso a
+  // nessuna delle rotte di questa storia. Un futuro riordino accidentale
+  // del blocco "Atleti" rispetto a /precaricamento-allenatori, /gruppi,
+  // ecc. non sarebbe stato rilevato da nessun test esistente.
+  it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
+    const voci = filtraVociNavigazione(["ADMIN"]);
+    expect(voci).toEqual([
+      { tipo: "voce", href: "/admin", label: "Amministrazione" },
+      {
+        tipo: "gruppo",
+        label: "Atleti",
+        figlie: [
+          { href: "/import-atlete", label: "Import atlete" },
+          { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
+          { href: "/conferma-certificati", label: "Conferma certificati" },
+          { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+        ],
+      },
+      { tipo: "voce", href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
+      {
+        tipo: "gruppo",
+        label: "Orari/Palestre",
+        figlie: [{ href: "/palestre", label: "Palestre" }],
+      },
+      { tipo: "voce", href: "/gruppi", label: "Gruppi" },
+      { tipo: "voce", href: "/slot", label: "Slot" },
+      { tipo: "voce", href: "/impostazioni", label: "Impostazioni" },
+      { tipo: "voce", href: "/permessi-certificati", label: "Permessi certificati" },
+      { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
+      { tipo: "voce", href: "/campionati", label: "Campionati" },
+      { tipo: "voce", href: "/partite", label: "Partite" },
+      { tipo: "voce", href: "/permessi-accesso", label: "Permessi di accesso" },
     ]);
   });
 });

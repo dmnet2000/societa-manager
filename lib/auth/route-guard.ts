@@ -62,7 +62,47 @@ export const PROTECTED_ROUTES: {
   gruppo?: string;
 }[] = [
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
-  { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },
+  {
+    // Story 15.3 (Epic 15): le quattro rotte raggruppate sotto "Atleti"
+    // sono state spostate qui, adiacenti, nell'ordine "Import atlete,
+    // Conferma iscrizioni, Conferma certificati, Conferma tesseramenti"
+    // (stesso ordine di epics.md) cosi' raggruppaVociNavigazione (che
+    // preserva l'ordine di dichiarazione) produce le figlie del gruppo
+    // nello stesso ordine - lezione applicata direttamente dalla code
+    // review di Story 15.2 (dove l'ordine sbagliato fu scoperto solo in
+    // quella review, non anticipato in fase di scrittura).
+    prefix: "/import-atlete",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Import atlete",
+    gruppo: "Atleti",
+  },
+  {
+    // Story 15.3: stesso gruppo di /import-atlete sopra ("Atleti").
+    prefix: "/conferma-iscrizioni",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    navLabel: "Conferma iscrizioni",
+    gruppo: "Atleti",
+  },
+  {
+    // Story 15.3: stesso gruppo di /import-atlete sopra ("Atleti") -
+    // spostata qui da una posizione piu' in basso nell'array (era vicina a
+    // /notifiche) per stare adiacente alle altre tre rotte dello stesso
+    // gruppo.
+    prefix: "/conferma-certificati",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    navLabel: "Conferma certificati",
+    gruppo: "Atleti",
+  },
+  {
+    // Story 13.1 (Epic 13): a differenza di /conferma-iscrizioni, Segreteria
+    // e' esplicitamente esclusa - solo Admin/Dirigente possono confermare il
+    // Tesseramento.
+    // Story 15.3: stesso gruppo di /import-atlete sopra ("Atleti").
+    prefix: "/conferma-tesseramenti",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Conferma tesseramenti",
+    gruppo: "Atleti",
+  },
   {
     // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta
     // esplicita dell'utente (soluzione temporanea, sostituita da Story 12.4).
@@ -80,19 +120,6 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Precaricamento allenatori",
     permessiConfigurabili: true,
-  },
-  {
-    prefix: "/conferma-iscrizioni",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
-    navLabel: "Conferma iscrizioni",
-  },
-  {
-    // Story 13.1 (Epic 13): a differenza di /conferma-iscrizioni, Segreteria
-    // e' esplicitamente esclusa - solo Admin/Dirigente possono confermare il
-    // Tesseramento.
-    prefix: "/conferma-tesseramenti",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
-    navLabel: "Conferma tesseramenti",
   },
   {
     // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
@@ -136,11 +163,6 @@ export const PROTECTED_ROUTES: {
     navLabel: "Certificato medico",
   },
   { prefix: "/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"], navLabel: "Notifiche" },
-  {
-    prefix: "/conferma-certificati",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
-    navLabel: "Conferma certificati",
-  },
   { prefix: "/impostazioni", ruoliAmmessi: ["ADMIN"], navLabel: "Impostazioni" },
   {
     prefix: "/smtp",

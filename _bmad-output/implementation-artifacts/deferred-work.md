@@ -586,3 +586,8 @@
 ## Deferred from: code review of 15-2-menu-orari-palestre (2026-08-05)
 
 - `NavBarClient.tsx` (il componente che renderizza davvero l'accordion, incluso il fix CSS di specificità di Story 15.1, ora finalmente osservabile con il primo gruppo reale) non ha alcun test dedicato — ogni asserzione dei diff di Story 15.1/15.2 opera solo al livello delle funzioni pure (`voci-navigazione.ts`). Coerente con la convenzione "nessun test di rendering" già stabilita ripetutamente in questo progetto (Story 9.9/9.14/9.18). [app/NavBarClient.tsx]
+
+## Deferred from: code review of 15-3-menu-atleti (2026-08-05)
+
+- Il commento "Story 15.3: stesso gruppo di /import-atlete sopra ('Atleti')" è ripetuto identico su tre delle quattro righe in `route-guard.ts` — un solo commento sopra il blocco avrebbe detto la stessa cosa senza triplicarla. Igiene minore, nessun impatto funzionale. [lib/auth/route-guard.ts]
+- La correzione dell'AC #2 in `epics.md` (Story 15.3) è una frase densa che incorpora un changelog inline dentro un criterio di accettazione — si legge più come un messaggio di commit nella prosa della spec. Nessun impatto funzionale, pattern già presente altrove in `epics.md`. [_bmad-output/planning-artifacts/epics.md]
