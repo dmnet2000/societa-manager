@@ -118,6 +118,24 @@ export const PROTECTED_ROUTES: {
     gruppo: "Orari/Palestre",
   },
   {
+    // Post-15.5 (richiesta esplicita dell'utente, 2026-08-05): /slot
+    // (navLabel "Orari" dalla Story 15.5) entra nel sotto-menu
+    // "Orari/Palestre" invece di restare una voce diretta singola separata
+    // - risolve la sovrapposizione di naming inizialmente accettata "cosi'
+    // com'e'" in fase di analisi dell'epic. Dichiarata qui (tra /orari e
+    // /palestre) cosi' l'ordine delle figlie nel gruppo corrisponde
+    // all'ordine dell'etichetta padre "Orari/Palestre" (voci "Orari" prima,
+    // "Palestre" dopo) anche nel caso raro di un Utente con Ruoli sia
+    // Segreteria sia Admin/Dirigente - che vedrebbe **due** figlie con lo
+    // stesso testo "Orari" (da /orari e da /slot) nello stesso gruppo:
+    // scelta consapevole confermata dall'utente, nessun Ruolo reale ha
+    // accesso a entrambe le rotte oggi.
+    prefix: "/slot",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Orari",
+    gruppo: "Orari/Palestre",
+  },
+  {
     // Story 15.2: stesso gruppo di /orari sopra ("Orari/Palestre").
     prefix: "/palestre",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
@@ -129,19 +147,6 @@ export const PROTECTED_ROUTES: {
     prefix: "/i-miei-gruppi",
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "I miei Gruppi",
-  },
-  {
-    // Story 15.5 (Epic 15): navLabel rinominato da "Slot" a "Orari" (solo
-    // etichetta, nessun cambio a prefix/ruoliAmmessi/gruppo - questa rotta
-    // resta una voce diretta singola, NON entra nel sotto-menu
-    // "Orari/Palestre" di Story 15.2). Sovrapposizione di naming nota e
-    // accettata dall'utente in fase di analisi dell'epic: Admin/Dirigente
-    // vedono sia questa voce singola "Orari" sia, se hanno accesso anche a
-    // /palestre, il sotto-menu "Orari/Palestre" (che per loro mostra solo
-    // "Palestre").
-    prefix: "/slot",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
-    navLabel: "Orari",
   },
   { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
   { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },

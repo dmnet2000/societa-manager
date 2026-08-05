@@ -61,18 +61,19 @@ describe("filtraVociNavigazione", () => {
     expect(href).toEqual(
       expect.arrayContaining([
         "/gruppi",
-        "/slot",
         "/impostazioni",
         "/permessi-certificati",
         "/wizard-nuova-stagione",
       ])
     );
-    // Review fix (Story 15.2) + Story 15.3 + Story 15.4: non basta non
-    // richiederle piu' - verificare esplicitamente che non siano "trapelate"
-    // sia nel gruppo sia come voce diretta (stesso pattern .not.toContain
-    // gia' in uso sotto per /smtp/logo, Story 9.24).
+    // Review fix (Story 15.2) + Story 15.3 + Story 15.4 + post-15.5 (/slot
+    // entrato nel gruppo Orari/Palestre): non basta non richiederle piu' -
+    // verificare esplicitamente che non siano "trapelate" sia nel gruppo sia
+    // come voce diretta (stesso pattern .not.toContain gia' in uso sotto per
+    // /smtp/logo, Story 9.24).
     expect(href).not.toContain("/palestre");
     expect(href).not.toContain("/orari");
+    expect(href).not.toContain("/slot");
     expect(href).not.toContain("/import-atlete");
     expect(href).not.toContain("/conferma-iscrizioni");
     expect(href).not.toContain("/conferma-certificati");
@@ -83,22 +84,30 @@ describe("filtraVociNavigazione", () => {
   });
 
   // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
-  // figlia del nuovo nodo gruppo "Orari/Palestre" (unica figlia per un
-  // Admin, che non ha accesso a /orari).
-  it("un Admin vede /palestre come figlia del gruppo Orari/Palestre, non come voce diretta", () => {
+  // figlia del nodo gruppo "Orari/Palestre". Post-15.5 (richiesta esplicita
+  // dell'utente): /slot (navLabel "Orari") e' entrata nello stesso gruppo -
+  // un Admin (che non ha accesso a /orari) vede ora due figlie, non una
+  // sola, nell'ordine di dichiarazione (/slot prima di /palestre).
+  it("un Admin vede /slot e /palestre come figlie del gruppo Orari/Palestre, non come voci dirette", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
-    expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+    expect(gruppo?.figlie).toEqual([
+      { href: "/slot", label: "Orari" },
+      { href: "/palestre", label: "Palestre" },
+    ]);
   });
 
-  // Review fix: caso di sovrapposizione reale piu' comune del Segreteria+Admin
-  // testato sotto - Admin e Dirigente condividono la STESSA unica rotta
-  // /palestre, un Utente con entrambi i Ruoli deve vedere una sola figlia,
-  // non due duplicate.
-  it("un Utente con Ruoli Admin e Dirigente vede una sola figlia /palestre, non duplicata", () => {
+  // Review fix (Story 15.2) + post-15.5: caso di sovrapposizione reale piu'
+  // comune del Segreteria+Admin testato sotto - Admin e Dirigente condividono
+  // le STESSE due rotte /slot e /palestre, un Utente con entrambi i Ruoli
+  // deve vedere due figlie, non quattro duplicate.
+  it("un Utente con Ruoli Admin e Dirigente vede due figlie (/slot, /palestre), non duplicate", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
-    expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+    expect(gruppo?.figlie).toEqual([
+      { href: "/slot", label: "Orari" },
+      { href: "/palestre", label: "Palestre" },
+    ]);
   });
 
   // Review fix: nessun test con dati reali verificava che il gruppo non
@@ -165,10 +174,13 @@ describe("filtraVociNavigazione", () => {
     const atleti = routeConGruppo.filter((r) => r.gruppo === "Atleti");
     const accounting = routeConGruppo.filter((r) => r.gruppo === "Accounting");
 
+    // Post-15.5: /slot e' entrata nel gruppo "Orari/Palestre" su richiesta
+    // esplicita dell'utente (era una voce diretta separata) - 3 rotte, non
+    // piu' 2.
     expect(orariPalestre.map((r) => r.prefix)).toEqual(
-      expect.arrayContaining(["/orari", "/palestre"])
+      expect.arrayContaining(["/orari", "/slot", "/palestre"])
     );
-    expect(orariPalestre).toHaveLength(2);
+    expect(orariPalestre).toHaveLength(3);
 
     expect(atleti.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
@@ -227,34 +239,46 @@ describe("filtraVociNavigazione", () => {
     expect(gruppo?.figlie).toEqual([{ href: "/orari", label: "Orari" }]);
   });
 
-  // Story 15.2 (AC #1): Admin e Dirigente hanno accesso a /palestre ma non
-  // a /orari - speculare al test sopra.
+  // Story 15.2 (AC #1) + post-15.5: Admin e Dirigente hanno accesso a
+  // /slot e /palestre ma non a /orari - speculare al test sopra, ora con
+  // due figlie invece di una dopo l'ingresso di /slot nel gruppo.
   it.each(["ADMIN", "DIRIGENTE"] as const)(
-    "%s vede il gruppo Orari/Palestre con solo /palestre tra le figlie",
+    "%s vede il gruppo Orari/Palestre con /slot e /palestre tra le figlie, non /orari",
     (ruolo) => {
       const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Orari/Palestre");
       expect(gruppo).toBeDefined();
-      expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+      expect(gruppo?.figlie).toEqual([
+        { href: "/slot", label: "Orari" },
+        { href: "/palestre", label: "Palestre" },
+      ]);
     }
   );
 
   // Story 15.2 (Task 3, facoltativo): un Utente con entrambi i Ruoli
   // Segreteria e Admin (UtenteRuolo e' molti-a-molti, caso raro ma
-  // possibile) vede entrambe le figlie nello stesso gruppo - gia' garantito
+  // possibile) vede tutte le figlie nello stesso gruppo - gia' garantito
   // dal filtro ".some()" di raggruppaVociNavigazione (Story 15.1), qui solo
   // verificato con dati reali per completezza.
   //
   // Review fix: uguaglianza esatta con ordine (non piu' arrayContaining) -
-  // /orari e' ora dichiarata prima di /palestre in PROTECTED_ROUTES
-  // (review fix su route-guard.ts) proprio per rendere questo ordine
-  // deterministico e coerente con l'etichetta padre "Orari/Palestre";
-  // arrayContaining non avrebbe intercettato un'inversione dell'ordine ne'
-  // una figlia duplicata (lunghezza non verificata).
-  it("un Utente con Ruoli Segreteria e Admin vede entrambe le figlie del gruppo Orari/Palestre, in ordine", () => {
+  // /orari e' dichiarata prima di /slot e /palestre in PROTECTED_ROUTES
+  // proprio per rendere questo ordine deterministico e coerente con
+  // l'etichetta padre "Orari/Palestre"; arrayContaining non avrebbe
+  // intercettato un'inversione dell'ordine ne' una figlia duplicata
+  // (lunghezza non verificata).
+  //
+  // Post-15.5 (richiesta esplicita dell'utente, 2026-08-05): /slot e' entrata
+  // in questo gruppo - un Utente con entrambi i Ruoli vede ora **tre**
+  // figlie, non due, con /orari e /slot che condividono lo stesso testo
+  // "Orari" (scelta consapevole confermata dall'utente, nessun Ruolo reale
+  // ha accesso a entrambe le rotte oggi - questo e' l'unico test che
+  // esercita davvero il caso).
+  it("un Utente con Ruoli Segreteria e Admin vede tutte e tre le figlie del gruppo Orari/Palestre, in ordine (incluse due 'Orari')", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA", "ADMIN"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
       { href: "/orari", label: "Orari" },
+      { href: "/slot", label: "Orari" },
       { href: "/palestre", label: "Palestre" },
     ]);
   });
@@ -371,6 +395,11 @@ describe("filtraVociNavigazione", () => {
   // figlie) compare per ultimo, coerente con AC #1 ("ultima voce del
   // menu"). Ricalcolato leggendo PROTECTED_ROUTES per intero dopo lo
   // spostamento del Task 1, non copiato dall'output del test fallito.
+  //
+  // Post-15.5 (richiesta esplicita dell'utente, 2026-08-05): /slot e' entrata
+  // nel gruppo "Orari/Palestre" - sparisce dalla sua posizione di voce
+  // diretta dopo /gruppi, il gruppo "Orari/Palestre" guadagna una seconda
+  // figlia (/slot, prima di /palestre).
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -387,10 +416,12 @@ describe("filtraVociNavigazione", () => {
       {
         tipo: "gruppo",
         label: "Orari/Palestre",
-        figlie: [{ href: "/palestre", label: "Palestre" }],
+        figlie: [
+          { href: "/slot", label: "Orari" },
+          { href: "/palestre", label: "Palestre" },
+        ],
       },
       { tipo: "voce", href: "/gruppi", label: "Gruppi" },
-      { tipo: "voce", href: "/slot", label: "Orari" },
       { tipo: "voce", href: "/impostazioni", label: "Impostazioni" },
       { tipo: "voce", href: "/permessi-certificati", label: "Permessi certificati" },
       { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
