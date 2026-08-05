@@ -61,7 +61,6 @@ export const PROTECTED_ROUTES: {
   // l'autorizzazione.
   gruppo?: string;
 }[] = [
-  { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   {
     // Story 15.3 (Epic 15): le quattro rotte raggruppate sotto "Atleti"
     // sono state spostate qui, adiacenti, nell'ordine "Import atlete,
@@ -102,24 +101,6 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Conferma tesseramenti",
     gruppo: "Atleti",
-  },
-  {
-    // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta
-    // esplicita dell'utente (soluzione temporanea, sostituita da Story 12.4).
-    // Story 12.4: prima rotta reale migrata al sistema di permessi
-    // configurabili (PoC end-to-end dell'Epic 12) - ruoliAmmessi resta
-    // scritto come fallback storico ma non e' piu' consultato da
-    // isAutorizzato (lib/auth/route-decision.ts) ne' da requireRuolo quando
-    // gli viene passata questa rotta: l'autorizzazione reale (pagina e
-    // Server Action) passa ora da rottaAbilitataPerRuolo/permessi_rotte.
-    // Nessuna riga esiste ancora per questa rotta nel seed di Story 12.1
-    // (era ADMIN-only) - comportamento invariato per costruzione (fail-closed
-    // su ogni Ruolo diverso da ADMIN, identico a oggi) finche' un Admin non
-    // abilita esplicitamente un altro Ruolo da /permessi-accesso.
-    prefix: "/precaricamento-allenatori",
-    ruoliAmmessi: ["ADMIN"],
-    navLabel: "Precaricamento allenatori",
-    permessiConfigurabili: true,
   },
   {
     // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
@@ -210,13 +191,53 @@ export const PROTECTED_ROUTES: {
     navLabel: "Partite",
   },
   {
+    // Story 15.4 (Epic 15): le tre rotte raggruppate sotto "Accounting"
+    // sono state spostate qui, in fondo all'intero array - a differenza di
+    // Story 15.2/15.3 (dove bastava rendere le rotte adiacenti tra loro),
+    // qui AC #1 richiede esplicitamente che "Accounting" sia l'ULTIMA voce
+    // del menu: raggruppaVociNavigazione (Story 15.1) posiziona il nodo
+    // gruppo all'indice della PRIMA rotta del gruppo incontrata, quindi la
+    // sola adiacenza non basta, serve la posizione finale dell'array.
+    // navLabel "Amministrazione" NON rinominato: l'etichetta della voce
+    // padre del gruppo viene dal valore di "gruppo" stesso ("Accounting"),
+    // non dal navLabel di /admin - che resta l'etichetta della sua figlia.
+    prefix: "/admin",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Amministrazione",
+    gruppo: "Accounting",
+  },
+  {
+    // Story 9.22: solo ADMIN - accesso Dirigente rimosso su richiesta
+    // esplicita dell'utente (soluzione temporanea, sostituita da Story 12.4).
+    // Story 12.4: prima rotta reale migrata al sistema di permessi
+    // configurabili (PoC end-to-end dell'Epic 12) - ruoliAmmessi resta
+    // scritto come fallback storico ma non e' piu' consultato da
+    // isAutorizzato (lib/auth/route-decision.ts) ne' da requireRuolo quando
+    // gli viene passata questa rotta: l'autorizzazione reale (pagina e
+    // Server Action) passa ora da rottaAbilitataPerRuolo/permessi_rotte.
+    // Nessuna riga esiste ancora per questa rotta nel seed di Story 12.1
+    // (era ADMIN-only) - comportamento invariato per costruzione (fail-closed
+    // su ogni Ruolo diverso da ADMIN, identico a oggi) finche' un Admin non
+    // abilita esplicitamente un altro Ruolo da /permessi-accesso.
+    // Story 15.4: stesso gruppo di /admin sopra ("Accounting").
+    prefix: "/precaricamento-allenatori",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Precaricamento allenatori",
+    permessiConfigurabili: true,
+    gruppo: "Accounting",
+  },
+  {
     // Story 12.1: pagina Admin-only di gestione dei permessi configurabili
     // per rotta (Epic 12) - ADMIN sempre escluso dalle righe configurabili
     // stesse (accesso pieno hardcoded), quindi questa rotta e' anch'essa
-    // ADMIN-only, stesso trattamento di /permessi-certificati.
+    // ADMIN-only, stesso trattamento di /permessi-certificati (quest'ultima
+    // NON fa parte di "Accounting" - AC #3, non menzionata nella richiesta
+    // originale nonostante la somiglianza di nome, resta dov'e').
+    // Story 15.4: stesso gruppo di /admin sopra ("Accounting").
     prefix: "/permessi-accesso",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Permessi di accesso",
+    gruppo: "Accounting",
   },
 ];
 

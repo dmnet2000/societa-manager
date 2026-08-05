@@ -591,3 +591,7 @@
 
 - Il commento "Story 15.3: stesso gruppo di /import-atlete sopra ('Atleti')" è ripetuto identico su tre delle quattro righe in `route-guard.ts` — un solo commento sopra il blocco avrebbe detto la stessa cosa senza triplicarla. Igiene minore, nessun impatto funzionale. [lib/auth/route-guard.ts]
 - La correzione dell'AC #2 in `epics.md` (Story 15.3) è una frase densa che incorpora un changelog inline dentro un criterio di accettazione — si legge più come un messaggio di commit nella prosa della spec. Nessun impatto funzionale, pattern già presente altrove in `epics.md`. [_bmad-output/planning-artifacts/epics.md]
+
+## Deferred from: code review of 15-4-sezione-accounting (2026-08-05)
+
+- La sicurezza del riordino delle tre rotte "Accounting" (nessuna regressione su `matchProtectedRoute`) dipende da un invariante mai imposto da un test: nessun `prefix` di `PROTECTED_ROUTES` è oggi prefisso stringa di un altro (verificato a mano), ma `Array.prototype.find` renderebbe l'ordine dell'array significativo per il matching se questo invariante venisse violato in futuro (es. una ipotetica `/admin-report` aggiunta prima di `/admin`). Rischio architetturale preesistente e trasversale a tutto `PROTECTED_ROUTES`, non introdotto né aggravato in modo specifico da questa storia — riguarderebbe un item di backlog indipendente su `matchProtectedRoute`/`route-decision.test.ts`. [lib/auth/route-guard.ts]

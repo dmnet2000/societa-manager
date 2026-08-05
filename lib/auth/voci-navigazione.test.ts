@@ -60,8 +60,6 @@ describe("filtraVociNavigazione", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(
       expect.arrayContaining([
-        "/admin",
-        "/precaricamento-allenatori",
         "/gruppi",
         "/slot",
         "/impostazioni",
@@ -69,16 +67,19 @@ describe("filtraVociNavigazione", () => {
         "/wizard-nuova-stagione",
       ])
     );
-    // Review fix (Story 15.2) + Story 15.3: non basta non richiederle piu' -
-    // verificare esplicitamente che non siano "trapelate" sia nel gruppo sia
-    // come voce diretta (stesso pattern .not.toContain gia' in uso sotto per
-    // /smtp/logo, Story 9.24).
+    // Review fix (Story 15.2) + Story 15.3 + Story 15.4: non basta non
+    // richiederle piu' - verificare esplicitamente che non siano "trapelate"
+    // sia nel gruppo sia come voce diretta (stesso pattern .not.toContain
+    // gia' in uso sotto per /smtp/logo, Story 9.24).
     expect(href).not.toContain("/palestre");
     expect(href).not.toContain("/orari");
     expect(href).not.toContain("/import-atlete");
     expect(href).not.toContain("/conferma-iscrizioni");
     expect(href).not.toContain("/conferma-certificati");
     expect(href).not.toContain("/conferma-tesseramenti");
+    expect(href).not.toContain("/admin");
+    expect(href).not.toContain("/precaricamento-allenatori");
+    expect(href).not.toContain("/permessi-accesso");
   });
 
   // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
@@ -153,10 +154,16 @@ describe("filtraVociNavigazione", () => {
   // "Atleti") invece di assumere che ne esista uno solo - stesso principio
   // di prima, esteso invece di riscritto da zero (lezione applicata
   // direttamente dai Dev Notes di questa story).
+  //
+  // Story 15.4: esteso per un terzo gruppo ("Accounting") - proprio la nota
+  // lasciata dal test precedente ("una futura Story 15.4 aggiungera' un
+  // terzo valore e dovra' estendere questo test") applicata alla lettera,
+  // non riscritto da zero.
   it("esistono esattamente i nodi gruppo attesi con i dati reali del progetto", () => {
     const routeConGruppo = PROTECTED_ROUTES.filter((r) => r.gruppo !== undefined);
     const orariPalestre = routeConGruppo.filter((r) => r.gruppo === "Orari/Palestre");
     const atleti = routeConGruppo.filter((r) => r.gruppo === "Atleti");
+    const accounting = routeConGruppo.filter((r) => r.gruppo === "Accounting");
 
     expect(orariPalestre.map((r) => r.prefix)).toEqual(
       expect.arrayContaining(["/orari", "/palestre"])
@@ -173,10 +180,17 @@ describe("filtraVociNavigazione", () => {
     );
     expect(atleti).toHaveLength(4);
 
-    // Nessuna rotta ha un "gruppo" al di fuori dei due valori attesi - una
-    // futura Story 15.4 ("Accounting") aggiungera' un terzo valore e dovra'
-    // estendere questo test, non lasciarlo a rompersi silenziosamente.
-    expect(routeConGruppo).toHaveLength(orariPalestre.length + atleti.length);
+    expect(accounting.map((r) => r.prefix)).toEqual(
+      expect.arrayContaining(["/admin", "/precaricamento-allenatori", "/permessi-accesso"])
+    );
+    expect(accounting).toHaveLength(3);
+
+    // Nessuna rotta ha un "gruppo" al di fuori dei tre valori attesi - una
+    // futura story che aggiungesse un quarto gruppo dovra' estendere questo
+    // test, non lasciarlo a rompersi silenziosamente.
+    expect(routeConGruppo).toHaveLength(
+      orariPalestre.length + atleti.length + accounting.length
+    );
   });
 
   // Review fix: i test sopra usano expect.arrayContaining, che ignora
@@ -351,10 +365,15 @@ describe("filtraVociNavigazione", () => {
   // nessuna delle rotte di questa storia. Un futuro riordino accidentale
   // del blocco "Atleti" rispetto a /precaricamento-allenatori, /gruppi,
   // ecc. non sarebbe stato rilevato da nessun test esistente.
+  // Story 15.4: riscritto quasi per intero - /admin (era la prima voce) e
+  // /precaricamento-allenatori (era una voce diretta a meta' elenco)
+  // spariscono da quelle posizioni; un nuovo nodo gruppo "Accounting" (3
+  // figlie) compare per ultimo, coerente con AC #1 ("ultima voce del
+  // menu"). Ricalcolato leggendo PROTECTED_ROUTES per intero dopo lo
+  // spostamento del Task 1, non copiato dall'output del test fallito.
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
-      { tipo: "voce", href: "/admin", label: "Amministrazione" },
       {
         tipo: "gruppo",
         label: "Atleti",
@@ -365,7 +384,6 @@ describe("filtraVociNavigazione", () => {
           { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
         ],
       },
-      { tipo: "voce", href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
       {
         tipo: "gruppo",
         label: "Orari/Palestre",
@@ -378,8 +396,60 @@ describe("filtraVociNavigazione", () => {
       { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
       { tipo: "voce", href: "/campionati", label: "Campionati" },
       { tipo: "voce", href: "/partite", label: "Partite" },
-      { tipo: "voce", href: "/permessi-accesso", label: "Permessi di accesso" },
+      {
+        tipo: "gruppo",
+        label: "Accounting",
+        figlie: [
+          { href: "/admin", label: "Amministrazione" },
+          { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
+          { href: "/permessi-accesso", label: "Permessi di accesso" },
+        ],
+      },
     ]);
+  });
+
+  // Story 15.4 (AC #1): il gruppo "Accounting" ha le tre figlie attese,
+  // nell'ordine del Task 1, e compare per ultimo nell'array risultante -
+  // non solo "presente" (gia' verificato anche dal test di ordine completo
+  // sopra, qui isolato con trovaGruppo per un test piu' mirato e leggibile).
+  it("Admin vede il gruppo Accounting con tutte e tre le figlie, posizionato per ultimo", () => {
+    const voci = filtraVociNavigazione(["ADMIN"]);
+    const gruppo = trovaGruppo(voci, "Accounting");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([
+      { href: "/admin", label: "Amministrazione" },
+      { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
+      { href: "/permessi-accesso", label: "Permessi di accesso" },
+    ]);
+    expect(voci[voci.length - 1]).toBe(gruppo);
+    // Review fix (Story 15.4): AC #3 - /permessi-certificati non deve mai
+    // comparire tra le figlie di "Accounting" nonostante la somiglianza di
+    // nome con /permessi-accesso - guardia esplicita e isolata, non solo
+    // incidentale al test di ordine completo sopra.
+    expect(gruppo?.figlie.map((f) => f.href)).not.toContain("/permessi-certificati");
+  });
+
+  // Story 15.4: stesso principio dei test gemelli per "Orari/Palestre" e
+  // "Atleti" (Story 15.2/15.3) - un Ruolo senza accesso a nessuna delle tre
+  // rotte non deve produrre un nodo gruppo "Accounting" spurio.
+  it("Allenatore non vede alcun gruppo Accounting (nessun accesso alle tre rotte)", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ALLENATORE"]), "Accounting");
+    expect(gruppo).toBeUndefined();
+  });
+
+  // Review fix (Story 15.4): le tre rotte di "Accounting" sono oggi
+  // ruoliAmmessi: ["ADMIN"] soltanto, ma Dirigente ha accesso a molte altre
+  // rotte ADMIN-adiacenti (/gruppi, /slot, /wizard-nuova-stagione,
+  // /campionati) - senza questo test, un futuro allargamento accidentale di
+  // ruoliAmmessi su una delle tre rotte a includere DIRIGENTE sarebbe
+  // rilevato solo dal test generico "esistono esattamente i nodi gruppo
+  // attesi" (che conta le rotte, non chi le vede), non da un test scoped al
+  // Ruolo - a differenza di Atleti/Orari-Palestre, che hanno gia' una
+  // copertura simmetrica Admin+Dirigente perche' quei gruppi condividono
+  // davvero dei Ruoli.
+  it("Dirigente non vede alcun gruppo Accounting (le tre rotte sono ADMIN-only)", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["DIRIGENTE"]), "Accounting");
+    expect(gruppo).toBeUndefined();
   });
 });
 
