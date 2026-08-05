@@ -1,4 +1,6 @@
 # generated: 2026-07-15
+# last_updated: 2026-08-05 (Story 15.1 Infrastruttura sotto-menu navigazione: file di story creato, stato ready-for-dev. Infrastruttura pura - nessuna riga reale di PROTECTED_ROUTES valorizzata con "gruppo" in questa storia, stesso principio gia' seguito in Story 12.1/12.2 (fondazione senza consumer reale). VoceNavigazione diventa una union discriminata (voce singola vs gruppo con figlie) - breaking change consapevole su voci-navigazione.test.ts, da adattare non cancellare. Accordion nel sotto-menu: ogni gruppo si espande/collassa indipendentemente (nessuna esclusione reciproca), decisione presa in fase di creazione story. Nessuna chiusura su click-fuori/Esc (a differenza del drawer/menu profilo esistenti) - sezione persistente della nav, non un pannello transitorio.)
+# last_updated: 2026-08-05 (Epic 15 Riorganizzazione Grafica: analisi di apertura completata con l'utente, rotto in 5 storie (15.1 fondativa - infrastruttura sotto-menu dropdown/accordion in nav; 15.2 Orari/Palestre; 15.3 Atleti, include /conferma-tesseramenti su decisione esplicita; 15.4 Accounting, rinomina Amministrazione + sposta in fondo + aggiunge precaricamento-allenatori/permessi-accesso; 15.5 indipendente, redesign pagina Slot con righe tabellari/icone SVG inline). Scoperta e risolta con l'utente un'incongruenza nell'analisi: Admin/Dirigente vedrebbero due voci "Orari" (singola ex-Slot + sotto-menu Orari/Palestre) - accettato cosi' com'e'. epics.md aggiornato con AC concreti per ciascuna storia. epic-15: backlog -> in-progress, 5 story: backlog.)
 # last_updated: 2026-08-04 (Story 14.2 Service Worker offline e aggiornamento: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor) - 1 decision-needed risolto: il fix del matcher (questa story e Story 14.1) e' verificato inerte nel deploy Cloudflare di produzione (senza run_worker_first, gli asset statici sono serviti dall'Asset Worker senza mai passare da middleware.ts - confermato con una build reale opennextjs-cloudflare build), corretta la documentazione di entrambe le story, codice invariato. 7 patch applicati (.catch() su install/activate/registrazione del Service Worker, fallback offline anche su risposte non-2xx, niente cache di risposte di errore per gli asset statici, log dell'errore in app/error.tsx, header Cache-Control simmetrico su offline.html). 4 defer, 5 dismessi. 906/906 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Epic 14 completo (14.1/14.2 done). Status: done.)
 # last_updated: 2026-08-04 (INCIDENTE DI SICUREZZA, segnalato dall'utente da report Supabase Security Advisor: "rls_disabled_in_public" critico. Trovate 17 tabelle su 23 dello schema Prisma MAI toccate da ENABLE ROW LEVEL SECURITY in nessuna migrazione precedente, incluse utente_ruoli - rischio concreto di escalation a ADMIN via REST diretta senza passare da /admin - e permessi_rotte - bypass della matrice permessi Story 12.1. AD-9 assumeva "nessun GRANT concesso" senza mai revocarlo esplicitamente, a differenza del caso gia' corretto di _prisma_migrations (20260730000000). Verificato prima di correggere che nessuna policy RLS esistente faccia query dirette su queste tabelle (tutte passano da funzioni SECURITY DEFINER dedicate, es. allenatore_possiede_slot) - fix sicuro, zero impatto sul comportamento applicativo. Nuova migrazione 20260804030000_fix_rls_disabled_public_tables (RLS+REVOKE su tutte e 17) creata nel repo e applicata dall'utente direttamente via SQL Editor Supabase per chiudere la falla immediatamente.)
 # last_updated: 2026-08-04 (Story 14.2 Service Worker offline e aggiornamento: file di story creato, stato ready-for-dev. Analisi approfondita: nessuna libreria (Serwist, raccomandata dalla guida ufficiale Next.js, richiede Webpack - questo progetto builda con Turbopack) - Service Worker scritto a mano, stesso principio "zero nuove dipendenze" di Story 14.1. Ricerca web dedicata: con l'adapter @opennextjs/cloudflare di questo progetto, next.config.ts -> headers() NON si applica agli asset in public/ (serviti dal binding ASSETS di Cloudflare, il Worker Next.js non e' nel percorso) - serve un nuovo public/_headers (convenzione nativa Cloudflare) per il Cache-Control di /sw.js. Stesso gap del matcher di middleware.ts gia' scoperto in Story 14.1 (asset pubblici intercettati dal redirect di autenticazione) si ripresenta identico per sw.js/offline.html, incluso un caso piu' subdolo: il fetch che il SW stesso fa verso offline.html durante l'evento install metterebbe in cache la pagina di login se non autenticato. Ambito cache-first limitato esplicitamente ai soli asset con hash (_next/static/), network-only per tutto il resto, coerente con epics.md.)
@@ -369,8 +371,19 @@ development_status:
 
   # Epic 15 (Riorganizzazione Grafica - Navigazione e Slot) inserito il
   # 2026-08-04 su richiesta esplicita dell'utente ("Epic grafica" da far
-  # gestire ad agenti UI). Epic FUTURO, nessuna storia ancora rotta/
-  # pianificata - contiene diversi punti aperti non ancora chiariti con
-  # l'utente (vedi epics.md). Non avviare lo sviluppo senza un'analisi
-  # dedicata all'apertura (stesso approccio di Epic 10/11/12/13).
-  epic-15: backlog
+  # gestire ad agenti UI). Analisi di apertura completata il 2026-08-05:
+  # tutti i punti aperti chiariti con l'utente (vedi epics.md - punto
+  # troncato "e anche" risolto = /permessi-accesso, struttura sotto-menu
+  # dropdown/accordion, Accounting concettualmente Admin-only, Atleti
+  # accetta visibilita' parziale per Ruolo, icone SVG inline scritte a
+  # mano, /conferma-tesseramenti inclusa in Atleti, sovrapposizione di
+  # naming "Orari" tra voce singola ex-Slot e sotto-menu Orari/Palestre
+  # accettata cosi' com'e'). Rotto in 5 storie: 15.1 fondativa
+  # (infrastruttura sotto-menu), 15.2/15.3/15.4 la applicano (Orari/
+  # Palestre, Atleti, Accounting), 15.5 indipendente (redesign Slot).
+  epic-15: in-progress
+  15-1-infrastruttura-sotto-menu-navigazione: done
+  15-2-menu-orari-palestre: backlog
+  15-3-menu-atleti: backlog
+  15-4-sezione-accounting: backlog
+  15-5-redesign-pagina-slot: backlog

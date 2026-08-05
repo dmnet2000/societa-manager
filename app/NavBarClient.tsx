@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isVoceAttiva, type VoceNavigazione } from "@/lib/auth/voci-navigazione";
+import {
+  isGruppoAttivo,
+  isVoceAttiva,
+  type VoceNavigazione,
+} from "@/lib/auth/voci-navigazione";
 import styles from "./NavBar.module.css";
 
 // Story 9.2: la parte interattiva (stato aperto/chiuso del drawer mobile) e'
@@ -36,6 +40,21 @@ function leggiDesktopServer() {
   return false;
 }
 
+// Story 15.1: trova il primo gruppo (se esiste) con una figlia attiva per
+// il pathname dato - usato sia per lo stato iniziale sia per riespandere
+// il gruppo giusto quando il pathname cambia (AC #2).
+function trovaGruppoAttivo(
+  voci: VoceNavigazione[],
+  pathname: string
+): string | null {
+  for (const voce of voci) {
+    if (voce.tipo === "gruppo" && isGruppoAttivo(pathname, voce)) {
+      return voce.label;
+    }
+  }
+  return null;
+}
+
 export function NavBarClient({
   voci,
   logoUrl,
@@ -57,6 +76,18 @@ export function NavBarClient({
   const [menuProfiloAperto, setMenuProfiloAperto] = useState(false);
   const menuProfiloRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  // Story 15.1 (AC #1/#2): quali gruppi sono espansi - a differenza di
+  // `aperto`/`menuProfiloAperto` (pannelli transitori sovrapposti), un
+  // gruppo e' una sezione persistente della lista di navigazione: ogni
+  // gruppo si espande/collassa in modo indipendente dagli altri (nessuna
+  // esclusione reciproca, decisione presa in fase di creazione story).
+  // Stato iniziale: il gruppo con una figlia attiva (se esiste) parte
+  // espanso.
+  const [gruppiEspansi, setGruppiEspansi] = useState<Set<string>>(() => {
+    const gruppoAttivo = trovaGruppoAttivo(voci, pathname);
+    return gruppoAttivo ? new Set([gruppoAttivo]) : new Set();
+  });
 
   // Review fix (code review Story 9.2, trovato da tutti e 3 i layer): sotto
   // 880px il drawer "chiuso" era nascosto solo visivamente
@@ -103,6 +134,15 @@ export function NavBarClient({
     // /modifica-password (il componente non si smonta mai, e' nel root
     // layout), riapparendo visivamente sulla pagina di destinazione.
     setMenuProfiloAperto(false);
+    // Story 15.1 (AC #2): se la nuova pagina e' la figlia di un gruppo non
+    // ancora espanso, lo espande - senza toccare lo stato degli altri
+    // gruppi (nessuna sorpresa navigando direttamente a un URL figlio, ma
+    // anche nessuna collassata inattesa di un gruppo che l'utente aveva
+    // aperto manualmente).
+    const gruppoAttivo = trovaGruppoAttivo(voci, pathname);
+    if (gruppoAttivo && !gruppiEspansi.has(gruppoAttivo)) {
+      setGruppiEspansi(new Set(gruppiEspansi).add(gruppoAttivo));
+    }
   }
 
   // Review fix (code review Story 9.4, Edge Case Hunter): stesso pattern
@@ -170,6 +210,20 @@ export function NavBarClient({
     </div>
   );
 
+  // Story 15.1: toggle indipendente per gruppo - click sulla voce padre
+  // espande/collassa solo quel gruppo, gli altri restano invariati.
+  function toggleGruppo(label: string) {
+    setGruppiEspansi((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  }
+
   return (
     <>
       <div className={styles.topBar}>
@@ -205,6 +259,62 @@ export function NavBarClient({
         <div className={styles.brandSidebar}>{brand}</div>
         <ul className={styles.voci}>
           {voci.map((voce) => {
+            // Story 15.1: caso gruppo - bottone espandibile + figlie
+            // renderizzate solo quando espanso (stesso principio gia'
+            // scelto per la tendina del menu profilo sotto: "semplicemente
+            // non esiste finche' non e' aperto", nessuna transizione CSS
+            // che richieda di restarci montato). Nessun aria-controls sul
+            // bottone per lo stesso motivo (l'elemento controllato non
+            // esiste sempre nel DOM) - stessa scelta gia' fatta per il
+            // trigger del menu profilo sotto (aria-haspopup+aria-expanded,
+            // niente aria-controls), a differenza dell'hamburger sopra
+            // (che invece punta a "nav-sidebar", sempre presente nel DOM).
+            if (voce.tipo === "gruppo") {
+              const espanso = gruppiEspansi.has(voce.label);
+              const gruppoAttivo = isGruppoAttivo(pathname, voce);
+              return (
+                <li key={voce.label}>
+                  <button
+                    type="button"
+                    className={
+                      gruppoAttivo
+                        ? `${styles.voceGruppo} ${styles.voceAttiva}`
+                        : styles.voceGruppo
+                    }
+                    aria-expanded={espanso}
+                    onClick={() => toggleGruppo(voce.label)}
+                  >
+                    <span>{voce.label}</span>
+                    <span className={styles.chevron} aria-hidden="true">
+                      {espanso ? "▾" : "▸"}
+                    </span>
+                  </button>
+                  {espanso && (
+                    <ul className={styles.figlie}>
+                      {voce.figlie.map((figlia) => {
+                        const figliaAttiva = isVoceAttiva(pathname, figlia.href);
+                        return (
+                          <li key={figlia.href}>
+                            <Link
+                              href={figlia.href}
+                              className={
+                                figliaAttiva
+                                  ? `${styles.voceFiglia} ${styles.voceAttiva}`
+                                  : styles.voceFiglia
+                              }
+                              aria-current={figliaAttiva ? "page" : undefined}
+                            >
+                              {figlia.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            }
+
             // Story 9.10: calcolato qui invece che ricevuto gia' pronto dal
             // server - pathname (sopra) si aggiorna ad ogni navigazione
             // completata, a differenza del layout radice server-side che

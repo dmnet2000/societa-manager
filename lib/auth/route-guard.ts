@@ -49,6 +49,17 @@ export const PROTECTED_ROUTES: {
   // invece rottaAbilitataPerRuolo per ciascun Ruolo dell'utente. Prima (e per
   // ora unica) voce migrata: /precaricamento-allenatori, Story 12.4.
   permessiConfigurabili?: boolean;
+  // Story 15.1 (Epic 15): se valorizzato, questa rotta compare come voce
+  // figlia di un sotto-menu espandibile invece che come voce diretta -
+  // "gruppo" e' l'etichetta della voce padre (es. futura "Orari/Palestre"),
+  // condivisa da piu' righe di questo array. Infrastruttura pura: nessuna
+  // riga qui sotto lo valorizza ancora, la vera applicazione a rotte reali
+  // arriva con Story 15.2/15.3/15.4 (stesso principio "fondazione senza
+  // consumer reale" gia' seguito in Story 12.1/12.2 per i permessi
+  // configurabili). Non consultato da getRouteDecision/requireRuolo -
+  // riguarda solo la presentazione in lib/auth/voci-navigazione.ts, mai
+  // l'autorizzazione.
+  gruppo?: string;
 }[] = [
   { prefix: "/admin", ruoliAmmessi: ["ADMIN"], navLabel: "Amministrazione" },
   { prefix: "/import-atlete", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Import atlete" },

@@ -1717,25 +1717,96 @@ so that non veda una schermata bianca/errore di rete generico ogni volta che la 
 
 ## Epic 15: Riorganizzazione Grafica — Navigazione e Slot
 
-*(Aggiunto in corso d'opera — 2026-08-04, richiesta esplicita dell'utente: "Epic grafica" con specifiche da far gestire ad agenti UI. Epic futuro: nessuna storia ancora rotta/pianificata nel dettaglio, solo la cattura fedele della richiesta per quando l'utente sarà pronto ad affrontarlo. Non iniziare lo sviluppo senza un'analisi dedicata all'apertura, come già fatto per Epic 10/11/12/13.)*
+*(Aggiunto in corso d'opera — 2026-08-04, richiesta esplicita dell'utente: "Epic grafica" con specifiche da far gestire ad agenti UI. Analisi di apertura completata il 2026-08-05 (decisioni prese con l'utente, vedi sotto) — rotto in 5 storie concrete, stesso approccio già seguito per Epic 10/11/12/13.)*
 
 **Richiesta originale dell'utente (testo verbatim, 2026-08-04), organizzata in punti per riferimento:**
 
 1. **Sezione Slot** (`/slot`, oggi in `app/(orari-palestre)/slot/`):
-   - "Modificare Slot in Orari" — **chiarito dall'utente (2026-08-04): solo un cambio di label**, non uno spostamento/merge di pagine. Il `navLabel` di `/slot` passa da "Slot" a "Orari" (nessun impatto sulla pagina `/orari` esistente, che resta una rotta distinta con i propri Ruoli — SEGRETERIA — e la propria navLabel "Orari"; i due set di Ruoli non si sovrappongono oggi, quindi nessun utente vede entrambe le voci "Orari" contemporaneamente).
+   - "Modificare Slot in Orari" — **chiarito dall'utente (2026-08-04): solo un cambio di label**, non uno spostamento/merge di pagine. Il `navLabel` di `/slot` passa da "Slot" a "Orari" (nessun impatto sulla pagina `/orari` esistente, che resta una rotta distinta con i propri Ruoli — SEGRETERIA — e la propria navLabel "Orari").
    - Compattare la visualizzazione delle righe dei singoli Gruppi, anche in forma tabellare, con i pulsanti modifica/cancellazione a destra (con icone). Le righe diventano modificabili inline quando si seleziona il pulsante modifica. Il form "Nuovo Slot" resta in alto, invariato rispetto a oggi.
 2. Raggruppare le funzionalità "Orari" (`/orari`) e "Palestre" (`/palestre`) in un menu principale unico "Orari/Palestre".
 3. Rinominare la sezione "Amministrazione" (`/admin`, oggi navLabel "Amministrazione") in "Accounting" e spostarla come ultima voce del menu, in fondo.
-4. Spostare "Precaricamento allenatori" (`/precaricamento-allenatori`) dentro "Accounting" — richiesta troncata nel messaggio originale ("e anche" senza seguito, vedi Punti aperti).
-5. Nuovo menu "Atleti" che raggruppa: Import Atlete (`/import-atlete`), Conferma Iscrizioni (`/conferma-iscrizioni`), Conferma Certificati (`/conferma-certificati`).
+4. Spostare "Precaricamento allenatori" (`/precaricamento-allenatori`) dentro "Accounting", e anche "Permessi di accesso" (`/permessi-accesso`) — **punto troncato nella richiesta originale, chiarito dall'utente il 2026-08-05**.
+5. Nuovo menu "Atleti" che raggruppa: Import Atlete (`/import-atlete`), Conferma Iscrizioni (`/conferma-iscrizioni`), Conferma Certificati (`/conferma-certificati`), e **Conferma Tesseramenti** (`/conferma-tesseramenti`, Story 13.1 — non nella richiesta originale del 2026-08-04 perché aggiunta lo stesso giorno, tematicamente identica alle altre tre, inclusa su decisione esplicita dell'utente il 2026-08-05).
 
-**Contesto tecnico rilevante scoperto in analisi**: la navigazione oggi (`lib/auth/voci-navigazione.ts` + `app/NavBarClient.tsx`) è una lista piatta filtrata per Ruolo, senza alcun concetto di sotto-menu/raggruppamento — introdurre "Orari/Palestre", "Atleti" e "Accounting" come menu con voci figlie richiede un cambio di modello dati (oggi `PROTECTED_ROUTES` produce un `VoceNavigazione = {href, label}` 1:1 per rotta) oltre che di markup/CSS del drawer mobile e della sidebar desktop. Esiste già un precedente parziale di "voce con figlie nascoste" (`/impostazioni` → `/smtp`, `/logo`, Story 9.24) ma è solo per l'evidenziazione "attiva" nella nav, non un vero sotto-menu visibile. La sezione Slot **ha già** modifica/cancellazione (Story 9.13, `aggiornaSlot`/`cancellaSlot` in `app/(orari-palestre)/slot/actions.ts`) — ma oggi ogni riga (`SlotRow.tsx`) è renderizzata come una card con il form di modifica **sempre espanso** (tutti i campi sempre visibili e modificabili, pulsanti Salva/Cancella testuali in basso), non come una riga di tabella compatta con pulsanti-icona a destra che entra in modalità modifica solo su richiesta — il punto 1 è quindi un ridisegno del componente esistente (collassare lo stato "sola lettura" vs "in modifica", passare a un layout tabellare, sostituire i pulsanti testuali con icone), non l'aggiunta di funzionalità mancanti. Nessuna libreria di icone risulta oggi tra le dipendenze del progetto (verificato in `package.json`).
+**Contesto tecnico rilevante scoperto in analisi**: la navigazione oggi (`lib/auth/voci-navigazione.ts` + `app/NavBarClient.tsx`) è una lista piatta filtrata per Ruolo, senza alcun concetto di sotto-menu/raggruppamento — introdurre "Orari/Palestre", "Atleti" e "Accounting" come menu con voci figlie richiede un cambio di modello dati (oggi `PROTECTED_ROUTES` produce un `VoceNavigazione = {href, label}` 1:1 per rotta) oltre che di markup/CSS del drawer mobile e della sidebar desktop. Esiste già un precedente parziale di "voce con figlie nascoste" (`/impostazioni` → `/smtp`, `/logo`, Story 9.24) ma è solo per l'evidenziazione "attiva" nella nav, non un vero sotto-menu visibile — non riusabile direttamente per questo epic (l'utente ha scelto sotto-menu realmente espandibili, non pagine hub, vedi decisioni sotto). La sezione Slot **ha già** modifica/cancellazione (Story 9.13, `aggiornaSlot`/`cancellaSlot` in `app/(orari-palestre)/slot/actions.ts`) — ma oggi ogni riga (`SlotRow.tsx`) è renderizzata come una card con il form di modifica **sempre espanso** (tutti i campi sempre visibili e modificabili, pulsanti Salva/Cancella testuali in basso), non come una riga di tabella compatta con pulsanti-icona a destra che entra in modalità modifica solo su richiesta — il punto 1 è quindi un ridisegno del componente esistente (collassare lo stato "sola lettura" vs "in modifica", passare a un layout tabellare, sostituire i pulsanti testuali con icone), non l'aggiunta di funzionalità mancanti. Nessuna libreria di icone risulta oggi tra le dipendenze del progetto (verificato in `package.json`).
 
-**Punti aperti da chiarire in fase di analisi (non ancora decisi con l'utente, da NON assumere):**
-- **Punto 4 troncato**: la frase "Precaricamento allenatore spostare in Accounting e anche" si interrompe — cosa doveva seguire "e anche"? (Es. spostare anche "Permessi di accesso" o "Permessi certificati" in Accounting?) Da chiedere esplicitamente, non indovinare.
-- **Struttura tecnica dei sotto-menu**: dropdown/accordion espandibile in sidebar, o pagine hub dedicate (come già esiste per `/impostazioni`)? Comportamento su mobile (drawer) vs desktop (sidebar sempre visibile) da definire.
-- **Ruoli e "Accounting"**: `/admin` è oggi ADMIN-only; `/precaricamento-allenatori` è oggi ADMIN-only per default ma è `permessiConfigurabili: true` (Epic 12) — un Admin potrebbe in futuro abilitare DIRIGENTE su quella rotta da `/permessi-accesso`, rendendo "Accounting" (presumibilmente concepito come sezione solo-Admin) non più omogeneo per Ruolo. Da chiarire se "Accounting" debba restare concettualmente ADMIN-only o generico.
-- **Menu "Atleti"**: le tre rotte non condividono lo stesso set di Ruoli ammessi (`/import-atlete` = ADMIN/DIRIGENTE; `/conferma-iscrizioni` e `/conferma-certificati` = ADMIN/DIRIGENTE/SEGRETERIA) — un utente Segreteria vedrebbe il menu "Atleti" con solo 2 delle 3 voci. Comportamento già coerente col filtraggio per-Ruolo esistente, ma da confermare che sia accettabile visivamente.
-- **Icone per modifica/cancellazione**: nessuna libreria di icone è oggi tra le dipendenze — scegliere un set (SVG inline, libreria da aggiungere, o Unicode come già fatto per l'hamburger `☰`) è una decisione tecnica da prendere in apertura.
+**Incongruenza scoperta in analisi (2026-08-05) e risolta con l'utente**: Admin e Dirigente hanno accesso sia a `/slot` (→ voce singola "Orari" per il punto 1) sia a `/palestre` (→ finirebbe dentro il sotto-menu "Orari/Palestre" del punto 2, insieme a `/orari` che però è solo-Segreteria) — quindi vedrebbero **due voci di menu diverse, entrambe con "Orari" nel nome** (la voce singola "Orari" ex-Slot, e il sotto-menu "Orari/Palestre" che per loro conterrebbe solo "Palestre", dato che non hanno accesso a `/orari`). **Accettato così com'è dall'utente** — nessun cambio ai due punti, la sovrapposizione di naming è nota e voluta, non un difetto da correggere.
 
-**Nessun AC ancora** — epic futuro, la rottura in storie e la cattura dei requisiti dettagliati vanno fatte quando l'utente deciderà di avviarlo (stesso approccio già seguito per Epic 10/11/12/13 all'apertura).
+**Decisioni prese con l'utente (2026-08-05):**
+- Struttura tecnica dei sotto-menu: **dropdown/accordion espandibile in sidebar/drawer** (non pagine hub dedicate) — le voci figlie compaiono/scompaiono sotto la voce padre cliccata, sia su sidebar desktop sia su drawer mobile.
+- "Accounting" resta **concettualmente Admin-only**, anche se in futuro un Admin abilitasse un altro Ruolo su `/precaricamento-allenatori` tramite i permessi configurabili (Epic 12) — il raggruppamento visivo non cambia significato per questo.
+- Il menu "Atleti" può mostrare meno voci a un Ruolo con meno permessi (es. Segreteria vede 3 delle 4 voci, nessun accesso a Import Atlete) — **stesso comportamento di filtraggio per-Ruolo già esistente ovunque nell'app**, accettato esplicitamente.
+- Icone per modifica/cancellazione nelle righe Slot: **SVG inline scritte a mano**, nessuna nuova dipendenza npm — coerente con l'approccio "zero dipendenze senza approvazione esplicita" già seguito in Story 14.1.
+
+### Story 15.1: Infrastruttura sotto-menu nella navigazione
+
+As a Utente con accesso a più voci di menu correlate tra loro,
+I want vedere quelle voci raggruppate sotto un'unica voce padre espandibile,
+so that la barra di navigazione resti leggibile e organizzata anche aggiungendo più funzionalità nel tempo.
+
+**Note aggiuntive:** storia fondativa, propedeutica a Story 15.2/15.3/15.4 (tutte e tre applicano questo meccanismo, non lo reinventano). Nessuna dipendenza da Story 15.5 (redesign Slot), che è indipendente. Estende il modello dati esistente (`PROTECTED_ROUTES` in `lib/auth/route-guard.ts`, `filtraVociNavigazione` in `lib/auth/voci-navigazione.ts`) per rappresentare un raggruppamento, mantenendo invariato il filtraggio per Ruolo già esistente. Markup/CSS nuovi in `app/NavBarClient.tsx` (drawer mobile e sidebar desktop condividono già lo stesso componente, Story 9.2).
+
+**Acceptance Criteria:**
+
+1. **Given** un Ruolo con accesso a più rotte raggruppate sotto una voce padre **When** apre la sidebar (desktop) o il drawer (mobile) **Then** vede la voce padre con un indicatore di espansione (es. chevron), le voci figlie non visibili finché non la espande (accordion/dropdown), non tutte sempre aperte
+2. **Given** l'utente si trova su una rotta figlia di un menu raggruppato **When** la pagina si carica **Then** il menu padre risulta espanso di default e sia la voce padre sia quella figlia risultano evidenziate come "attive" (nessuna sorpresa navigando direttamente a un URL figlio)
+3. **And** nessuna regressione sulle voci di navigazione non raggruppate — restano voci dirette singole, comportamento identico a oggi
+4. **And** un Ruolo che ha accesso solo ad alcune delle voci figlie di un gruppo vede comunque la voce padre, ma solo le figlie a cui ha accesso una volta espansa (stesso principio di filtraggio già usato per le voci singole)
+
+### Story 15.2: Menu "Orari/Palestre"
+
+As a Utente con accesso a Orari e/o Palestre,
+I want trovarli raggruppati sotto un'unica voce di menu "Orari/Palestre",
+so that individuo più rapidamente le funzionalità di gestione di spazi/orari.
+
+**Note aggiuntive:** dipende da Story 15.1. Nessuna modifica alle pagine `/orari` e `/palestre` stesse, solo alla loro presentazione nella nav. La voce singola "Orari" (ex `/slot`, Story 15.5) resta distinta e non fa parte di questo sotto-menu — sovrapposizione di naming nota e accettata (vedi Contesto tecnico dell'epic).
+
+**Acceptance Criteria:**
+
+1. **Given** un Ruolo con accesso a `/orari` e/o `/palestre` **When** apre la navigazione **Then** vede una voce padre "Orari/Palestre" che, espansa, mostra solo le rotte a cui ha accesso (Segreteria: solo Orari; Admin/Dirigente: solo Palestre — nessun Ruolo ha accesso a entrambe oggi)
+2. **And** nessuna regressione sull'autorizzazione esistente delle due rotte (invariata, solo la presentazione in nav cambia)
+
+### Story 15.3: Menu "Atleti"
+
+As a Utente con accesso a una o più funzionalità di gestione anagrafica atlete,
+I want trovarle raggruppate sotto un'unica voce di menu "Atleti",
+so that non le cerco sparse nella lista piatta della navigazione.
+
+**Note aggiuntive:** dipende da Story 15.1. Raggruppa `/import-atlete`, `/conferma-iscrizioni`, `/conferma-certificati`, `/conferma-tesseramenti` — quattro rotte con set di Ruoli ammessi diversi (vedi AC #2). Nessuna modifica alle quattro pagine stesse, solo alla loro presentazione in nav.
+
+**Acceptance Criteria:**
+
+1. **Given** un Ruolo con accesso ad almeno una delle quattro rotte **When** apre la navigazione **Then** vede la voce padre "Atleti" che, espansa, mostra solo le rotte a cui ha accesso
+2. **Given** un utente Segreteria (accesso a `/conferma-iscrizioni`, `/conferma-certificati`, `/conferma-tesseramenti` ma non a `/import-atlete`, riservata ad ADMIN/DIRIGENTE) **When** espande "Atleti" **Then** vede solo le 3 voci a cui ha accesso, non le 4 — comportamento atteso, non un difetto
+3. **And** nessuna regressione sull'autorizzazione esistente delle quattro rotte
+
+### Story 15.4: Sezione "Accounting"
+
+As a Admin,
+I want trovare le funzionalità amministrative sotto un'unica voce "Accounting" in fondo al menu,
+so that la navigazione separa chiaramente le funzionalità operative quotidiane da quelle di configurazione/gestione riservate al mio Ruolo.
+
+**Note aggiuntive:** dipende da Story 15.1. Rinomina la voce esistente "Amministrazione" (`/admin`) in "Accounting", la sposta come ultima voce della navigazione, e vi aggiunge `/precaricamento-allenatori` e `/permessi-accesso` come figlie. Tutte e tre le rotte sono oggi ADMIN-only (`/precaricamento-allenatori` è `permessiConfigurabili: true`, Epic 12, ma la sua riga di default resta ADMIN-only finché un Admin non abilita esplicitamente un altro Ruolo da `/permessi-accesso`) — "Accounting" resta concettualmente pensato per l'Admin anche se in futuro quella singola rotta figlia diventasse visibile anche a un altro Ruolo abilitato.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin **When** apre la navigazione **Then** vede "Accounting" come ultima voce (non più "Amministrazione"), che espansa mostra `/admin`, `/precaricamento-allenatori`, `/permessi-accesso`
+2. **And** nessuna regressione sull'autorizzazione esistente delle tre rotte, incluso il meccanismo `permessiConfigurabili` di `/precaricamento-allenatori` (Epic 12) — se in futuro un altro Ruolo venisse abilitato su quella rotta, la vedrebbe comparire dentro "Accounting" espanso, senza ulteriori modifiche a questa storia
+3. **And** `/permessi-certificati` (voce distinta, non menzionata nella richiesta originale) resta dov'è oggi, non spostata dentro "Accounting" — non assumere che vada inclusa solo perché tematicamente simile
+
+### Story 15.5: Redesign pagina Slot (righe compatte, modifica inline)
+
+As a Admin/Dirigente che gestisce gli Slot di un Gruppo,
+I want vedere le righe Slot in forma tabellare compatta con pulsanti-icona per modifica/cancellazione, ed entrare in modalità modifica solo quando lo richiedo,
+so that scorro più rapidamente elenchi lunghi di Slot senza vedere ogni riga già espansa in un form completo.
+
+**Note aggiuntive:** indipendente da Story 15.1/15.2/15.3/15.4 (nessun sotto-menu coinvolto), può essere sviluppata in qualunque ordine rispetto alle altre. Due parti distinte: (a) cambio di `navLabel` di `/slot` da "Slot" a "Orari" (una riga in `PROTECTED_ROUTES`); (b) ridisegno di `SlotRow.tsx` da card-sempre-espansa a riga di tabella compatta con stato "sola lettura" (default) vs "in modifica" (dopo click sull'icona matita), icone SVG inline scritte a mano (nessuna libreria). Il form "Nuovo Slot" in cima alla pagina resta invariato. Nessuna modifica alla logica di `aggiornaSlot`/`cancellaSlot` (Story 9.13) — solo la presentazione.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Dirigente **When** apre la navigazione **Then** la voce già presente per `/slot` mostra l'etichetta "Orari" invece di "Slot" (nessun impatto su `/orari`, rotta distinta con proprio Ruolo/label)
+2. **Given** la pagina `/slot` con Slot esistenti **When** si carica **Then** ogni Slot è mostrato come riga compatta di tabella (non più una card sempre espansa), con icone modifica/cancellazione a destra
+3. **Given** una riga Slot in sola lettura **When** l'utente clicca l'icona di modifica **Then** quella riga (solo quella, le altre restano in sola lettura) entra in modalità modifica inline con i campi editabili, coerente con `aggiornaSlot` esistente
+4. **And** il form "Nuovo Slot" in cima alla pagina resta invariato rispetto a oggi
+5. **And** nessuna regressione sulla logica esistente di modifica/cancellazione (Story 9.13) — solo la presentazione cambia

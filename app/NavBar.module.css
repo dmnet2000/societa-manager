@@ -127,6 +127,76 @@
   color: var(--color-surface);
 }
 
+/* Story 15.1: bottone della voce padre di un gruppo espandibile - stesse
+   dimensioni/peso tipografico di .voce (coerenza visiva con le voci
+   dirette), ma e' un <button> nativo (non un <a>) con reset esplicito,
+   stesso principio gia' documentato per .menuProfiloTrigger sotto. */
+.voceGruppo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-surface-alt);
+  background: none;
+  border: none;
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.voceGruppo:focus-visible {
+  outline: 2px solid var(--color-focus-ring-on-navy);
+  outline-offset: 2px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+}
+
+/* Indentate rispetto alle voci di primo livello, per segnalare la
+   gerarchia - stesso .voci come lista esterna, elenco puntato annidato. */
+.figlie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  padding-left: var(--space-4);
+}
+
+.voceFiglia {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-surface-alt);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.voceFiglia:focus-visible {
+  outline: 2px solid var(--color-focus-ring-on-navy);
+  outline-offset: 2px;
+}
+
+/* Review fix: .voceGruppo/.voceFiglia impostano color/background propri e
+   sono dichiarate DOPO .voceAttiva in questo file - a parita' di
+   specificita' (singola classe) la regola piu' tarda vince nella cascata,
+   quindi .voceAttiva da sola non aveva alcun effetto quando combinata con
+   .voceGruppo/.voceFiglia. Selettori composti (specificita' piu' alta,
+   0,2,0 invece di 0,1,0): vincono sempre, indipendentemente dall'ordine
+   nel file - non ci si affida piu' a un ordinamento fragile. */
+.voceGruppo.voceAttiva,
+.voceFiglia.voceAttiva {
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+}
+
 /* Story 9.4: sostituisce .formEsci - stesso margin-top:auto (spinge il
    menu profilo in fondo alla colonna sidebar/drawer, staccato dalle voci di
    navigazione), ma ora e' un dropdown ancorato (trigger = email + tendina),
