@@ -160,20 +160,28 @@
 }
 
 /* Indentate rispetto alle voci di primo livello, per segnalare la
-   gerarchia - stesso .voci come lista esterna, elenco puntato annidato. */
+   gerarchia - stesso .voci come lista esterna, elenco puntato annidato.
+   Refresh (design handoff 2026-08-05): bordo sinistro sottile + rientro
+   aggiuntivo, stesso linguaggio visivo di "Componenti Riusabili.dc.html"
+   (sidebar con sottomenu) - applicato qui a livello di classe condivisa,
+   quindi vale per ogni gruppo esistente (Atleti, Orari/Palestre,
+   Accounting), non solo per uno in particolare. */
 .figlie {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   list-style: none;
   padding-left: var(--space-4);
+  margin-left: var(--space-2);
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .voceFiglia {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-surface-alt);
+  opacity: 0.85;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   text-decoration: none;

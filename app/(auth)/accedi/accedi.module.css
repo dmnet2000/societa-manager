@@ -6,21 +6,32 @@
 /* Riquadro centrato invece del form a piena larghezza della pagina
    (feedback utente 2026-07-25). Nessun token --shadow in DESIGN.md: ombra
    minima scelta ad hoc, coerente con --color-border/--radius-md gia' in
-   uso qui sotto. */
+   uso qui sotto.
+   Refresh (design handoff 2026-08-05, layout/Design template per società
+   manager.zip): sfondo con gradiente diagonale navy->blu dietro il
+   riquadro, card leggermente piu' larga (380px) con padding/ombra piu'
+   marcati - stessi token gia' in uso in app/globals.css, nessun colore
+   hardcoded fuori da --color-navy/--color-button-bg gia' esistenti.
+   min-height:100vh perche' .pagina e' il <main> stesso: senza, il
+   gradiente coprirebbe solo l'altezza del contenuto, non l'intero
+   viewport, quando l'utente non e' autenticato (NavBar.tsx restituisce
+   null, nessun altro elemento forza l'altezza). */
 .pagina {
   display: flex;
   justify-content: center;
+  align-items: center;
+  min-height: 100vh;
   padding: var(--space-8) var(--space-4);
+  background: linear-gradient(135deg, var(--color-navy), var(--color-button-bg));
 }
 
 .riquadro {
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--space-6);
-  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+  padding: var(--space-8);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 /* Logo/nome del settore (2026-07-25, configurabili da Admin in /logo):
