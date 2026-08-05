@@ -1,5 +1,6 @@
 import type { Ruolo } from "@prisma/client";
 import { describe, expect, it } from "vitest";
+import { PROTECTED_ROUTES } from "./route-guard";
 import {
   filtraVociNavigazione,
   isGruppoAttivo,
@@ -9,13 +10,23 @@ import {
 } from "./voci-navigazione";
 
 // Story 15.1: filtraVociNavigazione ora restituisce una union discriminata
-// (voce | gruppo) - con i dati REALI di PROTECTED_ROUTES nessuna riga ha
-// ancora "gruppo" valorizzato in questa storia (infrastruttura pura, vedi
-// Dev Notes della story), quindi ogni nodo qui e' sempre tipo:"voce". Gli
-// href si estraggono filtrando esplicitamente su tipo:"voce" invece di
-// assumerlo implicitamente come prima di questa storia.
+// (voce | gruppo). Gli href si estraggono filtrando esplicitamente su
+// tipo:"voce" invece di assumerlo implicitamente come prima di quella
+// storia. Story 15.2: /orari e /palestre sono ora raggruppate sotto
+// "Orari/Palestre" (prima applicazione reale) - non compaiono piu' tra le
+// voci dirette di hrefVoci, sono figlie del nodo gruppo.
 function hrefVoci(voci: ReturnType<typeof filtraVociNavigazione>): string[] {
   return voci.filter((v) => v.tipo === "voce").map((v) => v.href);
+}
+
+// Review fix (Story 15.2): helper condiviso per trovare un nodo gruppo per
+// etichetta - i 4 test dedicati al gruppo "Orari/Palestre" ripetevano lo
+// stesso type guard inline, a rischio di divergere indipendentemente.
+function trovaGruppo(
+  voci: ReturnType<typeof filtraVociNavigazione>,
+  label: string
+): VoceGruppo | undefined {
+  return voci.find((v): v is VoceGruppo => v.tipo === "gruppo" && v.label === label);
 }
 
 describe("filtraVociNavigazione", () => {
@@ -53,7 +64,6 @@ describe("filtraVociNavigazione", () => {
         "/import-atlete",
         "/precaricamento-allenatori",
         "/conferma-iscrizioni",
-        "/palestre",
         "/gruppi",
         "/slot",
         "/conferma-certificati",
@@ -62,6 +72,39 @@ describe("filtraVociNavigazione", () => {
         "/wizard-nuova-stagione",
       ])
     );
+    // Review fix: non basta non richiederle piu' - verificare esplicitamente
+    // che non siano "trapelate" sia nel gruppo sia come voce diretta (stesso
+    // pattern .not.toContain gia' in uso sotto per /smtp/logo, Story 9.24).
+    expect(href).not.toContain("/palestre");
+    expect(href).not.toContain("/orari");
+  });
+
+  // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
+  // figlia del nuovo nodo gruppo "Orari/Palestre" (unica figlia per un
+  // Admin, che non ha accesso a /orari).
+  it("un Admin vede /palestre come figlia del gruppo Orari/Palestre, non come voce diretta", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN"]), "Orari/Palestre");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+  });
+
+  // Review fix: caso di sovrapposizione reale piu' comune del Segreteria+Admin
+  // testato sotto - Admin e Dirigente condividono la STESSA unica rotta
+  // /palestre, un Utente con entrambi i Ruoli deve vedere una sola figlia,
+  // non due duplicate.
+  it("un Utente con Ruoli Admin e Dirigente vede una sola figlia /palestre, non duplicata", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Orari/Palestre");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+  });
+
+  // Review fix: nessun test con dati reali verificava che il gruppo non
+  // comparisse affatto per un Ruolo senza accesso a nessuna delle due rotte -
+  // un refuso futuro in ruoliAmmessi di /orari o /palestre che concedesse
+  // l'accesso a un Ruolo estraneo produrrebbe un gruppo spurio non rilevato.
+  it("Allenatore non vede alcun gruppo Orari/Palestre (nessun accesso a /orari o /palestre)", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["ALLENATORE"]), "Orari/Palestre");
+    expect(gruppo).toBeUndefined();
   });
 
   // Story 9.24: /smtp e /logo restano rotte accessibili (route-guard
@@ -73,24 +116,43 @@ describe("filtraVociNavigazione", () => {
     expect(href).not.toContain("/logo");
   });
 
-  it("ogni voce ha un href e una label non vuoti", () => {
+  // Story 15.2: esteso per gestire anche il caso "gruppo" - ogni figlia deve
+  // avere href/label non vuoti, non solo le voci dirette di primo livello.
+  it("ogni voce (o figlia di un gruppo) ha un href e una label non vuoti", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     for (const voce of voci) {
-      expect(voce.tipo).toBe("voce");
       if (voce.tipo === "voce") {
         expect(voce.href).toMatch(/^\//);
         expect(voce.label.length).toBeGreaterThan(0);
+      } else {
+        expect(voce.label.length).toBeGreaterThan(0);
+        for (const figlia of voce.figlie) {
+          expect(figlia.href).toMatch(/^\//);
+          expect(figlia.label.length).toBeGreaterThan(0);
+        }
       }
     }
   });
 
-  // Story 15.1: con i dati reali del progetto nessuna riga ha "gruppo"
-  // valorizzato in questa storia - la vera prova del raggruppamento arriva
-  // dai test di raggruppaVociNavigazione sotto (dati sintetici) e da Story
-  // 15.2/15.3/15.4 (dati reali).
-  it("nessun nodo gruppo con i dati reali del progetto (infrastruttura pura in questa storia)", () => {
-    const voci = filtraVociNavigazione(["ADMIN"]);
-    expect(voci.every((v) => v.tipo === "voce")).toBe(true);
+  // Story 15.2: prima applicazione reale del raggruppamento (Story 15.1 era
+  // infrastruttura pura, zero gruppi attivi) - /orari e /palestre sono ora
+  // raggruppate sotto "Orari/Palestre". Nessun Ruolo ha accesso a entrambe
+  // oggi (Segreteria vs Admin/Dirigente), quindi il gruppo ha sempre
+  // esattamente una figlia visibile per Ruolo (vedi test dedicati sotto).
+  //
+  // Review fix: verificato direttamente su PROTECTED_ROUTES, non tramite
+  // l'output di filtraVociNavigazione per un solo Ruolo (ADMIN) - un test
+  // scoped a un Ruolo non intercetterebbe un "gruppo" valorizzato per
+  // errore su una rotta invisibile a quel Ruolo (es. una rotta solo-
+  // Allenatore). Questa e' l'invariante indipendente dal Ruolo che il nome
+  // del test promette davvero.
+  it("esiste esattamente un nodo gruppo con i dati reali del progetto: Orari/Palestre", () => {
+    const routeConGruppo = PROTECTED_ROUTES.filter((r) => r.gruppo !== undefined);
+    expect(routeConGruppo.map((r) => r.prefix)).toEqual(
+      expect.arrayContaining(["/orari", "/palestre"])
+    );
+    expect(routeConGruppo).toHaveLength(2);
+    expect(routeConGruppo.every((r) => r.gruppo === "Orari/Palestre")).toBe(true);
   });
 
   // Review fix: i test sopra usano expect.arrayContaining, che ignora
@@ -113,6 +175,49 @@ describe("filtraVociNavigazione", () => {
       "/il-mio-profilo",
       "/campionati",
       "/partite",
+    ]);
+  });
+
+  // Story 15.2 (AC #1): Segreteria ha accesso a /orari ma non a /palestre -
+  // il gruppo "Orari/Palestre" deve mostrare solo la figlia a cui ha
+  // accesso, coerente col comportamento gia' testato con dati sintetici in
+  // Story 15.1 ("un gruppo mostra solo le figlie a cui il Ruolo ha
+  // accesso").
+  it("Segreteria vede il gruppo Orari/Palestre con solo /orari tra le figlie", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA"]), "Orari/Palestre");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([{ href: "/orari", label: "Orari" }]);
+  });
+
+  // Story 15.2 (AC #1): Admin e Dirigente hanno accesso a /palestre ma non
+  // a /orari - speculare al test sopra.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "%s vede il gruppo Orari/Palestre con solo /palestre tra le figlie",
+    (ruolo) => {
+      const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Orari/Palestre");
+      expect(gruppo).toBeDefined();
+      expect(gruppo?.figlie).toEqual([{ href: "/palestre", label: "Palestre" }]);
+    }
+  );
+
+  // Story 15.2 (Task 3, facoltativo): un Utente con entrambi i Ruoli
+  // Segreteria e Admin (UtenteRuolo e' molti-a-molti, caso raro ma
+  // possibile) vede entrambe le figlie nello stesso gruppo - gia' garantito
+  // dal filtro ".some()" di raggruppaVociNavigazione (Story 15.1), qui solo
+  // verificato con dati reali per completezza.
+  //
+  // Review fix: uguaglianza esatta con ordine (non piu' arrayContaining) -
+  // /orari e' ora dichiarata prima di /palestre in PROTECTED_ROUTES
+  // (review fix su route-guard.ts) proprio per rendere questo ordine
+  // deterministico e coerente con l'etichetta padre "Orari/Palestre";
+  // arrayContaining non avrebbe intercettato un'inversione dell'ordine ne'
+  // una figlia duplicata (lunghezza non verificata).
+  it("un Utente con Ruoli Segreteria e Admin vede entrambe le figlie del gruppo Orari/Palestre, in ordine", () => {
+    const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA", "ADMIN"]), "Orari/Palestre");
+    expect(gruppo).toBeDefined();
+    expect(gruppo?.figlie).toEqual([
+      { href: "/orari", label: "Orari" },
+      { href: "/palestre", label: "Palestre" },
     ]);
   });
 });

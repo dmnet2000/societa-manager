@@ -94,7 +94,28 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Conferma tesseramenti",
   },
-  { prefix: "/palestre", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Palestre" },
+  {
+    // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
+    // introdotto come infrastruttura pura da Story 15.1 - raggruppa con
+    // /palestre sotto la voce di menu "Orari/Palestre". Nessun cambio a
+    // ruoliAmmessi/navLabel/prefix, l'autorizzazione resta invariata.
+    // Review fix: dichiarata PRIMA di /palestre (non dopo) cosi' l'ordine
+    // delle figlie nel gruppo (raggruppaVociNavigazione preserva l'ordine
+    // di iterazione) corrisponde all'ordine dell'etichetta padre
+    // "Orari/Palestre" anche nel caso raro di un Utente con entrambi i
+    // Ruoli Segreteria e Admin/Dirigente.
+    prefix: "/orari",
+    ruoliAmmessi: ["SEGRETERIA"],
+    navLabel: "Orari",
+    gruppo: "Orari/Palestre",
+  },
+  {
+    // Story 15.2: stesso gruppo di /orari sopra ("Orari/Palestre").
+    prefix: "/palestre",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Palestre",
+    gruppo: "Orari/Palestre",
+  },
   { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
   {
     prefix: "/i-miei-gruppi",
@@ -103,7 +124,6 @@ export const PROTECTED_ROUTES: {
   },
   { prefix: "/slot", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Slot" },
   { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
-  { prefix: "/orari", ruoliAmmessi: ["SEGRETERIA"], navLabel: "Orari" },
   { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
   {
     prefix: "/storico-presenze",
