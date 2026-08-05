@@ -1375,6 +1375,50 @@ so that non devo passare dall'Onboarding-Import né chiedere a un Allenatore di 
 
 **And** nessuna regressione sul comportamento esistente di `creaEAssegnaAtleta` da `/i-miei-gruppi` (Story 9.18), su `assegnaAtleta` (assegnazione di un'Atleta già esistente, invariata su entrambe le pagine) né sulla notifica already esistente alla Segreteria — suite Vitest invariata
 
+### Story 9.29: Menu laterale fisso durante lo scroll della pagina
+
+As a Utente su desktop,
+I want che il menu laterale di navigazione resti bloccato a sinistra invece di scorrere insieme al contenuto della pagina,
+so that i link di navigazione restino sempre raggiungibili senza dover risalire la pagina.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-05). `app/NavBar.module.css` usa già `position: sticky; top: 0; height: 100vh;` su `.sidebar` (>=880px) proprio per questo scopo — il difetto segnalato indica che in pratica non funziona così. **Causa probabile ma non confermata** (da verificare in sviluppo, non assumere): `.sidebar` non ha `overflow-y: auto`, quindi se il contenuto della navigazione supera i 100vh di altezza (plausibile dopo l'Epic 15, che ha aggiunto sotto-menu ad accordion — un Ruolo con più gruppi espansi/molte voci potrebbe superare l'altezza del viewport) il contenuto in eccesso trabocca visivamente invece di scorrere internamente, producendo l'effetto "il menu scorre via" osservato dall'utente. Verificare anche che nessun antenato (`.shell`, `body`) introduca un contesto di scroll che invaliderebbe lo sticky.
+
+**Acceptance Criteria:**
+
+**Given** un Utente su desktop (>=880px) con una pagina di contenuto più lunga del viewport
+**When** scorre la pagina verso il basso
+**Then** il menu laterale resta visibile e bloccato a sinistra, senza scorrere via con il contenuto
+
+**Given** un Ruolo con molte voci di navigazione/sotto-menu espansi contemporaneamente (es. Admin con più gruppi accordion aperti)
+**When** il contenuto della navigazione supera l'altezza del viewport
+**Then** il menu laterale resta comunque bloccato, con le proprie voci eventualmente scorribili internamente (non l'intera pagina che lo trascina via)
+
+**And** nessuna regressione sul comportamento mobile esistente (drawer overlay, hamburger, Story 9.2) — il fix riguarda solo la sidebar desktop
+
+### Story 9.30: Interfaccia più compatta per /precaricamento-allenatori
+
+As a Admin che gestisce l'elenco degli Allenatori precaricati,
+I want vedere le righe Allenatore in una forma più compatta, con i campi Nome/Cognome/Codice Fiscale allineati in linea invece che impilati verticalmente,
+so that scorro più rapidamente elenchi lunghi di Allenatori senza dover scorrere molto per ciascuna riga.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-05). Oggi `AllenatoreRow.tsx` (Story 9.9) è una card sempre espansa con tre campi impilati verticalmente (`precaricamento-allenatori.module.css`, `.campo` senza `flex-wrap`) — stesso stato in cui si trovava `SlotRow.tsx` prima della Story 15.5. **Decisione presa con l'utente in fase di creazione story (2026-08-05)**: redesign completo, non solo campi in linea — stesso pattern "riga tabellare compatta con toggle sola-lettura/modifica" già stabilito da `PartitaRow.tsx` (Story 10.4) e applicato più di recente da `SlotRow.tsx` (Story 15.5, incluse le lezioni di code review su touch target 44px/aria-label/title sui pulsanti-icona) — non l'alternativa più leggera "solo campi in linea con flex-wrap". Essendo questo il **secondo** consumer reale delle icone matita/cestino (dopo `SlotRow.tsx`), le icone SVG vanno estratte in un modulo condiviso invece di duplicate una seconda volta.
+
+**Acceptance Criteria:**
+
+**Given** la pagina `/precaricamento-allenatori` con Allenatori precaricati
+**When** si carica
+**Then** ogni Allenatore è mostrato come riga compatta di tabella (non più una card sempre espansa), con icone modifica/cancellazione a destra
+
+**Given** una riga Allenatore in sola lettura
+**When** l'utente clicca l'icona di modifica
+**Then** quella riga (solo quella, le altre restano in sola lettura) entra in modalità modifica inline con i campi Nome/Cognome/Codice Fiscale editabili, coerente con `aggiornaAllenatore` esistente
+
+**And** il form "Nuovo Allenatore" in cima alla pagina resta invariato rispetto a oggi
+
+**And** nessuna regressione sulla logica esistente di modifica/cancellazione (`aggiornaAllenatore`/`cancellaAllenatore`, Story 9.9) — solo la presentazione cambia
+
+**And** nessuna regressione sul blocco di cancellazione per Allenatore agganciato/assegnato a un Gruppo, né sulla `window.confirm` esistente
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

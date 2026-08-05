@@ -314,6 +314,30 @@
     width: 220px;
     height: 100vh;
     flex-shrink: 0;
+    /* Story 9.29 (review fix del difetto segnalato dall'utente): senza
+       overflow-y, un contenuto piu' alto di 100vh (i sotto-menu ad
+       accordion dell'Epic 15 possono farlo, a seconda di quanti gruppi un
+       Ruolo ha e tiene aperti) traboccava oltre il riquadro sticky invece
+       di scorrere al suo interno, dando l'impressione che il menu
+       "scorresse via" con la pagina. Il riquadro stesso resta bloccato
+       (sticky invariato) - solo il suo contenuto interno ora scorre quando
+       eccede l'altezza disponibile.
+       Review fix: overflow-x esplicito a "hidden" - per spec CSS, un
+       overflow-y non-visible forza anche overflow-x a calcolare "auto" se
+       lasciato "visible", abilitando uno scroll orizzontale indesiderato
+       non richiesto da nessun contenuto della sidebar (larghezza fissa
+       220px). scrollbar-gutter:stable riserva lo spazio della scrollbar
+       fin da subito, cosi' che comparire/sparire non restringa la larghezza
+       disponibile per le voci proprio nel momento (molte voci aperte) in
+       cui l'utente ci sta interagendo. overscroll-behavior:contain evita
+       che, esaurito lo scroll interno della sidebar, il gesto continui a
+       scorrere la pagina sottostante - la stessa sensazione "il menu se ne
+       va" che questa storia doveva risolvere, solo posticipata di un
+       gesto invece di eliminata. */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
   }
 
   .brandSidebar {

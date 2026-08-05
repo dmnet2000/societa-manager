@@ -15,30 +15,113 @@
   color: var(--color-text-secondary);
 }
 
-.lista {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+/* Story 9.30 - tabella compatta al posto dell'elenco di card (.lista/.card
+   rimosse, non piu' referenziate da nessun componente), stesso schema di
+   slot.module.css (Story 15.5) per coerenza visiva tra le pagine tabellari
+   del progetto. */
+/* Review fix: la riga (Nome + Cognome + Codice Fiscale a 16 caratteri +
+   Stato + due pulsanti-icona da 44px) puo' eccedere un viewport mobile
+   stretto - lo scroll orizzontale resta confinato a questo wrapper invece
+   di rompere il layout della pagina. */
+.tabellaScroll {
+  overflow-x: auto;
   margin-top: var(--space-4);
 }
 
-.card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  background: var(--color-surface);
+.tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
 }
 
-.stato {
-  margin-top: var(--space-2);
-  font-size: 12.5px;
+.tabella th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
 }
 
+.tabella td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Story 9.30 - pulsanti-icona modifica/cancellazione a destra di ogni riga
+   (AC #1), stesso schema di slot.module.css. Touch target 44px fin da
+   subito (lezione gia' nota in questo progetto, scoperta solo in review
+   per /slot - applicata qui proattivamente). */
+.iconaBottone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  cursor: pointer;
+}
+
+.iconaBottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.iconaBottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.iconaBottoneDanger {
+  color: var(--color-danger);
+}
+
+.formIconaInline {
+  display: inline;
+}
+
+/* Story 9.30 - campi della riga di modifica inline allineati in linea
+   invece che impilati verticalmente. Selettore annidato (".campiRiga
+   .campo", non ".campo" da solo): NuovoAllenatoreForm.tsx usa ".campo" al
+   di FUORI di ".campiRiga" (impilato verticalmente, invariato per AC #3) -
+   applicare flex-basis direttamente su ".campo" a livello globale
+   distorcerebbe quel form (in un flex-container a colonna, flex-grow:1
+   farebbe crescere ogni campo in altezza per riempire lo spazio invece di
+   restare compatto). */
+.campiRiga {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+}
+
+.campiRiga .campo {
+  flex: 1 1 150px;
+  min-width: 150px;
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Story 9.30 - riusato per il pulsante "Annulla" della riga in modifica
+   inline (era in precedenza il pulsante testuale "Cancella", sostituito
+   dall'icona .iconaBottoneDanger sopra) - colore neutro, non piu' danger,
+   coerente con slot.module.css/partite.module.css. NuovoAllenatoreForm.tsx
+   non usa questa classe (verificato) - nessun impatto su quel form. */
 .bottoneSecondario {
   margin-top: var(--space-4);
   background: var(--color-surface);
-  color: var(--color-danger);
+  color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-3);

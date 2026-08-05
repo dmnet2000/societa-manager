@@ -29,11 +29,33 @@ export default async function PrecaricamentoAllenatoriPage() {
 
       <section className={styles.sezione}>
         <h2>Elenco Allenatori</h2>
-        <div className={styles.lista}>
-          {allenatori.map((allenatore) => (
-            <AllenatoreRow key={allenatore.id} allenatore={allenatore} />
-          ))}
-        </div>
+        {allenatori.length === 0 ? (
+          <p className={styles.messaggioVuoto}>Nessun Allenatore precaricato.</p>
+        ) : (
+          // Review fix: wrapper con overflow-x:auto - la riga (Nome + Cognome
+          // + Codice Fiscale a 16 caratteri + Stato + due pulsanti-icona da
+          // 44px) puo' eccedere la larghezza di un viewport mobile stretto;
+          // senza questo wrapper la tabella romperebbe il layout invece di
+          // scorrere orizzontalmente solo al suo interno.
+          <div className={styles.tabellaScroll}>
+            <table className={styles.tabella}>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Cognome</th>
+                  <th>Codice Fiscale</th>
+                  <th>Stato</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allenatori.map((allenatore) => (
+                  <AllenatoreRow key={allenatore.id} allenatore={allenatore} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -4,6 +4,7 @@ import { useState, useActionState } from "react";
 import { aggiornaSlot, cancellaSlot } from "./actions";
 import { GIORNI_SETTIMANA, ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { IconaModifica, IconaCancella } from "@/app/icone-azione-riga";
 import type { GiornoSettimana } from "@prisma/client";
 import styles from "./slot.module.css";
 
@@ -31,50 +32,6 @@ type Gruppo = {
   id: string;
   nome: string;
 };
-
-// Story 15.5: icone inline scritte a mano (nessuna libreria - decisione presa
-// in fase di analisi dell'Epic 15). aria-hidden sull'<svg> perche' il
-// <button> che lo contiene ha gia' un aria-label esplicito, che da solo e'
-// gia' un nome accessibile completo - marcare anche l'icona interna evita
-// che uno screen reader provi a descriverne il contenuto grafico oltre al
-// nome del bottone (pattern diverso da GraficoMisurazione.tsx, unico altro
-// <svg> inline del progetto: li' l'<svg> non e' dentro un <button> e usa
-// <title>+role="img" come proprio nome accessibile, non aria-hidden).
-function IconaModifica() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      width="16"
-      height="16"
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14.5 2.5a1.5 1.5 0 0 1 2 2l-9 9-3 1 1-3 9-9Z" />
-    </svg>
-  );
-}
-
-function IconaCancella() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      width="16"
-      height="16"
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 6h12M8 6V4h4v2M6 6l.5 10h7L14 6M8.5 9v4M11.5 9v4" />
-    </svg>
-  );
-}
 
 // Story 15.5: da <article> card sempre espansa a riga di tabella con toggle
 // sola-lettura/modifica - stesso pattern gia' stabilito da PartitaRow.tsx
