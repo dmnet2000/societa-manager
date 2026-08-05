@@ -15,27 +15,80 @@
   color: var(--color-text-secondary);
 }
 
-/* Story 9.13 - .lista/.card/.bottoneSecondario coerenti con
-   precaricamento-allenatori.module.css (stesso pattern elenco + modifica
-   inline + cancellazione, Story 9.9). */
-.lista {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+/* Story 15.5 - tabella compatta al posto dell'elenco di card (.lista/.card
+   rimosse, non piu' referenziate da nessun componente), stesso schema di
+   partite.module.css (.tabella) per coerenza visiva tra le due pagine
+   tabellari dei moduli (orari-palestre)/(partite-campionati). */
+.tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
   margin-top: var(--space-4);
 }
 
-.card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  background: var(--color-surface);
+.tabella th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
 }
 
+.tabella td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Story 15.5 - pulsanti-icona modifica/cancellazione a destra di ogni riga
+   (AC #2), prima occorrenza nel progetto. */
+.iconaBottone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Touch target 44px (lezione gia' documentata: min-height da solo non
+     basta se il bottone e' dentro un contenitore flex con
+     align-items:center che lo schiaccia - qui il genitore e' un <td>, non
+     un contenitore flex, quindi min-width/min-height bastano). */
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  cursor: pointer;
+}
+
+.iconaBottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.iconaBottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.iconaBottoneDanger {
+  color: var(--color-danger);
+}
+
+.formIconaInline {
+  display: inline;
+}
+
+/* Story 15.5 - riusato per il pulsante "Annulla" della riga in modifica
+   inline (era in precedenza il pulsante testuale "Cancella", sostituito
+   dall'icona .iconaBottoneDanger sopra) - colore neutro, non piu' danger,
+   coerente con .bottoneSecondario di partite.module.css. */
 .bottoneSecondario {
   margin-top: var(--space-4);
   background: var(--color-surface);
-  color: var(--color-danger);
+  color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-3);

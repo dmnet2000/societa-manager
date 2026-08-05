@@ -390,7 +390,7 @@ describe("filtraVociNavigazione", () => {
         figlie: [{ href: "/palestre", label: "Palestre" }],
       },
       { tipo: "voce", href: "/gruppi", label: "Gruppi" },
-      { tipo: "voce", href: "/slot", label: "Slot" },
+      { tipo: "voce", href: "/slot", label: "Orari" },
       { tipo: "voce", href: "/impostazioni", label: "Impostazioni" },
       { tipo: "voce", href: "/permessi-certificati", label: "Permessi certificati" },
       { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },

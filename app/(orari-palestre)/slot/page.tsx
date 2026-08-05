@@ -42,7 +42,14 @@ export default async function SlotPage() {
 
   return (
     <main>
-      <h1>Slot</h1>
+      {/* Story 15.5 (review fix): il navLabel di questa rotta e' diventato
+          "Orari" (route-guard.ts) - il titolo di pagina deve corrispondere,
+          altrimenti un utente che clicca "Orari" nel menu atterrerebbe su
+          una pagina ancora intitolata "Slot", vanificando la disambiguazione
+          che il rename voleva ottenere. I sotto-titoli "Nuovo Slot"/"Elenco
+          Slot" restano invariati: si riferiscono all'entita' di dominio
+          Slot che si sta gestendo, non al nome della pagina in nav. */}
+      <h1>Orari</h1>
 
       <section className={styles.sezione}>
         <h2>Nuovo Slot</h2>
@@ -54,11 +61,22 @@ export default async function SlotPage() {
         {slot.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuno Slot inserito.</p>
         ) : (
-          <div className={styles.lista}>
-            {slot.map((s) => (
-              <SlotRow key={s.id} slot={s} campi={campi} gruppi={gruppi} />
-            ))}
-          </div>
+          <table className={styles.tabella}>
+            <thead>
+              <tr>
+                <th>Giorno</th>
+                <th>Orario</th>
+                <th>Campo</th>
+                <th>Gruppo</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slot.map((s) => (
+                <SlotRow key={s.id} slot={s} campi={campi} gruppi={gruppi} />
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </main>

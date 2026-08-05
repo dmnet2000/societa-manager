@@ -130,7 +130,19 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "I miei Gruppi",
   },
-  { prefix: "/slot", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Slot" },
+  {
+    // Story 15.5 (Epic 15): navLabel rinominato da "Slot" a "Orari" (solo
+    // etichetta, nessun cambio a prefix/ruoliAmmessi/gruppo - questa rotta
+    // resta una voce diretta singola, NON entra nel sotto-menu
+    // "Orari/Palestre" di Story 15.2). Sovrapposizione di naming nota e
+    // accettata dall'utente in fase di analisi dell'epic: Admin/Dirigente
+    // vedono sia questa voce singola "Orari" sia, se hanno accesso anche a
+    // /palestre, il sotto-menu "Orari/Palestre" (che per loro mostra solo
+    // "Palestre").
+    prefix: "/slot",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Orari",
+  },
   { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
   { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
   {
