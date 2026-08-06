@@ -11,6 +11,7 @@ const campionatoFindFirstMock = vi.fn();
 const campionatoCreateMock = vi.fn();
 const campionatoFindUniqueMock = vi.fn();
 const campionatoDeleteMock = vi.fn();
+const campionatoUpdateMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -35,6 +36,7 @@ vi.mock("@/lib/prisma", () => ({
       create: campionatoCreateMock,
       findUnique: campionatoFindUniqueMock,
       delete: campionatoDeleteMock,
+      update: campionatoUpdateMock,
     },
   },
 }));
@@ -48,7 +50,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaCampionato, cancellaCampionato } = await import("./actions");
+const { creaCampionato, cancellaCampionato, aggiornaCampionato } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -476,6 +478,268 @@ describe("cancellaCampionato", () => {
     );
 
     expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
+    expect(result).toEqual({ success: true });
+  });
+});
+
+// Story 10.8: stesso schema di casi di cancellaCampionato sopra (stesso
+// perimetro di autorizzazione, risolviAutorizzazioneGruppo con
+// permettiStagionePassata: true), piu' i casi specifici di validazione
+// nome/linkFipav.
+describe("aggiornaCampionato", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue(buildUser(["ADMIN"]));
+    gruppoFindUniqueMock.mockReset();
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    allenatoreFindFirstMock.mockReset();
+    gruppoAllenatoreFindUniqueMock.mockReset();
+    campionatoFindUniqueMock.mockReset();
+    campionatoFindUniqueMock.mockResolvedValue({
+      gruppoId: "gruppo-1",
+      annoAgonisticoId: "anno-1",
+    });
+    campionatoFindFirstMock.mockReset();
+    campionatoFindFirstMock.mockResolvedValue(null);
+    campionatoUpdateMock.mockReset();
+    campionatoUpdateMock.mockResolvedValue({});
+    trovaAnnoAgonisticoCorrenteMock.mockReset();
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(ANNO_CORRENTE);
+    revalidatePathMock.mockReset();
+  });
+
+  it("returns FORBIDDEN and touches nothing when the caller lacks the required Ruolo", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when campionatoId is missing", async () => {
+    const result = await aggiornaCampionato(undefined, buildFormData({ nome: "Girone A" }));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Campionato non specificato." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when nome is empty (AC #2)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "  " })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome del Campionato è obbligatorio." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Campionato does not exist", async () => {
+    campionatoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-inesistente", nome: "Girone A" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Campionato non trovato." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an Allenatore who does not coach the Gruppo owning the Campionato", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("allows an Allenatore who coaches the Gruppo owning the Campionato to update it, trimming nome and saving linkFipav (AC #1)", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    allenatoreFindFirstMock.mockResolvedValue({ id: "allenatore-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ id: "ga-1" });
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({
+        campionatoId: "campionato-1",
+        nome: "  Girone A  ",
+        linkFipav: "https://www.federvolley.it/girone-a",
+      })
+    );
+
+    expect(campionatoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { nome: "Girone A", linkFipav: "https://www.federvolley.it/girone-a" },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/campionati");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("saves linkFipav as null when left empty (AC #3, clears an existing link)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", linkFipav: "  " })
+    );
+
+    expect(campionatoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { nome: "Girone A", linkFipav: null },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("allows Admin/Dirigente to update any Campionato without ownership check", async () => {
+    getUserMock.mockResolvedValue(buildUser(["DIRIGENTE"]));
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(allenatoreFindFirstMock).not.toHaveBeenCalled();
+    expect(campionatoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { nome: "Girone A", linkFipav: null },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("allows Admin/Dirigente to update a Campionato of a Gruppo from a past season (AC #4, same as cancellaCampionato)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-passato" });
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(campionatoUpdateMock).toHaveBeenCalled();
+    expect(result).toEqual({ success: true });
+  });
+
+  it("still refuses an Allenatore trying to update a Campionato of a Gruppo from a past season", async () => {
+    getUserMock.mockResolvedValue(buildUser(["ALLENATORE"]));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-passato" });
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato per la stagione corrente." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when campionato.update throws", async () => {
+    campionatoUpdateMock.mockRejectedValueOnce(new Error("db down"));
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare il Campionato. Riprova." },
+    });
+  });
+
+  // Review fix (Blind Hunter + Edge Case Hunter): nessuna validazione
+  // server-side su linkFipav permetteva uno schema javascript:/data: reso
+  // poi come href cliccabile - stesso rischio gia' evitato per il link Maps
+  // di Palestra.
+  it.each([
+    "javascript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "www.federvolley.it/girone-a",
+    "non-e-un-link",
+  ])("rejects an unsafe or protocol-less linkFipav value: %s", async (valore) => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", linkFipav: valore })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il link al portale FIPAV non è valido (deve iniziare con http:// o https://).",
+      },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a well-formed https linkFipav value", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({
+        campionatoId: "campionato-1",
+        nome: "Girone A",
+        linkFipav: "https://www.federvolley.it/girone-a",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  // Review fix (Blind Hunter + Edge Case Hunter): creaCampionato blocca un
+  // nome duplicato per lo stesso Gruppo/stagione, aggiornaCampionato non lo
+  // faceva - rinominare poteva far collidere silenziosamente due Campionati.
+  it("rejects a rename that would collide with a sibling Campionato in the same Gruppo/season", async () => {
+    campionatoFindFirstMock.mockResolvedValue({ id: "campionato-2" });
+
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(campionatoFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        id: { not: "campionato-1" },
+        nome: { equals: "Girone A", mode: "insensitive" },
+        annoAgonisticoId: "anno-1",
+        gruppoId: "gruppo-1",
+      },
+    });
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Esiste già un Campionato con questo nome per questo Gruppo in questa stagione.",
+      },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("allows keeping the Campionato's own unchanged name (excluded from the duplicate check)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A" })
+    );
+
+    expect(campionatoFindFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: { not: "campionato-1" } }) })
+    );
     expect(result).toEqual({ success: true });
   });
 });

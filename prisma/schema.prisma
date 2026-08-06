@@ -424,6 +424,11 @@ model Gruppo {
 model Campionato {
   id               String         @id @default(uuid())
   nome             String
+  // Story 10.8: link opzionale al portale FIPAV/Lega Pallavolo del girone -
+  // testo libero, stesso principio di Palestra.indirizzo, nessuna
+  // validazione di dominio specifica (leghe regionali/territoriali hanno
+  // domini propri).
+  linkFipav        String?
   annoAgonisticoId String
   annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
   gruppoId         String

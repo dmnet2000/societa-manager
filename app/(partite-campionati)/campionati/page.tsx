@@ -5,6 +5,7 @@ import { parseRuoli } from "@/lib/ruoli";
 import { NuovoCampionatoForm } from "./NuovoCampionatoForm";
 import { ImportaGareForm } from "./ImportaGareForm";
 import { EliminaCampionatoForm } from "./EliminaCampionatoForm";
+import { ModificaCampionatoForm } from "./ModificaCampionatoForm";
 import styles from "./campionati.module.css";
 
 // Dati mutabili in tempo reale (creazione/collegamento Campionato tramite
@@ -85,7 +86,11 @@ export default async function CampionatiPage() {
                   <ul className={styles.listaAssegnati}>
                     {gruppo.campionati.map((campionato) => (
                       <li key={campionato.id}>
-                        {campionato.nome}
+                        <ModificaCampionatoForm
+                          campionatoId={campionato.id}
+                          nome={campionato.nome}
+                          linkFipav={campionato.linkFipav}
+                        />
                         <ImportaGareForm
                           gruppoId={gruppo.id}
                           campionatoId={campionato.id}

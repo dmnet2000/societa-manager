@@ -7,6 +7,7 @@ const gruppoCreateMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
 const gruppoAllenatoreFindUniqueMock = vi.fn();
+const gruppoAllenatoreDeleteManyMock = vi.fn();
 const allenatoreFindFirstMock = vi.fn();
 const gruppoAtletaUpsertMock = vi.fn();
 const gruppoAtletaDeleteManyMock = vi.fn();
@@ -35,6 +36,7 @@ vi.mock("@/lib/prisma", () => ({
     gruppoAllenatore: {
       create: gruppoAllenatoreCreateMock,
       findUnique: gruppoAllenatoreFindUniqueMock,
+      deleteMany: gruppoAllenatoreDeleteManyMock,
     },
     gruppoAtleta: { upsert: gruppoAtletaUpsertMock, deleteMany: gruppoAtletaDeleteManyMock },
   },
@@ -71,8 +73,14 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaGruppo, assegnaAllenatore, assegnaAtleta, rimuoviAtleta, creaEAssegnaAtleta } =
-  await import("./actions");
+const {
+  creaGruppo,
+  assegnaAllenatore,
+  rimuoviAllenatore,
+  assegnaAtleta,
+  rimuoviAtleta,
+  creaEAssegnaAtleta,
+} = await import("./actions");
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData();
@@ -92,6 +100,7 @@ beforeEach(() => {
   gruppoFindUniqueMock.mockReset();
   gruppoAllenatoreCreateMock.mockReset();
   gruppoAllenatoreFindUniqueMock.mockReset();
+  gruppoAllenatoreDeleteManyMock.mockReset();
   allenatoreFindFirstMock.mockReset();
   gruppoAtletaUpsertMock.mockReset();
   gruppoAtletaDeleteManyMock.mockReset();
@@ -279,6 +288,96 @@ describe("assegnaAllenatore", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile assegnare l'Allenatore. Riprova." },
+    });
+  });
+});
+
+// Story 9.32: stesso perimetro/stile di assegnaAllenatore sopra (nessuna
+// risoluzione annoAgonisticoId/risolviPossessoGruppo - a differenza di
+// rimuoviAtleta, qui il perimetro resta Admin/Dirigente-only).
+describe("rimuoviAllenatore", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente (AC #5)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "g1", allenatoreId: "a1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(gruppoAllenatoreDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error naming gruppoId when it is missing", async () => {
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "", allenatoreId: "a1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(gruppoAllenatoreDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error naming allenatoreId when it is missing", async () => {
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "g1", allenatoreId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Allenatore non specificato." },
+    });
+    expect(gruppoAllenatoreDeleteManyMock).not.toHaveBeenCalled();
+  });
+
+  it("removes the Allenatore from the Gruppo and revalidates both /gruppi and /i-miei-gruppi (AC #1, #2)", async () => {
+    gruppoAllenatoreDeleteManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "g1", allenatoreId: "a1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAllenatoreDeleteManyMock).toHaveBeenCalledWith({
+      where: { gruppoId: "g1", allenatoreId: "a1" },
+    });
+    // Review fix: /i-miei-gruppi calcola i Gruppi propri di un Allenatore
+    // filtrando su GruppoAllenatore - senza questa revalidazione resterebbe
+    // con dati non aggiornati (stesso bug gia' corretto per assegnaAtleta/
+    // rimuoviAtleta, Story 9.15).
+    expect(revalidatePathMock).toHaveBeenCalledWith("/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/i-miei-gruppi");
+  });
+
+  it("is idempotent: removing an already-removed assignment does not error (AC #3)", async () => {
+    gruppoAllenatoreDeleteManyMock.mockResolvedValue({ count: 0 });
+
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "g1", allenatoreId: "a1" })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a friendly error, no crash, on a Prisma failure", async () => {
+    gruppoAllenatoreDeleteManyMock.mockRejectedValue(new Error("db down"));
+
+    const result = await rimuoviAllenatore(
+      undefined,
+      buildFormData({ gruppoId: "g1", allenatoreId: "a1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Allenatore. Riprova." },
     });
   });
 });

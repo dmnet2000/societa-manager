@@ -216,7 +216,13 @@ export async function rimuoviAllenatore(
     };
   }
 
+  // Review fix (Blind Hunter): /i-miei-gruppi calcola i Gruppi propri di un
+  // Allenatore filtrando proprio su GruppoAllenatore (allenatori: { some:
+  // { allenatoreId } }) - senza questa revalidatePath la sua pagina
+  // self-service resterebbe con dati non aggiornati, stesso identico bug
+  // gia' corretto per assegnaAtleta/rimuoviAtleta (Story 9.15 review fix).
   revalidatePath("/gruppi");
+  revalidatePath("/i-miei-gruppi");
   return { success: true };
 }
 

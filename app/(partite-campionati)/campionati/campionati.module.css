@@ -47,6 +47,29 @@
   padding: 2px 0;
 }
 
+/* Story 10.8 - riga sola-lettura del toggle ModificaCampionatoForm, stesso
+   registro di .listaAssegnati/.bottoneCompatto sopra. */
+.rigaCampionato {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+}
+
+.linkFipav {
+  color: var(--color-button-bg);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.azioniCompatto {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .formCompatto {
   display: flex;
   flex-direction: column;
