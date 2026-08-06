@@ -1859,9 +1859,9 @@ so that la navigazione separa chiaramente le funzionalità operative quotidiane 
 
 **Acceptance Criteria:**
 
-1. **Given** un Admin **When** apre la navigazione **Then** vede "Accounting" come ultima voce (non più "Amministrazione"), che espansa mostra `/admin`, `/precaricamento-allenatori`, `/permessi-accesso`
-2. **And** nessuna regressione sull'autorizzazione esistente delle tre rotte, incluso il meccanismo `permessiConfigurabili` di `/precaricamento-allenatori` (Epic 12) — se in futuro un altro Ruolo venisse abilitato su quella rotta, la vedrebbe comparire dentro "Accounting" espanso, senza ulteriori modifiche a questa storia
-3. **And** `/permessi-certificati` (voce distinta, non menzionata nella richiesta originale) resta dov'è oggi, non spostata dentro "Accounting" — non assumere che vada inclusa solo perché tematicamente simile
+1. **Given** un Admin **When** apre la navigazione **Then** vede "Accounting" come ultima voce (non più "Amministrazione"), che espansa mostra `/admin`, `/precaricamento-allenatori`, `/permessi-accesso`, `/permessi-certificati`
+2. **And** nessuna regressione sull'autorizzazione esistente delle quattro rotte, incluso il meccanismo `permessiConfigurabili` di `/precaricamento-allenatori` (Epic 12) — se in futuro un altro Ruolo venisse abilitato su quella rotta, la vedrebbe comparire dentro "Accounting" espanso, senza ulteriori modifiche a questa storia
+3. ~~**And** `/permessi-certificati` (voce distinta, non menzionata nella richiesta originale) resta dov'è oggi, non spostata dentro "Accounting" — non assumere che vada inclusa solo perché tematicamente simile~~ — **ribaltato il 2026-08-06**: era un fraintendimento dell'appunto originale dell'utente in fase di analisi, non una decisione di prodotto voluta. `/permessi-certificati` è ora dentro "Accounting" (quarta figlia).
 
 ### Story 15.5: Redesign pagina Slot (righe compatte, modifica inline)
 

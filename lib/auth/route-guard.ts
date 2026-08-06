@@ -183,7 +183,6 @@ export const PROTECTED_ROUTES: {
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "Vista d'insieme",
   },
-  { prefix: "/permessi-certificati", ruoliAmmessi: ["ADMIN"], navLabel: "Permessi certificati" },
   { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },
   {
     prefix: "/wizard-nuova-stagione",
@@ -247,13 +246,29 @@ export const PROTECTED_ROUTES: {
     // Story 12.1: pagina Admin-only di gestione dei permessi configurabili
     // per rotta (Epic 12) - ADMIN sempre escluso dalle righe configurabili
     // stesse (accesso pieno hardcoded), quindi questa rotta e' anch'essa
-    // ADMIN-only, stesso trattamento di /permessi-certificati (quest'ultima
-    // NON fa parte di "Accounting" - AC #3, non menzionata nella richiesta
-    // originale nonostante la somiglianza di nome, resta dov'e').
+    // ADMIN-only, stesso trattamento di /permessi-certificati (sotto).
     // Story 15.4: stesso gruppo di /admin sopra ("Accounting").
     prefix: "/permessi-accesso",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Permessi di accesso",
+    gruppo: "Accounting",
+  },
+  {
+    // Story 15.4 estensione (2026-08-06): spostata qui su richiesta esplicita
+    // dell'utente - l'esclusione originale di Story 15.4 ("NON fa parte di
+    // Accounting, non menzionata nella richiesta originale nonostante la
+    // somiglianza di nome con /permessi-accesso") si e' rivelata un
+    // fraintendimento: l'appunto originale dell'utente chiedeva davvero di
+    // spostare /permessi-certificati sotto Accounting, solo non era stato
+    // colto nell'analisi di apertura dell'Epic 15. Spostata qui (in fondo,
+    // insieme alle altre rotte del gruppo) invece che lasciata alla sua
+    // posizione originale (prima di /dati-fisici) - raggruppaVociNavigazione
+    // (Story 15.1) posiziona il nodo gruppo all'indice della PRIMA rotta del
+    // gruppo incontrata nell'array, quindi la posizione conta (stesso motivo
+    // gia' documentato sopra per /admin, AC #1 "Accounting" ultima voce).
+    prefix: "/permessi-certificati",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Permessi certificati",
     gruppo: "Accounting",
   },
 ];

@@ -59,12 +59,7 @@ describe("filtraVociNavigazione", () => {
   it("un Admin vede tutte le voci Admin-ammesse", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(
-      expect.arrayContaining([
-        "/gruppi",
-        "/impostazioni",
-        "/permessi-certificati",
-        "/wizard-nuova-stagione",
-      ])
+      expect.arrayContaining(["/gruppi", "/impostazioni", "/wizard-nuova-stagione"])
     );
     // Review fix (Story 15.2) + Story 15.3 + Story 15.4 + post-15.5 (/slot
     // entrato nel gruppo Orari/Palestre): non basta non richiederle piu' -
@@ -81,6 +76,10 @@ describe("filtraVociNavigazione", () => {
     expect(href).not.toContain("/admin");
     expect(href).not.toContain("/precaricamento-allenatori");
     expect(href).not.toContain("/permessi-accesso");
+    // Story 15.4 estensione: /permessi-certificati e' entrata nel gruppo
+    // "Accounting" (prima era una voce diretta) - stesso pattern .not.toContain
+    // delle altre tre rotte del gruppo sopra.
+    expect(href).not.toContain("/permessi-certificati");
   });
 
   // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
@@ -193,9 +192,14 @@ describe("filtraVociNavigazione", () => {
     expect(atleti).toHaveLength(4);
 
     expect(accounting.map((r) => r.prefix)).toEqual(
-      expect.arrayContaining(["/admin", "/precaricamento-allenatori", "/permessi-accesso"])
+      expect.arrayContaining([
+        "/admin",
+        "/precaricamento-allenatori",
+        "/permessi-accesso",
+        "/permessi-certificati",
+      ])
     );
-    expect(accounting).toHaveLength(3);
+    expect(accounting).toHaveLength(4);
 
     // Nessuna rotta ha un "gruppo" al di fuori dei tre valori attesi - una
     // futura story che aggiungesse un quarto gruppo dovra' estendere questo
@@ -423,7 +427,6 @@ describe("filtraVociNavigazione", () => {
       },
       { tipo: "voce", href: "/gruppi", label: "Gruppi" },
       { tipo: "voce", href: "/impostazioni", label: "Impostazioni" },
-      { tipo: "voce", href: "/permessi-certificati", label: "Permessi certificati" },
       { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
       { tipo: "voce", href: "/campionati", label: "Campionati" },
       { tipo: "voce", href: "/partite", label: "Partite" },
@@ -434,16 +437,21 @@ describe("filtraVociNavigazione", () => {
           { href: "/admin", label: "Amministrazione" },
           { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
           { href: "/permessi-accesso", label: "Permessi di accesso" },
+          { href: "/permessi-certificati", label: "Permessi certificati" },
         ],
       },
     ]);
   });
 
-  // Story 15.4 (AC #1): il gruppo "Accounting" ha le tre figlie attese,
+  // Story 15.4 (AC #1): il gruppo "Accounting" ha le quattro figlie attese,
   // nell'ordine del Task 1, e compare per ultimo nell'array risultante -
   // non solo "presente" (gia' verificato anche dal test di ordine completo
   // sopra, qui isolato con trovaGruppo per un test piu' mirato e leggibile).
-  it("Admin vede il gruppo Accounting con tutte e tre le figlie, posizionato per ultimo", () => {
+  // Story 15.4 estensione (2026-08-06): /permessi-certificati e' entrata nel
+  // gruppo (quarta figlia) - l'esclusione originale (AC #3) era un
+  // fraintendimento dell'appunto originale dell'utente, corretto su sua
+  // richiesta esplicita.
+  it("Admin vede il gruppo Accounting con tutte e quattro le figlie, posizionato per ultimo", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     const gruppo = trovaGruppo(voci, "Accounting");
     expect(gruppo).toBeDefined();
@@ -451,34 +459,30 @@ describe("filtraVociNavigazione", () => {
       { href: "/admin", label: "Amministrazione" },
       { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
       { href: "/permessi-accesso", label: "Permessi di accesso" },
+      { href: "/permessi-certificati", label: "Permessi certificati" },
     ]);
     expect(voci[voci.length - 1]).toBe(gruppo);
-    // Review fix (Story 15.4): AC #3 - /permessi-certificati non deve mai
-    // comparire tra le figlie di "Accounting" nonostante la somiglianza di
-    // nome con /permessi-accesso - guardia esplicita e isolata, non solo
-    // incidentale al test di ordine completo sopra.
-    expect(gruppo?.figlie.map((f) => f.href)).not.toContain("/permessi-certificati");
   });
 
   // Story 15.4: stesso principio dei test gemelli per "Orari/Palestre" e
-  // "Atleti" (Story 15.2/15.3) - un Ruolo senza accesso a nessuna delle tre
-  // rotte non deve produrre un nodo gruppo "Accounting" spurio.
-  it("Allenatore non vede alcun gruppo Accounting (nessun accesso alle tre rotte)", () => {
+  // "Atleti" (Story 15.2/15.3) - un Ruolo senza accesso a nessuna delle
+  // quattro rotte non deve produrre un nodo gruppo "Accounting" spurio.
+  it("Allenatore non vede alcun gruppo Accounting (nessun accesso alle quattro rotte)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ALLENATORE"]), "Accounting");
     expect(gruppo).toBeUndefined();
   });
 
-  // Review fix (Story 15.4): le tre rotte di "Accounting" sono oggi
+  // Review fix (Story 15.4): le quattro rotte di "Accounting" sono oggi
   // ruoliAmmessi: ["ADMIN"] soltanto, ma Dirigente ha accesso a molte altre
   // rotte ADMIN-adiacenti (/gruppi, /slot, /wizard-nuova-stagione,
   // /campionati) - senza questo test, un futuro allargamento accidentale di
-  // ruoliAmmessi su una delle tre rotte a includere DIRIGENTE sarebbe
+  // ruoliAmmessi su una delle quattro rotte a includere DIRIGENTE sarebbe
   // rilevato solo dal test generico "esistono esattamente i nodi gruppo
   // attesi" (che conta le rotte, non chi le vede), non da un test scoped al
   // Ruolo - a differenza di Atleti/Orari-Palestre, che hanno gia' una
   // copertura simmetrica Admin+Dirigente perche' quei gruppi condividono
   // davvero dei Ruoli.
-  it("Dirigente non vede alcun gruppo Accounting (le tre rotte sono ADMIN-only)", () => {
+  it("Dirigente non vede alcun gruppo Accounting (le quattro rotte sono ADMIN-only)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["DIRIGENTE"]), "Accounting");
     expect(gruppo).toBeUndefined();
   });

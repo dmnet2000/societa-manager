@@ -22,9 +22,9 @@ X - non ho ancora capito se la funzionalità di invio E-mail del certificato è 
 		
 		
 Fix:
-- Conferma Tesseramento non visibile il pulsante conferma
+- X Conferma Tesseramento non visibile il pulsante conferma
 	magari servirebbe una conferma massiva anche per velocizzare con un check box sganciare fuzionalità da iscrizione
-	
+
 
 
 		
@@ -34,5 +34,5 @@ Epic Sposnsor
 distignure benner pubblicitari dalle convenzioni con la possibilità da parte del genitore/atleta/allenatore di genere un voucher con il proprio Nome cognome, che certifica che l'utente fa parte della società ed ha diritto ad una scontistica.
   		
 		
-- nuova epica
-Trasformare in app mobile per la visualizzazione mobile
+- X nuova epica
+Trasformare in app mobile per la visualizzazione mobile (già disponibile: Epic 14, "Installa app"/"Aggiungi a Home" dal browser)
