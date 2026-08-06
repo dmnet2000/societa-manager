@@ -1419,6 +1419,28 @@ so that scorro più rapidamente elenchi lunghi di Allenatori senza dover scorrer
 
 **And** nessuna regressione sul blocco di cancellazione per Allenatore agganciato/assegnato a un Gruppo, né sulla `window.confirm` esistente
 
+### Story 9.31: Email Segreteria configurabile
+
+As a Admin,
+I want configurare un indirizzo email dedicato per la Segreteria,
+so that l'email automatica di notifica nuovo Certificato Medico caricato (Story 4.3, FR-13) arrivi a un indirizzo affidabile invece di dipendere dall'assegnazione del Ruolo Segreteria a un Utente.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-06), nata da un chiarimento: la funzionalità di invio email (Story 4.3) esisteva già ed era completa, ma non c'era alcun posto per configurare "l'indirizzo email della Segreteria" — i destinatari venivano derivati in tempo reale da `elencaEmailPerRuolo("SEGRETERIA")` (`lib/utenti/email-per-ruolo.ts`), cioè ogni `Utente` attivo con Ruolo Segreteria assegnato in `/admin`. Se nessun Utente aveva quel Ruolo, l'email non partiva mai, senza errori (comportamento silenzioso, causa della confusione dell'utente). **Decisioni prese in fase di creazione storia**: (a) il nuovo indirizzo **sostituisce** l'invio per-Ruolo per questa notifica (non si aggiunge) — un solo posto da mantenere aggiornato; (b) configurabile in un nuovo campo `emailSegreteria` su `ConfigurazioneApplicazione` (tabella singleton esistente, no-RLS, già usata per `nomeSettore`), esposto con un nuovo form direttamente sulla pagina hub `/impostazioni` (oggi solo un elenco di link a `/smtp`/`/logo`, Story 9.24) — non su `/smtp`, che resta riservata ai soli dati di trasporto SMTP. Se il campo non è configurato, stesso comportamento fail-soft di oggi: nessun invio, nessun errore (mirror di AC #5 della Story 4.3 originale). L'altro consumer di `elencaEmailPerRuolo` (promemoria scadenza certificati, Story 4.6, verso Ruolo Dirigente) resta invariato — fuori scope, nessuna richiesta dell'utente in merito.
+
+**Acceptance Criteria:**
+
+**Given** sono autenticato come Admin **When** visito `/impostazioni` **Then** vedo, oltre ai link esistenti a Configurazione SMTP/Configurazione logo, un nuovo campo "Email Segreteria" con il valore attualmente configurato (vuoto se mai impostato) e un pulsante "Salva"
+
+**Given** imposto un indirizzo email valido nel campo "Email Segreteria" e salvo **When** un'Atleta (o il suo Genitore/Allenatore) carica un nuovo Certificato Medico **Then** l'email di notifica (Story 4.3) viene inviata a quell'indirizzo, non più a chi ha il Ruolo Segreteria
+
+**Given** il campo "Email Segreteria" non è mai stato configurato (valore vuoto/nullo) **When** un Certificato Medico viene caricato **Then** nessuna email di notifica viene inviata, nessun errore mostrato all'utente che carica (stesso comportamento silenzioso di oggi, solo la fonte del "nessun destinatario" cambia da Ruolo a configurazione)
+
+**And** validazione base dell'indirizzo (formato email plausibile, lunghezza massima 254 caratteri) prima del salvataggio — un valore chiaramente non valido viene rifiutato con un messaggio, non salvato silenziosamente
+
+**And** solo Admin può leggere/modificare questo campo (`requireRuolo("ADMIN")`, stesso perimetro di `/smtp`/`/logo`/`salvaNomeSettoreAction`)
+
+**And** nessuna regressione sul promemoria di scadenza certificati verso Dirigente (Story 4.6) — quel percorso non usa `emailSegreteria`, resta invariato
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

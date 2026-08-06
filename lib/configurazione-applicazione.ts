@@ -24,3 +24,23 @@ export async function salvaNomeSettore(nomeSettore: string | null): Promise<void
     update: { nomeSettore },
   });
 }
+
+// Story 9.31: mirror esatto di leggiNomeSettore/salvaNomeSettore sopra -
+// destinatario unico dell'email di notifica upload Certificato Medico
+// (Story 4.3), sostituisce la derivazione precedente da ogni Utente con
+// Ruolo Segreteria.
+export async function leggiEmailSegreteria(): Promise<string | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { emailSegreteria: true },
+  });
+  return configurazione?.emailSegreteria ?? null;
+}
+
+export async function salvaEmailSegreteria(email: string | null): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, emailSegreteria: email },
+    update: { emailSegreteria: email },
+  });
+}

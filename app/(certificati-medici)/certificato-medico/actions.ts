@@ -19,7 +19,7 @@ import {
 } from "@/lib/db-rls/certificato-medico";
 import { creaNotifica } from "@/lib/db-rls/notifica";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
-import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
+import { leggiEmailSegreteria } from "@/lib/configurazione-applicazione";
 import { inviaEmail } from "@/lib/email/invia-email";
 import { parseDataIsoValida } from "@/lib/parse-data-iso";
 
@@ -157,11 +157,15 @@ export async function caricaCertificato(
     // Story 4.3 (FR-13), AC #4: effetto collaterale non bloccante,
     // parallelo e indipendente dal blocco creaNotifica sopra - un
     // fallimento qui non deve mai impedire il tentativo dell'altro, ne'
-    // far fallire l'upload. AC #5: nessun tentativo di invio se non ci
-    // sono destinatari, non e' un errore.
+    // far fallire l'upload. AC #5: nessun tentativo di invio se non c'e'
+    // un destinatario configurato, non e' un errore. Story 9.31: il
+    // destinatario e' l'Email Segreteria configurata in /impostazioni
+    // (ConfigurazioneApplicazione.emailSegreteria) - non piu' derivato da
+    // ogni Utente con Ruolo Segreteria (elencaEmailPerRuolo, ancora usata
+    // dal promemoria scadenza verso Dirigente, Story 4.6, invariato).
     try {
-      const destinatari = await elencaEmailPerRuolo("SEGRETERIA");
-      if (destinatari.length > 0) {
+      const destinatario = await leggiEmailSegreteria();
+      if (destinatario) {
         const atlete = await elencaAtlete(supabase);
         const atleta = atlete.find((a) => a.id === atletaId);
         if (!atleta) {
@@ -177,7 +181,7 @@ export async function caricaCertificato(
         const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
 
         await inviaEmail({
-          destinatario: destinatari,
+          destinatario,
           oggetto: "Nuovo Certificato Medico caricato",
           testo: `È stato caricato un nuovo Certificato Medico per ${atleta?.nome ?? "un'Atleta"}.`,
           allegati: [

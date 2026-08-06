@@ -14,9 +14,14 @@ export type AllegatoEmail = {
 };
 
 export type DatiEmail = {
-  // Story 4.3: string[] per inviare a piu' destinatari (es. ogni Utente
-  // Segreteria) in un solo invio - Nodemailer accetta entrambe le forme
-  // nativamente per "to".
+  // Story 4.3: string[] per inviare a piu' destinatari in un solo invio
+  // (oggi: promemoria scadenza certificati verso ogni Utente Dirigente,
+  // Story 4.6/app/api/cron/promemoria-certificati) - Nodemailer accetta
+  // entrambe le forme nativamente per "to". Review fix (Story 9.31): la
+  // notifica upload certificato verso Segreteria usava questa forma, ma da
+  // Story 9.31 e' un singolo indirizzo configurato (string), non piu' un
+  // array derivato dal Ruolo - questo commento citava ancora quell'esempio
+  // ormai superato.
   destinatario: string | string[];
   oggetto: string;
   testo: string;

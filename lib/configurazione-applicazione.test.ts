@@ -17,6 +17,8 @@ vi.mock("@/lib/prisma", () => ({
 const {
   leggiNomeSettore,
   salvaNomeSettore,
+  leggiEmailSegreteria,
+  salvaEmailSegreteria,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -76,6 +78,67 @@ describe("salvaNomeSettore", () => {
       where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, nomeSettore: null },
       update: { nomeSettore: null },
+    });
+  });
+});
+
+// Story 9.31: mirror esatto dei describe sopra per leggiNomeSettore/salvaNomeSettore.
+describe("leggiEmailSegreteria", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored emailSegreteria", async () => {
+    findUniqueMock.mockResolvedValue({ emailSegreteria: "segreteria@esempio.it" });
+
+    const result = await leggiEmailSegreteria();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { emailSegreteria: true },
+    });
+    expect(result).toBe("segreteria@esempio.it");
+  });
+
+  it("returns null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiEmailSegreteria();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ emailSegreteria: null });
+
+    const result = await leggiEmailSegreteria();
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("salvaEmailSegreteria", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
+    await salvaEmailSegreteria("segreteria@esempio.it");
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, emailSegreteria: "segreteria@esempio.it" },
+      update: { emailSegreteria: "segreteria@esempio.it" },
+    });
+  });
+
+  it("allows clearing the value back to null", async () => {
+    await salvaEmailSegreteria(null);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, emailSegreteria: null },
+      update: { emailSegreteria: null },
     });
   });
 });

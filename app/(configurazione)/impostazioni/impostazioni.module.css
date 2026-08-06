@@ -35,3 +35,76 @@
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* Story 9.31 review fix (Blind Hunter): avviso non bloccante quando
+   l'Email Segreteria non e' configurata - stessi token --color-warning-bg/
+   --color-warning gia' usati per lo stato "warning" altrove nel progetto
+   (es. badge di certificato in scadenza), qui in forma di riquadro testo
+   invece di badge inline. */
+.avviso {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+/* Story 9.31 - mirror esatto di .titoloSezione/.campo/.bottone/.errore/
+   .successo in app/(configurazione)/logo/logo.module.css. */
+.titoloSezione {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+  font-size: 16px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.bottone {
+  margin-top: var(--space-4);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}

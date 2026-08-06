@@ -10,7 +10,7 @@ const rimuoviFileCertificatoMock = vi.fn();
 const collegaFileCertificatoMock = vi.fn();
 const trovaCertificatoPerAtletaMock = vi.fn();
 const creaNotificaMock = vi.fn();
-const elencaEmailPerRuoloMock = vi.fn();
+const leggiEmailSegreteriaMock = vi.fn();
 const scaricaFileCertificatoMock = vi.fn();
 const inviaEmailMock = vi.fn();
 const elencaAtleteMock = vi.fn();
@@ -56,8 +56,8 @@ vi.mock("@/lib/db-rls/atleta", () => ({
   elencaAtlete: elencaAtleteMock,
 }));
 
-vi.mock("@/lib/utenti/email-per-ruolo", () => ({
-  elencaEmailPerRuolo: elencaEmailPerRuoloMock,
+vi.mock("@/lib/configurazione-applicazione", () => ({
+  leggiEmailSegreteria: leggiEmailSegreteriaMock,
 }));
 
 vi.mock("@/lib/email/invia-email", () => ({
@@ -143,8 +143,8 @@ beforeEach(() => {
   trovaCertificatoPerAtletaMock.mockResolvedValue(null);
   creaNotificaMock.mockReset();
   creaNotificaMock.mockResolvedValue(undefined);
-  elencaEmailPerRuoloMock.mockReset();
-  elencaEmailPerRuoloMock.mockResolvedValue([]);
+  leggiEmailSegreteriaMock.mockReset();
+  leggiEmailSegreteriaMock.mockResolvedValue(null);
   scaricaFileCertificatoMock.mockReset();
   scaricaFileCertificatoMock.mockResolvedValue(new Blob(["contenuto finto"]));
   inviaEmailMock.mockReset();
@@ -518,11 +518,8 @@ describe("caricaCertificato (Server Action)", () => {
     expect(result).toEqual({ success: true });
   });
 
-  it("invia un'email alla Segreteria con l'allegato dopo un caricamento riuscito (Story 4.3 AC #1/#2)", async () => {
-    elencaEmailPerRuoloMock.mockResolvedValue([
-      "segreteria1@esempio.it",
-      "segreteria2@esempio.it",
-    ]);
+  it("invia un'email all'indirizzo Segreteria configurato con l'allegato dopo un caricamento riuscito (Story 4.3 AC #1/#2, Story 9.31)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
     const file = fileValido("certificato.pdf", "application/pdf");
 
     const result = await caricaCertificato(
@@ -531,13 +528,13 @@ describe("caricaCertificato (Server Action)", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("SEGRETERIA");
+    expect(leggiEmailSegreteriaMock).toHaveBeenCalled();
     expect(scaricaFileCertificatoMock).toHaveBeenCalledWith(
       supabaseFinto,
       "atleta-1/file.pdf"
     );
     expect(inviaEmailMock).toHaveBeenCalledWith({
-      destinatario: ["segreteria1@esempio.it", "segreteria2@esempio.it"],
+      destinatario: "segreteria@esempio.it",
       oggetto: "Nuovo Certificato Medico caricato",
       testo: expect.stringContaining("Verifica Atleta"),
       allegati: [
@@ -550,8 +547,8 @@ describe("caricaCertificato (Server Action)", () => {
     });
   });
 
-  it("non invia alcuna email quando nessun Utente ha Ruolo Segreteria (Story 4.3 AC #5)", async () => {
-    elencaEmailPerRuoloMock.mockResolvedValue([]);
+  it("non invia alcuna email quando l'Email Segreteria non e' configurata (Story 4.3 AC #5, Story 9.31 AC #3)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue(null);
 
     const result = await caricaCertificato(
       undefined,
@@ -563,8 +560,8 @@ describe("caricaCertificato (Server Action)", () => {
     expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
-  it("il caricamento riesce comunque se elencaEmailPerRuolo lancia (non bloccante, Story 4.3 AC #4)", async () => {
-    elencaEmailPerRuoloMock.mockRejectedValue(new Error("db down"));
+  it("il caricamento riesce comunque se leggiEmailSegreteria lancia (non bloccante, Story 4.3 AC #4)", async () => {
+    leggiEmailSegreteriaMock.mockRejectedValue(new Error("db down"));
 
     const result = await caricaCertificato(
       undefined,
@@ -578,7 +575,7 @@ describe("caricaCertificato (Server Action)", () => {
   });
 
   it("il caricamento riesce comunque se inviaEmail lancia, es. configurazione SMTP mancante (non bloccante, Story 4.3 AC #4)", async () => {
-    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
     inviaEmailMock.mockRejectedValue(
       new Error("CONFIGURAZIONE_SMTP_MANCANTE: nessuna configurazione.")
     );
@@ -592,7 +589,7 @@ describe("caricaCertificato (Server Action)", () => {
   });
 
   it("invia comunque l'email quando l'Atleta non e' risolvibile nell'elenco, senza il nome (Story 4.3, caso limite difensivo)", async () => {
-    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
     elencaAtleteMock.mockResolvedValue([]);
 
     const result = await caricaCertificato(
@@ -612,7 +609,7 @@ describe("caricaCertificato (Server Action)", () => {
       atletaId: "atleta-1",
       filePath: "atleta-1/vecchio.pdf",
     });
-    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
 
     const result = await caricaCertificato(
       undefined,
@@ -621,7 +618,7 @@ describe("caricaCertificato (Server Action)", () => {
 
     expect(result).toEqual({ success: true });
     expect(inviaEmailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ destinatario: ["segreteria@esempio.it"] })
+      expect.objectContaining({ destinatario: "segreteria@esempio.it" })
     );
   });
 });

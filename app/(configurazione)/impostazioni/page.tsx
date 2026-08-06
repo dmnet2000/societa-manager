@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
+import { leggiEmailSegreteria } from "@/lib/configurazione-applicazione";
+import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -14,11 +16,25 @@ import styles from "./impostazioni.module.css";
 // futuro aggiorna automaticamente anche questa pagina.
 const PREFISSI_IMPOSTAZIONI = ["/smtp", "/logo"] as const;
 
-export default function ImpostazioniPage() {
+// Story 9.31: prima lettura DB su questa pagina - da hub puro a hub+form
+// (Email Segreteria, ConfigurazioneApplicazione, no-RLS - stesso principio
+// di lettura pre-auth gia' usato per nomeSettore).
+export default async function ImpostazioniPage() {
   const voci = PREFISSI_IMPOSTAZIONI.map((prefix) => {
     const route = PROTECTED_ROUTES.find((r) => r.prefix === prefix);
     return { href: prefix, label: route?.navLabel ?? prefix };
   });
+  // Review fix (Edge Case Hunter): senza try/catch, un errore DB su questa
+  // singola lettura farebbe crashare l'intero hub /impostazioni, bloccando
+  // anche l'accesso ai link a /smtp e /logo che prima non dipendevano da
+  // alcuna lettura DB - fail-soft su null, stesso principio di ogni altro
+  // effetto collaterale non bloccante di questo progetto.
+  let emailSegreteria: string | null = null;
+  try {
+    emailSegreteria = await leggiEmailSegreteria();
+  } catch (err) {
+    console.error(err);
+  }
 
   return (
     <main className="pagina-form">
@@ -33,6 +49,21 @@ export default function ImpostazioniPage() {
             </li>
           ))}
         </ul>
+        <h2 className={styles.titoloSezione}>Email Segreteria</h2>
+        {/* Review fix (Blind Hunter): la notifica di nuovo certificato
+            caricato (Story 4.3) e' silenziosa quando questo campo non e'
+            configurato (AC #3, per design) - senza un avviso esplicito qui,
+            un Admin non avrebbe modo di scoprire che nessuna email parte
+            piu', nemmeno se ha gia' assegnato il Ruolo Segreteria (che dopo
+            questa storia non ha piu' alcun effetto su questa notifica). */}
+        {!emailSegreteria && (
+          <p className={styles.avviso}>
+            Email Segreteria non configurata: le notifiche di nuovo
+            Certificato Medico caricato non verranno inviate finché non
+            imposti un indirizzo qui sotto.
+          </p>
+        )}
+        <EmailSegreteriaForm emailAttuale={emailSegreteria} />
       </div>
     </main>
   );

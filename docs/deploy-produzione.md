@@ -58,6 +58,12 @@ DIRECT_URL="<valore da .env.production, con ?sslmode=require>" npx prisma migrat
 
 Poi (e solo poi) push del codice. Se il push è già avvenuto per errore, la stessa identica correzione va lanciata subito — il downtime dura solo fino a quando questo comando non viene eseguito.
 
+## Fase 3ter — ⚠️ Dopo il deploy della Story 9.31: configurare l'Email Segreteria
+
+**Regola aggiunta il 2026-08-06, prima che si ripeta lo stesso schema di incidente silenzioso di Fase 3bis** (lì una migrazione non applicata, qui una configurazione non impostata — stesso effetto: una funzionalità smette di funzionare senza errori visibili). La Story 9.31 ha sostituito l'invio dell'email di notifica "nuovo Certificato Medico caricato" (Story 4.3) — prima mandata a ogni Utente con Ruolo Segreteria — con un singolo indirizzo configurabile su `/impostazioni`. **Se quel campo resta vuoto dopo il deploy, nessuna notifica parte più**, anche se un Utente ha già il Ruolo Segreteria assegnato — comportamento silenzioso per design (AC #3), nessun errore in log.
+
+**Subito dopo il primo deploy di questa storia**: accedere come Admin, andare su `/impostazioni` e impostare l'indirizzo email della Segreteria.
+
 ## Fase 4 — Adapter Cloudflare + wrangler + dimensione bundle `[x]`
 
 **Setup adapter:**

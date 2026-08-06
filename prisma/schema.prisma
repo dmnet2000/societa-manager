@@ -341,10 +341,15 @@ model ConfigurazioneSmtp {
 // sessione. Sempre via Prisma diretto (lib/configurazione-applicazione.ts),
 // stesso trattamento di Palestra/Gruppo/AnnoAgonistico.
 model ConfigurazioneApplicazione {
-  id          String   @id @default(uuid())
-  nomeSettore String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  nomeSettore     String?
+  // Story 9.31: destinatario unico dell'email di notifica upload Certificato
+  // Medico (Story 4.3) - sostituisce la derivazione precedente da ogni
+  // Utente con Ruolo Segreteria (lib/utenti/email-per-ruolo.ts, ancora
+  // usata dal promemoria scadenza verso Dirigente, Story 4.6, invariato).
+  emailSegreteria String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("configurazione_applicazione")
 }

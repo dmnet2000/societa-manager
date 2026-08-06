@@ -28,9 +28,9 @@ Fix:
 
 
 		
-- nuova funzionalità
+- X nuova funzionalità
 Epic Sposnsor
-- sarebbe da aggiungere una sezione sponsor / convenzioni, sezione in cui poter far visualizzare agli atleti/allenatori/genitori banner pubblicitari, convenzioni e scontistiche presso gli sponsor. I Ruoli Admin e dirigente possono inserire gli sponsor, con file di immagini/banner, e descrizione. 
+- X sarebbe da aggiungere una sezione sponsor / convenzioni, sezione in cui poter far visualizzare agli atleti/allenatori/genitori banner pubblicitari, convenzioni e scontistiche presso gli sponsor. I Ruoli Admin e dirigente possono inserire gli sponsor, con file di immagini/banner, e descrizione. 
 distignure benner pubblicitari dalle convenzioni con la possibilità da parte del genitore/atleta/allenatore di genere un voucher con il proprio Nome cognome, che certifica che l'utente fa parte della società ed ha diritto ad una scontistica.
   		
 		
