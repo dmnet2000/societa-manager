@@ -637,6 +637,13 @@
 - `window.confirm()` duplicato per la terza volta nel progetto (`AllenatoreAssegnato.tsx`, dopo `AtletaAssegnata.tsx`/`AllenatoreRow.tsx`/`SlotRow.tsx`) senza un hook/componente condiviso — refactoring sproporzionato per una story di mirroring, nessun precedente di estrazione nonostante le occorrenze già esistenti. [app/(gruppi-allenatori)/gruppi/AllenatoreAssegnato.tsx]
 - `AllenatoreAssegnato.tsx` riusa la classe CSS `styles.atletaAssegnata` (nome che cita "Atleta") per una riga di Allenatore — puramente cosmetico, un rename pulito richiederebbe toccare anche `AtletaAssegnata.tsx` già spedito.
 
+## Deferred from: code review of 9-33-atlete-riga-separata-gruppi (2026-08-06)
+
+- Il form "Assegna Atleta"/"Assegna Allenatore" (`.formInline`) non va a capo — un messaggio di errore lungo si affiderebbe solo allo scroll orizzontale esterno. Stesso gap già presente nella riga Allenatori spedita prima di questa storia, non introdotto né aggravato qui. [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx, gruppi.module.css]
+- L'errore inline per-riga di `AtletaAssegnata.tsx` è ora un figlio flessibile dentro `.listaAssegnatiInline` — potrebbe spostare/far andare a capo i chip vicini quando visibile. Caso raro, cosmetico e transitorio. [app/(gruppi-allenatori)/gruppi/AtletaAssegnata.tsx, gruppi.module.css]
+- Il commento CSS sull'ordine "l'ultima delle tre righe ha il bordo" dipende da una scelta d'ordine arbitraria (Atlete prima di Allenatori) — un futuro scambio d'ordine lo invaliderebbe silenziosamente. Nessun impatto attuale. [app/(gruppi-allenatori)/gruppi/gruppi.module.css]
+- Le etichette "Atlete:"/"Allenatori:" non sono associate semanticamente (aria) all'elenco/form che seguono — gap di accessibilità già pre-esistente per Allenatori, replicato invariato per Atlete. Un miglioramento consolidato per entrambe le righe è più adatto a una story dedicata. [app/(gruppi-allenatori)/gruppi/GruppoRow.tsx]
+
 ## Deferred from: code review of 10-8-modifica-campionato-link-fipav (2026-08-06)
 
 - Messaggio di errore residuo dopo "Annulla": se un submit fallisce e l'utente clicca "Annulla" poi riapre "Modifica", il vecchio errore ricompare senza un nuovo invio — `useActionState` non espone un modo diretto per azzerare il proprio `state`. Cosmetico, richiede una piccola ristrutturazione della gestione dello stato locale. [app/(partite-campionati)/campionati/ModificaCampionatoForm.tsx]

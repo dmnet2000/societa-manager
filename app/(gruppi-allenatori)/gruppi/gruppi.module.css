@@ -2,9 +2,11 @@
    Nessun mockup key-screen per questa pagina - restyle puro. .scrollWrapper/
    .tabella riusano 1:1 il pattern di SlotTable.module.css (Story 8.3),
    riusato anche in storico-presenze.module.css (Story 8.4). .campo/.bottone/
-   .errore/.successo coerenti con Story 8.2-8.5. .formCompatto/.bottoneCompatto/
-   .listaAssegnati sono varianti compatte per i due form di assegnazione
-   annidati dentro le celle della tabella (nessun precedente nell'Epic 8). */
+   .errore/.successo coerenti con Story 8.2-8.5. .formCompatto/.bottoneCompatto
+   sono varianti compatte per i form di assegnazione annidati dentro le celle
+   della tabella (nessun precedente nell'Epic 8). Review fix (Story 9.33,
+   Acceptance Auditor): rimosso il riferimento a .listaAssegnati, rimossa
+   come dead code dalla stessa storia - riusare .listaAssegnatiInline. */
 
 .sezione {
   margin-top: var(--space-5);
@@ -112,18 +114,6 @@
   vertical-align: top;
 }
 
-.listaAssegnati {
-  list-style: none;
-  margin: 0 0 var(--space-2);
-  padding: 0;
-  font-size: 13px;
-  color: var(--color-text-primary);
-}
-
-.listaAssegnati li {
-  padding: 2px 0;
-}
-
 /* Story 9.14 - riga Atleta con pulsante di rimozione, stesso stile compatto
    di .bottoneCompatto (azione secondaria inline in un <li>). */
 .atletaAssegnata {
@@ -167,18 +157,21 @@
   min-width: 160px;
 }
 
-/* Richiesta utente 2026-08-06 - Allenatori su riga di tabella distinta a
-   piena larghezza (era una colonna stretta accanto ad Atlete). Layout
-   orizzontale invece dello stack verticale di .formCompatto - .formInline si
-   applica insieme a .formCompatto (due classNames), sovrascrive solo
-   flex-direction/allineamento, riusa invariati gli stili di input/select/label. */
-/* Le due <tr> di uno stesso Gruppo (riga principale + riga Allenatori) non
-   devono leggersi come due Gruppi distinti - il bordo separatore vive solo
-   sull'ultima delle due (rigaAllenatori), non su quella principale. */
-.rigaPrincipale td {
+/* Richiesta utente 2026-08-06 - Allenatori (poi Atlete, Story 9.33) su riga
+   di tabella distinta a piena larghezza, non piu' colonna verticale accanto
+   alla riga principale. Layout orizzontale invece dello stack verticale di
+   .formCompatto - .formInline si applica insieme a .formCompatto (due
+   classNames), sovrascrive solo flex-direction/allineamento, riusa
+   invariati gli stili di input/select/label. */
+/* Le tre <tr> di uno stesso Gruppo (riga principale + Atlete + Allenatori)
+   non devono leggersi come Gruppi distinti - il bordo separatore vive solo
+   sull'ultima delle tre (rigaAllenatori), non sulle altre due. */
+.rigaPrincipale td,
+.rigaAtlete td {
   border-bottom: none;
 }
 
+.rigaAtlete td,
 .rigaAllenatori td {
   padding-top: var(--space-1);
   display: flex;
@@ -187,7 +180,7 @@
   gap: var(--space-2);
 }
 
-.etichettaAllenatori {
+.etichettaRigaEstesa {
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -217,6 +210,17 @@
 .azioniCompatto {
   display: flex;
   gap: var(--space-2);
+}
+
+/* Review fix (Edge Case Hunter, Story 9.33): raggruppa separatore + form
+   "Nuova Atleta" in un solo elemento della riga flessibile esterna
+   (.rigaAtlete td) - senza, i due figli di un Fragment diventerebbero
+   elementi flessibili indipendenti, perdendo il raggruppamento visivo che
+   avevano quando il <td> contenitore era ancora a layout di blocco normale. */
+.pannelloNuovaAtleta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .formCompatto label {

@@ -15,10 +15,11 @@ type Gruppo = {
 };
 
 // Richiesta esplicita dell'utente (2026-08-06): elenco Gruppi più compatto -
-// (a) Allenatori spostati su una riga di tabella distinta a piena larghezza
-// (era una colonna stretta accanto ad Atlete, ora sempre più alta per via
-// del form "Nuova Atleta"), (b) il form "Nuova Atleta" (6 campi) non è più
-// sempre visibile, compare solo dopo click su un pulsante dedicato.
+// (a) Allenatori su riga di tabella distinta a piena larghezza (fatto senza
+// story formale, in precedenza), (b) Story 9.33: stesso trattamento
+// applicato alle Atlete - riga distinta propria, elenco orizzontale invece
+// che colonna verticale. La rigaPrincipale ha quindi solo 2 colonne
+// (Nome/Categoria) - sia rigaAtlete sia rigaAllenatori usano colSpan={2}.
 export function GruppoRow({
   gruppo,
   allenatoriDisponibili,
@@ -89,8 +90,11 @@ export function GruppoRow({
       <tr className={styles.rigaPrincipale}>
         <td>{gruppo.nome}</td>
         <td>{gruppo.categoria}</td>
-        <td>
-          <ul className={styles.listaAssegnati}>
+      </tr>
+      <tr className={styles.rigaAtlete}>
+        <td colSpan={2}>
+          <span className={styles.etichettaRigaEstesa}>Atlete:</span>
+          <ul className={styles.listaAssegnatiInline}>
             {gruppo.atlete.map((atleta) => (
               <AtletaAssegnata
                 key={atleta.id}
@@ -103,7 +107,7 @@ export function GruppoRow({
           <form
             ref={atletaFormRef}
             action={atletaFormAction}
-            className={styles.formCompatto}
+            className={`${styles.formCompatto} ${styles.formInline}`}
           >
             <input type="hidden" name="gruppoId" value={gruppo.id} />
             <label htmlFor={`assegna-atleta-${gruppo.id}`}>Assegna Atleta</label>
@@ -115,11 +119,6 @@ export function GruppoRow({
                 </option>
               ))}
             </select>
-            {atletaState && "error" in atletaState && (
-              <p role="alert" className={styles.errore}>
-                {atletaState.error.message}
-              </p>
-            )}
             <button
               disabled={atletaPending}
               type="submit"
@@ -127,6 +126,11 @@ export function GruppoRow({
             >
               Assegna
             </button>
+            {atletaState && "error" in atletaState && (
+              <p role="alert" className={styles.errore}>
+                {atletaState.error.message}
+              </p>
+            )}
           </form>
 
           {!mostraNuovaAtleta ? (
@@ -138,7 +142,13 @@ export function GruppoRow({
               Nuovo Atleta
             </button>
           ) : (
-            <>
+            // Review fix (Edge Case Hunter, Story 9.33): un Fragment qui
+            // lascerebbe separatore e form come due elementi flessibili
+            // indipendenti dentro .rigaAtlete td (ora display:flex), perdendo
+            // il raggruppamento visivo che avevano quando il <td> era a
+            // layout di blocco normale - un unico contenitore li rende un
+            // solo elemento della riga flessibile esterna.
+            <div className={styles.pannelloNuovaAtleta}>
               {/* Story 9.28: un'Atleta non ancora in anagrafica non compare in
                   "Assegna Atleta" sopra - questo secondo form la crea e la
                   assegna in un solo passaggio, stesso principio gia' presente
@@ -217,13 +227,13 @@ export function GruppoRow({
                   </button>
                 </div>
               </form>
-            </>
+            </div>
           )}
         </td>
       </tr>
       <tr className={styles.rigaAllenatori}>
-        <td colSpan={3}>
-          <span className={styles.etichettaAllenatori}>Allenatori:</span>
+        <td colSpan={2}>
+          <span className={styles.etichettaRigaEstesa}>Allenatori:</span>
           <ul className={styles.listaAssegnatiInline}>
             {gruppo.allenatori.map((allenatore) => (
               <AllenatoreAssegnato

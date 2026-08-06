@@ -1457,6 +1457,22 @@ so that possa correggere assegnazioni errate o riorganizzare gli Allenatori tra 
 4. **And** nessuna regressione sull'assegnazione esistente (`assegnaAllenatore`) né sulla gestione Atlete nella stessa riga (`assegnaAtleta`/`rimuoviAtleta`/`creaEAssegnaAtleta`) — solo additivo
 5. **And** stesso perimetro di Ruoli di `assegnaAllenatore` (`requireRuolo(["ADMIN", "DIRIGENTE"])`) — a differenza di `rimuoviAtleta`, che ammette anche ALLENATORE sul proprio Gruppo (Story 9.15): qui nessun accesso Allenatore, coerente con `assegnaAllenatore` che è già Admin/Dirigente-only oggi
 
+### Story 9.33: Atlete su riga separata in `/gruppi` (elenco orizzontale)
+
+As a Admin o Dirigente che gestisce l'elenco Gruppi,
+I want vedere le Atlete assegnate a un Gruppo su una riga distinta e compatta invece che in una colonna verticale,
+so that l'elenco Gruppi resti leggibile anche per rose numerose, senza dover scrollare a lungo per passare da un Gruppo al successivo.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (2026-08-06), diretta continuazione della modifica già applicata (senza story formale, su richiesta diretta) per gli Allenatori nella stessa pagina — **mirror esatto dello stesso trattamento**, applicato ora alle Atlete. **Studio di usabilità svolto con l'utente in fase di analisi**: valutate due opzioni — (a) riga separata con elenco sempre visibile in orizzontale (mirror diretto di Allenatori), (b) riga separata **e richiudibile** (riassunto "Atlete: N" + toggle mostra/nascondi, più compatta per rose numerose ma con un click aggiuntivo). **Scelta confermata dall'utente: opzione (a)** — nessun collassamento, stesso identico pattern già in produzione per Allenatori (nessuna nuova interazione da imparare, coerenza visiva tra le due righe).
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Dirigente/Allenatore su `/gruppi` **When** vede un Gruppo **Then** le Atlete assegnate non sono più nella colonna della riga principale (Nome/Categoria) ma su una riga di tabella distinta a piena larghezza, sotto la riga principale — stesso trattamento già applicato agli Allenatori
+2. **And** l'elenco delle Atlete in quella riga è disposto in orizzontale (wrap automatico), non più una per riga verticale — stesso pattern di `AllenatoreAssegnato.tsx`/`.listaAssegnatiInline` già in uso per Allenatori
+3. **And** il form "Assegna Atleta" e il pulsante/pannello "Nuovo Atleta" (Story diretta 2026-08-06, non ancora formalizzata) si spostano nella stessa nuova riga, invariati nella funzionalità
+4. **And** l'header della tabella (`page.tsx`) riflette la nuova struttura a 2 colonne (Nome, Categoria) per la riga principale — "Atlete" non è più un'intestazione di colonna
+5. **And** nessuna regressione su `assegnaAtleta`/`rimuoviAtleta`/`creaEAssegnaAtleta` né sulla riga Allenatori già esistente — solo riposizionamento/restyling, nessuna Server Action toccata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

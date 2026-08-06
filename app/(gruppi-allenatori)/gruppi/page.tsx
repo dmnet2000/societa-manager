@@ -93,7 +93,6 @@ export default async function GruppiPage() {
               <tr>
                 <th>Nome</th>
                 <th>Categoria</th>
-                <th>Atlete</th>
               </tr>
             </thead>
             <tbody>
