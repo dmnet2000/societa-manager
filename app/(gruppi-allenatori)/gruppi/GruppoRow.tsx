@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { assegnaAllenatore, assegnaAtleta, creaEAssegnaAtleta } from "./actions";
-import { AtletaAssegnata, type Atleta } from "./AtletaAssegnata";
+import type { Atleta } from "./AtletaAssegnata";
+import { AtletaTabellaRiga } from "./AtletaTabellaRiga";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
 import styles from "./gruppi.module.css";
 
@@ -94,16 +95,24 @@ export function GruppoRow({
       <tr className={styles.rigaAtlete}>
         <td colSpan={2}>
           <span className={styles.etichettaRigaEstesa}>Atlete:</span>
-          <ul className={styles.listaAssegnatiInline}>
-            {gruppo.atlete.map((atleta) => (
-              <AtletaAssegnata
-                key={atleta.id}
-                gruppoId={gruppo.id}
-                gruppoNome={gruppo.nome}
-                atleta={atleta}
-              />
-            ))}
-          </ul>
+          {/* Richiesta utente 2026-08-06 (estensione Story 9.33): tabella a
+              2 colonne (Nome | Rimuovi) invece dell'elenco a chip in
+              orizzontale - stesso principio dei chip per Allenatori sotto,
+              ma l'utente ha chiesto esplicitamente una forma tabellare qui. */}
+          {gruppo.atlete.length > 0 && (
+            <table className={styles.tabellaAtlete}>
+              <tbody>
+                {gruppo.atlete.map((atleta) => (
+                  <AtletaTabellaRiga
+                    key={atleta.id}
+                    gruppoId={gruppo.id}
+                    gruppoNome={gruppo.nome}
+                    atleta={atleta}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
           <form
             ref={atletaFormRef}
             action={atletaFormAction}

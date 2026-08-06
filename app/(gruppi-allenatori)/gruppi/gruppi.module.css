@@ -189,6 +189,24 @@
   flex-shrink: 0;
 }
 
+/* Richiesta utente 2026-08-06 (estensione Story 9.33): tabella nidificata
+   compatta per l'elenco Atlete (Nome | Rimuovi) - dichiarata dopo .tabella
+   td cosi' da vincere sulle stesse proprieta' a parita' di specificita'
+   (entrambe una classe + un selettore di tipo), altrimenti .tabella td
+   (la tabella Gruppi esterna) si applicherebbe anche a queste celle
+   nidificate, dato che e' un selettore discendente non scoped alla sola
+   tabella diretta. */
+.tabellaAtlete {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabellaAtlete td {
+  padding: 2px var(--space-2) 2px 0;
+  border-bottom: none;
+  vertical-align: middle;
+}
+
 .listaAssegnatiInline {
   display: flex;
   flex-wrap: wrap;
