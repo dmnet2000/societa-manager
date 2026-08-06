@@ -11,10 +11,17 @@ import styles from "./gruppi.module.css";
 // Atlete della pagina chiamante (gruppi/page.tsx, i-miei-gruppi/page.tsx) -
 // qui e' innocuo anche per le Atlete mostrate solo nel <select> "disponibili"
 // (mai renderizzato li').
+// certificatoScaduto (estensione 2026-08-06): calcolato dallo stesso helper
+// condiviso (lib/certificato-in-scadenza-per-atleta.ts) per tutti i
+// consumer, ma renderizzato solo dalla tabella Atlete di /gruppi
+// (AtletaTabellaRiga.tsx) - questo componente (usato anche da
+// i-miei-gruppi/MioGruppoCard.tsx) continua a mostrare solo il badge
+// "in scadenza", nessuna richiesta di estendere anche quella vista.
 export type Atleta = {
   id: string;
   nome: string;
   certificatoInScadenza: boolean;
+  certificatoScaduto: boolean;
 };
 
 // Story 9.14: componente separato (non un ciclo dentro GruppoRow.tsx) perche'

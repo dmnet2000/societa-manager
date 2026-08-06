@@ -103,8 +103,12 @@ export default async function GruppiPage() {
                   .filter(
                     (
                       atleta
-                    ): atleta is { id: string; nome: string; certificatoInScadenza: boolean } =>
-                      atleta !== undefined
+                    ): atleta is {
+                      id: string;
+                      nome: string;
+                      certificatoInScadenza: boolean;
+                      certificatoScaduto: boolean;
+                    } => atleta !== undefined
                   )
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 

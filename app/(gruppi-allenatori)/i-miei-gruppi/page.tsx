@@ -104,8 +104,14 @@ export default async function IMieiGruppiPage() {
             .filter((riga) => riga.gruppoId === gruppo.id)
             .map((riga) => atletaPerId.get(riga.atletaId))
             .filter(
-              (a): a is { id: string; nome: string; certificatoInScadenza: boolean } =>
-                a !== undefined
+              (
+                a
+              ): a is {
+                id: string;
+                nome: string;
+                certificatoInScadenza: boolean;
+                certificatoScaduto: boolean;
+              } => a !== undefined
             )
             .sort((a, b) => a.nome.localeCompare(b.nome));
 

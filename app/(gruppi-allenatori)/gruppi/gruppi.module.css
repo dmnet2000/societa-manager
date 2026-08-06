@@ -171,12 +171,25 @@
   border-bottom: none;
 }
 
-.rigaAtlete td,
 .rigaAllenatori td {
   padding-top: var(--space-1);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Richiesta utente 2026-08-06 (estensione Story 9.33, round 3): "riga di
+   assegna atlete", "riga successiva pulsante nuovo atleta", "righe
+   successive lista atlete" - ogni figlio diretto (form Assegna Atleta,
+   pulsante/pannello Nuovo Atleta, tabella Atlete) deve occupare la propria
+   riga, non piu' affiancati/avvolti come .rigaAllenatori (che resta
+   flex-wrap in riga per i chip Allenatori, invariato). */
+.rigaAtlete td {
+  padding-top: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-2);
 }
 
@@ -199,6 +212,22 @@
 .tabellaAtlete {
   border-collapse: collapse;
   font-size: 13px;
+}
+
+/* Estensione 2026-08-06 (round 3): la tabella Atlete ha ora un <thead>
+   proprio (Nome | Certificato | Rimuovi, terza colonna senza etichetta) -
+   dichiarato dopo .tabella th per lo stesso motivo di specificita' di
+   .tabellaAtlete td sopra (selettore discendente non scoped alla tabella
+   Gruppi esterna). */
+.tabellaAtlete th {
+  padding: 2px var(--space-2) 2px 0;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
 }
 
 .tabellaAtlete td {
@@ -306,7 +335,11 @@
 /* Story 9.19 - Componente badge (DESIGN.md -> Componenti): variante warning,
    stesso blocco di app/(presenze)/presenze/presenze.module.css (Story 4.5) -
    copiato invece di importato cross-modulo, mai danger (informativo, non
-   deve allarmare). */
+   deve allarmare). Review fix (round 3, Blind Hunter): riusata anche per
+   "Certificato scaduto" (non solo "in scadenza") - la variante danger per
+   badge di stato su singola Atleta e' una regola "non negoziabile" di
+   DESIGN.md, la cui unica eccezione (/conferma-certificati, Story 9.23) non
+   si estende qui senza una nuova decisione esplicita. */
 .badge {
   flex-shrink: 0;
   font-size: 10.5px;

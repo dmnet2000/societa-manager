@@ -95,24 +95,14 @@ export function GruppoRow({
       <tr className={styles.rigaAtlete}>
         <td colSpan={2}>
           <span className={styles.etichettaRigaEstesa}>Atlete:</span>
-          {/* Richiesta utente 2026-08-06 (estensione Story 9.33): tabella a
-              2 colonne (Nome | Rimuovi) invece dell'elenco a chip in
-              orizzontale - stesso principio dei chip per Allenatori sotto,
-              ma l'utente ha chiesto esplicitamente una forma tabellare qui. */}
-          {gruppo.atlete.length > 0 && (
-            <table className={styles.tabellaAtlete}>
-              <tbody>
-                {gruppo.atlete.map((atleta) => (
-                  <AtletaTabellaRiga
-                    key={atleta.id}
-                    gruppoId={gruppo.id}
-                    gruppoNome={gruppo.nome}
-                    atleta={atleta}
-                  />
-                ))}
-              </tbody>
-            </table>
-          )}
+
+          {/* Richiesta utente 2026-08-06 (estensione Story 9.33, round 3):
+              "riga di assegna atlete", "riga successiva pulsante nuovo
+              atleta", "righe successive, lista atlete" - tre blocchi
+              impilati ognuno sulla propria riga (.rigaAtlete td ora
+              flex-direction:column), non piu' un unico blocco con
+              flex-wrap. Il form Assegna Atleta resta internamente in riga
+              (dropdown + pulsante a fianco, .formInline). */}
           <form
             ref={atletaFormRef}
             action={atletaFormAction}
@@ -237,6 +227,28 @@ export function GruppoRow({
                 </div>
               </form>
             </div>
+          )}
+
+          {gruppo.atlete.length > 0 && (
+            <table className={styles.tabellaAtlete}>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Certificato</th>
+                  <th>Rimuovi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gruppo.atlete.map((atleta) => (
+                  <AtletaTabellaRiga
+                    key={atleta.id}
+                    gruppoId={gruppo.id}
+                    gruppoNome={gruppo.nome}
+                    atleta={atleta}
+                  />
+                ))}
+              </tbody>
+            </table>
           )}
         </td>
       </tr>

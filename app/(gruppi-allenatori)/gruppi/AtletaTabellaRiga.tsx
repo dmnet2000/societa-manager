@@ -5,14 +5,19 @@ import { rimuoviAtleta } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
 import styles from "./gruppi.module.css";
 
-// Richiesta esplicita dell'utente (2026-08-06, estensione Story 9.33): elenco
-// Atlete su tabella a 2 colonne (Nome | Rimuovi) invece dei chip in
-// orizzontale. Componente separato da AtletaAssegnata.tsx (non riusato/
-// modificato) perche' quel componente e' <li>-based e condiviso con
-// MioGruppoCard.tsx (/i-miei-gruppi, fuori scope di questa richiesta) - un
-// <tr> dentro il <ul> di quella pagina romperebbe l'HTML. Stesso identico
-// contenuto/logica di AtletaAssegnata.tsx, solo la radice cambia (<tr> invece
-// di <li>, 2 <td> invece di span/form inline).
+// Richiesta utente 2026-08-06 (estensione Story 9.33): 3 colonne (nome
+// completo dell'Atleta, gia' "Cognome Nome" per convenzione pre-esistente
+// dell'anagrafica - non l'ordine letterale "Nome Cognome" della richiesta |
+// Certificato | Rimuovi) invece delle 2 precedenti (Nome | Rimuovi) - il
+// badge certificato, prima dentro la cella Nome, ha ora una colonna propria.
+// Scaduto ha priorita' su In scadenza (uno stato certificato e' mutuamente
+// esclusivo, ma se mai coesistessero mostrare solo il piu' grave evita due
+// badge nella stessa cella). Review fix (Blind Hunter, round 3): il badge
+// "Certificato scaduto" usa la stessa variante warning di "in scadenza", non
+// danger - regola "non negoziabile" di DESIGN.md (Componenti -> Badge di
+// stato), la cui unica eccezione documentata (danger su singola Atleta) e'
+// /conferma-certificati (Story 9.23) e non va estesa altrove senza una nuova
+// decisione esplicita.
 export function AtletaTabellaRiga({
   gruppoId,
   gruppoNome,
@@ -26,24 +31,21 @@ export function AtletaTabellaRiga({
 
   return (
     <tr>
+      <td>{atleta.nome}</td>
       <td>
-        {atleta.nome}
-        {/* Story 9.19 (AC #1): informativo, nessun aria-live/role="alert" -
-            stesso principio gia' documentato per il badge "scaduto" in
-            PresenzeForm.tsx (Story 4.5)/AtletaAssegnata.tsx. */}
-        {atleta.certificatoInScadenza && (
-          <span className={styles.badge}>Certificato in scadenza</span>
+        {atleta.certificatoScaduto ? (
+          <span className={styles.badge}>Certificato scaduto</span>
+        ) : (
+          atleta.certificatoInScadenza && (
+            <span className={styles.badge}>Certificato in scadenza</span>
+          )
         )}
       </td>
       <td>
         <form
           action={formAction}
           onSubmit={(e) => {
-            if (
-              !window.confirm(
-                `Rimuovere ${atleta.nome} dal Gruppo ${gruppoNome}?`
-              )
-            ) {
+            if (!window.confirm(`Rimuovere ${atleta.nome} dal Gruppo ${gruppoNome}?`)) {
               e.preventDefault();
             }
           }}

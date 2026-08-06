@@ -15,11 +15,16 @@ type AtletaMinima = { id: string; nome: string };
 // Riusa categorizzaStatoCertificato (Story 5.1): "in scadenza" richiede
 // stato CONFERMATO, deciso con l'utente in fase di creazione di questa storia
 // - non un nuovo calcolo di soglia.
+// Estensione richiesta dall'utente (2026-08-06, /gruppi): aggiunto anche
+// certificatoScaduto (stato === "SCADUTO", gia' calcolato da
+// categorizzaStatoCertificato, nessun nuovo calcolo) - entrambi i consumer
+// di questa funzione (gruppi/page.tsx, i-miei-gruppi/page.tsx) ricevono ora
+// il campo, ma solo /gruppi lo consuma davvero (Task richiesto solo li').
 export function calcolaAtleteConCertificatoInScadenza(
   atlete: AtletaMinima[],
   certificati: RigaCertificato[],
   oggi: Date
-): (AtletaMinima & { certificatoInScadenza: boolean })[] {
+): (AtletaMinima & { certificatoInScadenza: boolean; certificatoScaduto: boolean })[] {
   const certificatoPerAtletaId = new Map(certificati.map((c) => [c.atletaId, c]));
 
   return atlete.map((atleta) => {
@@ -29,6 +34,10 @@ export function calcolaAtleteConCertificatoInScadenza(
       (certificato?.stato as StatoCertificato | null) ?? null,
       oggi
     );
-    return { ...atleta, certificatoInScadenza: stato === "IN_SCADENZA" };
+    return {
+      ...atleta,
+      certificatoInScadenza: stato === "IN_SCADENZA",
+      certificatoScaduto: stato === "SCADUTO",
+    };
   });
 }
