@@ -1,3 +1,4 @@
+# last_updated: 2026-08-06 (Pianificazione (solo epic/story, nessun codice) su richiesta dell'utente: "prendi gli appunti e trasforma le cose che restano da fare in epic o story". Verificato ogni voce di docs/appunti.txt contro il codice reale, non fidandosi delle X gia' segnate dall'utente (2 voci marcate X non erano in realta' mai state implementate). Aggiunte 4 story: 9.32 (rimuovere Allenatore da Gruppo, mirror diretto di rimuoviAtleta/AtletaAssegnata.tsx Story 9.14), 10.8 (modifica nome Campionato + link FIPAV, nuovo campo linkFipav, mirror di aggiornaPalestra per lo stile ma perimetro di autorizzazione di creaCampionato), 16.1/16.2 (nuovo Epic 16 "Sponsor e Convenzioni" - modello dati Sponsor con tipo BANNER/CONVENZIONE, storage pubblico per-entita' mirror di logo-applicazione, voucher generato a video senza persistenza, visibile a tutti i sei Ruoli - primo caso nel progetto. Punto tecnico aperto in 16.2, non risolto qui: nessuna fonte di Nome/Cognome per Genitore/Admin/Dirigente/Segreteria su Utente, da chiarire in apertura sviluppo). Tutte e 4 le story: ready-for-dev, nessuna implementazione iniziata.)
 # last_updated: 2026-08-06 (Story 15.4 Sezione "Accounting", ESTENSIONE post-done: /permessi-certificati spostata dentro il gruppo "Accounting" (quarta figlia, dopo /permessi-accesso) su richiesta esplicita dell'utente - l'esclusione originale (AC #3) era un fraintendimento dell'appunto originale dell'utente in fase di analisi dell'Epic 15 ("spostare permessi certificati sotto il menu accounting" in docs/appunti.txt, mai marcata risolta), non una decisione di prodotto voluta. route-guard.ts: riga standalone rimossa, riaggiunta in fondo al blocco Accounting con gruppo: "Accounting" (la posizione conta per raggruppaVociNavigazione, stesso principio gia' documentato per /admin). 4 test aggiornati in voci-navigazione.test.ts (nessuno aggiunto/rimosso). 942/942 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status invariato: done.)
 # last_updated: 2026-08-06 (Story 9.31 Email Segreteria configurabile: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor) - nessuna violazione degli AC. 4 patch applicati (leggiEmailSegreteria() in page.tsx avvolta in try/catch fail-soft - un errore DB non deve far crashare l'intero hub /impostazioni; avviso visibile su /impostazioni quando il campo non e' configurato + nuova Fase 3ter in docs/deploy-produzione.md - rischio reale di regressione silenziosa al deploy per le societa' con Ruolo Segreteria gia' assegnato; commento obsoleto corretto in invia-email.ts; drift documentazione corretto in epics.md). 3 defer (nessuno step di verifica/invio di prova, nessuna normalizzazione minuscolo, nessun test di scrittura concorrente sulla riga singleton) - coerenti con limiti gia' accettati ripetutamente. 6 dismessi come convenzioni gia' accettate. 942/942 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. PROMEMORIA UTENTE: dopo il deploy, configurare l'Email Segreteria su /impostazioni. Status: done.)
 # last_updated: 2026-08-06 (Story 9.31 Email Segreteria configurabile: implementata - campo emailSegreteria su ConfigurazioneApplicazione (no-RLS, mirror di nomeSettore), Server Action salvaEmailSegreteriaAction (ADMIN-only, validazione formato/lunghezza), form su /impostazioni (da hub puro ad async Server Component con form), consumer reale in certificato-medico/actions.ts (Story 4.3) aggiornato per leggere l'indirizzo configurato invece di derivarlo dal Ruolo Segreteria - promemoria-certificati/route.ts (Story 4.6, Ruolo Dirigente) verificato invariato, fuori scope. Migrazione scritta a mano (nessun accesso DB nel sandbox). 942/942 test Vitest passati (era 931), 0 errori tsc/eslint, build produzione riuscita. Status: review.)
@@ -319,6 +320,7 @@ development_status:
   9-29-menu-laterale-fisso-durante-scroll: done
   9-30-interfaccia-compatta-precaricamento-allenatori: done
   9-31-email-segreteria-configurabile: done
+  9-32-rimuovere-allenatore-da-gruppo: ready-for-dev
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -326,7 +328,7 @@ development_status:
   # sviluppo (richiesta esplicita dell'utente) - vedi epics.md per le
   # decisioni prese (formato Excel reale fornito, autorizzazione, RLS,
   # Anno Agonistico, luogo trasferte dal file importato).
-  epic-10: done
+  epic-10: in-progress
   10-1-creazione-campionato-per-un-gruppo: done
   10-2-import-excel-partite-campionato: done
   10-3-vista-partite-settimana-per-settimana: done
@@ -334,6 +336,7 @@ development_status:
   10-5-vista-partite-atleta-e-genitore: done
   10-6-cancellazione-partita-o-campionato: done
   10-7-campionato-un-solo-gruppo: done
+  10-8-modifica-campionato-link-fipav: ready-for-dev
 
   # Epic 11 (Bug di Produzione) inserito il 2026-07-27 su richiesta dell'utente:
   # elenco APERTO di difetti reali osservati in produzione (log di errore,
@@ -411,3 +414,17 @@ development_status:
   15-3-menu-atleti: done
   15-4-sezione-accounting: done
   15-5-redesign-pagina-slot: done
+
+  # Epic 16 (Sponsor e Convenzioni) inserito il 2026-08-06 su richiesta
+  # dell'utente (appunto in docs/appunti.txt, mai risolto/marcato). Analisi
+  # di apertura completata lo stesso giorno (decisioni: voucher = schermata
+  # non PDF, nessuna persistenza; visibilita' a tutti i Ruoli; flag
+  # attiva/disattiva, mai hard-delete; bucket Storage pubblico per-entita').
+  # Rotto in 2 story: 16.1 fondativa (modello dati + gestione Admin/
+  # Dirigente), 16.2 dipendente (vetrina pubblica + voucher, con un punto
+  # tecnico aperto non ancora risolto: da dove viene il Nome/Cognome per un
+  # Genitore/Admin/Dirigente/Segreteria, che oggi non hanno un profilo con
+  # quel dato collegato a Utente - da chiarire in apertura sviluppo di 16.2).
+  epic-16: backlog
+  16-1-sponsor-modello-dati-gestione: ready-for-dev
+  16-2-sponsor-vetrina-voucher: ready-for-dev

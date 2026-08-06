@@ -1441,6 +1441,22 @@ so that l'email automatica di notifica nuovo Certificato Medico caricato (Story 
 
 **And** nessuna regressione sul promemoria di scadenza certificati verso Dirigente (Story 4.6) — quel percorso non usa `emailSegreteria`, resta invariato
 
+### Story 9.32: Rimuovere un Allenatore da un Gruppo
+
+As a Admin o Dirigente,
+I want poter rimuovere un Allenatore già assegnato a un Gruppo,
+so that possa correggere assegnazioni errate o riorganizzare gli Allenatori tra Gruppi senza dover ricorrere al database.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (appunto in `docs/appunti.txt`, formalizzata il 2026-08-06). Oggi `/gruppi` (`GruppoRow.tsx`) permette di assegnare un Allenatore (`assegnaAllenatore`) ma non di rimuoverlo — gli Allenatori assegnati sono un elenco statico (`<li>{allenatore.nome} {allenatore.cognome}</li>`, nessun controllo). Esiste già un precedente diretto da mirrorare, non reinventare: `rimuoviAtleta`/`AtletaAssegnata.tsx` (Story 9.14), che risolve lo stesso identico problema per le Atlete nella stessa pagina — stesso pattern `deleteMany` idempotente + `window.confirm` + componente `"use client"` isolato (necessario perché ogni riga ha bisogno del proprio `useActionState` indipendente). `GruppoAllenatore` è una tabella di giunzione pura (nessuna riga dipendente altrove, a differenza di `Allenatore`/`Slot`) — nessun guard di blocco necessario, stesso principio di `GruppoAtleta` (Story 9.14 AC #1).
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente su `/gruppi` **When** vede un Allenatore assegnato a un Gruppo **Then** trova un pulsante "Rimuovi" accanto al suo nome (mirror di `AtletaAssegnata.tsx`)
+2. **Given** l'Admin/Dirigente clicca "Rimuovi" **When** conferma il `window.confirm` (stesso pattern di conferma di `AtletaAssegnata.tsx`, testo analogo) **Then** l'Allenatore non è più assegnato a quel Gruppo, la lista si aggiorna senza reload
+3. **And** operazione idempotente (`deleteMany`, non `delete` su chiave singola) — un doppio click o un retry di rete non produce errori
+4. **And** nessuna regressione sull'assegnazione esistente (`assegnaAllenatore`) né sulla gestione Atlete nella stessa riga (`assegnaAtleta`/`rimuoviAtleta`/`creaEAssegnaAtleta`) — solo additivo
+5. **And** stesso perimetro di Ruoli di `assegnaAllenatore` (`requireRuolo(["ADMIN", "DIRIGENTE"])`) — a differenza di `rimuoviAtleta`, che ammette anche ALLENATORE sul proprio Gruppo (Story 9.15): qui nessun accesso Allenatore, coerente con `assegnaAllenatore` che è già Admin/Dirigente-only oggi
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -1611,6 +1627,24 @@ so that il modello rispecchi la realtà federale: due squadre della stessa socie
 **Then** può solo creare un nuovo Campionato per il proprio Gruppo — nessuna opzione per collegarsi a un Campionato di un altro Gruppo
 
 **And** nessuna regressione sulla possibilità di un Gruppo di partecipare a più Campionati contemporaneamente (Story 10.1 AC #5) né sull'import gare (Story 10.2) — suite Vitest invariata sui casi esistenti non impattati da questa correzione
+
+### Story 10.8: Modifica nome Campionato e link al portale FIPAV
+
+As a Allenatore del proprio Gruppo (o Admin/Dirigente),
+I want poter correggere il nome di un Campionato già creato e collegarci il link al portale FIPAV/Lega Pallavolo di quel girone,
+so that possa sistemare un nome inserito male senza cancellare e ricreare il Campionato (perdendo le Partite importate), e chiunque acceda a `/campionati`/`/partite` possa consultare rapidamente la fonte federale ufficiale.
+
+**Note aggiuntive:** richiesta esplicita dell'utente (appunto in `docs/appunti.txt`, formalizzata il 2026-08-06). Oggi `Campionato` (`prisma/schema.prisma`) ha solo `nome` — nessun campo per un link esterno, e nessuna Server Action di modifica esiste (`actions.ts` ha solo `creaCampionato`/`cancellaCampionato`, mai un `aggiornaCampionato`). Mirror diretto per il pattern update-singola-entità: `aggiornaPalestra` (`app/(orari-palestre)/palestre/actions.ts`) — stesso stile `requireRuolo` → validazione → `prisma.campionato.update({ where: { id }, data: {...} })` → `INTERNAL` generico su errore → `revalidatePath`. Il link FIPAV è testo libero (URL), stesso principio già usato per `Palestra.indirizzo`/il link Maps (Story 9.6) — nessuna validazione di dominio specifica oltre un controllo di formato URL di base, non assumere che debba puntare necessariamente a un dominio FIPAV (leghe regionali/territoriali hanno domini propri).
+
+**Decisione aperta da chiarire in fase di creazione storia**: l'elenco Campionati in `/campionati` (`page.tsx`) oggi è un semplice `<li>{campionato.nome}</li>` dentro una lista, non una riga di tabella — decidere se il toggle sola-lettura/modifica debba riusare il pattern "riga tabellare con icone" già stabilito da `SlotRow.tsx`/`AllenatoreRow.tsx`/`PartitaRow.tsx` (Story 15.5/9.30/10.4, incluso il modulo condiviso `icone-azione-riga.tsx`) o un form inline più semplice coerente con l'attuale `<li>` (che ha già `ImportaGareForm`/`EliminaCampionatoForm` come form annidati, non un layout tabellare) — probabilmente la seconda opzione, da confermare.
+
+**Acceptance Criteria:**
+
+1. **Given** un Allenatore (del proprio Gruppo) o Admin/Dirigente su `/campionati` **When** modifica nome e/o link FIPAV di un Campionato esistente **Then** i nuovi valori sono salvati e visibili senza reload
+2. **And** il nome resta obbligatorio (stesso vincolo di `creaCampionato`) — un nome vuoto viene rifiutato con un messaggio chiaro, nessuna scrittura
+3. **And** il link FIPAV è opzionale — può essere lasciato vuoto (Campionato senza link) o rimosso da un Campionato che ne aveva già uno
+4. **And** stesso perimetro di autorizzazione di `creaCampionato`/`cancellaCampionato` (Allenatore limitato al proprio Gruppo tramite `risolviPossessoGruppo`, Admin/Dirigente ad accesso ampio) — nessuna modifica al modello di autorizzazione esistente
+5. **And** nessuna regressione sull'import gare (Story 10.2) né sulla cancellazione (Story 10.6) — il nome resta la chiave usata per il controllo di coerenza con la colonna `Campionato` del file Excel importato (invariato)
 
 ## Epic 11: Bug di Produzione
 
@@ -1878,3 +1912,52 @@ so that scorro più rapidamente elenchi lunghi di Slot senza vedere ogni riga gi
 3. **Given** una riga Slot in sola lettura **When** l'utente clicca l'icona di modifica **Then** quella riga (solo quella, le altre restano in sola lettura) entra in modalità modifica inline con i campi editabili, coerente con `aggiornaSlot` esistente
 4. **And** il form "Nuovo Slot" in cima alla pagina resta invariato rispetto a oggi
 5. **And** nessuna regressione sulla logica esistente di modifica/cancellazione (Story 9.13) — solo la presentazione cambia
+
+## Epic 16: Sponsor e Convenzioni
+
+*(Aggiunto in corso d'opera — 2026-08-06, richiesta esplicita dell'utente (appunto in `docs/appunti.txt`). Analisi di apertura completata lo stesso giorno (decisioni prese con l'utente: vedi sotto) — rotto in 2 storie: 16.1 fondativa (modello dati + gestione Admin/Dirigente), 16.2 vetrina pubblica + voucher.)*
+
+**Requisito originale (testo dell'utente, riformulato dall'appunto):** una sezione dove Atlete/Allenatori/Genitori possano vedere banner pubblicitari e convenzioni/scontistiche presso sponsor della società. Admin e Dirigente possono inserire gli sponsor (immagine/banner + descrizione). Banner pubblicitari distinti dalle convenzioni: per una convenzione, l'utente (Genitore/Atleta/Allenatore) può generare un voucher col proprio Nome Cognome che certifica l'appartenenza alla società e il diritto alla scontistica.
+
+**Decisioni prese con l'utente in fase di analisi (2026-08-06):**
+- **Formato voucher**: una schermata a video (Nome Cognome dell'Utente + nome della società + data), non un PDF — niente libreria di generazione PDF, nessuna nuova dipendenza. Generato al volo lato server da dati già disponibili (nome Utente dalla sessione, nome società da `ConfigurazioneApplicazione.nomeSettore` se impostato, Story 7.2/9.31) — **nessuna persistenza**: non si tiene traccia di "chi ha generato un voucher per quale convenzione", coerente con la preferenza già più volte espressa in questo progetto per la soluzione più semplice (NFR6) finché non emerge un bisogno reale di audit.
+- **Visibilità**: tutti i Ruoli autenticati (Atleta, Genitore, Allenatore, Admin, Dirigente, Segreteria) — sezione informativa aperta a chiunque abbia un account, stesso principio di `/notifiche`. Non richiede una voce di navigazione scoped-per-Ruolo come le altre (nessun gruppo/sotto-menu, Epic 15) — una voce diretta visibile a tutti.
+- **Disattivazione, non cancellazione**: `Sponsor.attiva Boolean @default(true)` — stesso pattern già usato ovunque nel progetto (`Iscrizione`, `PermessoRotta`, ecc., mai un hard-delete su un'entità di dominio con potenziale storico). Un Admin/Dirigente disattiva invece di cancellare; la voce sparisce dalla vetrina (Story 16.2) ma resta in archivio/gestione (Story 16.1).
+- **Tipo**: `Sponsor.tipo` — enum `BANNER` (pubblicitario, solo immagine + descrizione + link opzionale) vs `CONVENZIONE` (immagine + descrizione + testo scontistica, abilita il pulsante "Genera voucher" in Story 16.2). Un solo model, non due entità separate — stesso campo "descrizione" e stessa immagine per entrambi i tipi, la sola differenza di comportamento è la disponibilità del voucher.
+- **Storage immagine**: bucket Storage pubblico (mirror di `logo-applicazione`, Story 7.2 — non il pattern privato/RLS di `certificati-medici`, Story 4.1: i banner sponsor sono pubblicitari per natura, nessuna riservatezza). A differenza del logo (un solo file a path fisso), qui serve un path per-entità (`{sponsorId}`, mirror strutturale di `certificati.ts` ma bucket pubblico) — più sponsor coesistono.
+- **Nessuna scadenza temporale automatica**: il campo `attiva` è manuale (un Admin/Dirigente decide quando disattivare), nessuna data di scadenza — non richiesto esplicitamente, coerente con l'assenza di un concetto simile altrove nel progetto per entità analoghe (es. `Tesseramento`, Story 13.1).
+
+**Contesto tecnico rilevante scoperto in analisi**: nessuna libreria di upload/crop immagini nel progetto (stesso limite già noto da Story 14.1 per le icone PWA) — riuso diretto del pattern MIME/magic-byte/dimensione-massima già stabilito in `app/(configurazione)/logo/actions.ts` (Story 8.7), senza validazioni aggiuntive di dimensioni pixel. Nessun precedente di "voce di navigazione visibile a tutti i Ruoli senza alcuna restrizione" nel progetto — verificare in fase di sviluppo che `PROTECTED_ROUTES` supporti `ruoliAmmessi` con tutti e sei i Ruoli elencati esplicitamente (nessuna scorciatoia "tutti" nel tipo esistente, da non inventare se non già presente).
+
+### Story 16.1: Modello dati Sponsor e gestione Admin/Dirigente
+
+As a Admin o Dirigente,
+I want inserire, modificare e disattivare Sponsor (banner pubblicitari o convenzioni) con immagine e descrizione,
+so that possa tenere aggiornata la vetrina visibile a tutta la società senza intervenire sul database.
+
+**Note aggiuntive:** fondativa — nessun consumer pubblico in questa storia (Story 16.2). Nuovo model `Sponsor` (strutturale, no RLS — stesso trattamento di `Palestra`/`Gruppo`, Admin/Dirigente hanno già accesso Prisma diretto ovunque nel progetto): `id`, `nome`, `tipo` (enum `BANNER`/`CONVENZIONE`), `descrizione` (testo libero, usato anche per il testo della scontistica quando `tipo = CONVENZIONE`), `linkEsterno` (opzionale, es. sito dello sponsor), `attiva Boolean @default(true)`, `createdAt`/`updatedAt`. Nuovo bucket Storage pubblico `sponsor-banner` (mirror di `logo-applicazione`, Story 7.2, ma path per-entità `{sponsorId}` invece di path fisso) — riuso diretto di allowlist MIME/magic-byte/2MB già stabilita in `app/(configurazione)/logo/actions.ts`.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente su `/sponsor` **When** compila nome, tipo, descrizione, carica un'immagine (PNG/JPEG, stesso limite 2MB/magic-byte di `/logo`) e opzionalmente un link esterno **Then** il nuovo Sponsor viene creato e compare nell'elenco di gestione, attivo di default
+2. **Given** un Sponsor esistente **When** l'Admin/Dirigente ne modifica nome/descrizione/link (con o senza sostituire l'immagine) **Then** i nuovi valori sono salvati, l'immagine precedente viene sostituita solo se ne viene caricata una nuova
+3. **Given** un Sponsor attivo **When** l'Admin/Dirigente lo disattiva **Then** `attiva` passa a `false` — nessuna cancellazione della riga né dell'immagine nel bucket (AC di Story 16.2: un Sponsor disattivato non compare più nella vetrina pubblica)
+4. **And** un Sponsor disattivato può essere riattivato dallo stesso pannello di gestione
+5. **And** solo Admin/Dirigente possono accedere a `/sponsor` in gestione e invocare le Server Action di creazione/modifica/disattivazione (`requireRuolo(["ADMIN", "DIRIGENTE"])`, stesso perimetro di `/palestre`)
+6. **And** stessa validazione immagine di `/logo` (Story 8.7): tipo MIME nell'allowlist, dimensione massima 2MB, contenuto verificato via magic byte (mai fidarsi solo dell'attributo `accept` lato client)
+
+### Story 16.2: Vetrina pubblica e generazione voucher
+
+As a Atleta, Genitore o Allenatore,
+I want vedere i banner pubblicitari e le convenzioni attive della società, e generare un voucher per una convenzione,
+so that possa scoprire gli sponsor della società e usufruire delle scontistiche a cui ho diritto in quanto membro.
+
+**Note aggiuntive:** dipende da Story 16.1 (nessun dato da mostrare prima che esista). Nuova voce di navigazione visibile a **tutti** i Ruoli (Atleta, Genitore, Allenatore, Admin, Dirigente, Segreteria) — decisione di analisi, nessun precedente diretto nel progetto per una rotta così ampia, verificare in sviluppo che `ruoliAmmessi` lo supporti elencando tutti e sei i Ruoli. Il voucher (decisione di analisi) è una vista a schermo generata al volo, non persistita — Nome Cognome dell'Utente autenticato + nome società (`ConfigurazioneApplicazione.nomeSettore`, può essere assente) + data corrente.
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente autenticato con un qualunque Ruolo **When** visita la sezione Sponsor **Then** vede i Banner pubblicitari e le Convenzioni **attivi** (nessuno Sponsor disattivato, Story 16.1 AC #3), ciascuno con immagine e descrizione, visivamente distinti per tipo
+2. **Given** una Convenzione attiva **When** l'Utente clicca "Genera voucher" **Then** vede una schermata col proprio Nome e Cognome, il nome della società (se configurato), la data corrente, e un riferimento alla Convenzione/scontistica — nessuna persistenza di questa generazione
+3. **And** il pulsante "Genera voucher" non compare sui Banner pubblicitari (`tipo = BANNER`) — solo sulle Convenzioni
+4. **And** se nessuno Sponsor è attivo, la pagina mostra un messaggio esplicito ("Nessuno sponsor al momento") invece di una sezione vuota senza spiegazione — stesso principio già seguito altrove nel progetto (es. `/notifiche` vuoto)
+5. **And** nessuna informazione sanitaria/riservata nel voucher — solo Nome Cognome (già pubblico all'interno della società) e nome società, nessun dato da `Atleta`/`CertificatoMedico`

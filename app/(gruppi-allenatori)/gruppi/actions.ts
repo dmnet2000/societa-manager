@@ -179,6 +179,47 @@ export async function assegnaAllenatore(
   return { success: true };
 }
 
+// Story 9.32 (AC: #2, #3, #4, #5): mirror strutturale di rimuoviAtleta sotto,
+// ma senza risoluzione annoAgonisticoId/risolviPossessoGruppo - quel
+// controllo esiste li' solo perche' rimuoviAtleta ammette anche ALLENATORE
+// self-service (Story 9.15). Qui il perimetro resta Admin/Dirigente, stesso
+// identico array di assegnaAllenatore sopra - nessun controllo di possesso
+// necessario, Admin/Dirigente hanno gia' accesso ampio a ogni Gruppo.
+export async function rimuoviAllenatore(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  const allenatoreId = String(formData.get("allenatoreId") ?? "");
+
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  if (!allenatoreId) {
+    return { error: { code: "VALIDATION", message: "Allenatore non specificato." } };
+  }
+
+  try {
+    // deleteMany (non delete su chiave singola): idempotente, stesso
+    // principio di rimuoviAtleta - un doppio submit o un retry di rete non
+    // deve generare un errore (AC #3).
+    await prisma.gruppoAllenatore.deleteMany({
+      where: { gruppoId, allenatoreId },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile rimuovere l'Allenatore. Riprova." },
+    };
+  }
+
+  revalidatePath("/gruppi");
+  return { success: true };
+}
+
 // AC #1/#2/#3: FR-30 ammette Dirigente o Admin, analogo a FR-7. GruppoAtleta
 // non e' protetta da RLS (AD-9) nonostante la FK verso Atleta (RLS-protetta,
 // AD-4) - stesso principio di GenitoreAtleta (Story 1.5): la FK e' solo un
