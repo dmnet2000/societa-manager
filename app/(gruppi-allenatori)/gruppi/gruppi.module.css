@@ -167,6 +167,58 @@
   min-width: 160px;
 }
 
+/* Richiesta utente 2026-08-06 - Allenatori su riga di tabella distinta a
+   piena larghezza (era una colonna stretta accanto ad Atlete). Layout
+   orizzontale invece dello stack verticale di .formCompatto - .formInline si
+   applica insieme a .formCompatto (due classNames), sovrascrive solo
+   flex-direction/allineamento, riusa invariati gli stili di input/select/label. */
+/* Le due <tr> di uno stesso Gruppo (riga principale + riga Allenatori) non
+   devono leggersi come due Gruppi distinti - il bordo separatore vive solo
+   sull'ultima delle due (rigaAllenatori), non su quella principale. */
+.rigaPrincipale td {
+  border-bottom: none;
+}
+
+.rigaAllenatori td {
+  padding-top: var(--space-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.etichettaAllenatori {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.listaAssegnatiInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.formInline {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+}
+
+.formInline label {
+  margin: 0;
+}
+
+.azioniCompatto {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .formCompatto label {
   font-size: 11px;
   font-weight: 600;
