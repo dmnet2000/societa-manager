@@ -3,62 +3,60 @@
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
 import { risolviAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { trovaIscrizioneAttiva } from "@/lib/db-rls/iscrizione";
 
-export type ConfermaTesseramentoState =
+export type ConfermaTesseramentiState =
   | { error: { code: string; message: string } }
   | { success: true }
   | undefined;
 
-// Story 13.1: Tesseramento e' strutturale (AD-9, no RLS) - Prisma diretto,
-// stesso stile di creaPalestra (app/(orari-palestre)/palestre/actions.ts) -
-// ma la dipendenza obbligatoria dall'Iscrizione (AC #3) e' RLS-protetta,
-// serve quindi anche il client Supabase per trovaIscrizioneAttiva, stesso
-// pattern misto gia' in uso in app/(gruppi-allenatori)/gruppi/actions.ts.
-export async function confermaTesseramento(
-  _prevState: ConfermaTesseramentoState,
-  atletaId: string
-): Promise<ConfermaTesseramentoState> {
+// Story 13.1 estensione (2026-08-06): la dipendenza obbligatoria
+// dall'Iscrizione (decisione originale di apertura Epic 13) e' stata
+// rimossa su richiesta esplicita dell'utente - il Tesseramento e'
+// confermabile per qualunque Atleta, indipendentemente dallo stato della
+// sua Iscrizione (colonna "Stato Iscrizione" resta solo informativa in
+// pagina). Sostituita anche la conferma singola per-riga con una conferma
+// massiva: la UI invia un checkbox per riga, questa azione conferma tutte
+// le Atlete selezionate in un'unica submission.
+export async function confermaTesseramenti(
+  _prevState: ConfermaTesseramentiState,
+  formData: FormData
+): Promise<ConfermaTesseramentiState> {
   const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
   if (forbidden) return forbidden;
+
+  const atletaIds = [...new Set(formData.getAll("atletaId").map(String))];
+  if (atletaIds.length === 0) {
+    return {
+      error: { code: "VALIDATION", message: "Seleziona almeno un'Atleta." },
+    };
+  }
 
   try {
     const anno = await risolviAnnoAgonisticoCorrente();
 
-    const supabase = await createClient();
-    const iscrizioneAttiva = await trovaIscrizioneAttiva(
-      supabase,
-      atletaId,
-      anno.id
+    // Idempotente (AC #4 originale, invariato): upsert con update no-op,
+    // stesso principio della conferma singola sostituita. $transaction cosi'
+    // una conferma multipla o va a buon fine per intero o non scrive nulla,
+    // invece di lasciare un sottoinsieme confermato e l'altro no su un
+    // errore a meta' batch.
+    await prisma.$transaction(
+      atletaIds.map((atletaId) =>
+        prisma.tesseramento.upsert({
+          where: {
+            atletaId_annoAgonisticoId: { atletaId, annoAgonisticoId: anno.id },
+          },
+          create: { atletaId, annoAgonisticoId: anno.id },
+          update: {},
+        })
+      )
     );
-    if (!iscrizioneAttiva) {
-      return {
-        error: {
-          code: "VALIDATION",
-          message:
-            "L'Iscrizione dell'Atleta deve essere confermata prima del Tesseramento.",
-        },
-      };
-    }
-
-    // AC #4: idempotente - upsert con update no-op, a differenza di
-    // inserisciIscrizione (Story 1.6) non serve gestire una riattivazione:
-    // Tesseramento non ha un concetto di esclusione in questa storia.
-    await prisma.tesseramento.upsert({
-      where: {
-        atletaId_annoAgonisticoId: { atletaId, annoAgonisticoId: anno.id },
-      },
-      create: { atletaId, annoAgonisticoId: anno.id },
-      update: {},
-    });
   } catch (err) {
     console.error(err);
     return {
       error: {
         code: "INTERNAL",
-        message: "Impossibile confermare il Tesseramento. Riprova.",
+        message: "Impossibile confermare i Tesseramenti selezionati. Riprova.",
       },
     };
   }

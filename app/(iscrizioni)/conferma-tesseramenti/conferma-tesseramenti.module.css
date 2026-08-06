@@ -42,31 +42,70 @@
   font-size: 12.5px;
 }
 
-.bottone {
-  background: var(--color-button-bg);
-  color: var(--color-surface);
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: 11.5px;
-  letter-spacing: 0.03em;
+/* Story 13.1 estensione (2026-08-06): un checkbox per riga al posto del
+   bottone "Conferma" singolo (rimosso, .bottone non piu' usato) - stesso
+   stile di .checkbox/.etichetta in app/(presenze)/presenze/presenze.module.css. */
+.etichettaCheckbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   cursor: pointer;
 }
 
-.bottone:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
+.checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-button-bg);
 }
 
-.bottone:disabled {
-  cursor: default;
-  opacity: 0.6;
+.checkbox:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .errore {
   margin-top: var(--space-2);
   font-size: 12.5px;
   color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-2);
+  font-size: 12.5px;
+  color: var(--color-success);
+}
+
+/* Bottone unico di conferma massiva a fondo pagina - stesso stile di
+   .saveFooter/.bottoneSalva in presenze.module.css (Story 3.1). */
+.saveFooter {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.bottoneSalva {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottoneSalva:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSalva:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
