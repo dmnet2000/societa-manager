@@ -165,13 +165,25 @@
    invariati gli stili di input/select/label. */
 /* Le tre <tr> di uno stesso Gruppo (riga principale + Atlete + Allenatori)
    non devono leggersi come Gruppi distinti - il bordo separatore vive solo
-   sull'ultima delle tre (rigaAllenatori), non sulle altre due. */
+   sull'ultima delle tre (rigaAllenatori), non sulle altre due.
+   BUG REALE (segnalato dall'utente dopo il deploy, round 4): ".rigaAtlete
+   td"/".rigaAllenatori td" erano selettori discendenti non delimitati al
+   figlio diretto - colpivano anche i <td> della tabella Atlete nidificata
+   (.tabellaAtlete), non solo il <td colSpan={2}> diretto della riga. Un <td>
+   con display:flex esce dal layout di tabella (non e' piu' table-cell): ogni
+   cella dell'Atleta (Nome/Certificato/Iscrizione/Tesseramento/Rimuovi)
+   finiva su una riga separata invece che affiancata. Stesso identico
+   principio del bug gia' risolto una volta per .tabella td/.tabellaAtlete td
+   (vedi commento sotto), ma li' il conflitto era sulle VALUE di
+   padding/border-bottom (risolvibile per ordine/specificita'), qui era sulla
+   proprieta' display stessa - l'ordine non basta, serve delimitare al figlio
+   diretto con ">". */
 .rigaPrincipale td,
-.rigaAtlete td {
+.rigaAtlete > td {
   border-bottom: none;
 }
 
-.rigaAllenatori td {
+.rigaAllenatori > td {
   padding-top: var(--space-1);
   display: flex;
   align-items: center;
@@ -185,7 +197,7 @@
    pulsante/pannello Nuovo Atleta, tabella Atlete) deve occupare la propria
    riga, non piu' affiancati/avvolti come .rigaAllenatori (che resta
    flex-wrap in riga per i chip Allenatori, invariato). */
-.rigaAtlete td {
+.rigaAtlete > td {
   padding-top: var(--space-1);
   display: flex;
   flex-direction: column;
