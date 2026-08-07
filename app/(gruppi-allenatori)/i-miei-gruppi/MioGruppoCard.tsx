@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { assegnaAtleta, creaEAssegnaAtleta } from "../gruppi/actions";
-import { AtletaAssegnata, type Atleta } from "../gruppi/AtletaAssegnata";
+import type { Atleta } from "../gruppi/AtletaAssegnata";
+import { AtletaTabellaRiga, type AtletaConStato } from "../gruppi/AtletaTabellaRiga";
 import styles from "./i-miei-gruppi.module.css";
 
 type Gruppo = {
@@ -13,15 +14,19 @@ type Gruppo = {
 
 // Story 9.15: card per Gruppo invece della riga di tabella di GruppoRow.tsx
 // (quella pagina resta ADMIN/DIRIGENTE-only, invariata) - stessa Server
-// Action (assegnaAtleta) e stesso componente AtletaAssegnata riusato
-// invariato per il pulsante di rimozione.
+// Action (assegnaAtleta) riusata invariata.
+// Richiesta utente 2026-08-07: stesso layout a 5 colonne di /gruppi (Story
+// 9.33, round 4/5) - riusato direttamente AtletaTabellaRiga.tsx (non piu'
+// AtletaAssegnata.tsx, <li>-based, che diventa dead code, vedi
+// AtletaAssegnata.tsx) invece di duplicarne la logica, stesso principio di
+// import cross-cartella gia' in uso in questo file per actions.ts.
 export function MioGruppoCard({
   gruppo,
   atlete,
   atleteDisponibili,
 }: {
   gruppo: Gruppo;
-  atlete: Atleta[];
+  atlete: AtletaConStato[];
   atleteDisponibili: Atleta[];
 }) {
   const [state, formAction, pending] = useActionState(assegnaAtleta, undefined);
@@ -55,27 +60,40 @@ export function MioGruppoCard({
     <section className={styles.card}>
       <h2>{gruppo.nome}</h2>
       <p className={styles.categoria}>{gruppo.categoria}</p>
-      <ul className={styles.listaAssegnati}>
-        {atlete.length === 0 ? (
-          <li className={styles.nessunaAtleta}>Nessuna Atleta assegnata.</li>
-        ) : (
-          atlete.map((atleta) => (
-            <AtletaAssegnata
-              key={atleta.id}
-              gruppoId={gruppo.id}
-              gruppoNome={gruppo.nome}
-              atleta={atleta}
-            />
-          ))
-        )}
-      </ul>
+      {atlete.length === 0 ? (
+        <p className={styles.nessunaAtleta}>Nessuna Atleta assegnata.</p>
+      ) : (
+        <div className={styles.scrollAtlete}>
+          <table className={styles.tabellaAtlete}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Certificato</th>
+                <th>Iscrizione</th>
+                <th>Tesseramento</th>
+                <th>Rimuovi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {atlete.map((atleta) => (
+                <AtletaTabellaRiga
+                  key={atleta.id}
+                  gruppoId={gruppo.id}
+                  gruppoNome={gruppo.nome}
+                  atleta={atleta}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <form
         ref={formRef}
         action={formAction}
         className={styles.formAssegna}
         onSubmit={(e) => {
           // Review fix (code review Story 9.15): stessa cautela gia' usata
-          // per la rimozione (AtletaAssegnata.tsx) - il <select> include
+          // per la rimozione (AtletaTabellaRiga.tsx) - il <select> include
           // anche Atlete gia' assegnate al Gruppo di un altro Allenatore
           // (riassegnazione self-service esplicitamente accettata), senza
           // conferma un misclick le assegnerebbe in silenzio. Story 9.21:

@@ -24,21 +24,46 @@
   margin: 2px 0 var(--space-3);
 }
 
-.listaAssegnati {
-  list-style: none;
-  margin: 0 0 var(--space-3);
-  padding: 0;
-  font-size: 13px;
-  color: var(--color-text-primary);
-}
-
-.listaAssegnati li {
-  padding: 2px 0;
-}
-
 .nessunaAtleta {
+  margin: 0 0 var(--space-3);
   color: var(--color-text-secondary);
   font-style: italic;
+}
+
+/* Richiesta utente 2026-08-07: stesso layout a 5 colonne (Nome | Certificato
+   | Iscrizione | Tesseramento | Rimuovi) di /gruppi (Story 9.33, round 4/5)
+   - sostituisce .listaAssegnati/.listaAssegnati li (rimosse come dead code).
+   A differenza di gruppi.module.css/.tabellaAtlete, qui non esiste una
+   tabella esterna (.tabella) in questo modulo - nessun conflitto di
+   specificita' da risolvere per ordine di dichiarazione, questa pagina usa
+   card, non una tabella. .scrollAtlete: stesso principio di .scrollWrapper
+   (gruppi.module.css) - scroll orizzontale invece di andare a capo su
+   schermi stretti. */
+.scrollAtlete {
+  overflow-x: auto;
+  margin: 0 0 var(--space-3);
+}
+
+.tabellaAtlete {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabellaAtlete th {
+  padding: 2px var(--space-2) 2px 0;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.tabellaAtlete td {
+  padding: 2px var(--space-2) 2px 0;
+  border-bottom: none;
+  vertical-align: middle;
 }
 
 .formAssegna {

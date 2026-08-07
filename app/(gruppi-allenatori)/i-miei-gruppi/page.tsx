@@ -3,6 +3,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { MioGruppoCard } from "./MioGruppoCard";
 import styles from "./i-miei-gruppi.module.css";
@@ -66,7 +67,7 @@ export default async function IMieiGruppiPage() {
   // policy allenatore_proprie_atlete_certificato_select (Story 4.5) resta
   // scoped ai Gruppi dell'Allenatore (non la nuova policy ampia su "atlete"),
   // nessuno scoping applicativo aggiuntivo necessario qui.
-  const [atlete, gruppoAtleteRows, certificati] = await Promise.all([
+  const [atlete, gruppoAtleteRows, certificati, iscrizioni, tesseramenti] = await Promise.all([
     elencaAtlete(supabase),
     gruppiPropri.length > 0
       ? prisma.gruppoAtleta.findMany({
@@ -78,6 +79,17 @@ export default async function IMieiGruppiPage() {
         })
       : Promise.resolve([]),
     elencaCertificati(supabase),
+    // Richiesta utente 2026-08-07: stesso layout a 5 colonne di /gruppi
+    // (Story 9.33, round 4/5) applicato anche qui - stesso pattern di
+    // lettura di gruppi/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
+    // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
+    annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
+    annoCorrente
+      ? prisma.tesseramento.findMany({
+          where: { annoAgonisticoId: annoCorrente.id },
+          select: { atletaId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   // Story 9.19: stesso helper condiviso di gruppi/page.tsx - una volta per
@@ -90,6 +102,11 @@ export default async function IMieiGruppiPage() {
     new Date()
   );
   const atletaPerId = new Map(atleteMinime.map((a) => [a.id, a]));
+
+  // Richiesta utente 2026-08-07: Set invece di Map - stesso principio di
+  // gruppi/page.tsx, qui serve solo l'appartenenza.
+  const idAtleteIscritte = new Set(iscrizioni.map((i) => i.atletaId));
+  const idAtleteTesserate = new Set(tesseramenti.map((t) => t.atletaId));
 
   return (
     <main>
@@ -113,6 +130,11 @@ export default async function IMieiGruppiPage() {
                 certificatoScaduto: boolean;
               } => a !== undefined
             )
+            .map((a) => ({
+              ...a,
+              iscritta: idAtleteIscritte.has(a.id),
+              tesserata: idAtleteTesserate.has(a.id),
+            }))
             .sort((a, b) => a.nome.localeCompare(b.nome));
 
           // Esclude dal <select> solo le Atlete gia' in QUESTO Gruppo (non
