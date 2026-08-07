@@ -339,14 +339,36 @@
    "Certificato scaduto" (non solo "in scadenza") - la variante danger per
    badge di stato su singola Atleta e' una regola "non negoziabile" di
    DESIGN.md, la cui unica eccezione (/conferma-certificati, Story 9.23) non
-   si estende qui senza una nuova decisione esplicita. */
-.badge {
+   si estende qui senza una nuova decisione esplicita.
+   Review fix (round 4, Blind Hunter): proprieta' comuni a .badge/
+   .badgeSuccesso/.badgeDanger consolidate in un solo blocco (prima
+   triplicate quasi verbatim nello stesso file) - solo background/color
+   variano per variante, stesso identico comportamento visivo. Le due nuove
+   varianti (successo/danger) sono per le colonne Iscrizione/Tesseramento -
+   seconda eccezione esplicita alla regola "mai danger su singola riga",
+   registrata in DESIGN.md (Componenti -> Badge di stato). */
+.badge,
+.badgeSuccesso,
+.badgeDanger {
   flex-shrink: 0;
   font-size: 10.5px;
   font-weight: 700;
   padding: 3px 9px;
   border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badge {
   background: var(--color-warning-bg);
   color: var(--color-warning);
-  white-space: nowrap;
+}
+
+.badgeSuccesso {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeDanger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }

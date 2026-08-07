@@ -654,3 +654,8 @@
 ## Deferred from: code review of 9-33-atlete-riga-separata-gruppi round 3 (2026-08-06)
 
 - Duplicazione del type predicate `{id, nome, certificatoInScadenza, certificatoScaduto}` tra `gruppi/page.tsx` e `i-miei-gruppi/page.tsx` - pattern gia' pre-esistente (i due predicate erano gia' duplicati identici prima di questo round), il round 3 lo estende con un terzo campo invece di introdurlo. Refactor verso un tipo condiviso (`ReturnType<typeof calcolaAtleteConCertificatoInScadenza>[number]`) piu' adatto a una story dedicata che tocchi entrambi i file per intero. [app/(gruppi-allenatori)/gruppi/page.tsx, app/(gruppi-allenatori)/i-miei-gruppi/page.tsx]
+
+## Deferred from: code review of 9-33-atlete-riga-separata-gruppi round 4 (2026-08-07)
+
+- Nessun test copre la nuova logica di composizione `idAtleteIscritte`/`idAtleteTesserate` (due Set di atletaId mappati su atleteGruppo) in gruppi/page.tsx - coerente con la convenzione gia' accettata in tutto il progetto di non testare la logica di composizione dati inline in un Server Component pagina, non una funzione pura estraibile. [app/(gruppi-allenatori)/gruppi/page.tsx]
+- Tesseramento non ha un campo attiva/di esclusione (a differenza di Iscrizione) - una volta confermato non esiste un modo nell'app per "detesserare" un'Atleta se il Tesseramento e' stato confermato per errore, se non intervenendo direttamente sul DB. Gap del modello dati pre-esistente, la nuova colonna Tesseramento in /gruppi lo rende solo piu' visibile in UI, non lo introduce. [prisma/schema.prisma]

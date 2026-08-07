@@ -3,6 +3,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
@@ -32,32 +33,44 @@ export default async function GruppiPage() {
   // elencaAtlete(supabase) (client Supabase autenticato), mai con un
   // include Prisma su GruppoAtleta.atleta, che bypasserebbe le policy RLS
   // usando la connessione privilegiata di Prisma (vedi Dev Notes Story 2.4).
-  const [gruppi, allenatori, atlete, gruppoAtleteRows, certificati] = await Promise.all([
-    annoCorrente
-      ? prisma.gruppo.findMany({
-          where: { annoAgonisticoId: annoCorrente.id },
-          orderBy: { nome: "asc" },
-          include: {
-            allenatori: {
-              include: { allenatore: true },
-              orderBy: [{ allenatore: { nome: "asc" } }, { allenatore: { cognome: "asc" } }],
+  const [gruppi, allenatori, atlete, gruppoAtleteRows, certificati, iscrizioni, tesseramenti] =
+    await Promise.all([
+      annoCorrente
+        ? prisma.gruppo.findMany({
+            where: { annoAgonisticoId: annoCorrente.id },
+            orderBy: { nome: "asc" },
+            include: {
+              allenatori: {
+                include: { allenatore: true },
+                orderBy: [{ allenatore: { nome: "asc" } }, { allenatore: { cognome: "asc" } }],
+              },
             },
-          },
-        })
-      : Promise.resolve([]),
-    prisma.allenatore.findMany({ orderBy: [{ nome: "asc" }, { cognome: "asc" }] }),
-    elencaAtlete(supabase),
-    annoCorrente
-      ? prisma.gruppoAtleta.findMany({
-          where: { annoAgonisticoId: annoCorrente.id },
-          select: { atletaId: true, gruppoId: true },
-        })
-      : Promise.resolve([]),
-    // Story 9.19: stesso pattern di join in memoria gia' usato in
-    // vista-dirigente/page.tsx - CertificatoMedico e' RLS-protetta (AD-4/
-    // AD-9), mai un include Prisma diretto.
-    elencaCertificati(supabase),
-  ]);
+          })
+        : Promise.resolve([]),
+      prisma.allenatore.findMany({ orderBy: [{ nome: "asc" }, { cognome: "asc" }] }),
+      elencaAtlete(supabase),
+      annoCorrente
+        ? prisma.gruppoAtleta.findMany({
+            where: { annoAgonisticoId: annoCorrente.id },
+            select: { atletaId: true, gruppoId: true },
+          })
+        : Promise.resolve([]),
+      // Story 9.19: stesso pattern di join in memoria gia' usato in
+      // vista-dirigente/page.tsx - CertificatoMedico e' RLS-protetta (AD-4/
+      // AD-9), mai un include Prisma diretto.
+      elencaCertificati(supabase),
+      // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento nella
+      // tabella Atlete - stesso pattern di lettura gia' usato da
+      // conferma-tesseramenti/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
+      // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
+      annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
+      annoCorrente
+        ? prisma.tesseramento.findMany({
+            where: { annoAgonisticoId: annoCorrente.id },
+            select: { atletaId: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
   // Mappa costruita lato server per abbinare le Atlete (lette via RLS) alle
   // righe GruppoAtleta (lette via Prisma diretto) senza mai attraversare la
@@ -75,6 +88,13 @@ export default async function GruppiPage() {
     new Date()
   );
   const atletaPerId = new Map(atleteMinime.map((atleta) => [atleta.id, atleta]));
+
+  // Richiesta utente 2026-08-07: Set invece di Map - qui serve solo
+  // l'appartenenza (iscritta/tesserata sì o no), non altri campi della riga
+  // Iscrizione/Tesseramento, a differenza di certificati/atleteMinime sopra
+  // che portano dati aggiuntivi (dataFineValidita/stato).
+  const idAtleteIscritte = new Set(iscrizioni.map((i) => i.atletaId));
+  const idAtleteTesserate = new Set(tesseramenti.map((t) => t.atletaId));
 
   return (
     <main>
@@ -110,6 +130,17 @@ export default async function GruppiPage() {
                       certificatoScaduto: boolean;
                     } => atleta !== undefined
                   )
+                  // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento -
+                  // aggiunte qui invece che dentro atleteMinime perche' sono
+                  // specifiche di /gruppi (non richieste per /i-miei-gruppi,
+                  // stessa scelta di scope gia' fatta per certificatoScaduto in
+                  // Story 9.33 round 3, qui applicata evitando di ripetere la
+                  // duplicazione di tipo gia' segnalata in quella code review).
+                  .map((atleta) => ({
+                    ...atleta,
+                    iscritta: idAtleteIscritte.has(atleta.id),
+                    tesserata: idAtleteTesserate.has(atleta.id),
+                  }))
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 
                 return (

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { assegnaAllenatore, assegnaAtleta, creaEAssegnaAtleta } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
-import { AtletaTabellaRiga } from "./AtletaTabellaRiga";
+import { AtletaTabellaRiga, type AtletaConStato } from "./AtletaTabellaRiga";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
 import styles from "./gruppi.module.css";
 
@@ -12,7 +12,7 @@ type Gruppo = {
   nome: string;
   categoria: string;
   allenatori: Allenatore[];
-  atlete: Atleta[];
+  atlete: AtletaConStato[];
 };
 
 // Richiesta esplicita dell'utente (2026-08-06): elenco Gruppi più compatto -
@@ -235,6 +235,8 @@ export function GruppoRow({
                 <tr>
                   <th>Nome</th>
                   <th>Certificato</th>
+                  <th>Iscrizione</th>
+                  <th>Tesseramento</th>
                   <th>Rimuovi</th>
                 </tr>
               </thead>
