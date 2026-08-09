@@ -648,23 +648,21 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("allows Admin or Dirigente on /sponsor (Story 16.1)", async () => {
-    expect(await getRouteDecision("/sponsor", true, ["ADMIN"])).toEqual({
-      action: "allow",
-    });
-    expect(await getRouteDecision("/sponsor", true, ["DIRIGENTE"])).toEqual({
-      action: "allow",
-    });
-  });
+  // Story 16.2: /sponsor e' diventata la prima rotta autenticata del
+  // progetto visibile a TUTTI e sei i Ruoli (vetrina pubblica, contenuto
+  // condizionale in page.tsx per i controlli di gestione Admin/Dirigente).
+  it.each(["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"] as const)(
+    "allows %s on /sponsor (Story 16.1/16.2)",
+    async (ruolo) => {
+      expect(await getRouteDecision("/sponsor", true, [ruolo])).toEqual({
+        action: "allow",
+      });
+    }
+  );
 
-  it("redirects to /non-autorizzato on /sponsor for other roles (Story 16.1)", async () => {
-    expect(await getRouteDecision("/sponsor", true, ["SEGRETERIA"])).toEqual({
-      action: "redirect",
-      location: "/non-autorizzato",
-    });
-    expect(await getRouteDecision("/sponsor", true, ["ALLENATORE"])).toEqual({
-      action: "redirect",
-      location: "/non-autorizzato",
+  it("matches the nested voucher route /sponsor/[id]/voucher under the same prefix (Story 16.2)", async () => {
+    expect(await getRouteDecision("/sponsor/abc-123/voucher", true, ["ATLETA"])).toEqual({
+      action: "allow",
     });
   });
 

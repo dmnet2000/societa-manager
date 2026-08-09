@@ -229,6 +229,8 @@ describe("filtraVociNavigazione", () => {
       "/il-mio-profilo",
       "/campionati",
       "/partite",
+      // Story 16.2: /sponsor e' ora visibile a tutti e sei i Ruoli.
+      "/sponsor",
     ]);
   });
 
@@ -351,7 +353,7 @@ describe("filtraVociNavigazione", () => {
   // produzione reale, non ipotetico. Uguaglianza esatta sull'intero array
   // (ordine tra i due nodi gruppo incluso, non solo il contenuto di ciascuno
   // preso isolatamente).
-  it("Segreteria vede entrambi i gruppi coesistenti (Atleti e Orari/Palestre), nessun'altra voce", () => {
+  it("Segreteria vede entrambi i gruppi coesistenti (Atleti e Orari/Palestre) e nessun'altra voce diretta oltre /sponsor (Story 16.2)", () => {
     const voci = filtraVociNavigazione(["SEGRETERIA"]);
     expect(voci).toEqual([
       {
@@ -367,6 +369,8 @@ describe("filtraVociNavigazione", () => {
         label: "Orari/Palestre",
         figlie: [{ href: "/orari", label: "Orari" }],
       },
+      // Story 16.2: /sponsor e' ora visibile a tutti e sei i Ruoli.
+      { tipo: "voce", href: "/sponsor", label: "Sponsor" },
     ]);
   });
 
@@ -405,10 +409,11 @@ describe("filtraVociNavigazione", () => {
   // diretta dopo /gruppi, il gruppo "Orari/Palestre" guadagna una seconda
   // figlia (/slot, prima di /palestre).
   //
-  // Story 16.1 (Epic 16): nuova voce diretta /sponsor (Admin/Dirigente),
-  // dichiarata dopo /partite e prima del gruppo "Accounting" in
-  // PROTECTED_ROUTES - nessun "gruppo" assegnato (non fa parte di
-  // Accounting).
+  // Story 16.1 (Epic 16): nuova voce diretta /sponsor, dichiarata dopo
+  // /partite e prima del gruppo "Accounting" in PROTECTED_ROUTES - nessun
+  // "gruppo" assegnato (non fa parte di Accounting).
+  // Story 16.2: /sponsor estesa a tutti e sei i Ruoli (era Admin/Dirigente-
+  // only) - resta comunque nella stessa posizione per Admin.
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([

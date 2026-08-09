@@ -207,15 +207,16 @@ export const PROTECTED_ROUTES: {
     navLabel: "Partite",
   },
   {
-    // Story 16.1 (Epic 16, Sponsor e Convenzioni): rotta di *gestione*
-    // (Admin/Dirigente creano/modificano/disattivano Sponsor). La vetrina
-    // *pubblica* (Story 16.2, visibile a tutti i sei Ruoli) e' una
-    // decisione lasciata esplicitamente a quella story - stessa rotta con
-    // contenuto condizionale per Ruolo, o una rotta distinta (vedi Dev
-    // Notes della story). Nessun "gruppo": voce diretta, non fa parte di
+    // Story 16.1 (Epic 16, Sponsor e Convenzioni): introdotta come rotta di
+    // *gestione* (Admin/Dirigente creano/modificano/disattivano Sponsor).
+    // Story 16.2: stessa rotta riusata per la vetrina *pubblica* (contenuto
+    // condizionale per Ruolo in page.tsx, non una rotta distinta - decisione
+    // presa in apertura della Story 16.2, stesso principio gia' in uso per
+    // /campionati) - prima rotta autenticata del progetto visibile a tutti
+    // e sei i Ruoli. Nessun "gruppo": voce diretta, non fa parte di
     // "Accounting" (nessuna decisione di analisi la colloca li').
     prefix: "/sponsor",
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
     navLabel: "Sponsor",
   },
   {

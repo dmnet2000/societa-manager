@@ -173,3 +173,48 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Story 16.2 - vetrina pubblica (tutti i Ruoli), distinta dalla gestione
+   sopra: .schedaVetrina/.anteprimaVetrina sono la lettura, non hanno un
+   <form> come .card. */
+.gruppoVetrina + .gruppoVetrina {
+  margin-top: var(--space-5);
+}
+
+.titoloGruppoVetrina {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.listaVetrina {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.schedaVetrina {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.anteprimaVetrina {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+/* Story 9.6: .bottone e' pensato per <button> - un <a> (Link "Genera
+   voucher") riusa .bottone per il resto ma ha bisogno di questi due in piu'
+   per non apparire come un link sottolineato, stesso principio di
+   .linkNaviga (palestre.module.css). */
+.linkVoucher {
+  display: inline-block;
+  margin-top: var(--space-4);
+  text-decoration: none;
+}
