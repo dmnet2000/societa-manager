@@ -19,7 +19,7 @@ Epic grafica:
 
 X - non ho ancora capito se la funzionalità di invio E-mail del certificato è stata svulippata, anche perchè non ho settata la mail della segreteria da nessuna parte
  
-		
+			
 		
 Fix:
 - X Conferma Tesseramento non visibile il pulsante conferma

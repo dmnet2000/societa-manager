@@ -641,3 +641,39 @@ model PermessoRotta {
   @@unique([rotta, ruolo])
   @@map("permessi_rotte")
 }
+
+enum TipoSponsor {
+  BANNER
+  CONVENZIONE
+}
+
+// Story 16.1 (Epic 16, Sponsor e Convenzioni): entita' strutturale (AD-9) -
+// accesso via Prisma diretto (connessione privilegiata), mai tramite
+// PostgREST/client Supabase autenticato. RLS abilitata senza alcuna policy
+// (deny-all di default) + REVOKE esplicito da "anon"/"authenticated"
+// (review fix 2026-08-09: stesso pattern gia' corretto per
+// Palestra/PermessoRotta/Tesseramento il 2026-08-04, non l'assenza di RLS
+// del loro trattamento originale). "tipo"
+// distingue solo il comportamento della vetrina pubblica (Story 16.2: il
+// voucher e' generabile solo per CONVENZIONE), non la struttura dati -
+// stessi campi per entrambi i tipi. Mai un hard-delete lato UTENTE:
+// "attiva" e' l'unico modo per un Admin/Dirigente di nascondere uno Sponsor
+// dalla vetrina pubblica - nessuna Server Action di cancellazione esposta.
+// Eccezione interna (review fix, 2026-08-09): creaSponsor rimuove la riga
+// appena creata se l'upload dell'immagine obbligatoria (AC #1) fallisce
+// subito dopo - non e' la cancellazione di uno Sponsor esistente, e' il
+// rollback di una creazione mai completata dal punto di vista dell'utente
+// (uno Sponsor senza immagine romperebbe la vetrina pubblica in modo
+// permanente). Decisione presa esplicitamente con l'utente in code review.
+model Sponsor {
+  id          String      @id @default(uuid())
+  nome        String
+  tipo        TipoSponsor
+  descrizione String
+  linkEsterno String?
+  attiva      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("sponsor")
+}

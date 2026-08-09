@@ -207,6 +207,18 @@ export const PROTECTED_ROUTES: {
     navLabel: "Partite",
   },
   {
+    // Story 16.1 (Epic 16, Sponsor e Convenzioni): rotta di *gestione*
+    // (Admin/Dirigente creano/modificano/disattivano Sponsor). La vetrina
+    // *pubblica* (Story 16.2, visibile a tutti i sei Ruoli) e' una
+    // decisione lasciata esplicitamente a quella story - stessa rotta con
+    // contenuto condizionale per Ruolo, o una rotta distinta (vedi Dev
+    // Notes della story). Nessun "gruppo": voce diretta, non fa parte di
+    // "Accounting" (nessuna decisione di analisi la colloca li').
+    prefix: "/sponsor",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Sponsor",
+  },
+  {
     // Story 15.4 (Epic 15): le tre rotte raggruppate sotto "Accounting"
     // sono state spostate qui, in fondo all'intero array - a differenza di
     // Story 15.2/15.3 (dove bastava rendere le rotte adiacenti tra loro),

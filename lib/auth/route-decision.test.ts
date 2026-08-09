@@ -648,6 +648,26 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows Admin or Dirigente on /sponsor (Story 16.1)", async () => {
+    expect(await getRouteDecision("/sponsor", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(await getRouteDecision("/sponsor", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /sponsor for other roles (Story 16.1)", async () => {
+    expect(await getRouteDecision("/sponsor", true, ["SEGRETERIA"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+    expect(await getRouteDecision("/sponsor", true, ["ALLENATORE"])).toEqual({
+      action: "redirect",
+      location: "/non-autorizzato",
+    });
+  });
+
   it("allows only Admin on /permessi-accesso (Story 12.1)", async () => {
     expect(await getRouteDecision("/permessi-accesso", true, ["ADMIN"])).toEqual({
       action: "allow",

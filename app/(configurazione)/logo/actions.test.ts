@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+// Story 16.1: actions.ts ora importa lib/storage/validazione-immagine.ts
+// (estratto da questo file), che ha "server-only" in testa - stesso mock
+// gia' stabilito in lib/storage/logo.test.ts.
+vi.mock("server-only", () => ({}));
+
 const requireRuoloMock = vi.fn();
 const createClientMock = vi.fn();
 const caricaLogoMock = vi.fn();

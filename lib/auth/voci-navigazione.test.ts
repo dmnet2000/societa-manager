@@ -404,6 +404,11 @@ describe("filtraVociNavigazione", () => {
   // nel gruppo "Orari/Palestre" - sparisce dalla sua posizione di voce
   // diretta dopo /gruppi, il gruppo "Orari/Palestre" guadagna una seconda
   // figlia (/slot, prima di /palestre).
+  //
+  // Story 16.1 (Epic 16): nuova voce diretta /sponsor (Admin/Dirigente),
+  // dichiarata dopo /partite e prima del gruppo "Accounting" in
+  // PROTECTED_ROUTES - nessun "gruppo" assegnato (non fa parte di
+  // Accounting).
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -430,6 +435,7 @@ describe("filtraVociNavigazione", () => {
       { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
       { tipo: "voce", href: "/campionati", label: "Campionati" },
       { tipo: "voce", href: "/partite", label: "Partite" },
+      { tipo: "voce", href: "/sponsor", label: "Sponsor" },
       {
         tipo: "gruppo",
         label: "Accounting",
