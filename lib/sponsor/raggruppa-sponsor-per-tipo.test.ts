@@ -8,6 +8,7 @@ function sponsor(overrides: Partial<SponsorVetrina> = {}): SponsorVetrina {
     tipo: "BANNER",
     descrizione: "Descrizione",
     updatedAt: "2026-08-09T12:00:00.000Z",
+    linkEsterno: null,
     ...overrides,
   };
 }

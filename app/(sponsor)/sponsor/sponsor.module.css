@@ -209,6 +209,18 @@
   border-radius: var(--radius-sm);
 }
 
+/* Post-review: un Banner con link esterno impostato ha l'immagine
+   cliccabile (apre il link in una nuova scheda) - nessun bordo/decorazione
+   propri, l'anteprima sotto resta l'unico elemento visivo. */
+.linkImmagineBanner {
+  display: block;
+}
+
+.linkImmagineBanner:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 /* Story 9.6: .bottone e' pensato per <button> - un <a> (Link "Genera
    voucher") riusa .bottone per il resto ma ha bisogno di questi due in piu'
    per non apparire come un link sottolineato, stesso principio di

@@ -41,6 +41,7 @@ export default async function SponsorPage() {
       tipo: s.tipo,
       descrizione: s.descrizione,
       updatedAt: s.updatedAt.toISOString(),
+      linkEsterno: s.linkEsterno,
     }))
   );
   const nessunoSponsorAttivo = banner.length === 0 && convenzioni.length === 0;
@@ -70,7 +71,6 @@ export default async function SponsorPage() {
                       key={sponsor.id}
                       sponsor={sponsor}
                       immagineUrl={urlPubblicoImmagineSponsor(supabase, sponsor.id)}
-                      mostraVoucher={false}
                     />
                   ))}
                 </div>
@@ -85,7 +85,6 @@ export default async function SponsorPage() {
                       key={sponsor.id}
                       sponsor={sponsor}
                       immagineUrl={urlPubblicoImmagineSponsor(supabase, sponsor.id)}
-                      mostraVoucher={true}
                     />
                   ))}
                 </div>

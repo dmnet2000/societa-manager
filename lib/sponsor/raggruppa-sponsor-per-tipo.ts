@@ -10,6 +10,13 @@ export type SponsorVetrina = {
   // logo/page.tsx) - senza, la vetrina puo' continuare a mostrare
   // un'immagine sostituita dall'Admin mentre la gestione si aggiorna gia'.
   updatedAt: string;
+  // Post-review (2026-08-09, segnalato dall'utente dal vivo): un Banner
+  // pubblicitario senza alcuna azione cliccabile non ha senso dal punto di
+  // vista di uno sponsor - l'unico URL disponibile su Sponsor e' questo,
+  // gia' impostabile in gestione (Story 16.1) ma mai usato dalla vetrina
+  // fino ad ora. Opzionale (AC #1 originale, "opzionalmente un link
+  // esterno") - un Banner senza link resta non cliccabile.
+  linkEsterno: string | null;
 };
 
 export type SponsorRaggruppati = {
