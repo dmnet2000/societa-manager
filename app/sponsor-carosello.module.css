@@ -1,0 +1,156 @@
+/* Story 16.3 - applica i token di DESIGN.md (ux-designs/ux-societa-manager-2026-07-22).
+   Primo carosello del progetto - nessun mockup key-screen dedicato, .carosello
+   riusa 1:1 il pattern .card gia' stabilito (home.module.css/sponsor.module.css/
+   vista-dirigente.module.css). Nessun nuovo colore introdotto - registro
+   assertivo/minimale gia' stabilito, niente pillole/decorazioni nuove. */
+
+.carosello {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  margin-top: var(--space-4);
+}
+
+.viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.immagine {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.linkImmagine {
+  display: block;
+  width: 100%;
+}
+
+.freccia {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  /* Review fix (Blind Hunter): width/height a 36px erano sempre sovrascritti
+     dal min-width/min-height 44px sottostante (CSS box-sizing: il vincolo
+     min-* piu' grande vince sempre) - codice morto e fuorviante, rimosso. */
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.freccia:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.frecciaSinistra {
+  left: var(--space-2);
+}
+
+.frecciaDestra {
+  right: var(--space-2);
+}
+
+.nome {
+  margin-top: var(--space-3);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+/* Review fix (Blind Hunter): contenitore per pallini + pulsante pausa sulla
+   stessa riga, wrap consentito se ci sono molti Banner attivi. */
+.controlli {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.indicatori {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pallino {
+  /* Review fix (Blind Hunter): stesso motivo di .freccia sopra - width/height
+     a 8px erano sempre sovrascritti dal min-width/min-height 44px, rimossi.
+     Il pallino visibile resta 8px tramite ::after sotto, non tramite questo
+     box. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Il pallino visibile (8px) resta piccolo per estetica, ma l'area cliccabile
+   (min-width/height 44px sopra) rispetta comunque il touch target minimo -
+   lezione gia' nota nel progetto (Story 15.5/9.30: min-height sul
+   contenitore non basta da solo, va garantita anche qui via ::after). */
+.pallino::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.pallinoAttivo::after {
+  background: var(--color-button-bg);
+}
+
+.pallino:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Review fix (Blind Hunter): controllo esplicito di pausa/ripresa - WCAG
+   2.2.2 (Pause, Stop, Hide) per contenuto che si aggiorna automaticamente
+   per piu' di 5 secondi. */
+.pausa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pausa:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

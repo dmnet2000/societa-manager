@@ -1977,3 +1977,29 @@ so that possa scoprire gli sponsor della società e usufruire delle scontistiche
 3. **And** il pulsante "Genera voucher" non compare sui Banner pubblicitari (`tipo = BANNER`) — solo sulle Convenzioni
 4. **And** se nessuno Sponsor è attivo, la pagina mostra un messaggio esplicito ("Nessuno sponsor al momento") invece di una sezione vuota senza spiegazione — stesso principio già seguito altrove nel progetto (es. `/notifiche` vuoto)
 5. **And** nessuna informazione sanitaria/riservata nel voucher — solo Nome Cognome (già pubblico all'interno della società) e nome società, nessun dato da `Atleta`/`CertificatoMedico`
+
+### Story 16.3: Banner sponsor in homepage per Atleta/Genitore
+
+*(Aggiunta il 2026-08-09 su richiesta esplicita dell'utente, emersa durante lo sviluppo di Story 16.2 dopo aver verificato dal vivo la vetrina `/sponsor`: "aggiungerei altra story, i banner pubblicitari dovrebbero essere visibili per i ruoli Atleta e genitori in homepage, trova un modo accattivante per farlo". Nessuna analisi di apertura separata — story piccola e ben definita, decisioni prese direttamente qui.)*
+
+As a Atleta o Genitore,
+I want vedere i Banner pubblicitari attivi in evidenza appena entro nell'app,
+so that scopra gli sponsor della società senza dover cercare la sezione Sponsor.
+
+**Decisioni di analisi (2026-08-09):**
+- **Solo `tipo = BANNER`**, mai le Convenzioni — richiesta esplicita dell'utente ("i banner pubblicitari"); le Convenzioni (con "Genera voucher") restano esclusivamente su `/sponsor` (Story 16.2), non duplicate in homepage.
+- **Solo Ruoli Atleta e Genitore** — richiesta esplicita; per tutti gli altri Ruoli (Allenatore, Admin, Dirigente, Segreteria) la homepage resta invariata (nessuna sezione sponsor).
+- **Presentazione "accattivante"**: carosello auto-avanzante (un Banner alla volta, avanzamento automatico ogni ~5s, frecce prev/next + indicatori a pallino per il controllo manuale) — delegato esplicitamente dall'utente ("trova un modo accattivante"), nessuna libreria esterna (coerente con l'assenza di dipendenze carosello/slider in tutto il progetto), componente client (`"use client"`) con `useState`/`useEffect`, stesso principio di leggerezza già seguito ovunque nel progetto.
+- **Immagine cliccabile** verso `linkEsterno` se impostato (stesso comportamento già implementato nella vetrina `/sponsor`, estensione post-review di Story 16.2) — nessuna duplicazione di logica, riusare se possibile.
+- **Nessuna sezione se non ci sono Banner attivi** — homepage resta quella attuale (nessuna card vuota/carosello vuoto).
+- **Nessuna nuova migrazione, nessuna nuova Server Action** — solo lettura (`prisma.sponsor.findMany({ where: { tipo: "BANNER", attiva: true } })`), riuso diretto di `urlPubblicoImmagineSponsor` (Story 16.1).
+
+**Note aggiuntive:** `app/page.tsx` (homepage) non ha oggi alcuna sezione Sponsor né alcun controllo di Ruolo specifico (rotta `/` senza `ruoliAmmessi` in `route-guard.ts` — nessuna restrizione, visibile a chiunque autenticato) — il filtro Atleta/Genitore va applicato in `page.tsx` stesso via `parseRuoli`, stesso pattern già usato in `/campionati`/`/sponsor`. Nessuna nuova voce di navigazione (la homepage è già raggiungibile).
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente con Ruolo Atleta o Genitore **When** visita la homepage **Then** vede un carosello dei Banner pubblicitari attivi (immagine + nome), posizionato in evidenza nella pagina
+2. **And** il carosello avanza automaticamente al Banner successivo dopo qualche secondo, con la possibilità di navigare manualmente (avanti/indietro o indicatori)
+3. **Given** un Banner con `linkEsterno` impostato **When** l'Utente clicca l'immagine **Then** il link si apre in una nuova scheda — stesso comportamento della vetrina `/sponsor`
+4. **And** se nessun Banner è attivo, la homepage non mostra alcuna sezione sponsor (nessun carosello vuoto)
+5. **And** un Utente con un Ruolo diverso da Atleta/Genitore non vede alcuna modifica alla homepage (nessuna sezione sponsor, nessun cambiamento di comportamento)
