@@ -467,3 +467,15 @@ development_status:
   # anche il contenuto guida.
   epic-17: in-progress
   17-1-guida-infrastruttura-e-pilota: done
+
+  # Epic 18 (Sito pubblico Settore Volley) aperto il 2026-08-10 su richiesta
+  # esplicita dell'utente - solo l'epica scritta ora ("per il momento
+  # scrivi solo l'epica"), nessuna story creata. Decisioni prese in
+  # apertura: stesso progetto Next.js (nuove pagine pubbliche, non un sito
+  # separato), direzione social->sito (mirroring dei post pubblicati sui
+  # social della societa', non pubblicazione dal sito verso i social).
+  # Punto tecnico critico non ancora risolto: "/" e' gia' occupata dalla
+  # dashboard interna autenticata - va deciso un prefisso per il sito
+  # pubblico o uno spostamento della dashboard, in apertura della prima
+  # story. Elenco APERTO come Epic 9/11/17.
+  epic-18: backlog

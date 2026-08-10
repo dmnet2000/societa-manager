@@ -2034,3 +2034,25 @@ so that possa capire come usare l'app senza dover chiedere aiuto a qualcun altro
 3. **Given** l'Utente è su una delle due pagine pilota (`/sponsor` o `/palestre`) **When** clicca l'icona "?" vicino al titolo della pagina **Then** vede lo stesso contenuto guida di quella funzione in un pannello/tooltip, senza lasciare la pagina
 4. **And** una pagina senza contenuto guida associato non mostra l'icona "?" (nessun placeholder rotto)
 5. **And** nessuna scrittura: la guida è interamente read-only, nessuna Server Action di creazione/modifica/cancellazione del contenuto
+
+## Epic 18: Sito pubblico Settore Volley
+
+*(Aggiunto in corso d'opera — 2026-08-10, richiesta esplicita dell'utente: "vorrei anche creare un sito per il settore Volley, accattivante, che si possa agganciare con i social nel pubblicare i post, con la lista delle partite della settimana recuperate dal calendario, sezione sponsor, foto di squadra dei vari gruppi, lascia aperto poi per eventuali altre richieste". Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata. Elenco APERTO come Epic 9/11/17, non tutto risolto qui.)*
+
+**Requisito originale:** un sito pubblico (senza login) per il Settore Volley della società, con un registro visivo accattivante, che mostri: i post pubblicati sui social della società, l'elenco delle partite della settimana, una sezione Sponsor, e le foto di squadra dei vari Gruppi.
+
+**Decisioni prese con l'utente in fase di apertura (2026-08-10):**
+- **Stesso progetto**, non un sito separato: nuove pagine pubbliche (senza autenticazione) in questa stessa app Next.js/Cloudflare — riusa direttamente i dati già esistenti (`Sponsor`, `Partita`/`Campionato`) senza duplicarli in un secondo sistema o costruire un'API pubblica separata.
+- **Direzione dei social è dal social verso il sito**, non il contrario: quando la società pubblica un post sui propri canali social (es. Instagram/Facebook), quel post deve comparire anche sul sito — non è il sito a pubblicare sui social. Nessuna scrittura verso le piattaforme social, solo lettura/mirroring.
+
+**Contesto tecnico rilevante scoperto in analisi**: la rotta `"/"` di questa app è **già occupata** dalla dashboard interna autenticata (`app/page.tsx`, "Area applicativa") ed è protetta di default — `PUBLIC_ROUTES` (`lib/auth/route-guard.ts`) oggi contiene solo `/accedi`, `/registrati`, `/recupera-password`, `/reimposta-password`, nessuna pagina di contenuto. Un sito pubblico non può quindi semplicemente "essere" la radice del dominio senza una decisione esplicita: o (a) il sito pubblico prende un prefisso proprio (es. `/sito`, `/volley`) lasciando `"/"` alla dashboard interna com'è oggi, o (b) la dashboard interna si sposta su un nuovo prefisso (es. `/app`) liberando `"/"` per il sito pubblico. Nessuna delle due è stata ancora decisa — punto aperto critico da risolvere in apertura della prima story, non assunto qui (stesso principio già seguito per il punto aperto "Nome Cognome" di Story 16.2).
+
+**Punti aperti, da chiarire in apertura sviluppo delle singole story (non bloccanti per l'epica, elenco aperto):**
+- **Post social**: come recuperarli/mostrarli — widget di embed ufficiale della piattaforma (più semplice, sola visualizzazione, nessun token da gestire) vs sincronizzazione via API (richiede registrazione app, token, revisione della piattaforma, più fragile) — e quali piattaforme (Instagram? Facebook? entrambe?).
+- **Partite della settimana**: riuso diretto di `Partita`/`Campionato` (Epic 10) in sola lettura pubblica — i dati (squadre, data/ora, luogo, risultato) non sono sensibili, ma va costruito un percorso di lettura pubblico distinto da quello autenticato di `/partite` (che oggi presuppone sempre un Ruolo).
+- **Foto di squadra dei Gruppi**: capacità nuova — oggi esiste solo la foto profilo individuale di Atleta/Allenatore (Story 9.12), nessun campo "foto di squadra" su `Gruppo`. Richiede un nuovo campo/bucket Storage pubblico (mirror diretto del pattern già stabilito per `Sponsor`/logo) e una Server Action di caricamento, presumibilmente Admin/Dirigente — da confermare.
+- **Sezione Sponsor**: la sinergia più diretta con quanto già esiste — stessi dati di `Sponsor` (Epic 16), serve solo una vista pubblica equivalente alla vetrina già costruita in `/sponsor` (Story 16.2) ma raggiungibile senza login.
+- **Registro visivo "accattivante"**: da progettare con Sally (UX designer) in apertura della prima story che tocca il layout pubblico, stesso principio già seguito per il carosello Sponsor in homepage (Story 16.3 estensione).
+- **Elenco aperto**: l'utente ha esplicitamente chiesto di lasciare spazio per richieste future non ancora note — nuove story si aggiungeranno una alla volta, stesso principio di Epic 9/11/17.
+
+Nessuna story creata in questa sessione — solo l'apertura dell'epica, su richiesta esplicita dell'utente ("per il momento scrivi solo l'epica").
