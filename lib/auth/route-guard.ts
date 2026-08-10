@@ -220,6 +220,16 @@ export const PROTECTED_ROUTES: {
     navLabel: "Sponsor",
   },
   {
+    // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta
+    // del progetto visibile a tutti e sei i Ruoli (mirror di /sponsor,
+    // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per
+    // Ruolo (lib/guida/contenuti.ts), qui serve solo poter raggiungere la
+    // pagina stessa.
+    prefix: "/guida",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
+    navLabel: "Guida",
+  },
+  {
     // Story 15.4 (Epic 15): le tre rotte raggruppate sotto "Accounting"
     // sono state spostate qui, in fondo all'intero array - a differenza di
     // Story 15.2/15.3 (dove bastava rendere le rotte adiacenti tra loro),

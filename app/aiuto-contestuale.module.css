@@ -1,0 +1,68 @@
+/* Story 17.1 - applica i token di DESIGN.md. Primo pannello di aiuto
+   contestuale del progetto - nessun mockup key-screen dedicato, tokens
+   esistenti riusati (nessun nuovo colore). */
+
+.wrapper {
+  position: relative;
+  display: inline-block;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.pulsante {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-alt);
+  color: var(--color-button-bg);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pulsante:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.pannello {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 10;
+  width: 280px;
+  max-width: 80vw;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  box-shadow: 0 8px 24px -8px rgba(16, 24, 32, 0.25);
+}
+
+.pannello p {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Review fix (2026-08-10, Blind Hunter): il titolo e' anch'esso un <p>
+   dentro ".pannello", quindi era sempre corrisposto anche da ".pannello p"
+   sopra - che ha specificita' piu' alta (0,1,1 contro 0,1,0 di
+   ".titoloPannello" da sola) e vinceva sempre, indipendentemente
+   dall'ordine di dichiarazione (il titolo risultava reso nello stesso
+   colore attenuato del corpo invece che in --color-text-primary).
+   Selettore qualificato con ".pannello" per battere ".pannello p" a
+   specificita' (0,2,1 contro 0,1,1), non solo per ordine. Rimossa anche
+   ".pannello p:first-of-type" (era un no-op: stesso margin-top gia'
+   applicato da ".pannello p"). */
+.pannello .titoloPannello {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin-top: 0;
+}

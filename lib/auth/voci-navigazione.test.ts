@@ -231,6 +231,8 @@ describe("filtraVociNavigazione", () => {
       "/partite",
       // Story 16.2: /sponsor e' ora visibile a tutti e sei i Ruoli.
       "/sponsor",
+      // Story 17.1: /guida e' anch'essa visibile a tutti e sei i Ruoli.
+      "/guida",
     ]);
   });
 
@@ -353,7 +355,7 @@ describe("filtraVociNavigazione", () => {
   // produzione reale, non ipotetico. Uguaglianza esatta sull'intero array
   // (ordine tra i due nodi gruppo incluso, non solo il contenuto di ciascuno
   // preso isolatamente).
-  it("Segreteria vede entrambi i gruppi coesistenti (Atleti e Orari/Palestre) e nessun'altra voce diretta oltre /sponsor (Story 16.2)", () => {
+  it("Segreteria vede entrambi i gruppi coesistenti (Atleti e Orari/Palestre) e nessun'altra voce diretta oltre /sponsor e /guida (Story 16.2/17.1)", () => {
     const voci = filtraVociNavigazione(["SEGRETERIA"]);
     expect(voci).toEqual([
       {
@@ -369,8 +371,9 @@ describe("filtraVociNavigazione", () => {
         label: "Orari/Palestre",
         figlie: [{ href: "/orari", label: "Orari" }],
       },
-      // Story 16.2: /sponsor e' ora visibile a tutti e sei i Ruoli.
+      // Story 16.2/17.1: /sponsor e /guida sono visibili a tutti i Ruoli.
       { tipo: "voce", href: "/sponsor", label: "Sponsor" },
+      { tipo: "voce", href: "/guida", label: "Guida" },
     ]);
   });
 
@@ -414,6 +417,8 @@ describe("filtraVociNavigazione", () => {
   // "gruppo" assegnato (non fa parte di Accounting).
   // Story 16.2: /sponsor estesa a tutti e sei i Ruoli (era Admin/Dirigente-
   // only) - resta comunque nella stessa posizione per Admin.
+  // Story 17.1 (Epic 17): nuova voce diretta /guida, dichiarata subito dopo
+  // /sponsor - stesso principio, visibile a tutti e sei i Ruoli.
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -441,6 +446,7 @@ describe("filtraVociNavigazione", () => {
       { tipo: "voce", href: "/campionati", label: "Campionati" },
       { tipo: "voce", href: "/partite", label: "Partite" },
       { tipo: "voce", href: "/sponsor", label: "Sponsor" },
+      { tipo: "voce", href: "/guida", label: "Guida" },
       {
         tipo: "gruppo",
         label: "Accounting",

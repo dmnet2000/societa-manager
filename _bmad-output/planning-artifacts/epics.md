@@ -2003,3 +2003,34 @@ so that scopra gli sponsor della società senza dover cercare la sezione Sponsor
 3. **Given** un Banner con `linkEsterno` impostato **When** l'Utente clicca l'immagine **Then** il link si apre in una nuova scheda — stesso comportamento della vetrina `/sponsor`
 4. **And** se nessun Banner è attivo, la homepage non mostra alcuna sezione sponsor (nessun carosello vuoto)
 5. **And** un Utente con un Ruolo diverso da Atleta/Genitore non vede alcuna modifica alla homepage (nessuna sezione sponsor, nessun cambiamento di comportamento)
+
+## Epic 17: Guida in-app e help contestuale
+
+*(Aggiunto in corso d'opera — 2026-08-10, richiesta esplicita dell'utente: "vorrei includere all'interno dell'applicazione una guida dettagliata delle varie funzionalità, e anche un help a runtime dentro la funzione stessa". Elenco APERTO come Epic 9/11 — copertura incrementale pagina per pagina, non tutto subito, decisione presa esplicitamente con l'utente in apertura.)*
+
+**Requisito originale:** una guida delle funzionalità consultabile dentro l'app, più un aiuto contestuale direttamente nella pagina della funzione stessa. **Regola di processo permanente, non solo per questo epic**: ogni volta che una story futura aggiunge o modifica una funzionalità visibile all'utente, il contenuto guida corrispondente (se esiste già) va aggiornato nello stesso diff — salvata anche come memoria persistente dell'agente, non solo qui.
+
+**Decisioni prese con l'utente in fase di analisi (2026-08-10):**
+- **Sezione dedicata `/guida`**: indice + contenuto per funzionalità, filtrato per Ruolo (mirror di `PROTECTED_ROUTES`/`route-guard.ts` — un Genitore vede solo le voci delle funzionalità a cui ha accesso).
+- **Help contestuale**: un'icona "?" (o "i") vicino al titolo di ogni pagina che ha un contenuto guida associato, apre un pannello/tooltip con la spiegazione di quella funzione specifica, senza lasciare la pagina.
+- **Contenuto sorgente unico**: lo stesso contenuto alimenta sia la voce in `/guida` sia il pannello contestuale della pagina — un solo posto da aggiornare quando una funzionalità cambia, non due copie che possono divergere.
+- **Nessuna nuova dipendenza, nessuna nuova tabella DB**: contenuto scritto in codice (moduli TypeScript, non Markdown/CMS) — coerente con la preferenza NFR6 "soluzione più semplice" già seguita ripetutamente in questo progetto (es. Story 16.3, carosello senza libreria esterna). La guida è puramente read-only, nessuna Server Action di scrittura: aggiornarla è un compito di sviluppo (si tocca il codice), non un pannello di amministrazione.
+- **Copertura incrementale**: Story 17.1 fondativa (infrastruttura + indice `/guida` + componente aiuto contestuale riusabile) applicata a due pagine reali come pilota, per validare il pattern sia sullo scoping "tutti i Ruoli" (`/sponsor`) sia sullo scoping "un solo gruppo di Ruoli" (`/palestre`, Admin/Dirigente). Le altre pagine restano da coprire in story successive, aggiunte una alla volta, stesso principio di Epic 9.
+
+**Contesto tecnico rilevante scoperto in analisi**: nessuna libreria Markdown/MDX nel progetto (verificato `package.json`) — il contenuto guida userà semplici stringhe/paragrafi in TypeScript, non richiede di introdurne una. `PROTECTED_ROUTES` (`lib/auth/route-guard.ts`) è già la fonte di verità per "quali Ruoli vedono quale rotta" — il filtro dell'indice `/guida` per Ruolo la riusa direttamente invece di duplicare la mappa rotta→Ruoli altrove.
+
+### Story 17.1: Infrastruttura guida in-app e pilota su due pagine
+
+As a Utente autenticato con un qualunque Ruolo,
+I want consultare una guida delle funzionalità a cui ho accesso, sia in una sezione dedicata sia direttamente nella pagina tramite un aiuto contestuale,
+so that possa capire come usare l'app senza dover chiedere aiuto a qualcun altro.
+
+**Note aggiuntive:** fondativa — stabilisce il modello dei contenuti e il componente riusabile, applicati a due pagine reali (`/sponsor`, visibile a tutti i Ruoli; `/palestre`, Admin/Dirigente-only) per validare entrambi gli scoping prima di estendere alle altre pagine in story successive.
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente autenticato con un qualunque Ruolo **When** visita `/guida` **Then** vede un indice delle funzionalità a cui ha accesso (filtrato per Ruolo, stesso principio di `PROTECTED_ROUTES`), organizzato per voce
+2. **Given** l'Utente seleziona una voce dell'indice **Then** vede il contenuto guida di quella funzionalità (titolo + testo esplicativo)
+3. **Given** l'Utente è su una delle due pagine pilota (`/sponsor` o `/palestre`) **When** clicca l'icona "?" vicino al titolo della pagina **Then** vede lo stesso contenuto guida di quella funzione in un pannello/tooltip, senza lasciare la pagina
+4. **And** una pagina senza contenuto guida associato non mostra l'icona "?" (nessun placeholder rotto)
+5. **And** nessuna scrittura: la guida è interamente read-only, nessuna Server Action di creazione/modifica/cancellazione del contenuto

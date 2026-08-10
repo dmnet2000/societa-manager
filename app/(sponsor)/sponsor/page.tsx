@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { AiutoContestuale } from "@/app/AiutoContestuale";
 import { NuovoSponsorForm } from "./NuovoSponsorForm";
 import { SponsorRow } from "./SponsorRow";
 import { SponsorVetrinaCard } from "./SponsorVetrinaCard";
@@ -54,7 +56,10 @@ export default async function SponsorPage() {
 
   return (
     <main>
-      <h1>Sponsor</h1>
+      <div className={styles.intestazionePagina}>
+        <h1>Sponsor</h1>
+        <AiutoContestuale contenuto={contenutoPerRotta("/sponsor", ruoli)} />
+      </div>
 
       <section className={styles.sezione}>
         <h2>Sponsor e Convenzioni</h2>

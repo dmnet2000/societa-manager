@@ -666,6 +666,19 @@ describe("getRouteDecision", () => {
     });
   });
 
+  // Story 17.1: /guida e' la seconda rotta del progetto visibile a tutti i
+  // Ruoli (mirror di /sponsor) - il contenuto mostrato resta filtrato per
+  // Ruolo in page.tsx (lib/guida/contenuti.ts), qui si verifica solo che la
+  // rotta stessa sia raggiungibile.
+  it.each(["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"] as const)(
+    "allows %s on /guida (Story 17.1)",
+    async (ruolo) => {
+      expect(await getRouteDecision("/guida", true, [ruolo])).toEqual({
+        action: "allow",
+      });
+    }
+  );
+
   it("allows only Admin on /permessi-accesso (Story 12.1)", async () => {
     expect(await getRouteDecision("/permessi-accesso", true, ["ADMIN"])).toEqual({
       action: "allow",
