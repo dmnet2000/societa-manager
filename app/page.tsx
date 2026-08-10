@@ -31,11 +31,15 @@ export default async function HomePage() {
   return (
     <main>
       <h1>Area applicativa</h1>
-      <div className={styles.card}>
-        <p className={styles.saluto}>Bentornata/o, {user?.email}.</p>
-        <p className={styles.testo}>Ruoli: {ruoli.join(", ") || "nessuno"}</p>
-      </div>
-      {/* AC #4: nessuna sezione se non ci sono Banner attivi. */}
+      {/* Design UX (con Sally, Story 16.3 estensione): il carosello va PRIMA
+          della card di saluto, non dopo - su una home cosi' sparuta, essere
+          il primo elemento e' gia' "in evidenza" (AC #1) senza bisogno di
+          renderlo sticky. Confrontato con un mockup a due colonne (versione
+          sticky vs versione normale): la sidebar e' sticky solo da desktop
+          in su, un carosello sticky sarebbe il primo elemento fisso su
+          mobile, costo permanente di spazio verticale mai più liberato man
+          mano che la home cresce - scartato per questo motivo, non solo
+          per gusto estetico. AC #4: nessuna sezione se non ci sono Banner attivi. */}
       {bannerAttivi.length > 0 && (
         <SponsorCarosello
           banner={bannerAttivi.map((sponsor) => ({
@@ -48,6 +52,10 @@ export default async function HomePage() {
           }))}
         />
       )}
+      <div className={styles.card}>
+        <p className={styles.saluto}>Bentornata/o, {user?.email}.</p>
+        <p className={styles.testo}>Ruoli: {ruoli.join(", ") || "nessuno"}</p>
+      </div>
     </main>
   );
 }
