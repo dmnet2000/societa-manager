@@ -82,7 +82,7 @@ export function filtraVociNavigazione(ruoli: Ruolo[]): VoceNavigazione[] {
 // /impostazioni), perdendo l'orientamento "dove mi trovo" gia' garantito per
 // ogni altra pagina dell'app.
 const VOCI_FIGLIE_NASCOSTE: Record<string, string[]> = {
-  "/impostazioni": ["/smtp", "/logo"],
+  "/app/impostazioni": ["/app/smtp", "/app/logo"],
 };
 
 // Story 9.10 (Review fix): estratta come funzione pura testabile - va

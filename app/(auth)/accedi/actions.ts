@@ -89,5 +89,5 @@ export async function accedi(
     };
   }
 
-  redirect("/");
+  redirect("/app");
 }

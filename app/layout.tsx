@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { NavBar } from "./NavBar";
 import { ServiceWorkerRegistration } from "./ServiceWorkerRegistration";
 import "./globals.css";
 
@@ -24,6 +23,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Story 18.1 (Epic 18): ridotto al minimo condiviso da sito pubblico ("/")
+// e area applicativa autenticata ("/app") - NavBar e il wrapper
+// ".shell"/".contenuto" (Story 9.2) erano specifici della dashboard
+// interna, spostati in app/app/layout.tsx (nessun motivo per la nuova home
+// pubblica di ereditare la sidebar/topBar della dashboard).
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,16 +40,7 @@ export default function RootLayout({
             visivo - solo l'effetto collaterale della registrazione del
             Service Worker (AC #2). */}
         <ServiceWorkerRegistration />
-        {/* Story 9.2: ".shell"/".contenuto" (app/globals.css) - colonna su
-            mobile (solo la topBar di NavBar occupa spazio, la sidebar e'
-            un drawer fuori dal flusso), riga su desktop (sidebar + contenuto
-            fianco a fianco). Un <div>, non un altro <main>: ogni page.tsx
-            renderizza gia' il proprio <main> - annidarne un secondo qui
-            violerebbe l'unicita' semantica dell'elemento. */}
-        <div className="shell">
-          <NavBar />
-          <div className="contenuto">{children}</div>
-        </div>
+        {children}
       </body>
     </html>
   );

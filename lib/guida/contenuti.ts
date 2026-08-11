@@ -18,11 +18,11 @@ export type ContenutoGuida = {
 // derivarlo senza importare route-guard.ts e complicare l'accoppiamento).
 //
 // Pilota su due rotte reali per validare entrambi gli scoping:
-// - "/sponsor": tutti e sei i Ruoli (Story 16.2).
-// - "/palestre": solo ADMIN/DIRIGENTE (Story 2.1).
+// - "/app/sponsor": tutti e sei i Ruoli (Story 16.2).
+// - "/app/palestre": solo ADMIN/DIRIGENTE (Story 2.1).
 export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
-    rotta: "/sponsor",
+    rotta: "/app/sponsor",
     titolo: "Sponsor",
     ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
     corpo: [
@@ -32,7 +32,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/palestre",
+    rotta: "/app/palestre",
     titolo: "Palestre",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -44,7 +44,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   // Story 17.2: estensione a tutte le rotte rimanenti, gruppo per gruppo
   // seguendo lo stesso ordine di lib/auth/route-guard.ts (Atleti).
   {
-    rotta: "/import-atlete",
+    rotta: "/app/import-atlete",
     titolo: "Import atlete",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -54,7 +54,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/conferma-iscrizioni",
+    rotta: "/app/conferma-iscrizioni",
     titolo: "Conferma iscrizioni",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     corpo: [
@@ -64,7 +64,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/conferma-certificati",
+    rotta: "/app/conferma-certificati",
     titolo: "Conferma certificati",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     corpo: [
@@ -74,7 +74,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/conferma-tesseramenti",
+    rotta: "/app/conferma-tesseramenti",
     titolo: "Conferma tesseramenti",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -85,7 +85,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   },
   // Orari/Palestre.
   {
-    rotta: "/orari",
+    rotta: "/app/orari",
     titolo: "Orari (vista per Palestra/Gruppo)",
     ruoliAmmessi: ["SEGRETERIA"],
     corpo: [
@@ -94,7 +94,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/slot",
+    rotta: "/app/slot",
     titolo: "Orari (gestione Slot)",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -105,7 +105,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   },
   // Gruppi/Allenatori.
   {
-    rotta: "/gruppi",
+    rotta: "/app/gruppi",
     titolo: "Gruppi",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -115,7 +115,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/i-miei-gruppi",
+    rotta: "/app/i-miei-gruppi",
     titolo: "I miei Gruppi",
     ruoliAmmessi: ["ALLENATORE"],
     corpo: [
@@ -125,7 +125,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/mio-orario",
+    rotta: "/app/mio-orario",
     titolo: "Il mio orario",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     corpo: [
@@ -135,7 +135,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/presenze",
+    rotta: "/app/presenze",
     titolo: "Registrazione presenze",
     ruoliAmmessi: ["ALLENATORE"],
     corpo: [
@@ -145,7 +145,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/storico-presenze",
+    rotta: "/app/storico-presenze",
     titolo: "Storico presenze",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     corpo: [
@@ -156,7 +156,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   },
   // Certificati/Notifiche/Configurazione.
   {
-    rotta: "/certificato-medico",
+    rotta: "/app/certificato-medico",
     titolo: "Certificato medico",
     ruoliAmmessi: ["GENITORE", "ATLETA"],
     corpo: [
@@ -166,7 +166,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/notifiche",
+    rotta: "/app/notifiche",
     titolo: "Notifiche",
     ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"],
     corpo: [
@@ -175,7 +175,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/impostazioni",
+    rotta: "/app/impostazioni",
     titolo: "Impostazioni",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -184,7 +184,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/smtp",
+    rotta: "/app/smtp",
     titolo: "Configurazione SMTP",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -193,7 +193,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/logo",
+    rotta: "/app/logo",
     titolo: "Configurazione logo",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -203,7 +203,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   },
   // Amministrazione/Profilo.
   {
-    rotta: "/vista-dirigente",
+    rotta: "/app/vista-dirigente",
     titolo: "Vista d'insieme (Dirigente)",
     ruoliAmmessi: ["DIRIGENTE"],
     corpo: [
@@ -212,7 +212,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/vista-allenatore",
+    rotta: "/app/vista-allenatore",
     titolo: "Vista d'insieme (Allenatore)",
     ruoliAmmessi: ["ALLENATORE"],
     corpo: [
@@ -221,7 +221,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/dati-fisici",
+    rotta: "/app/dati-fisici",
     titolo: "Dati fisici",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     corpo: [
@@ -231,7 +231,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/wizard-nuova-stagione",
+    rotta: "/app/wizard-nuova-stagione",
     titolo: "Wizard nuova stagione",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
@@ -241,7 +241,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/il-mio-profilo",
+    rotta: "/app/il-mio-profilo",
     titolo: "Il mio profilo",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     corpo: [
@@ -251,7 +251,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   },
   // Partite/Campionati/Amministrazione.
   {
-    rotta: "/campionati",
+    rotta: "/app/campionati",
     titolo: "Campionati",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE"],
     corpo: [
@@ -261,7 +261,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/partite",
+    rotta: "/app/partite",
     titolo: "Partite",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE", "ATLETA", "GENITORE"],
     corpo: [
@@ -271,7 +271,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/admin",
+    rotta: "/app/admin",
     titolo: "Amministrazione",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -280,7 +280,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/precaricamento-allenatori",
+    rotta: "/app/precaricamento-allenatori",
     titolo: "Precaricamento Allenatori",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -289,7 +289,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/permessi-accesso",
+    rotta: "/app/permessi-accesso",
     titolo: "Permessi di accesso",
     ruoliAmmessi: ["ADMIN"],
     corpo: [
@@ -298,7 +298,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
-    rotta: "/permessi-certificati",
+    rotta: "/app/permessi-certificati",
     titolo: "Permessi certificati",
     ruoliAmmessi: ["ADMIN"],
     corpo: [

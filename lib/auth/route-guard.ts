@@ -1,14 +1,30 @@
 import type { Ruolo } from "@prisma/client";
 
 export const LOGIN_PATH = "/accedi";
-export const NON_AUTORIZZATO_PATH = "/non-autorizzato";
+// Story 18.1 (Epic 18): /non-autorizzato si e' spostata sotto /app insieme
+// al resto della dashboard interna (e' raggiunta solo da un Utente gia'
+// autenticato con Ruolo sbagliato, concettualmente parte dell'area /app),
+// pur non essendo mai stata in PROTECTED_ROUTES (nessun controllo Ruolo su
+// di lei - vedi matchProtectedRoute sotto, che su questo path non trova
+// corrispondenza e lascia semplicemente passare qualunque Utente
+// autenticato).
+export const NON_AUTORIZZATO_PATH = "/app/non-autorizzato";
 
 // Route pubbliche: accessibili senza sessione (login, registrazione).
 // Story 9.11: /recupera-password e /reimposta-password sono per definizione
 // raggiunte da un Utente senza sessione (o con una sessione appena scaduta),
 // senza queste il Proxy le rediregerebbe a /accedi prima ancora di mostrare
 // il form.
+// Story 18.1 (Epic 18): "/" aggiunta per il nuovo sito pubblico - isPublicRoute
+// (sotto) fa "pathname === route || pathname.startsWith(`${route}/`)": con
+// route = "/" il secondo confronto diventa pathname.startsWith("//"), mai
+// vero per un path normale, quindi questa voce rende pubblica SOLO la home
+// esatta, non un prefisso che intercetterebbe ogni altra rotta. Le rotte
+// pubbliche di contenuto introdotte dalle story successive (18.2-18.5)
+// andranno aggiunte qui esplicitamente una per una, non sono coperte
+// automaticamente da questa voce.
 export const PUBLIC_ROUTES = [
+  "/",
   "/accedi",
   "/registrati",
   "/recupera-password",
@@ -70,14 +86,14 @@ export const PROTECTED_ROUTES: {
     // nello stesso ordine - lezione applicata direttamente dalla code
     // review di Story 15.2 (dove l'ordine sbagliato fu scoperto solo in
     // quella review, non anticipato in fase di scrittura).
-    prefix: "/import-atlete",
+    prefix: "/app/import-atlete",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Import atlete",
     gruppo: "Atleti",
   },
   {
     // Story 15.3: stesso gruppo di /import-atlete sopra ("Atleti").
-    prefix: "/conferma-iscrizioni",
+    prefix: "/app/conferma-iscrizioni",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     navLabel: "Conferma iscrizioni",
     gruppo: "Atleti",
@@ -87,7 +103,7 @@ export const PROTECTED_ROUTES: {
     // spostata qui da una posizione piu' in basso nell'array (era vicina a
     // /notifiche) per stare adiacente alle altre tre rotte dello stesso
     // gruppo.
-    prefix: "/conferma-certificati",
+    prefix: "/app/conferma-certificati",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     navLabel: "Conferma certificati",
     gruppo: "Atleti",
@@ -97,7 +113,7 @@ export const PROTECTED_ROUTES: {
     // e' esplicitamente esclusa - solo Admin/Dirigente possono confermare il
     // Tesseramento.
     // Story 15.3: stesso gruppo di /import-atlete sopra ("Atleti").
-    prefix: "/conferma-tesseramenti",
+    prefix: "/app/conferma-tesseramenti",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Conferma tesseramenti",
     gruppo: "Atleti",
@@ -112,7 +128,7 @@ export const PROTECTED_ROUTES: {
     // di iterazione) corrisponde all'ordine dell'etichetta padre
     // "Orari/Palestre" anche nel caso raro di un Utente con entrambi i
     // Ruoli Segreteria e Admin/Dirigente.
-    prefix: "/orari",
+    prefix: "/app/orari",
     ruoliAmmessi: ["SEGRETERIA"],
     navLabel: "Orari",
     gruppo: "Orari/Palestre",
@@ -130,79 +146,79 @@ export const PROTECTED_ROUTES: {
     // stesso testo "Orari" (da /orari e da /slot) nello stesso gruppo:
     // scelta consapevole confermata dall'utente, nessun Ruolo reale ha
     // accesso a entrambe le rotte oggi.
-    prefix: "/slot",
+    prefix: "/app/slot",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Orari",
     gruppo: "Orari/Palestre",
   },
   {
     // Story 15.2: stesso gruppo di /orari sopra ("Orari/Palestre").
-    prefix: "/palestre",
+    prefix: "/app/palestre",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Palestre",
     gruppo: "Orari/Palestre",
   },
-  { prefix: "/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
+  { prefix: "/app/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
   {
-    prefix: "/i-miei-gruppi",
+    prefix: "/app/i-miei-gruppi",
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "I miei Gruppi",
   },
-  { prefix: "/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
-  { prefix: "/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
+  { prefix: "/app/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
+  { prefix: "/app/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
   {
-    prefix: "/storico-presenze",
+    prefix: "/app/storico-presenze",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     navLabel: "Storico presenze",
   },
   {
-    prefix: "/certificato-medico",
+    prefix: "/app/certificato-medico",
     ruoliAmmessi: ["GENITORE", "ATLETA"],
     navLabel: "Certificato medico",
   },
-  { prefix: "/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"], navLabel: "Notifiche" },
-  { prefix: "/impostazioni", ruoliAmmessi: ["ADMIN"], navLabel: "Impostazioni" },
+  { prefix: "/app/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"], navLabel: "Notifiche" },
+  { prefix: "/app/impostazioni", ruoliAmmessi: ["ADMIN"], navLabel: "Impostazioni" },
   {
-    prefix: "/smtp",
+    prefix: "/app/smtp",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Configurazione SMTP",
     nascostaDallaNav: true,
   },
   {
-    prefix: "/logo",
+    prefix: "/app/logo",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Configurazione logo",
     nascostaDallaNav: true,
   },
-  { prefix: "/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"], navLabel: "Vista d'insieme" },
+  { prefix: "/app/vista-dirigente", ruoliAmmessi: ["DIRIGENTE"], navLabel: "Vista d'insieme" },
   {
     // Story 9.26: specchio di /vista-dirigente ma scoped ai Gruppi propri
     // dell'Allenatore - stessa navLabel (Ruoli mutuamente esclusivi nel
     // caso comune, caso limite ADMIN+ALLENATORE accettato, vedi story file).
-    prefix: "/vista-allenatore",
+    prefix: "/app/vista-allenatore",
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "Vista d'insieme",
   },
-  { prefix: "/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },
+  { prefix: "/app/dati-fisici", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Dati fisici" },
   {
-    prefix: "/wizard-nuova-stagione",
+    prefix: "/app/wizard-nuova-stagione",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     navLabel: "Wizard nuova stagione",
   },
   {
-    prefix: "/il-mio-profilo",
+    prefix: "/app/il-mio-profilo",
     ruoliAmmessi: ["ALLENATORE", "ATLETA"],
     navLabel: "Il mio profilo",
   },
   {
-    prefix: "/campionati",
+    prefix: "/app/campionati",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE"],
     navLabel: "Campionati",
   },
   {
     // Story 10.5: estesa ad ATLETA/GENITORE (sola lettura, gating UI in
     // page.tsx) - stesso pattern gia' usato per /certificato-medico.
-    prefix: "/partite",
+    prefix: "/app/partite",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE", "ATLETA", "GENITORE"],
     navLabel: "Partite",
   },
@@ -215,7 +231,7 @@ export const PROTECTED_ROUTES: {
     // /campionati) - prima rotta autenticata del progetto visibile a tutti
     // e sei i Ruoli. Nessun "gruppo": voce diretta, non fa parte di
     // "Accounting" (nessuna decisione di analisi la colloca li').
-    prefix: "/sponsor",
+    prefix: "/app/sponsor",
     ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
     navLabel: "Sponsor",
   },
@@ -225,7 +241,7 @@ export const PROTECTED_ROUTES: {
     // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per
     // Ruolo (lib/guida/contenuti.ts), qui serve solo poter raggiungere la
     // pagina stessa.
-    prefix: "/guida",
+    prefix: "/app/guida",
     ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
     navLabel: "Guida",
   },
@@ -240,7 +256,7 @@ export const PROTECTED_ROUTES: {
     // navLabel "Amministrazione" NON rinominato: l'etichetta della voce
     // padre del gruppo viene dal valore di "gruppo" stesso ("Accounting"),
     // non dal navLabel di /admin - che resta l'etichetta della sua figlia.
-    prefix: "/admin",
+    prefix: "/app/admin",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Amministrazione",
     gruppo: "Accounting",
@@ -259,7 +275,7 @@ export const PROTECTED_ROUTES: {
     // su ogni Ruolo diverso da ADMIN, identico a oggi) finche' un Admin non
     // abilita esplicitamente un altro Ruolo da /permessi-accesso.
     // Story 15.4: stesso gruppo di /admin sopra ("Accounting").
-    prefix: "/precaricamento-allenatori",
+    prefix: "/app/precaricamento-allenatori",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Precaricamento allenatori",
     permessiConfigurabili: true,
@@ -271,7 +287,7 @@ export const PROTECTED_ROUTES: {
     // stesse (accesso pieno hardcoded), quindi questa rotta e' anch'essa
     // ADMIN-only, stesso trattamento di /permessi-certificati (sotto).
     // Story 15.4: stesso gruppo di /admin sopra ("Accounting").
-    prefix: "/permessi-accesso",
+    prefix: "/app/permessi-accesso",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Permessi di accesso",
     gruppo: "Accounting",
@@ -289,7 +305,7 @@ export const PROTECTED_ROUTES: {
     // (Story 15.1) posiziona il nodo gruppo all'indice della PRIMA rotta del
     // gruppo incontrata nell'array, quindi la posizione conta (stesso motivo
     // gia' documentato sopra per /admin, AC #1 "Accounting" ultima voce).
-    prefix: "/permessi-certificati",
+    prefix: "/app/permessi-certificati",
     ruoliAmmessi: ["ADMIN"],
     navLabel: "Permessi certificati",
     gruppo: "Accounting",

@@ -1,0 +1,689 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+const requireRuoloMock = vi.fn();
+const createClientMock = vi.fn();
+const caricaFileCertificatoMock = vi.fn();
+const generaUrlFirmatoMock = vi.fn();
+const rimuoviFileCertificatoMock = vi.fn();
+const collegaFileCertificatoMock = vi.fn();
+const trovaCertificatoPerAtletaMock = vi.fn();
+const creaNotificaMock = vi.fn();
+const leggiEmailSegreteriaMock = vi.fn();
+const scaricaFileCertificatoMock = vi.fn();
+const inviaEmailMock = vi.fn();
+const elencaAtleteMock = vi.fn();
+const revalidatePathMock = vi.fn();
+const redirectMock = vi.fn((url: string) => {
+  throw new Error(`REDIRECT:${url}`);
+});
+
+vi.mock("@/lib/auth/require-ruolo", () => ({
+  requireRuolo: requireRuoloMock,
+}));
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: createClientMock,
+}));
+
+// Story 4.4: mock parziale - MIME_AMMESSI/DIMENSIONE_MASSIMA_BYTE/
+// contenutoCorrispondeAlMimeDichiarato restano l'implementazione reale
+// (spostati qui da Story 4.1, condivisi con conferma-certificati/actions.ts),
+// solo le funzioni di I/O sul bucket sono mockate.
+vi.mock("@/lib/storage/certificati", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/storage/certificati")>();
+  return {
+    ...actual,
+    caricaFileCertificato: caricaFileCertificatoMock,
+    generaUrlFirmato: generaUrlFirmatoMock,
+    rimuoviFileCertificato: rimuoviFileCertificatoMock,
+    scaricaFileCertificato: scaricaFileCertificatoMock,
+  };
+});
+
+vi.mock("@/lib/db-rls/certificato-medico", () => ({
+  collegaFileCertificato: collegaFileCertificatoMock,
+  trovaCertificatoPerAtleta: trovaCertificatoPerAtletaMock,
+}));
+
+vi.mock("@/lib/db-rls/notifica", () => ({
+  creaNotifica: creaNotificaMock,
+}));
+
+vi.mock("@/lib/db-rls/atleta", () => ({
+  elencaAtlete: elencaAtleteMock,
+}));
+
+vi.mock("@/lib/configurazione-applicazione", () => ({
+  leggiEmailSegreteria: leggiEmailSegreteriaMock,
+}));
+
+vi.mock("@/lib/email/invia-email", () => ({
+  inviaEmail: inviaEmailMock,
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: revalidatePathMock,
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
+}));
+
+const { caricaCertificato, ottieniUrlCertificato } = await import("./actions");
+
+const supabaseFinto = { finto: true };
+
+// Story 9.20: dataInizioValidita/dataFineValidita di default valide (`null`
+// per ometterle esplicitamente, usato solo dai test di validazione dedicati)
+// - cosi' ogni test esistente che non se ne occupa continua a passare senza
+// doverle specificare una per una.
+function buildFormData(fields: {
+  atletaId?: string;
+  file?: File | null;
+  dataInizioValidita?: string | null;
+  dataFineValidita?: string | null;
+}) {
+  const formData = new FormData();
+  if (fields.atletaId !== undefined) formData.append("atletaId", fields.atletaId);
+  if (fields.file) formData.append("file", fields.file);
+  const dataInizio =
+    fields.dataInizioValidita === undefined ? "2026-01-01" : fields.dataInizioValidita;
+  if (dataInizio !== null) formData.append("dataInizioValidita", dataInizio);
+  const dataFine =
+    fields.dataFineValidita === undefined ? "2027-01-01" : fields.dataFineValidita;
+  if (dataFine !== null) formData.append("dataFineValidita", dataFine);
+  return formData;
+}
+
+const MAGIC_BYTES: Record<string, number[]> = {
+  "application/pdf": [0x25, 0x50, 0x44, 0x46],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+};
+
+function fileValido(
+  nome = "certificato.pdf",
+  tipo = "application/pdf",
+  dimensione = 1024
+) {
+  const bytes = new Uint8Array(dimensione);
+  const magic = MAGIC_BYTES[tipo];
+  if (magic && dimensione >= magic.length) bytes.set(magic, 0);
+  return new File([bytes], nome, { type: tipo });
+}
+
+function fileConMimeIngannevole(
+  nome = "falso.pdf",
+  tipo = "application/pdf",
+  dimensione = 1024
+) {
+  // Dichiara un tipo (via file.type/estensione) ma il contenuto reale non ha
+  // la magic byte corrispondente - simula un rinominato "virus.exe" ->
+  // "falso.pdf" con MIME contraffatto, esattamente il caso che la verifica
+  // lato server (non solo l'allowlist su file.type) deve intercettare.
+  return new File([new Uint8Array(dimensione)], nome, { type: tipo });
+}
+
+beforeEach(() => {
+  requireRuoloMock.mockReset();
+  requireRuoloMock.mockResolvedValue(null);
+  createClientMock.mockReset();
+  createClientMock.mockResolvedValue(supabaseFinto);
+  caricaFileCertificatoMock.mockReset();
+  caricaFileCertificatoMock.mockResolvedValue("atleta-1/file.pdf");
+  generaUrlFirmatoMock.mockReset();
+  rimuoviFileCertificatoMock.mockReset();
+  rimuoviFileCertificatoMock.mockResolvedValue(undefined);
+  collegaFileCertificatoMock.mockReset();
+  collegaFileCertificatoMock.mockResolvedValue(undefined);
+  trovaCertificatoPerAtletaMock.mockReset();
+  trovaCertificatoPerAtletaMock.mockResolvedValue(null);
+  creaNotificaMock.mockReset();
+  creaNotificaMock.mockResolvedValue(undefined);
+  leggiEmailSegreteriaMock.mockReset();
+  leggiEmailSegreteriaMock.mockResolvedValue(null);
+  scaricaFileCertificatoMock.mockReset();
+  scaricaFileCertificatoMock.mockResolvedValue(new Blob(["contenuto finto"]));
+  inviaEmailMock.mockReset();
+  inviaEmailMock.mockResolvedValue(undefined);
+  elencaAtleteMock.mockReset();
+  elencaAtleteMock.mockResolvedValue([
+    { id: "atleta-1", nome: "Verifica Atleta", codiceFiscale: "CF", categoria: null },
+  ]);
+  revalidatePathMock.mockReset();
+  redirectMock.mockClear();
+});
+
+describe("caricaCertificato (Server Action)", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Genitore/Atleta (AC #1)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["GENITORE", "ATLETA"]);
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when atletaId is missing (AC #3)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ file: fileValido() })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when no file is provided", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un file da caricare." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for an empty file (size 0)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido("x.pdf", "application/pdf", 0) })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un file da caricare." },
+    });
+  });
+
+  it("returns VALIDATION when dataInizioValidita is missing (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido(), dataInizioValidita: null })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Indica sia la data del certificato sia la data di scadenza.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataFineValidita is missing (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido(), dataFineValidita: null })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Indica sia la data del certificato sia la data di scadenza.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when a date is not parsable (Story 9.20, stessa lezione di Story 9.18 review fix)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "non-una-data",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data non valida." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for a calendar-invalid date, es. 30 febbraio (code review Story 9.20: new Date() da sola non basta)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "2026-02-30",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data non valida." },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when dataFineValidita precede dataInizioValidita (Story 9.20 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido(),
+        dataInizioValidita: "2026-06-01",
+        dataFineValidita: "2026-01-01",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La data di scadenza non può precedere la data di inizio validità.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for a disallowed MIME type (mai fidarsi solo dell'attributo accept del client)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido("virus.exe", "application/x-msdownload"),
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Formato file non ammesso (solo PDF, JPG, PNG).",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when the file exceeds 10MB", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileValido("grande.pdf", "application/pdf", 10 * 1024 * 1024 + 1),
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il file supera la dimensione massima di 10MB.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("uploads the file and links it to the Atleta on success (AC #1)", async () => {
+    const file = fileValido();
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file })
+    );
+
+    expect(createClientMock).toHaveBeenCalled();
+    expect(caricaFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1",
+      file
+    );
+    expect(collegaFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1",
+      "atleta-1/file.pdf",
+      new Date("2026-01-01"),
+      new Date("2027-01-01")
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/certificato-medico");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns INTERNAL fail-closed when the upload throws (incluso un rifiuto RLS per un'Atleta non propria, AC #3)", async () => {
+    caricaFileCertificatoMock.mockRejectedValue(new Error("RLS denial"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile caricare il Certificato. Riprova.",
+      },
+    });
+    expect(collegaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed when linking the file throws", async () => {
+    collegaFileCertificatoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile caricare il Certificato. Riprova.",
+      },
+    });
+  });
+
+  it("returns VALIDATION when le magic byte del contenuto non corrispondono al MIME dichiarato (review fix: file.type e' controllato dal client)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        file: fileConMimeIngannevole("virus.pdf", "application/pdf"),
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    });
+    expect(caricaFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta un JPEG/PNG valido con le rispettive magic byte", async () => {
+    const jpeg = fileValido("foto.jpg", "image/jpeg");
+    const risultatoJpeg = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: jpeg })
+    );
+    expect(risultatoJpeg).toEqual({ success: true });
+
+    const png = fileValido("foto.png", "image/png");
+    const risultatoPng = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: png })
+    );
+    expect(risultatoPng).toEqual({ success: true });
+  });
+
+  it("rimuove il vecchio file dal bucket dopo aver collegato con successo quello nuovo (review fix, AC #4: ri-caricamento sostituisce, non accumula)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/vecchio.pdf",
+    });
+    caricaFileCertificatoMock.mockResolvedValue("atleta-1/nuovo.pdf");
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCertificatoPerAtletaMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1"
+    );
+    // Ordine: prima il nuovo file e' caricato e collegato, solo dopo il
+    // vecchio viene rimosso - se l'upload/collegamento del nuovo fallisse,
+    // il vecchio file resta intatto (nessuna finestra in cui l'Atleta
+    // rimane senza alcun certificato accessibile).
+    expect(collegaFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1",
+      "atleta-1/nuovo.pdf",
+      new Date("2026-01-01"),
+      new Date("2027-01-01")
+    );
+    expect(rimuoviFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1/vecchio.pdf"
+    );
+  });
+
+  it("non chiama rimuoviFileCertificato se non esisteva un file precedente (primo caricamento)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue(null);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(rimuoviFileCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("il caricamento riesce comunque se la rimozione del vecchio file fallisce (non e' un fallimento bloccante, il nuovo file resta collegato)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/vecchio.pdf",
+    });
+    rimuoviFileCertificatoMock.mockRejectedValue(new Error("not found"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("crea una notifica per l'Atleta dopo un collegamento riuscito (Story 4.2 AC #1)", async () => {
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaNotificaMock).toHaveBeenCalledWith(supabaseFinto, "atleta-1");
+  });
+
+  it("crea una notifica anche su un ri-caricamento (nessuna distinzione primo/successivo, Story 4.2 AC #1)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/vecchio.pdf",
+    });
+
+    await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(creaNotificaMock).toHaveBeenCalledWith(supabaseFinto, "atleta-1");
+  });
+
+  it("il caricamento riesce comunque se la creazione della notifica fallisce (non bloccante, Story 4.2 AC #4)", async () => {
+    creaNotificaMock.mockRejectedValue(new Error("notifica RLS denial"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("invia un'email all'indirizzo Segreteria configurato con l'allegato dopo un caricamento riuscito (Story 4.3 AC #1/#2, Story 9.31)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    const file = fileValido("certificato.pdf", "application/pdf");
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(leggiEmailSegreteriaMock).toHaveBeenCalled();
+    expect(scaricaFileCertificatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1/file.pdf"
+    );
+    expect(inviaEmailMock).toHaveBeenCalledWith({
+      destinatario: "segreteria@esempio.it",
+      oggetto: "Nuovo Certificato Medico caricato",
+      testo: expect.stringContaining("Verifica Atleta"),
+      allegati: [
+        {
+          nomeFile: "certificato.pdf",
+          contenuto: expect.any(Buffer),
+          tipoMime: "application/pdf",
+        },
+      ],
+    });
+  });
+
+  it("non invia alcuna email quando l'Email Segreteria non e' configurata (Story 4.3 AC #5, Story 9.31 AC #3)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue(null);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(scaricaFileCertificatoMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("il caricamento riesce comunque se leggiEmailSegreteria lancia (non bloccante, Story 4.3 AC #4)", async () => {
+    leggiEmailSegreteriaMock.mockRejectedValue(new Error("db down"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(elencaAtleteMock).not.toHaveBeenCalled();
+    expect(scaricaFileCertificatoMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("il caricamento riesce comunque se inviaEmail lancia, es. configurazione SMTP mancante (non bloccante, Story 4.3 AC #4)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    inviaEmailMock.mockRejectedValue(
+      new Error("CONFIGURAZIONE_SMTP_MANCANTE: nessuna configurazione.")
+    );
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("invia comunque l'email quando l'Atleta non e' risolvibile nell'elenco, senza il nome (Story 4.3, caso limite difensivo)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    elencaAtleteMock.mockResolvedValue([]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ testo: expect.stringContaining("un'Atleta") })
+    );
+  });
+
+  it("invia l'email alla Segreteria anche su un ri-caricamento (Story 4.3 AC #1, esplicitamente 'sia primo caricamento sia ri-caricamento')", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/vecchio.pdf",
+    });
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destinatario: "segreteria@esempio.it" })
+    );
+  });
+});
+
+describe("ottieniUrlCertificato (Server Action)", () => {
+  it("redirects back without generating a URL if the caller is not Genitore/Atleta", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    await expect(ottieniUrlCertificato("atleta-1")).rejects.toThrow(
+      "REDIRECT:/app/certificato-medico"
+    );
+
+    expect(generaUrlFirmatoMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects back if no Certificato/file exists yet for the Atleta", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue(null);
+
+    await expect(ottieniUrlCertificato("atleta-1")).rejects.toThrow(
+      "REDIRECT:/app/certificato-medico"
+    );
+
+    expect(generaUrlFirmatoMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects to the signed URL when a file exists (AC #2)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/file.pdf",
+    });
+    generaUrlFirmatoMock.mockResolvedValue("https://esempio.local/firmato");
+
+    await expect(ottieniUrlCertificato("atleta-1")).rejects.toThrow(
+      "REDIRECT:https://esempio.local/firmato"
+    );
+
+    expect(generaUrlFirmatoMock).toHaveBeenCalledWith(
+      supabaseFinto,
+      "atleta-1/file.pdf"
+    );
+  });
+
+  it("redirects gracefully instead of throwing if trovaCertificatoPerAtleta fails (review fix: mai un'eccezione non gestita in una Server Action invocata da un bottone)", async () => {
+    trovaCertificatoPerAtletaMock.mockRejectedValue(new Error("db down"));
+
+    await expect(ottieniUrlCertificato("atleta-1")).rejects.toThrow(
+      "REDIRECT:/app/certificato-medico"
+    );
+
+    expect(generaUrlFirmatoMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects gracefully instead of throwing if generaUrlFirmato fails (es. RLS nega l'accesso allo storage.objects)", async () => {
+    trovaCertificatoPerAtletaMock.mockResolvedValue({
+      id: "c1",
+      atletaId: "atleta-1",
+      filePath: "atleta-1/file.pdf",
+    });
+    generaUrlFirmatoMock.mockRejectedValue(new Error("not found"));
+
+    await expect(ottieniUrlCertificato("atleta-1")).rejects.toThrow(
+      "REDIRECT:/app/certificato-medico"
+    );
+  });
+});

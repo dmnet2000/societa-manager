@@ -38,48 +38,48 @@ describe("filtraVociNavigazione", () => {
     const href = hrefVoci(filtraVociNavigazione(["ALLENATORE"]));
     expect(href).toEqual(
       expect.arrayContaining([
-        "/mio-orario",
-        "/presenze",
-        "/storico-presenze",
-        "/notifiche",
-        "/dati-fisici",
+        "/app/mio-orario",
+        "/app/presenze",
+        "/app/storico-presenze",
+        "/app/notifiche",
+        "/app/dati-fisici",
       ])
     );
     // Nessuna voce Admin-only o Atleta-only-non-condivisa
-    expect(href).not.toContain("/admin");
-    expect(href).not.toContain("/certificato-medico");
+    expect(href).not.toContain("/app/admin");
+    expect(href).not.toContain("/app/certificato-medico");
   });
 
   it("unisce le voci di Utenti con più Ruoli, senza duplicati", () => {
     const href = hrefVoci(filtraVociNavigazione(["ALLENATORE", "DIRIGENTE"]));
-    expect(href).toEqual(expect.arrayContaining(["/presenze", "/vista-dirigente"]));
+    expect(href).toEqual(expect.arrayContaining(["/app/presenze", "/app/vista-dirigente"]));
     expect(new Set(href).size).toBe(href.length);
   });
 
   it("un Admin vede tutte le voci Admin-ammesse", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(
-      expect.arrayContaining(["/gruppi", "/impostazioni", "/wizard-nuova-stagione"])
+      expect.arrayContaining(["/app/gruppi", "/app/impostazioni", "/app/wizard-nuova-stagione"])
     );
     // Review fix (Story 15.2) + Story 15.3 + Story 15.4 + post-15.5 (/slot
     // entrato nel gruppo Orari/Palestre): non basta non richiederle piu' -
     // verificare esplicitamente che non siano "trapelate" sia nel gruppo sia
     // come voce diretta (stesso pattern .not.toContain gia' in uso sotto per
     // /smtp/logo, Story 9.24).
-    expect(href).not.toContain("/palestre");
-    expect(href).not.toContain("/orari");
-    expect(href).not.toContain("/slot");
-    expect(href).not.toContain("/import-atlete");
-    expect(href).not.toContain("/conferma-iscrizioni");
-    expect(href).not.toContain("/conferma-certificati");
-    expect(href).not.toContain("/conferma-tesseramenti");
-    expect(href).not.toContain("/admin");
-    expect(href).not.toContain("/precaricamento-allenatori");
-    expect(href).not.toContain("/permessi-accesso");
+    expect(href).not.toContain("/app/palestre");
+    expect(href).not.toContain("/app/orari");
+    expect(href).not.toContain("/app/slot");
+    expect(href).not.toContain("/app/import-atlete");
+    expect(href).not.toContain("/app/conferma-iscrizioni");
+    expect(href).not.toContain("/app/conferma-certificati");
+    expect(href).not.toContain("/app/conferma-tesseramenti");
+    expect(href).not.toContain("/app/admin");
+    expect(href).not.toContain("/app/precaricamento-allenatori");
+    expect(href).not.toContain("/app/permessi-accesso");
     // Story 15.4 estensione: /permessi-certificati e' entrata nel gruppo
     // "Accounting" (prima era una voce diretta) - stesso pattern .not.toContain
     // delle altre tre rotte del gruppo sopra.
-    expect(href).not.toContain("/permessi-certificati");
+    expect(href).not.toContain("/app/permessi-certificati");
   });
 
   // Story 15.2: /palestre non e' piu' una voce diretta per un Admin - e'
@@ -91,8 +91,8 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/slot", label: "Orari" },
-      { href: "/palestre", label: "Palestre" },
+      { href: "/app/slot", label: "Orari" },
+      { href: "/app/palestre", label: "Palestre" },
     ]);
   });
 
@@ -104,8 +104,8 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/slot", label: "Orari" },
-      { href: "/palestre", label: "Palestre" },
+      { href: "/app/slot", label: "Orari" },
+      { href: "/app/palestre", label: "Palestre" },
     ]);
   });
 
@@ -123,8 +123,8 @@ describe("filtraVociNavigazione", () => {
   // raggiungibili solo passando dalla pagina hub /impostazioni.
   it("un Admin non vede più /smtp e /logo come voci dirette, nonostante l'accesso resti consentito (Story 9.24)", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
-    expect(href).not.toContain("/smtp");
-    expect(href).not.toContain("/logo");
+    expect(href).not.toContain("/app/smtp");
+    expect(href).not.toContain("/app/logo");
   });
 
   // Story 15.2: esteso per gestire anche il caso "gruppo" - ogni figlia deve
@@ -177,26 +177,26 @@ describe("filtraVociNavigazione", () => {
     // esplicita dell'utente (era una voce diretta separata) - 3 rotte, non
     // piu' 2.
     expect(orariPalestre.map((r) => r.prefix)).toEqual(
-      expect.arrayContaining(["/orari", "/slot", "/palestre"])
+      expect.arrayContaining(["/app/orari", "/app/slot", "/app/palestre"])
     );
     expect(orariPalestre).toHaveLength(3);
 
     expect(atleti.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
-        "/import-atlete",
-        "/conferma-iscrizioni",
-        "/conferma-certificati",
-        "/conferma-tesseramenti",
+        "/app/import-atlete",
+        "/app/conferma-iscrizioni",
+        "/app/conferma-certificati",
+        "/app/conferma-tesseramenti",
       ])
     );
     expect(atleti).toHaveLength(4);
 
     expect(accounting.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
-        "/admin",
-        "/precaricamento-allenatori",
-        "/permessi-accesso",
-        "/permessi-certificati",
+        "/app/admin",
+        "/app/precaricamento-allenatori",
+        "/app/permessi-accesso",
+        "/app/permessi-certificati",
       ])
     );
     expect(accounting).toHaveLength(4);
@@ -219,20 +219,20 @@ describe("filtraVociNavigazione", () => {
   it("mantiene l'ordine di PROTECTED_ROUTES per un Ruolo reale (Allenatore)", () => {
     const href = hrefVoci(filtraVociNavigazione(["ALLENATORE"]));
     expect(href).toEqual([
-      "/i-miei-gruppi",
-      "/mio-orario",
-      "/presenze",
-      "/storico-presenze",
-      "/notifiche",
-      "/vista-allenatore",
-      "/dati-fisici",
-      "/il-mio-profilo",
-      "/campionati",
-      "/partite",
+      "/app/i-miei-gruppi",
+      "/app/mio-orario",
+      "/app/presenze",
+      "/app/storico-presenze",
+      "/app/notifiche",
+      "/app/vista-allenatore",
+      "/app/dati-fisici",
+      "/app/il-mio-profilo",
+      "/app/campionati",
+      "/app/partite",
       // Story 16.2: /sponsor e' ora visibile a tutti e sei i Ruoli.
-      "/sponsor",
+      "/app/sponsor",
       // Story 17.1: /guida e' anch'essa visibile a tutti e sei i Ruoli.
-      "/guida",
+      "/app/guida",
     ]);
   });
 
@@ -244,7 +244,7 @@ describe("filtraVociNavigazione", () => {
   it("Segreteria vede il gruppo Orari/Palestre con solo /orari tra le figlie", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
-    expect(gruppo?.figlie).toEqual([{ href: "/orari", label: "Orari" }]);
+    expect(gruppo?.figlie).toEqual([{ href: "/app/orari", label: "Orari" }]);
   });
 
   // Story 15.2 (AC #1) + post-15.5: Admin e Dirigente hanno accesso a
@@ -256,8 +256,8 @@ describe("filtraVociNavigazione", () => {
       const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Orari/Palestre");
       expect(gruppo).toBeDefined();
       expect(gruppo?.figlie).toEqual([
-        { href: "/slot", label: "Orari" },
-        { href: "/palestre", label: "Palestre" },
+        { href: "/app/slot", label: "Orari" },
+        { href: "/app/palestre", label: "Palestre" },
       ]);
     }
   );
@@ -285,9 +285,9 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA", "ADMIN"]), "Orari/Palestre");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/orari", label: "Orari" },
-      { href: "/slot", label: "Orari" },
-      { href: "/palestre", label: "Palestre" },
+      { href: "/app/orari", label: "Orari" },
+      { href: "/app/slot", label: "Orari" },
+      { href: "/app/palestre", label: "Palestre" },
     ]);
   });
 
@@ -302,8 +302,8 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA"]), "Atleti");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-      { href: "/conferma-certificati", label: "Conferma certificati" },
+      { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/app/conferma-certificati", label: "Conferma certificati" },
     ]);
   });
 
@@ -316,10 +316,10 @@ describe("filtraVociNavigazione", () => {
       const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Atleti");
       expect(gruppo).toBeDefined();
       expect(gruppo?.figlie).toEqual([
-        { href: "/import-atlete", label: "Import atlete" },
-        { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-        { href: "/conferma-certificati", label: "Conferma certificati" },
-        { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+        { href: "/app/import-atlete", label: "Import atlete" },
+        { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+        { href: "/app/conferma-certificati", label: "Conferma certificati" },
+        { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
       ]);
     }
   );
@@ -340,10 +340,10 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Atleti");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/import-atlete", label: "Import atlete" },
-      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-      { href: "/conferma-certificati", label: "Conferma certificati" },
-      { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+      { href: "/app/import-atlete", label: "Import atlete" },
+      { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/app/conferma-certificati", label: "Conferma certificati" },
+      { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
     ]);
   });
 
@@ -362,18 +362,18 @@ describe("filtraVociNavigazione", () => {
         tipo: "gruppo",
         label: "Atleti",
         figlie: [
-          { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-          { href: "/conferma-certificati", label: "Conferma certificati" },
+          { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+          { href: "/app/conferma-certificati", label: "Conferma certificati" },
         ],
       },
       {
         tipo: "gruppo",
         label: "Orari/Palestre",
-        figlie: [{ href: "/orari", label: "Orari" }],
+        figlie: [{ href: "/app/orari", label: "Orari" }],
       },
       // Story 16.2/17.1: /sponsor e /guida sono visibili a tutti i Ruoli.
-      { tipo: "voce", href: "/sponsor", label: "Sponsor" },
-      { tipo: "voce", href: "/guida", label: "Guida" },
+      { tipo: "voce", href: "/app/sponsor", label: "Sponsor" },
+      { tipo: "voce", href: "/app/guida", label: "Guida" },
     ]);
   });
 
@@ -387,10 +387,10 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SEGRETERIA", "ADMIN"]), "Atleti");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/import-atlete", label: "Import atlete" },
-      { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-      { href: "/conferma-certificati", label: "Conferma certificati" },
-      { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+      { href: "/app/import-atlete", label: "Import atlete" },
+      { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+      { href: "/app/conferma-certificati", label: "Conferma certificati" },
+      { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
     ]);
   });
 
@@ -426,35 +426,35 @@ describe("filtraVociNavigazione", () => {
         tipo: "gruppo",
         label: "Atleti",
         figlie: [
-          { href: "/import-atlete", label: "Import atlete" },
-          { href: "/conferma-iscrizioni", label: "Conferma iscrizioni" },
-          { href: "/conferma-certificati", label: "Conferma certificati" },
-          { href: "/conferma-tesseramenti", label: "Conferma tesseramenti" },
+          { href: "/app/import-atlete", label: "Import atlete" },
+          { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
+          { href: "/app/conferma-certificati", label: "Conferma certificati" },
+          { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
         ],
       },
       {
         tipo: "gruppo",
         label: "Orari/Palestre",
         figlie: [
-          { href: "/slot", label: "Orari" },
-          { href: "/palestre", label: "Palestre" },
+          { href: "/app/slot", label: "Orari" },
+          { href: "/app/palestre", label: "Palestre" },
         ],
       },
-      { tipo: "voce", href: "/gruppi", label: "Gruppi" },
-      { tipo: "voce", href: "/impostazioni", label: "Impostazioni" },
-      { tipo: "voce", href: "/wizard-nuova-stagione", label: "Wizard nuova stagione" },
-      { tipo: "voce", href: "/campionati", label: "Campionati" },
-      { tipo: "voce", href: "/partite", label: "Partite" },
-      { tipo: "voce", href: "/sponsor", label: "Sponsor" },
-      { tipo: "voce", href: "/guida", label: "Guida" },
+      { tipo: "voce", href: "/app/gruppi", label: "Gruppi" },
+      { tipo: "voce", href: "/app/impostazioni", label: "Impostazioni" },
+      { tipo: "voce", href: "/app/wizard-nuova-stagione", label: "Wizard nuova stagione" },
+      { tipo: "voce", href: "/app/campionati", label: "Campionati" },
+      { tipo: "voce", href: "/app/partite", label: "Partite" },
+      { tipo: "voce", href: "/app/sponsor", label: "Sponsor" },
+      { tipo: "voce", href: "/app/guida", label: "Guida" },
       {
         tipo: "gruppo",
         label: "Accounting",
         figlie: [
-          { href: "/admin", label: "Amministrazione" },
-          { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
-          { href: "/permessi-accesso", label: "Permessi di accesso" },
-          { href: "/permessi-certificati", label: "Permessi certificati" },
+          { href: "/app/admin", label: "Amministrazione" },
+          { href: "/app/precaricamento-allenatori", label: "Precaricamento allenatori" },
+          { href: "/app/permessi-accesso", label: "Permessi di accesso" },
+          { href: "/app/permessi-certificati", label: "Permessi certificati" },
         ],
       },
     ]);
@@ -473,10 +473,10 @@ describe("filtraVociNavigazione", () => {
     const gruppo = trovaGruppo(voci, "Accounting");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
-      { href: "/admin", label: "Amministrazione" },
-      { href: "/precaricamento-allenatori", label: "Precaricamento allenatori" },
-      { href: "/permessi-accesso", label: "Permessi di accesso" },
-      { href: "/permessi-certificati", label: "Permessi certificati" },
+      { href: "/app/admin", label: "Amministrazione" },
+      { href: "/app/precaricamento-allenatori", label: "Precaricamento allenatori" },
+      { href: "/app/permessi-accesso", label: "Permessi di accesso" },
+      { href: "/app/permessi-certificati", label: "Permessi certificati" },
     ]);
     expect(voci[voci.length - 1]).toBe(gruppo);
   });
@@ -629,21 +629,21 @@ describe("isGruppoAttivo", () => {
     tipo: "gruppo",
     label: "Gruppo",
     figlie: [
-      { href: "/orari", label: "Orari" },
-      { href: "/palestre", label: "Palestre" },
+      { href: "/app/orari", label: "Orari" },
+      { href: "/app/palestre", label: "Palestre" },
     ],
   };
 
   it("è attivo quando il pathname coincide con una figlia", () => {
-    expect(isGruppoAttivo("/palestre", gruppo)).toBe(true);
+    expect(isGruppoAttivo("/app/palestre", gruppo)).toBe(true);
   });
 
   it("è attivo quando il pathname è una sotto-pagina di una figlia", () => {
-    expect(isGruppoAttivo("/palestre/1", gruppo)).toBe(true);
+    expect(isGruppoAttivo("/app/palestre/1", gruppo)).toBe(true);
   });
 
   it("non è attivo per un pathname estraneo a tutte le figlie", () => {
-    expect(isGruppoAttivo("/admin", gruppo)).toBe(false);
+    expect(isGruppoAttivo("/app/admin", gruppo)).toBe(false);
   });
 
   it("non è attivo per un gruppo senza figlie", () => {
@@ -660,31 +660,31 @@ describe("isGruppoAttivo", () => {
 // originato questa storia.
 describe("isVoceAttiva", () => {
   it("e' attiva quando il pathname coincide esattamente con l'href", () => {
-    expect(isVoceAttiva("/palestre", "/palestre")).toBe(true);
+    expect(isVoceAttiva("/app/palestre", "/app/palestre")).toBe(true);
   });
 
   it("e' attiva quando il pathname e' una sotto-pagina dell'href", () => {
-    expect(isVoceAttiva("/palestre/1", "/palestre")).toBe(true);
+    expect(isVoceAttiva("/app/palestre/1", "/app/palestre")).toBe(true);
   });
 
   it("non e' attiva per un pathname diverso", () => {
-    expect(isVoceAttiva("/admin", "/palestre")).toBe(false);
+    expect(isVoceAttiva("/app/admin", "/app/palestre")).toBe(false);
   });
 
   it("non e' attiva per un href che e' solo prefisso testuale senza separatore '/'", () => {
-    // "/palestreX" non e' una sotto-pagina di "/palestre" - deve richiedere
+    // "/app/palestreX" non e' una sotto-pagina di "/app/palestre" - deve richiedere
     // il separatore "/" esplicito, non un semplice startsWith su tutta la
     // stringa.
-    expect(isVoceAttiva("/palestreX", "/palestre")).toBe(false);
+    expect(isVoceAttiva("/app/palestreX", "/app/palestre")).toBe(false);
   });
 
   it("e' attiva per /impostazioni quando il pathname e' /smtp o /logo, nonostante non compaiano piu' come voci dirette (review fix Story 9.24)", () => {
-    expect(isVoceAttiva("/smtp", "/impostazioni")).toBe(true);
-    expect(isVoceAttiva("/logo", "/impostazioni")).toBe(true);
-    expect(isVoceAttiva("/logo/qualcosa", "/impostazioni")).toBe(true);
+    expect(isVoceAttiva("/app/smtp", "/app/impostazioni")).toBe(true);
+    expect(isVoceAttiva("/app/logo", "/app/impostazioni")).toBe(true);
+    expect(isVoceAttiva("/app/logo/qualcosa", "/app/impostazioni")).toBe(true);
   });
 
   it("non e' attiva per /impostazioni su un pathname estraneo", () => {
-    expect(isVoceAttiva("/admin", "/impostazioni")).toBe(false);
+    expect(isVoceAttiva("/app/admin", "/app/impostazioni")).toBe(false);
   });
 });

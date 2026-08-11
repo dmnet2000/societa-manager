@@ -96,7 +96,7 @@ describe("accedi", () => {
       )
     ).rejects.toThrow("REDIRECT");
 
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/app");
   });
 
   it("blocks login and signs out when the Utente is deactivated (Story 1.2 AC #3)", async () => {

@@ -5,22 +5,22 @@ import { matchProtectedRoute } from "@/lib/auth/route-guard";
 describe("contenutiPerRuoli", () => {
   it("restituisce le voci ammesse per un Ruolo universale (/sponsor) anche con un solo Ruolo (AC #1)", () => {
     const risultato = contenutiPerRuoli(["ATLETA"]);
-    expect(risultato.map((c) => c.rotta)).toContain("/sponsor");
+    expect(risultato.map((c) => c.rotta)).toContain("/app/sponsor");
   });
 
   it("non restituisce una voce scoped se il Ruolo non è tra quelli ammessi", () => {
     const risultato = contenutiPerRuoli(["ATLETA"]);
-    expect(risultato.map((c) => c.rotta)).not.toContain("/palestre");
+    expect(risultato.map((c) => c.rotta)).not.toContain("/app/palestre");
   });
 
   it("restituisce una voce scoped (/palestre) per un Ruolo ammesso", () => {
     const risultato = contenutiPerRuoli(["ADMIN"]);
-    expect(risultato.map((c) => c.rotta)).toContain("/palestre");
+    expect(risultato.map((c) => c.rotta)).toContain("/app/palestre");
   });
 
   it("basta avere UNO dei Ruoli richiesti tra più Ruoli posseduti", () => {
     const risultato = contenutiPerRuoli(["ATLETA", "DIRIGENTE"]);
-    expect(risultato.map((c) => c.rotta)).toEqual(expect.arrayContaining(["/sponsor", "/palestre"]));
+    expect(risultato.map((c) => c.rotta)).toEqual(expect.arrayContaining(["/app/sponsor", "/app/palestre"]));
   });
 
   it("restituisce un elenco vuoto per un elenco di Ruoli vuoto", () => {
@@ -30,7 +30,7 @@ describe("contenutiPerRuoli", () => {
 
 describe("contenutoPerRotta", () => {
   it("trova il contenuto per una rotta esistente e un Ruolo ammesso (AC #3)", () => {
-    const risultato = contenutoPerRotta("/sponsor", ["ATLETA"]);
+    const risultato = contenutoPerRotta("/app/sponsor", ["ATLETA"]);
     expect(risultato?.titolo).toBe("Sponsor");
   });
 
@@ -39,11 +39,11 @@ describe("contenutoPerRotta", () => {
   });
 
   it("restituisce null se la rotta esiste ma l'Utente non ha un Ruolo ammesso (AC #4)", () => {
-    expect(contenutoPerRotta("/palestre", ["ATLETA"])).toBeNull();
+    expect(contenutoPerRotta("/app/palestre", ["ATLETA"])).toBeNull();
   });
 
   it("restituisce il contenuto scoped per un Ruolo effettivamente ammesso", () => {
-    const risultato = contenutoPerRotta("/palestre", ["DIRIGENTE"]);
+    const risultato = contenutoPerRotta("/app/palestre", ["DIRIGENTE"]);
     expect(risultato?.titolo).toBe("Palestre");
   });
 });

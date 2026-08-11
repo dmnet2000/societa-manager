@@ -61,7 +61,7 @@ describe("esci (Server Action, Story 9.1)", () => {
   it("invalida il layout radice (revalidatePath) prima di rediretare, cosi' la barra di navigazione sparisce (Story 9.7)", async () => {
     await expect(esci()).rejects.toThrow("REDIRECT");
 
-    expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app", "layout");
   });
 
   it("invalida comunque il layout radice (fail-closed) quando signOut() risolve con un errore (Story 9.7)", async () => {
@@ -69,7 +69,7 @@ describe("esci (Server Action, Story 9.1)", () => {
 
     await expect(esci()).rejects.toThrow("REDIRECT");
 
-    expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app", "layout");
   });
 
   it("invalida comunque il layout radice (fail-closed) quando signOut() lancia un'eccezione (Story 9.7)", async () => {
@@ -77,7 +77,7 @@ describe("esci (Server Action, Story 9.1)", () => {
 
     await expect(esci()).rejects.toThrow("REDIRECT");
 
-    expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app", "layout");
   });
 
   it("chiama revalidatePath prima di redirect, non dopo (Story 9.7)", async () => {
