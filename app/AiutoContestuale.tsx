@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { ContenutoGuida } from "@/lib/guida/contenuti";
+import { IconaAiuto } from "./icone-azione-riga";
 import styles from "./aiuto-contestuale.module.css";
 
 // Story 17.1 (AC #3/#4): icona "?" riusabile, posizionata vicino al <h1>
@@ -54,7 +55,7 @@ export function AiutoContestuale({ contenuto }: { contenuto: ContenutoGuida | nu
         aria-controls={idPannello}
         aria-label={`Aiuto: ${contenuto.titolo}`}
       >
-        ?
+        <IconaAiuto />
       </button>
       {aperto && (
         // Review fix (Blind Hunter): non e' un dialog modale (nessun

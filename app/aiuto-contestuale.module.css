@@ -35,9 +35,13 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-button-bg);
-  font-size: 13px;
-  font-weight: 800;
   cursor: pointer;
+}
+
+/* Tinta hover come .voceMenu in NavBar.module.css: "--color-border" e'
+   gia' il token del progetto per tinte chiare su superfici chiare. */
+.pulsante:hover {
+  background: var(--color-border);
 }
 
 .pulsante:focus-visible {
