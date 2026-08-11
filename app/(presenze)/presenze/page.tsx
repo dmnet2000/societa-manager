@@ -6,6 +6,9 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiPresenzePerSlotEData } from "@/lib/db-rls/presenza";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { ETICHETTA_GIORNO, giornoSettimanaDaData } from "@/lib/giorno-settimana";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { certificatoScaduto } from "./certificato-scaduto";
 import { PresenzeForm } from "./PresenzeForm";
 import styles from "./presenze.module.css";
@@ -43,6 +46,7 @@ export default async function PresenzePage({
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   const allenatore = user
     ? await prisma.allenatore.findFirst({
@@ -226,7 +230,10 @@ export default async function PresenzePage({
 
   return (
     <main>
-      <h1>Registrazione presenze</h1>
+      <TitoloPagina
+        titolo="Registrazione presenze"
+        contenuto={contenutoPerRotta("/presenze", ruoli)}
+      />
       {body}
     </main>
   );

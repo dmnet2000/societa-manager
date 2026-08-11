@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaNotifiche } from "@/lib/db-rls/notifica";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import styles from "./notifiche.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (nuovi caricamenti Certificato,
@@ -11,7 +14,13 @@ export const dynamic = "force-dynamic";
 // prefix "/notifiche") e' gia' il cancello, stesso pattern di ogni altra
 // pagina di lista di questa codebase.
 export default async function NotifichePage() {
-  const supabase = await createClient();
+  // Story 17.2 (review fix): ruoli e supabase non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto.
+  const [ruoli, supabase] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    createClient(),
+  ]);
 
   // Due letture RLS-safe + join applicativo in memoria (stesso pattern di
   // storico-presenze/page.tsx) - mai un `include` Prisma diretto su
@@ -35,7 +44,7 @@ export default async function NotifichePage() {
 
   return (
     <main>
-      <h1>Notifiche</h1>
+      <TitoloPagina titolo="Notifiche" contenuto={contenutoPerRotta("/notifiche", ruoli)} />
       {righe.length === 0 ? (
         <p className={styles.messaggioVuoto}>Nessuna notifica.</p>
       ) : (

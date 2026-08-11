@@ -8,20 +8,31 @@ import { categorizzaStatoCertificato } from "./categorizza-stato-certificato";
 import { GruppoCard, type GruppoCardData } from "./GruppoCard";
 import styles from "./vista-dirigente.module.css";
 import { formattaSlotOrario } from "@/lib/formatta-slot-orario";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 
 // Dati che cambiano ogni giorno per il solo passare del tempo (i bucket di
 // scadenza dipendono da "oggi") - stesso motivo di orari/page.tsx (Story 2.8).
 export const dynamic = "force-dynamic";
 
 export default async function VistaDirigentePage() {
-  // Sola lettura (Dev Notes Story 1.6): mai risolviAnnoAgonisticoCorrente in
-  // una pagina GET.
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
+  // Story 17.2 (review fix): ruoli e annoCorrente non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Sola lettura (Dev Notes Story 1.6): mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET.
+  const [ruoli, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
 
   if (!annoCorrente) {
     return (
       <main>
-        <h1>Vista d&apos;insieme</h1>
+        <TitoloPagina
+          titolo="Vista d'insieme"
+          contenuto={contenutoPerRotta("/vista-dirigente", ruoli)}
+        />
         <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
       </main>
     );
@@ -165,7 +176,10 @@ export default async function VistaDirigentePage() {
 
   return (
     <main>
-      <h1>Vista d&apos;insieme</h1>
+      <TitoloPagina
+        titolo="Vista d'insieme"
+        contenuto={contenutoPerRotta("/vista-dirigente", ruoli)}
+      />
       {cardData.length === 0 ? (
         <p>Nessun Gruppo creato per l&apos;Anno Agonistico corrente.</p>
       ) : (

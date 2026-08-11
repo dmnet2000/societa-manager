@@ -4,6 +4,8 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
 import { ListaConfermati } from "./ListaConfermati";
 import styles from "./conferma-certificati.module.css";
@@ -71,7 +73,10 @@ export default async function ConfermaCertificatiPage() {
 
   return (
     <main>
-      <h1>Conferma Certificati Medici</h1>
+      <TitoloPagina
+        titolo="Conferma Certificati Medici"
+        contenuto={contenutoPerRotta("/conferma-certificati", ruoli)}
+      />
 
       <section className={styles.sezione}>
         <h2>Da confermare ({daConfermare.length})</h2>

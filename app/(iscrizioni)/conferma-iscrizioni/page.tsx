@@ -3,6 +3,8 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { IscrizioneRow } from "./IscrizioneRow";
 import styles from "./conferma-iscrizioni.module.css";
 
@@ -20,9 +22,8 @@ export default async function ConfermaIscrizioniPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const puoConfermare = parseRuoli(user?.app_metadata?.ruoli).includes(
-    "SEGRETERIA"
-  );
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+  const puoConfermare = ruoli.includes("SEGRETERIA");
 
   const [atlete, annoCorrente] = await Promise.all([
     elencaAtlete(supabase),
@@ -43,7 +44,10 @@ export default async function ConfermaIscrizioniPage() {
 
   return (
     <main>
-      <h1>Conferma Iscrizioni</h1>
+      <TitoloPagina
+        titolo="Conferma Iscrizioni"
+        contenuto={contenutoPerRotta("/conferma-iscrizioni", ruoli)}
+      />
       <div className={styles.scrollWrapper}>
         <table className={styles.tabella}>
           <thead>

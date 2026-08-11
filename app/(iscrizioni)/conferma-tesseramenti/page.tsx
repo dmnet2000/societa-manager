@@ -3,6 +3,9 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { prisma } from "@/lib/prisma";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { ConfermaTesseramentiForm } from "./ConfermaTesseramentiForm";
 
 // Dati mutabili in tempo reale (conferme via Server Action sulla stessa
@@ -11,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ConfermaTesseramentiPage() {
   const supabase = await createClient();
+  const ruoli = await risolviRuoliPerAiutoContestuale();
 
   const [atlete, annoCorrente] = await Promise.all([
     elencaAtlete(supabase),
@@ -39,7 +43,10 @@ export default async function ConfermaTesseramentiPage() {
 
   return (
     <main>
-      <h1>Conferma Tesseramenti</h1>
+      <TitoloPagina
+        titolo="Conferma Tesseramenti"
+        contenuto={contenutoPerRotta("/conferma-tesseramenti", ruoli)}
+      />
       <ConfermaTesseramentiForm
         atlete={atlete.map((atleta) => ({
           id: atleta.id,

@@ -5,6 +5,8 @@ import { parseRuoli } from "@/lib/ruoli";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { PartitaRow } from "./PartitaRow";
 import styles from "./partite.module.css";
 
@@ -79,7 +81,7 @@ export default async function PartitePage({
   if (!eGestionale && !allenatore && atletaIds.length === 0) {
     return (
       <main>
-        <h1>Partite</h1>
+        <TitoloPagina titolo="Partite" contenuto={contenutoPerRotta("/partite", ruoli)} />
         <p className={styles.testo}>
           Il tuo account non è ancora collegato a un profilo Allenatore,
           Atleta o Genitore. Contatta la segreteria.
@@ -153,7 +155,7 @@ export default async function PartitePage({
 
   return (
     <main>
-      <h1>Partite</h1>
+      <TitoloPagina titolo="Partite" contenuto={contenutoPerRotta("/partite", ruoli)} />
       {proprieAtlete.length > 1 && (
         <section className={styles.settimana}>
           <form method="get">

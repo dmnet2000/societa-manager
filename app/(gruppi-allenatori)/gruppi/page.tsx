@@ -5,6 +5,9 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
 import styles from "./gruppi.module.css";
@@ -15,6 +18,10 @@ import styles from "./gruppi.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function GruppiPage() {
+  // Story 17.2 (review fix): le tre risoluzioni non dipendono l'una
+  // dall'altra - eseguite in Promise.all invece di await sequenziali,
+  // stesso principio gia' stabilito altrove nel progetto.
+  //
   // L'elenco va scoped all'Anno Agonistico corrente (AD-8, review fix
   // Story 2.2) - senza questo filtro, non appena esiste piu' di una
   // stagione l'elenco mescolerebbe Gruppi di anni diversi. Sola lettura
@@ -23,8 +30,11 @@ export default async function GruppiPage() {
   // non esiste ancora, nessun Gruppo puo' comunque esistere per
   // definizione (creaGruppo lo risolve/crea sempre per primo), quindi
   // l'elenco resta semplicemente vuoto.
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
-  const supabase = await createClient();
+  const [ruoli, annoCorrente, supabase] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+    createClient(),
+  ]);
   // Gruppo/Allenatore/GruppoAllenatore/GruppoAtleta non sono protetti da RLS
   // (AD-9): gestibili via Prisma diretto, come Palestra/Campo (Story 2.1).
   // Scala ridotta (poche decine di Gruppi/Allenatori, ~200 Atlete al
@@ -98,7 +108,7 @@ export default async function GruppiPage() {
 
   return (
     <main>
-      <h1>Gruppi</h1>
+      <TitoloPagina titolo="Gruppi" contenuto={contenutoPerRotta("/gruppi", ruoli)} />
 
       <section className={styles.sezione}>
         <h2>Nuovo Gruppo</h2>

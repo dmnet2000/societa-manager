@@ -6,6 +6,9 @@ import {
   esisteFotoProfilo,
   generaUrlFirmatoFotoProfilo,
 } from "@/lib/storage/foto-profilo";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { FotoProfiloForm } from "./FotoProfiloForm";
 import styles from "./il-mio-profilo.module.css";
 
@@ -69,6 +72,7 @@ export default async function IlMioProfiloPage() {
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Stesso identico pattern di risoluzione identita' gia' stabilito in
   // app/(dati-atleta)/dati-fisici/page.tsx (righe 86-114) - non reinventato.
@@ -97,7 +101,10 @@ export default async function IlMioProfiloPage() {
     return (
       <main className="pagina-form">
         <div className="riquadro-form">
-          <h1>Il mio profilo</h1>
+          <TitoloPagina
+            titolo="Il mio profilo"
+            contenuto={contenutoPerRotta("/il-mio-profilo", ruoli)}
+          />
           <p className={styles.testo}>
             Il tuo account non è ancora collegato a un profilo Allenatore o
             Atleta. Contatta la segreteria.
@@ -110,7 +117,10 @@ export default async function IlMioProfiloPage() {
   return (
     <main className="pagina-form">
       <div className="riquadro-form">
-        <h1>Il mio profilo</h1>
+        <TitoloPagina
+          titolo="Il mio profilo"
+          contenuto={contenutoPerRotta("/il-mio-profilo", ruoli)}
+        />
         {atletaIds.length > 0 && (
           <section className={styles.sezione}>
             <h2>La mia foto (Atleta)</h2>

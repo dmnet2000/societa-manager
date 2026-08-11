@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
 import { leggiEmailSegreteria } from "@/lib/configurazione-applicazione";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import styles from "./impostazioni.module.css";
 
@@ -24,22 +27,30 @@ export default async function ImpostazioniPage() {
     const route = PROTECTED_ROUTES.find((r) => r.prefix === prefix);
     return { href: prefix, label: route?.navLabel ?? prefix };
   });
-  // Review fix (Edge Case Hunter): senza try/catch, un errore DB su questa
-  // singola lettura farebbe crashare l'intero hub /impostazioni, bloccando
-  // anche l'accesso ai link a /smtp e /logo che prima non dipendevano da
-  // alcuna lettura DB - fail-soft su null, stesso principio di ogni altro
-  // effetto collaterale non bloccante di questo progetto.
-  let emailSegreteria: string | null = null;
-  try {
-    emailSegreteria = await leggiEmailSegreteria();
-  } catch (err) {
-    console.error(err);
-  }
+  // Story 17.2 (review fix): ruoli e emailSegreteria non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Review fix (Edge Case Hunter): senza il .catch,
+  // un errore DB su questa singola lettura farebbe crashare l'intero hub
+  // /impostazioni, bloccando anche l'accesso ai link a /smtp e /logo che
+  // prima non dipendevano da alcuna lettura DB - fail-soft su null, stesso
+  // principio di ogni altro effetto collaterale non bloccante di questo
+  // progetto (il .catch qui sostituisce il try/catch precedente per poter
+  // stare dentro il Promise.all senza perdere il comportamento fail-soft).
+  const [ruoli, emailSegreteria] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    leggiEmailSegreteria().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+  ]);
 
   return (
     <main className="pagina-form">
       <div className="riquadro-form">
-        <h1>Impostazioni</h1>
+        <TitoloPagina
+          titolo="Impostazioni"
+          contenuto={contenutoPerRotta("/impostazioni", ruoli)}
+        />
         <ul className={styles.lista}>
           {voci.map((voce) => (
             <li key={voce.href}>

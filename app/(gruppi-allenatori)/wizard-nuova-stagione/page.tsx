@@ -5,6 +5,9 @@ import {
   trovaAnnoAgonisticoCorrente,
   trovaAnnoAgonisticoPrecedente,
 } from "@/lib/anno-agonistico";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { ConfermaWizardForm } from "./ConfermaWizardForm";
 import styles from "./wizard-nuova-stagione.module.css";
 
@@ -13,11 +16,16 @@ import styles from "./wizard-nuova-stagione.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function WizardNuovaStagionePage() {
-  // Sola lettura (mai risolviAnnoAgonisticoCorrente in una pagina GET - Dev
-  // Notes Story 1.6/2.2): calcolaIntervalloStagioneCorrente non ha bisogno
-  // che la riga esista gia' a DB, e' un calcolo puro sulla data odierna.
+  // calcolaIntervalloStagioneCorrente e' un calcolo puro sulla data odierna
+  // (nessuna I/O), eseguito subito. Story 17.2 (review fix): ruoli e
+  // annoCorrente non dipendono l'uno dall'altro - eseguiti in Promise.all,
+  // stesso principio gia' stabilito altrove nel progetto. Sola lettura (mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET - Dev Notes Story 1.6/2.2).
   const intervalloCorrente = calcolaIntervalloStagioneCorrente(new Date());
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
+  const [ruoli, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
 
   // AC #3: se la stagione corrente ha gia' almeno un Gruppo, il wizard si
   // rifiuta di procedere - nessuna logica di merge/duplicazione. Se
@@ -31,7 +39,10 @@ export default async function WizardNuovaStagionePage() {
   if (numeroGruppiEsistenti > 0) {
     return (
       <main>
-        <h1>Wizard nuova stagione</h1>
+        <TitoloPagina
+          titolo="Wizard nuova stagione"
+          contenuto={contenutoPerRotta("/wizard-nuova-stagione", ruoli)}
+        />
         <p role="alert" className={styles.avviso}>
           Questa stagione ha già dei Gruppi. Il wizard è pensato per il primo
           utilizzo della stagione — per correggere o aggiungere Gruppi usa la{" "}
@@ -50,7 +61,10 @@ export default async function WizardNuovaStagionePage() {
   if (!annoPrecedente) {
     return (
       <main>
-        <h1>Wizard nuova stagione</h1>
+        <TitoloPagina
+          titolo="Wizard nuova stagione"
+          contenuto={contenutoPerRotta("/wizard-nuova-stagione", ruoli)}
+        />
         <p className={styles.testo}>Nessuna stagione precedente trovata.</p>
       </main>
     );
@@ -77,7 +91,10 @@ export default async function WizardNuovaStagionePage() {
   if (gruppiPrecedenti.length === 0) {
     return (
       <main>
-        <h1>Wizard nuova stagione</h1>
+        <TitoloPagina
+          titolo="Wizard nuova stagione"
+          contenuto={contenutoPerRotta("/wizard-nuova-stagione", ruoli)}
+        />
         <p className={styles.testo}>
           La stagione precedente non ha nessun Gruppo da copiare.
         </p>
@@ -87,8 +104,11 @@ export default async function WizardNuovaStagionePage() {
 
   return (
     <main>
-      <h1>Wizard nuova stagione</h1>
-      <p className={styles.testo}>Dall'anno precedente verranno copiati:</p>
+      <TitoloPagina
+        titolo="Wizard nuova stagione"
+        contenuto={contenutoPerRotta("/wizard-nuova-stagione", ruoli)}
+      />
+      <p className={styles.testo}>Dall&apos;anno precedente verranno copiati:</p>
       <ul className={styles.lista}>
         {gruppiPrecedenti.map((gruppo) => (
           <li key={gruppo.id}>

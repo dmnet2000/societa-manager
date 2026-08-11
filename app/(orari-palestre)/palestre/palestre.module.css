@@ -3,14 +3,6 @@
    (es. accedi.module.css); .card/.messaggioVuoto coerenti con
    vista-dirigente.module.css (Story 5.1). */
 
-/* Review fix (2026-08-10, Story 17.1): wrapper per <h1> + AiutoContestuale
-   - prima l'icona "?" era annidata dentro <h1>, inquinando il nome
-   accessibile del titolo per uno screen reader. */
-.intestazionePagina {
-  display: flex;
-  align-items: center;
-}
-
 .sezione {
   margin-top: var(--space-5);
 }

@@ -1,55 +1,29 @@
-"use client";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
+import { ImportAtleteForm } from "./ImportAtleteForm";
 
-import { useActionState } from "react";
-import { importaAtlete } from "./actions";
-import styles from "./import-atlete.module.css";
+// Story 17.2: pagina convertita da interamente "use client" a Server
+// Component - serve per risolvere i Ruoli lato server e mostrare l'aiuto
+// contestuale, stesso principio gia' in uso ovunque nel progetto. La
+// logica interattiva del form resta invariata in ImportAtleteForm.tsx.
+// force-dynamic esplicito per coerenza con le altre pagine che leggono
+// ruoli/user (es. /admin, /gruppi) - la lettura di cookies() la rende
+// comunque dinamica di per se', ma qui documentiamo l'intento invece di
+// affidarci solo all'inferenza implicita di Next.js.
+export const dynamic = "force-dynamic";
 
-export default function ImportAtletePage() {
-  const [state, formAction, pending] = useActionState(importaAtlete, undefined);
+export default async function ImportAtletePage() {
+  const ruoli = await risolviRuoliPerAiutoContestuale();
 
   return (
     <main className="pagina-form">
       <div className="riquadro-form">
-        <h1>Import archivio Atlete</h1>
-        <form action={formAction} className={styles.form}>
-          <div className={styles.campo}>
-            <label htmlFor="import-atlete-file">File Excel export federale</label>
-            <input
-              id="import-atlete-file"
-              name="file"
-              type="file"
-              accept=".xlsx"
-              required
-            />
-          </div>
-          {state && "error" in state && (
-            <p role="alert" className={styles.errore}>
-              {state.error.message}
-            </p>
-          )}
-          <button disabled={pending} type="submit" className={styles.bottone}>
-            Importa
-          </button>
-        </form>
-
-        {state && "success" in state && (
-          <section role="status" className={styles.riepilogo}>
-            <h2>Riepilogo import</h2>
-            <p>Atlete create: {state.create}</p>
-            <p>Atlete aggiornate: {state.aggiornate}</p>
-            <p>Atlete riportate (Under 13): {state.riportate}</p>
-            <p>Righe scartate: {state.scartate.length}</p>
-            {state.scartate.length > 0 && (
-              <ul className={styles.scartate}>
-                {state.scartate.map((riga) => (
-                  <li key={riga.numeroRiga}>
-                    Riga {riga.numeroRiga}: {riga.motivo}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
+        <TitoloPagina
+          titolo="Import archivio Atlete"
+          contenuto={contenutoPerRotta("/import-atlete", ruoli)}
+        />
+        <ImportAtleteForm />
       </div>
     </main>
   );

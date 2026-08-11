@@ -8,6 +8,9 @@ import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirig
 import { GruppoCard, type GruppoCardData } from "@/app/(amministrazione)/vista-dirigente/GruppoCard";
 import styles from "@/app/(amministrazione)/vista-dirigente/vista-dirigente.module.css";
 import { formattaSlotOrario } from "@/lib/formatta-slot-orario";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 
 // Story 9.26: specchio di /vista-dirigente (Story 5.1/5.2) ma scoped ai soli
 // Gruppi dell'Allenatore - GruppoCard/categorizzaStatoCertificato riusati
@@ -26,6 +29,7 @@ export default async function VistaAllenatorePage() {
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Gruppo/Allenatore/GruppoAllenatore/GruppoAtleta non sono protetti da RLS
   // (AD-9) - Prisma diretto, stesso pattern di i-miei-gruppi/page.tsx.
@@ -38,7 +42,10 @@ export default async function VistaAllenatorePage() {
   if (!allenatore) {
     return (
       <main>
-        <h1>Vista d&apos;insieme</h1>
+        <TitoloPagina
+          titolo="Vista d'insieme"
+          contenuto={contenutoPerRotta("/vista-allenatore", ruoli)}
+        />
         <p>
           Il tuo account non è ancora collegato a un profilo Allenatore.
           Contatta la segreteria.
@@ -58,7 +65,10 @@ export default async function VistaAllenatorePage() {
   if (!annoCorrente) {
     return (
       <main>
-        <h1>Vista d&apos;insieme</h1>
+        <TitoloPagina
+          titolo="Vista d'insieme"
+          contenuto={contenutoPerRotta("/vista-allenatore", ruoli)}
+        />
         <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
       </main>
     );
@@ -81,7 +91,10 @@ export default async function VistaAllenatorePage() {
   if (gruppiPropri.length === 0) {
     return (
       <main>
-        <h1>Vista d&apos;insieme</h1>
+        <TitoloPagina
+          titolo="Vista d'insieme"
+          contenuto={contenutoPerRotta("/vista-allenatore", ruoli)}
+        />
         <p>Non gestisci ancora nessun Gruppo.</p>
       </main>
     );
@@ -170,7 +183,10 @@ export default async function VistaAllenatorePage() {
 
   return (
     <main>
-      <h1>Vista d&apos;insieme</h1>
+      <TitoloPagina
+        titolo="Vista d'insieme"
+        contenuto={contenutoPerRotta("/vista-allenatore", ruoli)}
+      />
       <div className={styles.lista}>
         {cardData.map((gruppo) => (
           <GruppoCard key={gruppo.id} gruppo={gruppo} />

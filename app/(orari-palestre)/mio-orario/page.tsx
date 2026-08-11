@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { unisciESordinaSlot } from "@/lib/orario/unisci-slot";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import type { GiornoSettimana } from "@prisma/client";
 import { type SlotRiga } from "../SlotTable";
 import styles from "./mio-orario.module.css";
@@ -52,6 +55,7 @@ export default async function MioOrarioPage() {
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Le due risoluzioni di identita' (Allenatore/Atleta) non dipendono l'una
   // dall'altra - eseguite in Promise.all (review fix Story 2.7: il commento
@@ -188,7 +192,10 @@ export default async function MioOrarioPage() {
 
   return (
     <main>
-      <h1>Il mio orario</h1>
+      <TitoloPagina
+        titolo="Il mio orario"
+        contenuto={contenutoPerRotta("/mio-orario", ruoli)}
+      />
       {body}
     </main>
   );

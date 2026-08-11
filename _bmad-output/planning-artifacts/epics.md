@@ -2035,6 +2035,24 @@ so that possa capire come usare l'app senza dover chiedere aiuto a qualcun altro
 4. **And** una pagina senza contenuto guida associato non mostra l'icona "?" (nessun placeholder rotto)
 5. **And** nessuna scrittura: la guida è interamente read-only, nessuna Server Action di creazione/modifica/cancellazione del contenuto
 
+### Story 17.2: Estensione della guida a tutte le pagine rimanenti
+
+*(Aggiunta il 2026-08-10 su richiesta esplicita dell'utente, dopo aver verificato dal vivo Story 17.1: "La guida la vedo solo sulla funzione di sponsor ma non su tutte le altre ti chiedo di estenderla". Confermato con l'utente: tutte le 29 rotte protette rimanenti in un'unica story, non a gruppi.)*
+
+As a Utente autenticato con un qualunque Ruolo,
+I want trovare un contenuto guida e un aiuto contestuale su ogni pagina dell'app a cui ho accesso, non solo su `/sponsor` e `/palestre`,
+so that possa capire come usare qualunque funzione dell'app senza dover chiedere aiuto a qualcun altro.
+
+**Note aggiuntive:** estende `lib/guida/contenuti.ts` con una voce per ciascuna delle 29 rotte protette non ancora coperte (tutte tranne `/sponsor`, `/palestre` già fatte in Story 17.1, e `/guida` stessa, che non ha senso documentare se stessa). Introduce anche un piccolo refactor di riuso: `app/AiutoContestuale.tsx` guadagna un componente `TitoloPagina` condiviso (titolo + icona "?" nello stesso wrapper flex) per evitare di duplicare la stessa regola CSS in 29 CSS module diversi - le due pagine pilota di Story 17.1 vengono aggiornate per usarlo anch'esse, eliminando la duplicazione già introdotta lì.
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente autenticato **When** visita una qualunque delle 29 pagine coperte da questa storia **Then** vede l'icona "?" vicino al titolo, con un contenuto guida pertinente a quella specifica funzione
+2. **And** ciascuna delle 29 nuove voci ha lo stesso `ruoliAmmessi` della rotta corrispondente in `PROTECTED_ROUTES` (verificato dal test di coerenza già introdotto in Story 17.1, che scala automaticamente a ogni nuova voce)
+3. **And** l'indice di `/guida` mostra automaticamente tutte le nuove voci per i Ruoli pertinenti, senza modifiche alla pagina `/guida` stessa (già generica, Story 17.1)
+4. **And** nessuna pagina che oggi non legge `ruoli`/`user` deve rompersi se quella lettura fallisce (stesso principio fail-soft già stabilito per `/palestre` in Story 17.1 review)
+5. **And** nessuna nuova migrazione, nessuna nuova Server Action — stesso principio read-only di Story 17.1
+
 ## Epic 18: Sito pubblico Settore Volley
 
 *(Aggiunto in corso d'opera — 2026-08-10, richiesta esplicita dell'utente: "vorrei anche creare un sito per il settore Volley, accattivante, che si possa agganciare con i social nel pubblicare i post, con la lista delle partite della settimana recuperate dal calendario, sezione sponsor, foto di squadra dei vari gruppi, lascia aperto poi per eventuali altre richieste". Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata. Elenco APERTO come Epic 9/11/17, non tutto risolto qui.)*

@@ -41,6 +41,271 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Palestre e Campi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /orari.",
     ],
   },
+  // Story 17.2: estensione a tutte le rotte rimanenti, gruppo per gruppo
+  // seguendo lo stesso ordine di lib/auth/route-guard.ts (Atleti).
+  {
+    rotta: "/import-atlete",
+    titolo: "Import atlete",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Da qui importi l'archivio delle Atlete a partire da un file Excel esportato dal portale federale.",
+      "L'import crea le Atlete non ancora presenti, aggiorna quelle già esistenti e riporta automaticamente le Under 13 alla stagione corrente.",
+      "Al termine vedi un riepilogo con quante righe sono state create, aggiornate o scartate (con il motivo dello scarto per ciascuna).",
+    ],
+  },
+  {
+    rotta: "/conferma-iscrizioni",
+    titolo: "Conferma iscrizioni",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    corpo: [
+      "Qui vedi lo stato di iscrizione di ogni Atleta per la stagione corrente.",
+      "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
+      "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
+    ],
+  },
+  {
+    rotta: "/conferma-certificati",
+    titolo: "Conferma certificati",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    corpo: [
+      "Qui confermi i Certificati Medici caricati dalle famiglie o dalle Atlete, inserendo le date di validità.",
+      "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
+      "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
+    ],
+  },
+  {
+    rotta: "/conferma-tesseramenti",
+    titolo: "Conferma tesseramenti",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui confermi il Tesseramento federale delle Atlete per la stagione corrente - solo Admin e Dirigente, la Segreteria non ha accesso a questa pagina.",
+      "Seleziona una o più Atlete con la casella e conferma in blocco con un solo click, invece di una conferma alla volta.",
+      "Il Tesseramento è indipendente dall'Iscrizione: puoi confermare il Tesseramento anche di un'Atleta non ancora iscritta.",
+    ],
+  },
+  // Orari/Palestre.
+  {
+    rotta: "/orari",
+    titolo: "Orari (vista per Palestra/Gruppo)",
+    ruoliAmmessi: ["SEGRETERIA"],
+    corpo: [
+      "Qui vedi tutti gli Slot (giorno, orario, campo, gruppo) della stagione corrente, filtrabili per Palestra o per Gruppo.",
+      "Questa vista è pensata per la Segreteria: sola lettura, nessuna creazione o modifica di Slot da qui.",
+    ],
+  },
+  {
+    rotta: "/slot",
+    titolo: "Orari (gestione Slot)",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui crei e modifichi gli Slot settimanali: giorno, orario, Campo e Gruppo a cui è assegnato.",
+      "Uno Slot creato qui resta fisso per l'intera stagione (Anno Agonistico) - per cambiarlo in corso di stagione, modificalo direttamente dalla riga corrispondente.",
+      "Gli Slot creati qui sono quelli che compaiono poi in \"Il mio orario\" per Allenatori e Atlete, e nella vista Segreteria (/orari).",
+    ],
+  },
+  // Gruppi/Allenatori.
+  {
+    rotta: "/gruppi",
+    titolo: "Gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
+      "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
+      "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /slot.",
+    ],
+  },
+  {
+    rotta: "/i-miei-gruppi",
+    titolo: "I miei Gruppi",
+    ruoliAmmessi: ["ALLENATORE"],
+    corpo: [
+      "Qui vedi solo i Gruppi che ti sono stati assegnati come Allenatore, con il Roster di Atlete di ciascuno.",
+      "Puoi aggiungere o rimuovere un'Atleta dal Gruppo direttamente da qui: l'assegnazione è sempre additiva, non toglie l'Atleta da altri Gruppi.",
+      "Se non gestisci ancora nessun Gruppo, contatta la segreteria per farti assegnare.",
+    ],
+  },
+  {
+    rotta: "/mio-orario",
+    titolo: "Il mio orario",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    corpo: [
+      "Qui vedi il tuo orario personale: solo gli Slot dei Gruppi a cui sei collegato come Allenatore o come Atleta, raggruppati per giorno della settimana.",
+      "Ogni riga mostra Palestra, Campo e orario, con un link diretto per aprire la posizione su Google Maps.",
+      "Se il tuo account non è ancora collegato a nessun profilo, contatta la segreteria.",
+    ],
+  },
+  {
+    rotta: "/presenze",
+    titolo: "Registrazione presenze",
+    ruoliAmmessi: ["ALLENATORE"],
+    corpo: [
+      "Da qui registri le presenze delle Atlete a uno Slot in una data specifica - seleziona Slot e data, poi il Roster del Gruppo.",
+      "Un'Atleta con Certificato Medico scaduto è segnalata in evidenza: puoi comunque registrarne la presenza, ma la scadenza resta visibile.",
+      "Le presenze registrate qui alimentano lo Storico presenze, sia per te che per le famiglie/Atlete.",
+    ],
+  },
+  {
+    rotta: "/storico-presenze",
+    titolo: "Storico presenze",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    corpo: [
+      "Come Atleta vedi qui il tuo storico personale di presenze, con statistiche di trend.",
+      "Come Allenatore vedi invece una griglia mensile per Gruppo, un'Atleta per riga e una colonna per ogni giorno del mese selezionato.",
+      "Le presenze mostrate riflettono lo Slot attuale (giorno/ora/Gruppo) al momento della visualizzazione, non uno snapshot storico immutabile.",
+    ],
+  },
+  // Certificati/Notifiche/Configurazione.
+  {
+    rotta: "/certificato-medico",
+    titolo: "Certificato medico",
+    ruoliAmmessi: ["GENITORE", "ATLETA"],
+    corpo: [
+      "Da qui carichi il Certificato Medico agonistico dell'Atleta collegata al tuo account (figlia, se sei Genitore, o te stessa).",
+      "Se sei Genitore con più figlie, seleziona prima l'Atleta con il menu in alto.",
+      "Lo stato mostrato (in regola, in scadenza, scaduto, in attesa di conferma) si aggiorna solo dopo che la Segreteria ha confermato il Certificato caricato.",
+    ],
+  },
+  {
+    rotta: "/notifiche",
+    titolo: "Notifiche",
+    ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"],
+    corpo: [
+      "Qui trovi l'elenco delle notifiche: nuove Atlete inserite e nuovi Certificati Medici caricati dalle famiglie.",
+      "L'elenco è di sola lettura, in ordine cronologico - non c'è un'azione da compiere da questa pagina.",
+    ],
+  },
+  {
+    rotta: "/impostazioni",
+    titolo: "Impostazioni",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Questa è la pagina hub della configurazione: da qui raggiungi Configurazione SMTP e Configurazione logo.",
+      "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",
+    ],
+  },
+  {
+    rotta: "/smtp",
+    titolo: "Configurazione SMTP",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui configuri il server SMTP usato dall'app per inviare email (es. le notifiche alla Segreteria).",
+      "Dopo aver salvato una configurazione, puoi inviare un'email di prova per verificare che i parametri siano corretti prima di affidarti all'invio automatico.",
+    ],
+  },
+  {
+    rotta: "/logo",
+    titolo: "Configurazione logo",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui carichi il logo della società, mostrato nell'intestazione dell'app, e imposti il nome del settore sportivo (es. \"Volley\", \"Basket\") mostrato accanto ad esso.",
+      "Un nuovo logo caricato sostituisce quello attuale per tutti gli utenti - non è possibile avere più logo attivi contemporaneamente.",
+    ],
+  },
+  // Amministrazione/Profilo.
+  {
+    rotta: "/vista-dirigente",
+    titolo: "Vista d'insieme (Dirigente)",
+    ruoliAmmessi: ["DIRIGENTE"],
+    corpo: [
+      "Qui hai una panoramica di tutti i Gruppi della stagione: orari, numero di Atlete e stato dei Certificati Medici (in regola, in scadenza, scaduto, senza Certificato).",
+      "Se il tuo accesso ai Certificati è stato limitato ad alcuni Gruppi (permessi configurati da un Admin), i Gruppi esclusi mostrano solo gli orari, senza dati sui Certificati.",
+    ],
+  },
+  {
+    rotta: "/vista-allenatore",
+    titolo: "Vista d'insieme (Allenatore)",
+    ruoliAmmessi: ["ALLENATORE"],
+    corpo: [
+      "Come la Vista d'insieme del Dirigente, ma scoped ai soli Gruppi che alleni: orari, numero di Atlete e stato dei Certificati Medici.",
+      "Se non gestisci ancora nessun Gruppo, contatta la segreteria per farti assegnare.",
+    ],
+  },
+  {
+    rotta: "/dati-fisici",
+    titolo: "Dati fisici",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    corpo: [
+      "Qui registri e consulti le misurazioni fisiche (peso, altezza, test atletici) di un'Atleta, con un grafico dell'andamento nel tempo.",
+      "Come Atleta vedi solo le tue misurazioni; come Allenatore selezioni prima l'Atleta tra quelle dei tuoi Gruppi.",
+      "Per i parametri con più tentativi nello stesso giorno (es. test di elevazione), il grafico mostra solo il valore migliore per data.",
+    ],
+  },
+  {
+    rotta: "/wizard-nuova-stagione",
+    titolo: "Wizard nuova stagione",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Questo wizard copia i Gruppi (con i relativi Allenatori assegnati) dalla stagione precedente a quella corrente, per non doverli ricreare da zero a ogni cambio stagione.",
+      "Funziona solo per il primo utilizzo di una nuova stagione: se la stagione corrente ha già dei Gruppi, il wizard si ferma - usa la pagina Gruppi per correggere o aggiungere.",
+      "Slot, Iscrizioni, Tesseramenti e Certificati non vengono copiati: solo i Gruppi e l'assegnazione degli Allenatori.",
+    ],
+  },
+  {
+    rotta: "/il-mio-profilo",
+    titolo: "Il mio profilo",
+    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    corpo: [
+      "Qui carichi la tua foto profilo, visibile nelle sezioni dell'app che mostrano il tuo Gruppo o la tua identità (es. le card dei Gruppi).",
+      "Se hai sia un profilo Allenatore che uno Atleta collegati allo stesso account, gestisci qui entrambe le foto separatamente.",
+    ],
+  },
+  // Partite/Campionati/Amministrazione.
+  {
+    rotta: "/campionati",
+    titolo: "Campionati",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE"],
+    corpo: [
+      "Qui colleghi ogni Gruppo ai Campionati a cui partecipa, con un link al calendario FIPAV per l'import automatico delle partite.",
+      "Un Allenatore vede e gestisce solo i Campionati dei propri Gruppi; Admin e Dirigente vedono tutti i Gruppi della stagione.",
+      "Le partite importate da qui compaiono poi nella pagina Partite.",
+    ],
+  },
+  {
+    rotta: "/partite",
+    titolo: "Partite",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "ALLENATORE", "ATLETA", "GENITORE"],
+    corpo: [
+      "Qui vedi il calendario delle partite, raggruppate per settimana, con giorno, ora, luogo e link per navigare all'impianto.",
+      "Admin, Dirigente e Allenatore possono modificare i dati di una partita; Atleta e Genitore vedono l'elenco in sola lettura, scoped alle proprie Atlete/Gruppi.",
+      "Un Genitore con più figlie deve selezionare l'Atleta per vedere le sue partite, come nelle altre pagine con più profili collegati.",
+    ],
+  },
+  {
+    rotta: "/admin",
+    titolo: "Amministrazione",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui gestisci gli account utente della società: crei nuovi utenti, assegni o togli Ruoli, attivi o disattivi un account.",
+      "Un utente disattivato non può più accedere all'app, ma i suoi dati storici (es. presenze registrate) restano invariati.",
+    ],
+  },
+  {
+    rotta: "/precaricamento-allenatori",
+    titolo: "Precaricamento Allenatori",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui precarichi l'anagrafica degli Allenatori (nome, cognome, codice fiscale) prima che si registrino, così puoi già assegnarli a un Gruppo.",
+      "Quando un Allenatore precaricato completa la registrazione con lo stesso codice fiscale, il suo account si collega automaticamente al profilo già creato qui.",
+    ],
+  },
+  {
+    rotta: "/permessi-accesso",
+    titolo: "Permessi di accesso",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui decidi quali Ruoli possono accedere a ciascuna pagina configurabile dell'app, oltre ai permessi di base già previsti.",
+      "Le pagine riservate ad ADMIN (come questa stessa) non compaiono in questa matrice: non sono configurabili, per evitare di aprire per errore un accesso amministrativo ad altri Ruoli.",
+    ],
+  },
+  {
+    rotta: "/permessi-certificati",
+    titolo: "Permessi certificati",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui limiti quali Gruppi un Dirigente può vedere nella sezione Certificati Medici della Vista d'insieme.",
+      "Se non selezioni nessun Gruppo, non si applica nessuna restrizione: ogni Dirigente vede i Certificati di tutti i Gruppi, come impostazione di default.",
+    ],
+  },
 ];
 
 // AC #1: indice /guida filtrato per Ruolo - un Utente vede solo le voci

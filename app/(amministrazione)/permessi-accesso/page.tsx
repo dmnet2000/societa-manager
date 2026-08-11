@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { PermessiAccessoForm } from "./PermessiAccessoForm";
 
 // Dati mutabili in tempo reale (Server Action sulla stessa pagina) - stesso
@@ -7,11 +10,16 @@ import { PermessiAccessoForm } from "./PermessiAccessoForm";
 export const dynamic = "force-dynamic";
 
 export default async function PermessiAccessoPage() {
-  // PermessoRotta non e' protetta da RLS (AD-9) - Prisma diretto, stesso
-  // pattern di ogni altra pagina Amministrazione.
-  const righe = await prisma.permessoRotta.findMany({
-    select: { rotta: true, ruolo: true },
-  });
+  // Story 17.2 (review fix): ruoli e righe non dipendono l'uno dall'altro -
+  // eseguiti in Promise.all, stesso principio gia' stabilito altrove nel
+  // progetto. PermessoRotta non e' protetta da RLS (AD-9) - Prisma diretto,
+  // stesso pattern di ogni altra pagina Amministrazione.
+  const [ruoli, righe] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    prisma.permessoRotta.findMany({
+      select: { rotta: true, ruolo: true },
+    }),
+  ]);
   const abilitati = righe.map((r) => `${r.rotta}|${r.ruolo}`);
 
   // AC #6: l'elenco delle rotte gestibili e' derivato da PROTECTED_ROUTES
@@ -40,7 +48,10 @@ export default async function PermessiAccessoPage() {
 
   return (
     <main>
-      <h1>Permessi di accesso</h1>
+      <TitoloPagina
+        titolo="Permessi di accesso"
+        contenuto={contenutoPerRotta("/permessi-accesso", ruoli)}
+      />
       <PermessiAccessoForm rotte={rotte} abilitati={abilitati} />
     </main>
   );

@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { LogoForm } from "./LogoForm";
 import { NomeSettoreForm } from "./NomeSettoreForm";
 import styles from "./logo.module.css";
@@ -13,7 +16,14 @@ export const dynamic = "force-dynamic";
 // prefix "/logo" - il route group "(configurazione)" non compare nell'URL,
 // stesso motivo del fix di Story 7.1) e' gia' il cancello.
 export default async function LogoPage() {
-  const supabase = await createClient();
+  // Story 17.2 (review fix): ruoli e supabase non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto (info/nomeSettoreAttuale restano nel secondo
+  // Promise.all: dipendono dal client supabase gia' risolto).
+  const [ruoli, supabase] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    createClient(),
+  ]);
   const [info, nomeSettoreAttuale] = await Promise.all([
     leggiInfoLogo(supabase),
     leggiNomeSettore(),
@@ -22,7 +32,10 @@ export default async function LogoPage() {
   return (
     <main className="pagina-form">
       <div className="riquadro-form">
-        <h1>Configurazione logo</h1>
+        <TitoloPagina
+          titolo="Configurazione logo"
+          contenuto={contenutoPerRotta("/logo", ruoli)}
+        />
         {info.esiste ? (
           // AC #2: URL pubblico, nessuna autenticazione richiesta per
           // caricare l'immagine - a differenza degli URL firmati dei

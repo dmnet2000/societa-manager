@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { SlotTable } from "../SlotTable";
 import styles from "./orari.module.css";
 
@@ -16,16 +19,20 @@ export default async function OrariPage({
   // precedenti di Next.js.
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const params = await searchParams;
+  // Story 17.2 (review fix): le tre risoluzioni non dipendono l'una
+  // dall'altra - eseguite in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Sola lettura (trovaAnnoAgonisticoCorrente, mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET - Dev Notes Story 1.6).
+  const [ruoli, params, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    searchParams,
+    trovaAnnoAgonisticoCorrente(),
+  ]);
   // Un valore string[] (query duplicata, es. ?palestraId=a&palestraId=b) non
   // e' un caso valido per questi filtri a singola selezione - scartato come
   // se il filtro non fosse impostato.
   const palestraId = typeof params.palestraId === "string" ? params.palestraId : "";
   const gruppoId = typeof params.gruppoId === "string" ? params.gruppoId : "";
-
-  // Sola lettura (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente
-  // in una pagina GET - Dev Notes Story 1.6).
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
 
   // Slot/Campo/Gruppo/Palestra non sono protetti da RLS (AD-9) - tutte
   // letture Prisma dirette, nessun client Supabase necessario (a differenza
@@ -55,7 +62,10 @@ export default async function OrariPage({
 
   return (
     <main>
-      <h1>Orari</h1>
+      <TitoloPagina
+        titolo="Orari"
+        contenuto={contenutoPerRotta("/orari", ruoli)}
+      />
 
       <section className={styles.sezione}>
         <form method="get" className={styles.filtro}>

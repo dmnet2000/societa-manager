@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoUtenteForm } from "./NuovoUtenteForm";
 import { UtenteRow } from "./UtenteRow";
 import styles from "./admin.module.css";
@@ -10,16 +13,27 @@ import styles from "./admin.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  // Utente/UtenteRuolo non sono protetti da RLS (AD-9): gestibili via Prisma
-  // diretto, come in Story 1.1.
-  const utenti = await prisma.utente.findMany({
-    include: { ruoli: true },
-    orderBy: { email: "asc" },
-  });
+  // Story 17.2 (review fix): risolviRuoliPerAiutoContestuale() e la lettura
+  // Utenti non dipendono l'una dall'altra - eseguite in Promise.all, stesso
+  // principio gia' stabilito altrove nel progetto (es. mio-orario/page.tsx),
+  // invece di un await sequenziale che aggiungerebbe un giro di rete in piu'
+  // solo per l'icona "?".
+  const [ruoliAiuto, utenti] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    // Utente/UtenteRuolo non sono protetti da RLS (AD-9): gestibili via
+    // Prisma diretto, come in Story 1.1.
+    prisma.utente.findMany({
+      include: { ruoli: true },
+      orderBy: { email: "asc" },
+    }),
+  ]);
 
   return (
     <main>
-      <h1>Amministrazione</h1>
+      <TitoloPagina
+        titolo="Amministrazione"
+        contenuto={contenutoPerRotta("/admin", ruoliAiuto)}
+      />
 
       <section className={styles.sezione}>
         <h2>Nuovo utente</h2>

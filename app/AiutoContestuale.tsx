@@ -71,3 +71,25 @@ export function AiutoContestuale({ contenuto }: { contenuto: ContenutoGuida | nu
     </span>
   );
 }
+
+// Story 17.2: wrapper condiviso <h1> + AiutoContestuale - estratto qui
+// invece di ripetere la stessa regola CSS ".intestazionePagina" in ogni
+// CSS module di pagina (era gia' successo due volte in Story 17.1,
+// sponsor.module.css/palestre.module.css, prima di questo refactor).
+// L'icona resta fratello del <h1>, non figlio (stesso motivo del review
+// fix sopra: un <h1> con l'icona annidata dentro inquinerebbe il nome
+// accessibile del titolo per uno screen reader).
+export function TitoloPagina({
+  titolo,
+  contenuto,
+}: {
+  titolo: string;
+  contenuto: ContenutoGuida | null;
+}) {
+  return (
+    <div className={styles.intestazionePagina}>
+      <h1>{titolo}</h1>
+      <AiutoContestuale contenuto={contenuto} />
+    </div>
+  );
+}

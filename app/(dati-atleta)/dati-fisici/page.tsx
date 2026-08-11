@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiMisurazioniPerAtleta } from "@/lib/db-rls/misurazione-atleta";
 import { PARAMETRI_STANDARD, raggruppaPerTipo, riduciMiglioreProData } from "@/lib/misurazioni";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { MisurazioneForm } from "./MisurazioneForm";
 import { GraficoMisurazione } from "./GraficoMisurazione";
 import styles from "./dati-fisici.module.css";
@@ -108,6 +111,7 @@ export default async function DatiFisiciPage({
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Stesso pattern collassato di storico-presenze/page.tsx: le due
   // risoluzioni di identita' non dipendono l'una dall'altra.
@@ -132,7 +136,7 @@ export default async function DatiFisiciPage({
   if (!allenatore && atletaIds.length === 0) {
     return (
       <main>
-        <h1>Dati fisici</h1>
+        <TitoloPagina titolo="Dati fisici" contenuto={contenutoPerRotta("/dati-fisici", ruoli)} />
         <p className={styles.testo}>
           Il tuo account non è ancora collegato a un profilo Allenatore o
           Atleta. Contatta la segreteria.
@@ -228,7 +232,7 @@ export default async function DatiFisiciPage({
 
   return (
     <main>
-      <h1>Dati fisici</h1>
+      <TitoloPagina titolo="Dati fisici" contenuto={contenutoPerRotta("/dati-fisici", ruoli)} />
       {sezioneAtleta}
       {sezioneAllenatore}
     </main>

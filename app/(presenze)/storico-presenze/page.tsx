@@ -10,6 +10,9 @@ import {
 } from "@/lib/db-rls/presenza";
 import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
 import { giorniDelMese, meseCorrente } from "@/lib/mese-calendario";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import {
   calcolaStatistichePresenza,
   ETICHETTA_TREND,
@@ -143,6 +146,7 @@ export default async function StoricoPresenzePage({
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Stesso pattern collassato di mio-orario/presenze (Story 2.6/2.7/3.1):
   // le due risoluzioni di identita' non dipendono l'una dall'altra.
@@ -170,7 +174,10 @@ export default async function StoricoPresenzePage({
   if (!allenatore && atletaIds.length === 0) {
     return (
       <main>
-        <h1>Storico presenze</h1>
+        <TitoloPagina
+          titolo="Storico presenze"
+          contenuto={contenutoPerRotta("/storico-presenze", ruoli)}
+        />
         <p>
           Il tuo account non è ancora collegato a un profilo Allenatore o
           Atleta. Contatta la segreteria.
@@ -358,7 +365,10 @@ export default async function StoricoPresenzePage({
 
   return (
     <main>
-      <h1>Storico presenze</h1>
+      <TitoloPagina
+        titolo="Storico presenze"
+        contenuto={contenutoPerRotta("/storico-presenze", ruoli)}
+      />
       {sezioneAtleta}
       {sezioneAllenatore}
     </main>

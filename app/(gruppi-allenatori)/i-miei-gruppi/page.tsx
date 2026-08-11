@@ -5,6 +5,9 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { MioGruppoCard } from "./MioGruppoCard";
 import styles from "./i-miei-gruppi.module.css";
 
@@ -24,6 +27,7 @@ export default async function IMieiGruppiPage() {
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // Gruppo/Allenatore/GruppoAllenatore/GruppoAtleta non sono protetti da RLS
   // (AD-9) - Prisma diretto, stesso pattern di presenze/page.tsx.
@@ -36,7 +40,10 @@ export default async function IMieiGruppiPage() {
   if (!allenatore) {
     return (
       <main>
-        <h1>I miei Gruppi</h1>
+        <TitoloPagina
+          titolo="I miei Gruppi"
+          contenuto={contenutoPerRotta("/i-miei-gruppi", ruoli)}
+        />
         <p className={styles.messaggioVuoto}>
           Il tuo account non è ancora collegato a un profilo Allenatore.
           Contatta la segreteria.
@@ -110,7 +117,10 @@ export default async function IMieiGruppiPage() {
 
   return (
     <main>
-      <h1>I miei Gruppi</h1>
+      <TitoloPagina
+        titolo="I miei Gruppi"
+        contenuto={contenutoPerRotta("/i-miei-gruppi", ruoli)}
+      />
       {gruppiPropri.length === 0 ? (
         <p className={styles.messaggioVuoto}>
           Non gestisci ancora nessun Gruppo.

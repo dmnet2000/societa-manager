@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoCampionatoForm } from "./NuovoCampionatoForm";
 import { ImportaGareForm } from "./ImportaGareForm";
 import { EliminaCampionatoForm } from "./EliminaCampionatoForm";
@@ -42,7 +44,7 @@ export default async function CampionatiPage() {
   if (!eGestionale && !allenatore) {
     return (
       <main>
-        <h1>Campionati</h1>
+        <TitoloPagina titolo="Campionati" contenuto={contenutoPerRotta("/campionati", ruoli)} />
         <p className={styles.testo}>
           Il tuo account non è ancora collegato a un profilo Allenatore.
           Contatta la segreteria.
@@ -69,7 +71,7 @@ export default async function CampionatiPage() {
 
   return (
     <main>
-      <h1>Campionati</h1>
+      <TitoloPagina titolo="Campionati" contenuto={contenutoPerRotta("/campionati", ruoli)} />
       <div className={styles.scrollWrapper}>
         <table className={styles.tabella}>
           <thead>

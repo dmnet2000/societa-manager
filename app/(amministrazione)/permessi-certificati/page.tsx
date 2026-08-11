@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { PermessiCertificatiForm } from "./PermessiCertificatiForm";
 
 // Dati mutabili in tempo reale (Server Action sulla stessa pagina) - stesso
@@ -7,15 +10,23 @@ import { PermessiCertificatiForm } from "./PermessiCertificatiForm";
 export const dynamic = "force-dynamic";
 
 export default async function PermessiCertificatiPage() {
-  // Sola lettura (Dev Notes Story 1.6): mai risolviAnnoAgonisticoCorrente in
-  // una pagina GET.
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
+  // Story 17.2 (review fix): ruoli e annoCorrente non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Sola lettura (Dev Notes Story 1.6): mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET.
+  const [ruoli, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
 
   if (!annoCorrente) {
     return (
       <main className="pagina-form">
         <div className="riquadro-form">
-          <h1>Permessi certificati</h1>
+          <TitoloPagina
+            titolo="Permessi certificati"
+            contenuto={contenutoPerRotta("/permessi-certificati", ruoli)}
+          />
           <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
         </div>
       </main>
@@ -37,7 +48,10 @@ export default async function PermessiCertificatiPage() {
     return (
       <main className="pagina-form">
         <div className="riquadro-form">
-          <h1>Permessi certificati</h1>
+          <TitoloPagina
+            titolo="Permessi certificati"
+            contenuto={contenutoPerRotta("/permessi-certificati", ruoli)}
+          />
           <p>Nessun Gruppo creato per l&apos;Anno Agonistico corrente.</p>
         </div>
       </main>
@@ -49,7 +63,10 @@ export default async function PermessiCertificatiPage() {
   return (
     <main className="pagina-form">
       <div className="riquadro-form">
-        <h1>Permessi certificati</h1>
+        <TitoloPagina
+          titolo="Permessi certificati"
+          contenuto={contenutoPerRotta("/permessi-certificati", ruoli)}
+        />
         <PermessiCertificatiForm gruppi={gruppi} gruppoIdsVisibili={gruppoIdsVisibili} />
       </div>
     </main>

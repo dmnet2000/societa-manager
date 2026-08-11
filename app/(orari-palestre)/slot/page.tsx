@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoSlotForm } from "./NuovoSlotForm";
 import { SlotRow } from "./SlotRow";
 import styles from "./slot.module.css";
@@ -9,13 +12,19 @@ import styles from "./slot.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function SlotPage() {
-  // Sola lettura (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente
-  // in una pagina GET - Dev Notes Story 1.6). Slot non ha una colonna
-  // annoAgonisticoId propria (AD-8, transitiva via Gruppo) - il filtro per
-  // stagione corrente passa quindi da una relazione, non da una colonna
-  // diretta (applicato fin da subito, stessa lezione gia' rifatta piu' volte
-  // in code review per Gruppo/GruppoAtleta/GruppoAllenatore, Story 2.2/2.3/2.4).
-  const annoCorrente = await trovaAnnoAgonisticoCorrente();
+  // Story 17.2 (review fix): le due risoluzioni non dipendono l'una
+  // dall'altra - eseguite in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Sola lettura (trovaAnnoAgonisticoCorrente, mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET - Dev Notes Story 1.6).
+  // Slot non ha una colonna annoAgonisticoId propria (AD-8, transitiva via
+  // Gruppo) - il filtro per stagione corrente passa quindi da una
+  // relazione, non da una colonna diretta (applicato fin da subito, stessa
+  // lezione gia' rifatta piu' volte in code review per
+  // Gruppo/GruppoAtleta/GruppoAllenatore, Story 2.2/2.3/2.4).
+  const [ruoli, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
 
   // Slot/Campo/Gruppo/Palestra non sono protetti da RLS (AD-9) - tutte
   // letture Prisma dirette, nessun client Supabase necessario qui (a
@@ -49,7 +58,10 @@ export default async function SlotPage() {
           che il rename voleva ottenere. I sotto-titoli "Nuovo Slot"/"Elenco
           Slot" restano invariati: si riferiscono all'entita' di dominio
           Slot che si sta gestendo, non al nome della pagina in nav. */}
-      <h1>Orari</h1>
+      <TitoloPagina
+        titolo="Orari"
+        contenuto={contenutoPerRotta("/slot", ruoli)}
+      />
 
       <section className={styles.sezione}>
         <h2>Nuovo Slot</h2>

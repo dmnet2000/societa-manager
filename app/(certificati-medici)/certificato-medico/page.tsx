@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { trovaCertificatoPerAtleta } from "@/lib/db-rls/certificato-medico";
+import { parseRuoli } from "@/lib/ruoli";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { CaricaCertificatoForm } from "./CaricaCertificatoForm";
 import { ottieniUrlCertificato } from "./actions";
 import { calcolaStatoCertificatoVisualizzato } from "./stato-certificato-visualizzato";
@@ -39,6 +42,7 @@ export default async function CertificatoMedicoPage({
   if (error) {
     console.error(error);
   }
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
 
   // A differenza di storico-presenze (Story 3.2), qui NON si filtra per
   // autoAggancio: sia l'aggancio a se stessa sia quello Genitore<->figlia
@@ -56,7 +60,10 @@ export default async function CertificatoMedicoPage({
   if (atletaIds.length === 0) {
     return (
       <main>
-        <h1>Certificato medico</h1>
+        <TitoloPagina
+          titolo="Certificato medico"
+          contenuto={contenutoPerRotta("/certificato-medico", ruoli)}
+        />
         <p>
           Il tuo account non è ancora collegato a nessuna Atleta. Contatta la
           segreteria.
@@ -192,7 +199,10 @@ export default async function CertificatoMedicoPage({
 
   return (
     <main>
-      <h1>Certificato medico</h1>
+      <TitoloPagina
+        titolo="Certificato medico"
+        contenuto={contenutoPerRotta("/certificato-medico", ruoli)}
+      />
       {sezioneSelettore}
       {sezioneGestione}
     </main>

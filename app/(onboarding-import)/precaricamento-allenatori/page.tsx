@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoAllenatoreForm } from "./NuovoAllenatoreForm";
 import { AllenatoreRow } from "./AllenatoreRow";
 import styles from "./precaricamento-allenatori.module.css";
@@ -10,17 +13,25 @@ import styles from "./precaricamento-allenatori.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function PrecaricamentoAllenatoriPage() {
-  // Allenatore non e' protetto da RLS (AD-9) - Prisma diretto, come
-  // /palestre. Il guard-clause di cancellazione (AC #4) vive interamente
-  // dentro cancellaAllenatore (where compound sulla deleteMany) - qui non
-  // serve includere "gruppi".
-  const allenatori = await prisma.allenatore.findMany({
-    orderBy: [{ nome: "asc" }, { cognome: "asc" }],
-  });
+  // Story 17.2 (review fix): ruoli e allenatori non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Allenatore non e' protetto da RLS (AD-9) - Prisma
+  // diretto, come /palestre. Il guard-clause di cancellazione (AC #4) vive
+  // interamente dentro cancellaAllenatore (where compound sulla
+  // deleteMany) - qui non serve includere "gruppi".
+  const [ruoli, allenatori] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    prisma.allenatore.findMany({
+      orderBy: [{ nome: "asc" }, { cognome: "asc" }],
+    }),
+  ]);
 
   return (
     <main>
-      <h1>Precaricamento Allenatori</h1>
+      <TitoloPagina
+        titolo="Precaricamento Allenatori"
+        contenuto={contenutoPerRotta("/precaricamento-allenatori", ruoli)}
+      />
 
       <section className={styles.sezione}>
         <h2>Nuovo Allenatore</h2>

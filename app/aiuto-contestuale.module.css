@@ -2,6 +2,14 @@
    contestuale del progetto - nessun mockup key-screen dedicato, tokens
    esistenti riusati (nessun nuovo colore). */
 
+/* Story 17.2: wrapper condiviso per TitoloPagina (<h1> + AiutoContestuale)
+   - vive qui invece che duplicato in ogni CSS module di pagina (era
+   successo due volte in Story 17.1). */
+.intestazionePagina {
+  display: flex;
+  align-items: center;
+}
+
 .wrapper {
   position: relative;
   display: inline-block;
@@ -9,6 +17,14 @@
   vertical-align: middle;
 }
 
+/* Post-review (2026-08-10, segnalato dall'utente dal vivo): era
+   border-radius: 50% (cerchio pieno) - viola esplicitamente DESIGN.md
+   ("Nessuna forma a pillola nel sistema... angoli poco arrotondati,
+   radius.sm 6px su badge/pulsanti"). Riallineato allo stesso stile gia'
+   stabilito per i pulsanti-icona del progetto (.freccia in
+   sponsor-carosello.module.css, icone modifica/cancella in
+   icone-azione-riga.tsx): bordo + sfondo superficie + radius-sm, non un
+   badge colorato a se stante. */
 .pulsante {
   display: flex;
   align-items: center;
@@ -16,8 +32,8 @@
   min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--color-border);
-  border-radius: 50%;
-  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   color: var(--color-button-bg);
   font-size: 13px;
   font-weight: 800;
