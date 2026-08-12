@@ -5,16 +5,35 @@ import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
+import {
+  lunediDellaSettimana,
+  parseDataUtc,
+  raggruppaPerSettimana,
+} from "@/lib/raggruppa-per-settimana";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
 // sostituisce la dashboard interna spostata su /app - vedi app/app/page.tsx.
 // Solo layout/scheletro in Story 18.1 (AC #7); Story 18.2 aggiunge la prima
-// sezione di contenuto (Sponsor). Logo/nome del settore/Sponsor possono
-// cambiare in qualunque momento dalla console Admin - stesso motivo di
-// dynamic = "force-dynamic" gia' in uso su /accedi.
+// sezione di contenuto (Sponsor); Story 18.3 la sezione Partite. Logo/nome
+// del settore/Sponsor/Partite possono cambiare in qualunque momento -
+// stesso motivo di dynamic = "force-dynamic" gia' in uso su /accedi.
 export const dynamic = "force-dynamic";
+
+// Story 18.3: mirror del wrapper locale gia' in uso in
+// app/app/(partite-campionati)/partite/page.tsx - timeZone: "UTC" esplicito
+// (senza, il fuso orario locale del processo potrebbe mostrare una data
+// sfalsata di un giorno rispetto alla stringa "YYYY-MM-DD" originale).
+// parseDataUtc riusata (gia' esportata), non un secondo parsing indipendente.
+function formattaData(data: string): string {
+  return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
+}
+
+function formattaDataIso(data: Date): string {
+  return data.toISOString().slice(0, 10);
+}
 
 export default async function HomePubblicaPage() {
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
@@ -28,7 +47,18 @@ export default async function HomePubblicaPage() {
   // (un errore transitorio su una non nasconde le altre).
   const supabase = await createClient();
 
-  const [info, nomeSettore, sponsorAttivi] = await Promise.all([
+  // Story 18.3: confini lunedi'-domenica della sola settimana corrente
+  // (convenzione italiana) - lunediDellaSettimana esportata da
+  // lib/raggruppa-per-settimana.ts (Story 10.3) invece di duplicarne la
+  // matematica (offset getUTCDay() non ovvio, gia' corretta e testata).
+  const lunediCorrente = lunediDellaSettimana(new Date());
+  const domenicaCorrente = new Date(
+    lunediCorrente.getTime() + 6 * 24 * 60 * 60 * 1000
+  );
+  const lunediIso = formattaDataIso(lunediCorrente);
+  const domenicaIso = formattaDataIso(domenicaCorrente);
+
+  const [info, nomeSettore, sponsorAttivi, partiteSettimanaRaw] = await Promise.all([
     leggiInfoLogo(supabase).catch((err) => {
       console.error(err);
       return { esiste: false, aggiornatoIl: null as string | null };
@@ -61,6 +91,31 @@ export default async function HomePubblicaPage() {
         console.error(err);
         return [];
       }),
+    // Story 18.3 (AC #1/#2/#3): mirror del filtro/orderBy gia' in uso in
+    // app/app/(partite-campionati)/partite/page.tsx, senza lo scoping per
+    // Ruolo/Allenatore/Atleta (qui tutti i Gruppi, sempre) e senza
+    // includere campionato (non richiesto dall'AC). "select" esplicito
+    // (Sponsor, review fix Story 18.2) - il confine "cosa e' pubblico" e'
+    // imposto dalla query, non solo dal mapping successivo.
+    prisma.partita
+      .findMany({
+        where: { data: { gte: lunediIso, lte: domenicaIso } },
+        orderBy: [{ data: "asc" }, { ora: "asc" }],
+        select: {
+          id: true,
+          data: true,
+          ora: true,
+          squadraCasa: true,
+          squadraOspite: true,
+          impianto: true,
+          indirizzoImpianto: true,
+          gruppo: { select: { nome: true } },
+        },
+      })
+      .catch((err) => {
+        console.error(err);
+        return [];
+      }),
   ]);
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
@@ -79,6 +134,15 @@ export default async function HomePubblicaPage() {
     }))
   );
   const mostraSponsor = banner.length > 0 || convenzioni.length > 0;
+
+  // Story 18.3: riuso di raggruppaPerSettimana (gia' esportata e testata,
+  // Story 10.3) anche solo per UNA settimana - da' gratis l'ordinamento
+  // corretto per orario (oraInMinuti, gestisce anche orari non
+  // zero-paddati da un import Excel) invece di fidarsi del solo orderBy
+  // Prisma (confronto stringa, non numerico) o duplicare quella logica.
+  const [settimanaCorrente] = raggruppaPerSettimana(partiteSettimanaRaw);
+  const partiteSettimana = settimanaCorrente?.partite ?? [];
+  const mostraPartite = partiteSettimana.length > 0;
 
   return (
     <>
@@ -100,17 +164,18 @@ export default async function HomePubblicaPage() {
       <main>
         <div className={styles.hero}>
           <h1>Benvenuti nel {nomeVisualizzato}</h1>
-          {/* Review fix (Acceptance Auditor, Story 18.2): "i nostri sponsor"
-              rimosso dall'elenco "in arrivo" - la sezione Sponsor appena
-              sotto li mostra gia', lasciare la vecchia frase li avrebbe
-              contraddetti nella stessa pagina. Stesso aggiornamento andra'
-              ripetuto per partite/foto squadra/social man mano che le
-              Story 18.3-18.5 le rendono live (nessun meccanismo automatico
-              lo previene, e' testo statico). */}
+          {/* Review fix (Acceptance Auditor, Story 18.2) + Story 18.3: "i
+              nostri sponsor" e "le partite della settimana" rimossi
+              dall'elenco "in arrivo" man mano che le sezioni corrispondenti
+              diventano live sotto - lasciare la vecchia frase avrebbe
+              contraddetto la pagina stessa. Stesso aggiornamento andra'
+              ripetuto per foto squadra/social quando le Story 18.4/18.5 le
+              rendono live (nessun meccanismo automatico lo previene, e'
+              testo statico). */}
           <p className={styles.sottotitolo}>
             Il sito pubblico del nostro settore volley è in costruzione: presto
-            qui troverai le partite della settimana, le foto delle squadre e
-            gli ultimi post dai nostri canali social.
+            qui troverai le foto delle squadre e gli ultimi post dai nostri
+            canali social.
           </p>
         </div>
 
@@ -125,7 +190,7 @@ export default async function HomePubblicaPage() {
 
             {banner.length > 0 && (
               <div className={styles.gruppoSponsor}>
-                <h2>I nostri sponsor</h2>
+                <h2 className={styles.titoloSezione}>I nostri sponsor</h2>
                 <div className={styles.listaSponsor}>
                   {banner.map((sponsor) => (
                     <SponsorPubblicoCard
@@ -139,7 +204,7 @@ export default async function HomePubblicaPage() {
             )}
             {convenzioni.length > 0 && (
               <div className={styles.gruppoSponsor}>
-                <h2>Convenzioni</h2>
+                <h2 className={styles.titoloSezione}>Convenzioni</h2>
                 <div className={styles.listaSponsor}>
                   {convenzioni.map((sponsor) => (
                     <SponsorPubblicoCard
@@ -151,6 +216,56 @@ export default async function HomePubblicaPage() {
                 </div>
               </div>
             )}
+          </section>
+        )}
+
+        {/* Story 18.3 (AC #2): nessuna sezione se nessun Gruppo ha partite
+            nella settimana corrente - stesso principio della sezione
+            Sponsor sopra. */}
+        {mostraPartite && (
+          <section className={styles.sezionePartite} aria-label="Partite della settimana">
+            <h2 className={styles.titoloSezione}>Partite della settimana</h2>
+            {/* Card invece di tabella (indicazione utente 2026-08-12, vedi
+                commento in home-pubblica.module.css sopra .listaPartite) -
+                stessi campi di sola lettura della vecchia riga <tr>
+                (Giorno/Ora/Squadre/Luogo/Gruppo), nessuna colonna
+                "Azioni" (AC #3, nessun Ruolo puo' modificare da qui). */}
+            <div className={styles.listaPartite}>
+              {partiteSettimana.map((partita) => {
+                const linkNaviga = costruisciLinkNaviga({
+                  indirizzo: partita.indirizzoImpianto,
+                });
+                return (
+                  <div className={styles.schedaPartita} key={partita.id}>
+                    <div className={styles.dataPartita}>
+                      <span>{formattaData(partita.data)}</span>
+                      <span>{partita.ora}</span>
+                    </div>
+                    <div className={styles.squadrePartita}>
+                      {partita.squadraCasa} - {partita.squadraOspite}
+                    </div>
+                    <div className={styles.luogoPartita}>
+                      {partita.impianto}
+                      {linkNaviga && (
+                        <>
+                          {" "}
+                          <a
+                            className={styles.linkNaviga}
+                            href={linkNaviga}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
+                          >
+                            Naviga
+                          </a>
+                        </>
+                      )}
+                    </div>
+                    <span className={styles.gruppoPartita}>{partita.gruppo.nome}</span>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
       </main>

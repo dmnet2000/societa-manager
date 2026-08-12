@@ -38,7 +38,12 @@ function formattaDataIso(data: Date): string {
 
 // getUTCDay(): 0 = domenica ... 6 = sabato. Offset dal lunedì della stessa
 // settimana: lunedì(1)->0, martedì(2)->1, ..., domenica(0)->6.
-function lunediDellaSettimana(data: Date): Date {
+// Esportata (Story 18.3): riusata da app/page.tsx (home pubblica) per
+// calcolare i confini della sola settimana corrente, senza dover generare
+// l'intero intervallo di settimane di una stagione (raggruppaPerSettimana
+// sotto presuppone un elenco di Partite già filtrato, non un AnnoAgonistico
+// - qui serve il solo calcolo del lunedì, invariato).
+export function lunediDellaSettimana(data: Date): Date {
   const giorno = data.getUTCDay();
   const offset = (giorno + 6) % 7;
   return new Date(data.getTime() - offset * GIORNO_IN_MS);

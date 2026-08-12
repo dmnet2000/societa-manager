@@ -78,6 +78,21 @@
   color: var(--color-text-secondary);
 }
 
+/* Riferimento di tipologia (indicazione utente 2026-08-12): struttura a
+   sezioni con intestazione decisa (maiuscolo/tracking) ispirata a siti di
+   club volley reali (volleyrocasaldepazzi.it, gassalespiacenza.it) - solo
+   il PATTERN di intestazione, nessun colore nuovo: stesso trattamento gia'
+   stabilito per ".sezione h2" in sponsor.module.css (Story 16.1), qui
+   applicato a tutte le intestazioni di sezione della home pubblica per
+   coerenza tipografica con il resto dell'app. */
+.titoloSezione {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
 /* Story 18.2: prima sezione di contenuto reale della home pubblica - riusa
    gli stessi token gia' in uso qui sopra (Story 18.1), nessun colore
    nuovo. Struttura ispirata a .schedaVetrina/.listaVetrina di
@@ -119,6 +134,82 @@
 }
 
 .linkImmagineSponsor:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Story 18.3, rivista su indicazione utente (2026-08-12): sezione a card
+   (una per partita) invece di tabella - stesso identico dato (Giorno/Ora/
+   Squadre/Luogo/Gruppo), nessuna colonna "Azioni". Il layout a card e' il
+   pattern con cui i siti di riferimento (volleyrocasaldepazzi.it,
+   gassalespiacenza.it) evidenziano le partite ("ultima/prossima partita"),
+   piu' leggibile di una tabella su mobile dove la maggior parte del
+   pubblico visita la home. Token DESIGN.md invariati, nessun colore nuovo
+   - stessa griglia di .listaSponsor sopra (Story 18.2). */
+.sezionePartite {
+  padding: var(--space-8) var(--space-6);
+}
+
+.listaPartite {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.schedaPartita {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.dataPartita {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.squadrePartita {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.luogoPartita {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* Stesso sfondo/testo gia' stabilito per ".attendance-row" in DESIGN.md
+   (colors.surface-alt + testo colors.text-primary) - nessuna nuova coppia
+   colore da verificare, riuso di una combinazione gia' in uso nell'app. */
+.gruppoPartita {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.linkNaviga {
+  color: var(--color-button-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
