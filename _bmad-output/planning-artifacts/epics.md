@@ -2150,9 +2150,104 @@ As a Visitatore senza account,
 I want vedere sulla home pubblica gli ultimi post pubblicati sui canali social della società,
 so that possa seguire le novità della società senza dover uscire dal sito.
 
-**Note aggiuntive:** dipendente da 18.1. Mirroring tramite embed ufficiale della piattaforma (widget Instagram/Facebook, sola visualizzazione) — nessuna sincronizzazione via API, nessun token da gestire. Piattaforma(e) e configurazione dell'embed (es. handle/pagina da mostrare) da chiarire in apertura di questa story.
+**Note aggiuntive:** dipendente da 18.1. Mirroring tramite embed ufficiale della piattaforma (widget Instagram/Facebook, sola visualizzazione) — nessuna sincronizzazione via API, nessun token da gestire. **Decisione presa con l'utente (2026-08-12)**, risolve il punto aperto precedente: la configurazione dell'embed (piattaforma, handle/pagina da mostrare) è gestita da una nuova sezione Admin — nuovi campi opzionali su `ConfigurazioneApplicazione` (mirror di `nomeSettore`/`emailSegreteria`, stesso singleton no-RLS già esistente), editabili da `/app/impostazioni` o da una pagina dedicata (a discrezione dello sviluppo). Se la Story 18.6 (consenso cookie) è già implementata al momento di questa storia, l'embed va caricato solo dopo consenso esplicito del Visitatore (vincolo già annotato in 18.6 AC #5).
 
 **Acceptance Criteria:**
 
-1. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede una sezione con gli ultimi post pubblicati sui canali social configurati della società, tramite embed ufficiale della piattaforma
-2. **And** se l'embed non è configurato o non è raggiungibile, la sezione non rompe il resto della pagina (fail-soft)
+1. **Given** un Admin o Dirigente **When** configura piattaforma e handle/pagina da mostrare nella sezione Admin dedicata **Then** il valore viene salvato sul singleton `ConfigurazioneApplicazione` esistente
+2. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede una sezione con gli ultimi post pubblicati sui canali social configurati della società, tramite embed ufficiale della piattaforma
+3. **And** se l'embed non è configurato o non è raggiungibile, la sezione non rompe il resto della pagina (fail-soft)
+
+### Story 18.6: Banner di consenso cookie
+
+*(Aggiunta post-apertura epica — 2026-08-12, richiesta esplicita dell'utente: "serve aggiungere il consenso per i cookies".)*
+
+As a Visitatore del sito pubblico,
+I want essere informato sull'uso dei cookie e poter scegliere se accettarli o rifiutarli,
+so that la mia privacy sia rispettata e la società sia in regola con la normativa cookie/GDPR.
+
+**Note aggiuntive:** dipendente da 18.1 (richiede la nuova home pubblica su `"/"`). Riguarda solo le pagine **pubbliche** del sito (Visitatori anonimi, senza alcun rapporto contrattuale/di servizio pregresso con la società) — non l'area autenticata sotto `/app`, dove l'unico cookie in uso oggi è quello di sessione Supabase, strettamente necessario e già fuori dall'obbligo di consenso. Da verificare in apertura sviluppo quali cookie/script non essenziali sono effettivamente presenti oggi sulle pagine pubbliche (probabilmente nessuno finché la Story 18.5 non è implementata). **Punto di raccordo con 18.5**: l'embed social di quella storia (widget Instagram/Facebook) imposta cookie di terze parti — quando 18.5 verrà sviluppata (oggi ancora in backlog), il suo widget dovrà caricarsi solo dopo consenso esplicito del Visitatore tramite l'infrastruttura introdotta qui, non prima. Stessa regola per qualunque futuro strumento non essenziale (es. analytics) introdotto sulle pagine pubbliche.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza una scelta precedente registrata **When** visita per la prima volta una pagina pubblica del sito **Then** vede un banner che informa sull'uso dei cookie, con la possibilità di accettare o rifiutare i cookie non essenziali — nessun cookie non essenziale viene impostato prima della scelta
+2. **And** la scelta del Visitatore viene ricordata (es. cookie tecnico proprio o `localStorage`), così il banner non ricompare a ogni visita successiva
+3. **And** un link/pulsante "Preferenze cookie" permette di rivedere o cambiare la scelta in qualsiasi momento, anche dopo la prima visita
+4. **And** il banner non blocca la navigazione (nessun cookie wall) — il Visitatore può continuare a usare il sito senza dover scegliere immediatamente
+5. **And** nessuno strumento non essenziale (embed social di Story 18.5, eventuali futuri strumenti di analytics) viene caricato prima del consenso esplicito — vincolo da rispettare in ogni storia futura che introduce cookie non essenziali sulle pagine pubbliche, non solo in questa
+
+### Story 18.7: Menu di navigazione multi-pagina
+
+*(Aggiunta post-apertura epica — 2026-08-12, richiesta esplicita dell'utente: "aggiungere altre story con i menu simili a quelli dei siti che [le ho] indicato" — vedi il riferimento di tipologia salvato per l'Epic 18, volleyrocasaldepazzi.it/gassalespiacenza.it. Voci di menu scelte esplicitamente dall'utente tra le opzioni proposte: Squadre, Calendario, Staff, Contatti — News esclusa per ora, coperta invece dall'embed social di Story 18.5.)*
+
+As a Visitatore del sito pubblico,
+I want un menu di navigazione nell'header con le sezioni del sito,
+so that possa raggiungere direttamente Squadre, Calendario, Staff e Contatti senza restare vincolato alla sola home.
+
+**Note aggiuntive:** dipendente da 18.1 (header esistente, oggi solo logo+nome+"Accedi"). Introduce la struttura di navigazione multi-pagina — precondizione perché le voci Squadre/Calendario/Staff/Contatti (Story 18.8-18.11) siano effettivamente raggiungibili; ciascuna di quelle storie deve comunque aggiungere la propria rotta a `PUBLIC_ROUTES` (`lib/auth/route-guard.ts`), stesso punto tecnico critico già risolto per `"/"` in Story 18.1 (senza, un Visitatore anonimo verrebbe reindirizzato a `/accedi`). Nessun pattern di drawer/hamburger esiste oggi sull'header pubblico (a differenza della NavBar interna, Story 9.2) — con solo 5 voci (Home/Squadre/Calendario/Staff/Contatti) più "Accedi", va deciso in apertura sviluppo se basta un elenco orizzontale con wrap su mobile o serve un pattern più strutturato.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore su qualunque pagina pubblica **When** guarda l'header **Then** vede un menu con le voci Home, Squadre, Calendario, Staff, Contatti, oltre al link "Accedi" già esistente (Story 18.1 AC #7)
+2. **And** ogni voce porta alla pagina corrispondente (`/`, `/squadre` Story 18.8, `/calendario` Story 18.9, `/staff` Story 18.10, `/contatti` Story 18.11)
+3. **And** la voce della pagina corrente è visivamente distinguibile dalle altre (stato attivo)
+4. **And** su schermi stretti (mobile) il menu resta interamente utilizzabile — nessuna voce tagliata o irraggiungibile
+
+### Story 18.8: Pagina pubblica "Squadre"
+
+As a Visitatore senza account,
+I want vedere l'elenco delle squadre/categorie della società con lo staff tecnico assegnato,
+so that possa conoscere l'organizzazione sportiva del settore volley.
+
+**Note aggiuntive:** dipendente da 18.1 (18.7 per essere raggiungibile dal menu, ma la rotta `/squadre` è costruibile indipendentemente). Riuso in sola lettura pubblica di `Gruppo`/`GruppoAllenatore` — stessi dati già letti in `/app/gruppi` (Epic 9), **senza** l'elenco Atlete (dato RLS-protetto, mai esposto pubblicamente — stesso principio già applicato a Partite/Sponsor, Story 18.2/18.3). Stagione corrente risolta con `trovaAnnoAgonisticoCorrente` (sola lettura) — **mai** `risolviAnnoAgonisticoCorrente`, che ha un side-effect di scrittura (crea l'Anno Agonistico se assente) non ammissibile in una pagina pubblica GET, stesso vincolo già documentato in `/app/gruppi/page.tsx`. Se la Story 18.4 (foto squadra) è già stata implementata, ogni Gruppo mostra anche la propria foto quando presente.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `/squadre` **Then** vede l'elenco dei Gruppi della stagione corrente (nome, categoria) con gli Allenatori assegnati a ciascuno (nome e cognome)
+2. **And** nessun dato di Atleta (nome, elenco iscritti, conteggio, ecc.) è esposto in questa vista
+3. **And** un Gruppo senza Allenatori assegnati compare comunque, senza elenco staff — nessuna riga dell'elenco viene nascosta per questo
+4. **And** se nessun Gruppo esiste per la stagione corrente, la pagina mostra un messaggio esplicito invece di un'area vuota
+
+### Story 18.9: Pagina pubblica "Calendario"
+
+As a Visitatore senza account,
+I want vedere il calendario completo delle partite della stagione, non solo quelle della settimana corrente,
+so that possa consultare anche le partite passate o delle settimane successive.
+
+**Note aggiuntive:** dipendente da 18.1 (18.7 per il menu). Evoluzione della sezione "Partite della settimana" già in home (Story 18.3) verso una pagina dedicata `/calendario` con **tutte** le settimane della stagione — stesso identico pattern già costruito per `/app/partite` (Epic 10): query su tutta la stagione + `raggruppaPerSettimana` (già esportata, Story 10.3) invece del solo filtro lunedì-domenica corrente introdotto in 18.3. Dopo questa storia, la sezione "Partite della settimana" in home può restare com'è (teaser della sola settimana corrente) con un link "Vedi calendario completo" verso `/calendario`, oppure essere rimossa a favore del solo link — decisione di dettaglio da confermare in apertura sviluppo, nessun AC la impone.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `/calendario` **Then** vede le partite di ogni settimana della stagione corrente (non solo quella in corso), raggruppate per settimana e ordinate cronologicamente, per tutti i Gruppi — squadre, data/ora, luogo
+2. **And** i campi mostrati per ogni partita restano gli stessi di Story 18.3 (nessuna colonna "Azioni", nessun dato riservato)
+3. **And** se la stagione corrente non ha alcuna partita programmata, la pagina mostra un messaggio esplicito invece di un'area vuota
+
+### Story 18.10: Pagina pubblica "Staff"
+
+As a Visitatore senza account,
+I want vedere l'elenco degli Allenatori del settore volley e i Gruppi che seguono,
+so that possa conoscere lo staff tecnico della società.
+
+**Note aggiuntive:** dipendente da 18.1 (18.7 per il menu). **Scope limitato allo staff tecnico** (`Allenatore`, che ha nome/cognome nel modello dati) — a differenza dei siti di riferimento, questo progetto non ha oggi alcun campo nome/cognome per Utenti con Ruolo Dirigente/Admin/Segreteria (solo `email`, mai mostrata pubblicamente in nessuna pagina esistente): uno "staff dirigenziale" pubblico nominativo **non è coperto da questa storia** e richiederebbe una decisione di prodotto a parte (nuovo campo identitario su `Utente` o un modello dedicato, oltre a una decisione di privacy su cosa pubblicare) — da aprire come storia separata se richiesto esplicitamente. Riuso in sola lettura pubblica di `Allenatore`/`GruppoAllenatore`, stessi dati di `/squadre` (Story 18.8) letti dal lato opposto della relazione (per Allenatore invece che per Gruppo).
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `/staff` **Then** vede l'elenco degli Allenatori (nome, cognome) con i Gruppi della stagione corrente a cui sono assegnati
+2. **And** un Allenatore non assegnato a nessun Gruppo nella stagione corrente non compare nell'elenco (a differenza di `/squadre`, dove un Gruppo senza Allenatori resta comunque visibile)
+3. **And** nessun dato riservato (email, codice fiscale, credenziali) è esposto in questa vista
+4. **And** se nessun Allenatore risulta assegnato a un Gruppo nella stagione corrente, la pagina mostra un messaggio esplicito invece di un'area vuota
+
+### Story 18.11: Pagina pubblica "Contatti"
+
+As a Visitatore senza account,
+I want trovare indirizzo, contatti e canali social della società,
+so that possa mettermi in contatto o raggiungere la sede senza dover cercare altrove.
+
+**Note aggiuntive:** dipendente da 18.1 (18.7 per il menu). Nuovi campi opzionali su `ConfigurazioneApplicazione` (mirror di `nomeSettore`/`emailSegreteria`, stesso singleton no-RLS già esistente — AD-9): proposta `indirizzoSede`, `telefonoPubblico`, `emailPubblica`, più i link social già eventualmente configurati per la Story 18.5 (post social), se quella storia è già stata implementata. Editabili da Admin/Dirigente — pagina di gestione consigliata: `/app/impostazioni`, stesso posto dove vive già `emailSegreteria` (Story 9.31), per non introdurre un'ennesima pagina di configurazione separata per pochi campi. Campo per campo tutti opzionali (nullable): se non configurato, quel dato non compare in `/contatti` (nessun placeholder "non disponibile").
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente **When** compila indirizzo/telefono/email pubblici su `/app/impostazioni` **Then** i valori vengono salvati sul singleton `ConfigurazioneApplicazione` esistente
+2. **Given** un Visitatore senza sessione **When** visita `/contatti` **Then** vede i soli campi effettivamente configurati (nessun campo vuoto mostrato come "non disponibile")
+3. **And** se nessun campo è mai stato configurato, la pagina mostra un messaggio esplicito invece di una pagina completamente vuota
+4. **And** nessun dato riservato (email Segreteria interna, credenziali, ecc.) è esposto in questa vista — solo i nuovi campi pubblici introdotti da questa storia

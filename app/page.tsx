@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,9 @@ import {
   raggruppaPerSettimana,
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { eConsensoRegistrato, NOME_COOKIE_CONSENSO } from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
+import { CookieBanner } from "./CookieBanner";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -46,6 +49,14 @@ export default async function HomePubblicaPage() {
   // restare dentro il Promise.all senza perdere il comportamento fail-soft
   // (un errore transitorio su una non nasconde le altre).
   const supabase = await createClient();
+
+  // Story 18.6: lettura del cookie di consenso - stesso identico pattern
+  // (cookies() da next/headers) gia' in uso in lib/supabase/server.ts.
+  // Nessuna dipendenza da Promise.all sopra: e' una lettura locale della
+  // richiesta in corso, non una chiamata di rete/DB.
+  const cookieStore = await cookies();
+  const valoreConsenso = cookieStore.get(NOME_COOKIE_CONSENSO)?.value;
+  const mostraBannerSubito = !eConsensoRegistrato(valoreConsenso);
 
   // Story 18.3: confini lunedi'-domenica della sola settimana corrente
   // (convenzione italiana) - lunediDellaSettimana esportata da
@@ -274,6 +285,11 @@ export default async function HomePubblicaPage() {
           &copy; {new Date().getFullYear()} {nomeVisualizzato}
         </p>
       </footer>
+      {/* Story 18.6: sempre montato (non condizionato da mostraBannerSubito
+          come mostraSponsor/mostraPartite sopra) - deve restare
+          raggiungibile come pulsante "Preferenze cookie" anche dopo la
+          scelta (AC #3), non solo alla prima visita. */}
+      <CookieBanner mostraSubito={mostraBannerSubito} />
     </>
   );
 }

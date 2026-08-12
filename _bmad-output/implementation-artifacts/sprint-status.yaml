@@ -511,9 +511,62 @@ development_status:
   # vivo). 1062/1062 test Vitest passati, 0 errori tsc/eslint, build
   # produzione riuscita. Status: done. Epic 18 resta in-progress (elenco
   # aperto, 18.2-18.5 ancora backlog).
+  #
+  # 2026-08-12: aggiunta Story 18.6 (backlog) su richiesta esplicita
+  # dell'utente - banner di consenso cookie per le pagine pubbliche del
+  # sito (GDPR/normativa cookie), dipendente da 18.1. Punto di raccordo
+  # annotato in epics.md: quando 18.5 (embed social) verra' sviluppata,
+  # il widget dovra' caricarsi solo dopo consenso esplicito tramite
+  # l'infrastruttura introdotta da questa storia.
+  #
+  # 2026-08-12: file di story 18.6 creato (create-story workflow) -
+  # nessun cookie/script non essenziale impostato oggi in nessuna pagina
+  # del progetto (verificato in analisi), storia introduce
+  # l'infrastruttura in anticipo su 18.5. Punto aperto non bloccante
+  # lasciato in Dev Notes: montare il banner solo su "/" (raccomandato,
+  # unica pagina di contenuto pubblico oggi) o anche sulle pagine di
+  # autenticazione pubbliche (/accedi, /registrati, ecc.) - da
+  # confermare con l'utente se necessario in apertura sviluppo. Status: ready-for-dev.
+  #
+  # 2026-08-12: aggiunte 5 story (backlog) su richiesta esplicita
+  # dell'utente - menu di navigazione multi-pagina simile ai siti di
+  # riferimento (volleyrocasaldepazzi.it, gassalespiacenza.it). Scelte
+  # esplicite dell'utente tra le opzioni proposte: Squadre, Calendario,
+  # Staff, Contatti (News esclusa - coperta invece dall'embed social di
+  # 18.5). 18.7 fondativa (header con le 5 voci di menu), 18.8-18.11
+  # aggiungono le pagine di destinazione. Story 18.5 aggiornata in
+  # parallelo per risolvere il suo punto aperto: nuova sezione Admin per
+  # configurare piattaforma/handle dell'embed social (richiesta esplicita
+  # dell'utente), nuovo AC #1 aggiunto. Gap di modello dati scoperto in
+  # analisi e annotato in 18.10: nessun campo nome/cognome per Utenti con
+  # Ruolo Dirigente/Admin/Segreteria (solo Allenatore ce l'ha) - "Staff"
+  # scope limitato allo staff tecnico, uno "staff dirigenziale"
+  # nominativo richiederebbe una storia/decisione a parte.
+  #
+  # 2026-08-12: avviato lo sviluppo della Story 18.6 (dev-story workflow,
+  # prima story "ready-for-dev" trovata in ordine nel file).
+  #
+  # 2026-08-12: Story 18.6 implementata (dev-story workflow) - lib/cookie-consenso.ts
+  # (nome/durata cookie + eConsensoRegistrato, testata), app/CookieBanner.tsx
+  # (Client Component sempre montato: banner completo o solo trigger
+  # "Preferenze cookie" a seconda dello stato, deviazione consapevole dal
+  # piano originale per soddisfare AC #3 senza stato condiviso tra due
+  # componenti), app/CookieBanner.module.css (mirror elevazione/raggio del
+  # menu profilo, Story 9.4). app/page.tsx legge il cookie con cookies()
+  # da next/headers (stesso pattern di lib/supabase/server.ts). Verificato
+  # con next dev + curl in entrambi gli stati (con/senza cookie) - click
+  # interattivi non verificabili senza motore JS, demandati all'utente.
+  # 1066/1066 test Vitest passati (+4), 0 errori tsc/eslint, build
+  # produzione riuscita. Status: review, in attesa di code review.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
   18-3-partite-settimana-home: in-progress
   18-4-foto-squadra-gruppo: backlog
   18-5-post-social-home: backlog
+  18-6-consenso-cookie: review
+  18-7-menu-navigazione-multi-pagina: backlog
+  18-8-pagina-squadre: backlog
+  18-9-pagina-calendario: backlog
+  18-10-pagina-staff: backlog
+  18-11-pagina-contatti: backlog
