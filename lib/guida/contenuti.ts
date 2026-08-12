@@ -38,7 +38,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui gestisci l'elenco delle Palestre della società e i Campi al loro interno.",
       "Puoi creare una nuova Palestra (nome, indirizzo, posizione da un link Google Maps) e aggiungere Campi a una Palestra esistente.",
-      "Palestre e Campi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /orari.",
+      "Palestre e Campi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/orari.",
     ],
   },
   // Story 17.2: estensione a tutte le rotte rimanenti, gruppo per gruppo
@@ -100,7 +100,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei e modifichi gli Slot settimanali: giorno, orario, Campo e Gruppo a cui è assegnato.",
       "Uno Slot creato qui resta fisso per l'intera stagione (Anno Agonistico) - per cambiarlo in corso di stagione, modificalo direttamente dalla riga corrispondente.",
-      "Gli Slot creati qui sono quelli che compaiono poi in \"Il mio orario\" per Allenatori e Atlete, e nella vista Segreteria (/orari).",
+      "Gli Slot creati qui sono quelli che compaiono poi in \"Il mio orario\" per Allenatori e Atlete, e nella vista Segreteria (/app/orari).",
     ],
   },
   // Gruppi/Allenatori.
@@ -111,7 +111,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
-      "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /slot.",
+      "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/slot.",
     ],
   },
   {

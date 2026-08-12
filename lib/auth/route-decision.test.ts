@@ -60,8 +60,15 @@ describe("getRouteDecision", () => {
     expect(isPublicRoute("/")).toBe(true);
   });
 
+  // Review fix (Blind Hunter, Story 18.1): usava "/" prima che diventasse
+  // pubblica (Story 18.1) - il test era diventato ridondante col test
+  // pubblico appena sopra e non copriva piu' nessun caso di autenticazione
+  // reale. "/app" non ha una voce dedicata in PROTECTED_ROUTES (nessun
+  // prefix esatto "/app"), quindi matchProtectedRoute non trova
+  // corrispondenza: stesso identico scenario "rotta protetta senza
+  // restrizione di Ruolo" che il test intende verificare.
   it("allows an authenticated user on a route with no role restriction", async () => {
-    expect(await getRouteDecision("/", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });

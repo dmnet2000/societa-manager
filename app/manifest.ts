@@ -11,11 +11,17 @@ import type { MetadataRoute } from "next";
 // piu' "/" - da quando "/" e' diventata la home pubblica del sito, un
 // Utente che ha installato la PWA per lavorare sulla dashboard deve
 // continuare ad aprirla, non atterrare sul sito pubblico.
+// Review fix (Edge Case Hunter): "scope" esplicito - senza, lo scope di
+// default dello standard Web App Manifest e' la cartella di start_url con
+// l'ultimo segmento rimosso, cioe' "/" (l'intero dominio, sito pubblico
+// incluso) per uno start_url "/app" senza slash finale. Con "scope"
+// esplicito la PWA installata resta confinata alla dashboard.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Società Manager",
     short_name: "Soc. Manager",
     start_url: "/app",
+    scope: "/app/",
     display: "standalone",
     background_color: "#FFFFFF",
     theme_color: "#312682",

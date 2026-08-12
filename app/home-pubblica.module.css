@@ -1,10 +1,7 @@
-/* Story 18.1 (Epic 18) - solo layout/scheletro (AC #7): header con
-   brand/link Accedi, hero minimale, footer. Nessun colore nuovo - stesso
-   gradiente navy->blu gia' approvato per lo sfondo di /accedi
-   (accedi.module.css), stessi token di DESIGN.md. Il registro visivo
-   definitivo va rivisto con Sally (UX) quando arriveranno le sezioni di
-   contenuto (Story 18.2-18.5) - questo e' volutamente uno scheletro, non
-   il markup finale. */
+/* Story 18.1 (Epic 18): header con brand/link Accedi, hero, footer.
+   Story 18.2: prima sezione di contenuto (Sponsor). Nessun colore nuovo -
+   stesso gradiente navy->blu gia' approvato per lo sfondo di /accedi
+   (accedi.module.css), stessi token di DESIGN.md. */
 
 .header {
   display: flex;
@@ -79,4 +76,49 @@
   text-align: center;
   font-size: 12.5px;
   color: var(--color-text-secondary);
+}
+
+/* Story 18.2: prima sezione di contenuto reale della home pubblica - riusa
+   gli stessi token gia' in uso qui sopra (Story 18.1), nessun colore
+   nuovo. Struttura ispirata a .schedaVetrina/.listaVetrina di
+   sponsor.module.css (Story 16.2) come riferimento visivo, non condivisa
+   (convenzione del progetto: un CSS module per pagina, mai importato tra
+   route diverse). */
+.sezioneSponsor {
+  padding: var(--space-8) var(--space-6);
+}
+
+.gruppoSponsor + .gruppoSponsor {
+  margin-top: var(--space-6);
+}
+
+.listaSponsor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.schedaSponsor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.anteprimaSponsor {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.linkImmagineSponsor {
+  display: block;
+}
+
+.linkImmagineSponsor:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
