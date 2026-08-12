@@ -558,13 +558,23 @@ development_status:
   # interattivi non verificabili senza motore JS, demandati all'utente.
   # 1066/1066 test Vitest passati (+4), 0 errori tsc/eslint, build
   # produzione riuscita. Status: review, in attesa di code review.
+  #
+  # 2026-08-13: Story 18.6 code review completata (Blind Hunter + Edge
+  # Case Hunter + Acceptance Auditor in parallelo). 1 decision-needed
+  # risolto con l'utente (ambito banner confermato solo su "/"). 6 patch
+  # applicati (SameSite=Lax, haAccettatoCookieNonEssenziali per la futura
+  # 18.5, padding-bottom di sicurezza sul footer, z-index riallineato
+  # 100->30, "Preferenze cookie" ora mostra la scelta attuale via
+  # parseValoreConsenso, +5 test). 1 defer (aria-live, in
+  # deferred-work.md). 4 dismessi. 1075/1075 test Vitest passati, 0
+  # errori tsc/eslint, build produzione riuscita. Status: done.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
   18-3-partite-settimana-home: in-progress
   18-4-foto-squadra-gruppo: backlog
   18-5-post-social-home: backlog
-  18-6-consenso-cookie: review
+  18-6-consenso-cookie: done
   18-7-menu-navigazione-multi-pagina: backlog
   18-8-pagina-squadre: backlog
   18-9-pagina-calendario: backlog

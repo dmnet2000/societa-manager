@@ -3,12 +3,16 @@
    menu profilo (Story 9.4): "0 1px 3px rgba(16,24,32,0.08)" + --radius-sm
    (mai --radius-md, riservato a contenitori piu' ampi). Nessun colore
    nuovo, solo token esistenti. */
+/* Review fix: 30, non un valore arbitrariamente alto - resta sopra la
+   scala esistente dell'app (NavBar.module.css: drawer 20, overlay 21, il
+   massimo finora), senza dichiarare un nuovo tier "sempre in cima" non
+   documentato. */
 .banner {
   position: fixed;
   left: var(--space-4);
   right: var(--space-4);
   bottom: var(--space-4);
-  z-index: 100;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -76,7 +80,7 @@
   position: fixed;
   left: var(--space-4);
   bottom: var(--space-4);
-  z-index: 100;
+  z-index: 30;
   min-height: 44px;
   padding: 0 var(--space-4);
   background: var(--color-surface);

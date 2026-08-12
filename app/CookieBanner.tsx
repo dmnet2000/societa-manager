@@ -16,12 +16,27 @@ import styles from "./CookieBanner.module.css";
 // preferenze in qualunque momento (AC #3), quindi non puo' sparire
 // interamente dall'albero una volta dato il consenso - resta solo come
 // piccolo pulsante "Preferenze cookie".
+//
+// Review fix (code review Story 18.6, Acceptance Auditor): SameSite=Lax
+// esplicito - allineato all'unico altro precedente di scrittura cookie nel
+// progetto (lib/supabase/server.ts, che lo imposta tramite @supabase/ssr),
+// invece di affidarsi al default implicito del browser.
 function impostaConsenso(valore: ValoreConsenso) {
-  document.cookie = `${NOME_COOKIE_CONSENSO}=${valore}; path=/; max-age=${DURATA_COOKIE_CONSENSO_SECONDI}`;
+  document.cookie = `${NOME_COOKIE_CONSENSO}=${valore}; path=/; max-age=${DURATA_COOKIE_CONSENSO_SECONDI}; SameSite=Lax`;
 }
 
-export function CookieBanner({ mostraSubito }: { mostraSubito: boolean }) {
-  const [visibile, setVisibile] = useState(mostraSubito);
+export function CookieBanner({
+  valoreIniziale,
+}: {
+  valoreIniziale: ValoreConsenso | undefined;
+}) {
+  const [visibile, setVisibile] = useState(valoreIniziale === undefined);
+  // Review fix (code review Story 18.6, Acceptance Auditor): tenuto
+  // separato da "visibile" per soddisfare l'AC #3 ("rivedere... la
+  // scelta") - riaprendo il banner dal pulsante "Preferenze cookie" si
+  // vede quale scelta e' attualmente registrata, non solo un modulo vuoto
+  // identico alla prima visita.
+  const [valoreCorrente, setValoreCorrente] = useState(valoreIniziale);
 
   if (!visibile) {
     return (
@@ -46,6 +61,13 @@ export function CookieBanner({ mostraSubito }: { mostraSubito: boolean }) {
         consenso, potremo in futuro mostrare anche contenuti di terze parti
         (es. post dai nostri canali social) che utilizzano cookie non
         essenziali.
+        {valoreCorrente && (
+          <>
+            {" "}
+            Hai attualmente <strong>{valoreCorrente}</strong> i cookie non
+            essenziali.
+          </>
+        )}
       </p>
       <div className={styles.azioni}>
         <button
@@ -53,6 +75,7 @@ export function CookieBanner({ mostraSubito }: { mostraSubito: boolean }) {
           className={styles.bottoneSecondario}
           onClick={() => {
             impostaConsenso("rifiutato");
+            setValoreCorrente("rifiutato");
             setVisibile(false);
           }}
         >
@@ -63,6 +86,7 @@ export function CookieBanner({ mostraSubito }: { mostraSubito: boolean }) {
           className={styles.bottone}
           onClick={() => {
             impostaConsenso("accettato");
+            setValoreCorrente("accettato");
             setVisibile(false);
           }}
         >

@@ -12,7 +12,7 @@ import {
   raggruppaPerSettimana,
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
-import { eConsensoRegistrato, NOME_COOKIE_CONSENSO } from "@/lib/cookie-consenso";
+import { NOME_COOKIE_CONSENSO, parseValoreConsenso } from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
 import styles from "./home-pubblica.module.css";
@@ -55,8 +55,9 @@ export default async function HomePubblicaPage() {
   // Nessuna dipendenza da Promise.all sopra: e' una lettura locale della
   // richiesta in corso, non una chiamata di rete/DB.
   const cookieStore = await cookies();
-  const valoreConsenso = cookieStore.get(NOME_COOKIE_CONSENSO)?.value;
-  const mostraBannerSubito = !eConsensoRegistrato(valoreConsenso);
+  const valoreConsensoIniziale = parseValoreConsenso(
+    cookieStore.get(NOME_COOKIE_CONSENSO)?.value
+  );
 
   // Story 18.3: confini lunedi'-domenica della sola settimana corrente
   // (convenzione italiana) - lunediDellaSettimana esportata da
@@ -285,11 +286,11 @@ export default async function HomePubblicaPage() {
           &copy; {new Date().getFullYear()} {nomeVisualizzato}
         </p>
       </footer>
-      {/* Story 18.6: sempre montato (non condizionato da mostraBannerSubito
-          come mostraSponsor/mostraPartite sopra) - deve restare
-          raggiungibile come pulsante "Preferenze cookie" anche dopo la
-          scelta (AC #3), non solo alla prima visita. */}
-      <CookieBanner mostraSubito={mostraBannerSubito} />
+      {/* Story 18.6: sempre montato (non condizionato come
+          mostraSponsor/mostraPartite sopra) - deve restare raggiungibile
+          come pulsante "Preferenze cookie" anche dopo la scelta (AC #3),
+          non solo alla prima visita. */}
+      <CookieBanner valoreIniziale={valoreConsensoIniziale} />
     </>
   );
 }

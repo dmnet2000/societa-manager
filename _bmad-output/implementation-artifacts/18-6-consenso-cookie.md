@@ -4,7 +4,7 @@ baseline_commit: e5f1252
 
 # Story 18.6: Banner di consenso cookie
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,6 +42,17 @@ so that la mia privacy sia rispettata e la società sia in regola con la normati
   - [x] `lib/cookie-consenso.test.ts` — 4 test su `eConsensoRegistrato` (accettato/rifiutato/undefined/valore sconosciuto).
   - [x] Nessun test di rendering su `CookieBanner.tsx`/`page.tsx` (convenzione consolidata del progetto).
   - [x] `npx vitest run` (1066/1066 passati), `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti.
+
+### Review Findings
+
+- [x] [Review][Decision] Ambito del banner limitato a "/" — **risolto con l'utente (2026-08-12): confermato lo scope attuale (solo "/")**. Nessun cookie non essenziale è oggi impostato su `/accedi`/`/registrati`/`/recupera-password`/`/reimposta-password`, quindi nessun rischio di conformità concreto ora — da riconsiderare quando servirà davvero (es. Story 18.5). Nessuna modifica di codice.
+- [x] [Review][Patch] Cookie di consenso scritto senza `SameSite` esplicito [app/CookieBanner.tsx:12] — risolto: aggiunto `SameSite=Lax` esplicito alla scrittura del cookie.
+- [x] [Review][Patch] Nessun helper esplicito "consenso agli strumenti non essenziali" riusabile dalla futura Story 18.5 (AC #5) [lib/cookie-consenso.ts] — risolto: nuova `haAccettatoCookieNonEssenziali`, testata.
+- [x] [Review][Patch] Banner/pulsante fisso può sovrapporsi al footer senza margine di sicurezza [app/CookieBanner.module.css, app/home-pubblica.module.css] — risolto: `padding-bottom` aggiuntivo su `.footer` pari all'altezza del pulsante fisso.
+- [x] [Review][Patch] `z-index: 100` non riconciliato con la scala esistente dell'app (NavBar drawer/overlay a 20/21) [app/CookieBanner.module.css] — risolto: abbassato a `30`.
+- [x] [Review][Patch] Riaprire "Preferenze cookie" non mostra la scelta attualmente registrata (AC #3 "rivedere") [app/CookieBanner.tsx] — risolto: nuovo prop tipizzato `valoreIniziale` (da `parseValoreConsenso`), il banner riaperto mostra "Hai attualmente accettato/rifiutato i cookie non essenziali."
+- [x] [Review][Patch] Copertura di test minima su `eConsensoRegistrato` (stringa vuota, case-sensitivity non testate) [lib/cookie-consenso.test.ts] — risolto: aggiunti i 2 casi mancanti + test per le 2 nuove funzioni.
+- [x] [Review][Defer] Nessun `aria-live`/annuncio per il banner (`role="region"` non è assertivo) [app/CookieBanner.tsx] — deferred, richiede una decisione di design UX su come annunciarlo senza essere invasivo; non urgente dato che il banner non è bloccante (AC #4) e resta comunque raggiungibile via navigazione a landmark/tab.
 
 ## Dev Notes
 
@@ -96,9 +107,10 @@ claude-sonnet-5
 ### File List
 
 - Nuovi: `lib/cookie-consenso.ts`, `lib/cookie-consenso.test.ts`, `app/CookieBanner.tsx`, `app/CookieBanner.module.css`
-- Modificati: `app/page.tsx`
+- Modificati: `app/page.tsx`, `app/home-pubblica.module.css`
 
 ## Change Log
 
 - 2026-08-12: File di story creato, stato ready-for-dev.
 - 2026-08-12: Implementata (dev-story workflow) - lettura cookie server-side, componente banner con trigger "Preferenze cookie" integrato, stile mirror del menu profilo, funzione pura `eConsensoRegistrato` testata. 1066/1066 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Stato: review.
+- 2026-08-13: Code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo). 1 decision-needed risolto con l'utente (ambito del banner confermato solo su "/" - nessun rischio di conformità concreto oggi, nessun cookie non essenziale altrove). 6 patch applicati: `SameSite=Lax` esplicito sul cookie, nuova `haAccettatoCookieNonEssenziali` per la futura Story 18.5 (AC #5), `padding-bottom` di sicurezza sul footer contro la sovrapposizione col pulsante fisso, `z-index` riallineato alla scala esistente dell'app (100→30), nuovo prop tipizzato `valoreIniziale`/`parseValoreConsenso` cosi' "Preferenze cookie" mostra la scelta attualmente registrata (AC #3 "rivedere"), 5 nuovi test (stringa vuota, case-sensitivity, 2 nuove funzioni). 1 defer (nessun `aria-live` sul banner - decisione UX non urgente, annotato in `deferred-work.md`). 4 dismessi come rumore/decisioni gia' documentate (lettura cookie non avvolta in try/catch - non puo' fallire in una pagina `force-dynamic`; nessun fallback no-JS - coerente con l'intero resto dell'app; nessuna pagina Cookie Policy - gia' una decisione esplicita nei Dev Notes; nuance di ri-consenso per la futura Story 18.5 - speculativo su codice non ancora esistente). 1075/1075 test Vitest passati (+9 da questa review), 0 errori tsc/eslint, build produzione riuscita. Status: done.
