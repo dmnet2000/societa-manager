@@ -33,14 +33,18 @@ export async function esci() {
   } catch (err) {
     console.error(err);
   }
-  // Story 9.7: senza questo, il layout radice (dove <NavBar/> e' montata,
-  // app/layout.tsx) resta nella Client Cache del router Next.js e non viene
-  // ri-eseguito sulla navigazione verso /accedi innescata dal redirect() qui
-  // sotto - la barra di navigazione mostrava ancora l'utente autenticato
-  // nonostante la sessione fosse gia' terminata (documentato in
+  // Story 9.7: senza questo, il layout che monta <NavBar/> resta nella
+  // Client Cache del router Next.js e non viene ri-eseguito sulla
+  // navigazione verso /accedi innescata dal redirect() qui sotto - la
+  // barra di navigazione mostrava ancora l'utente autenticato nonostante
+  // la sessione fosse gia' terminata (documentato in
   // node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidatePath.md#Revalidating-all-data).
+  // Story 18.1: <NavBar/> si e' spostata dal layout radice (app/layout.tsx)
+  // al layout annidato di app/app/layout.tsx - il target diventa "/app",
+  // non piu' "/" (che ora e' la home pubblica, mai autenticata, nessun
+  // motivo di invalidarla qui).
   // Chiamato sempre, indipendentemente dall'esito di signOut() sopra -
   // stesso principio fail-closed del redirect() stesso.
-  revalidatePath("/", "layout");
+  revalidatePath("/app", "layout");
   redirect(LOGIN_PATH);
 }

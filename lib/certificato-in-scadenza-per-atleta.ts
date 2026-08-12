@@ -1,5 +1,5 @@
 import type { StatoCertificato } from "@prisma/client";
-import { categorizzaStatoCertificato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
+import { categorizzaStatoCertificato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 
 type RigaCertificato = {
   atletaId: string;

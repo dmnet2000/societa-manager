@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "societa-manager-preview",
+	"compatibility_date": "2026-07-24",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			// Self-reference service binding aggiornato al nome di QUESTO worker
+			// di preview (non "societa-manager" di produzione) - vedi
+			// https://opennext.js.org/cloudflare/caching. Senza questo, il
+			// self-fetch interno di opennextjs-cloudflare chiamerebbe il worker
+			// di produzione invece di se stesso.
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "societa-manager-preview"
+		}
+	],
+	"images": {
+		"binding": "IMAGES"
+	}
+}

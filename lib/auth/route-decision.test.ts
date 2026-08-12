@@ -21,7 +21,7 @@ const { getRouteDecision, isAutorizzato } = await import("./route-decision");
 // Review fix (Blind Hunter): import statico invece che dinamico dentro il
 // singolo test AC #6 - nessuna ragione tecnica per un import() isolato li',
 // questo modulo va gia' importato qui in testa.
-const { PROTECTED_ROUTES } = await import("./route-guard");
+const { PROTECTED_ROUTES, isPublicRoute } = await import("./route-guard");
 
 describe("getRouteDecision", () => {
   beforeEach(() => {
@@ -46,10 +46,18 @@ describe("getRouteDecision", () => {
   });
 
   it("redirects to login when not authenticated on a non-public route", async () => {
-    expect(await getRouteDecision("/", false, [])).toEqual({
+    expect(await getRouteDecision("/app", false, [])).toEqual({
       action: "redirect",
       location: "/accedi",
     });
+  });
+
+  // Story 18.1 (Epic 18): "/" e' ora pubblica (la home del sito pubblico) -
+  // prima di questa storia era l'esempio usato dal test sopra per "una
+  // rotta non pubblica qualunque".
+  it("allows unauthenticated access to '/' (nuova home pubblica, Story 18.1)", async () => {
+    expect(await getRouteDecision("/", false, [])).toEqual({ action: "allow" });
+    expect(isPublicRoute("/")).toBe(true);
   });
 
   it("allows an authenticated user on a route with no role restriction", async () => {
@@ -59,38 +67,38 @@ describe("getRouteDecision", () => {
   });
 
   it("redirects to /non-autorizzato when the user lacks the required role", async () => {
-    expect(await getRouteDecision("/admin", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/admin", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows access when the user has one of the required roles", async () => {
-    expect(await getRouteDecision("/admin", true, ["ATLETA", "ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/admin", true, ["ATLETA", "ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("matches nested paths under a protected prefix", async () => {
-    expect(await getRouteDecision("/admin/utenti", true, [])).toEqual({
+    expect(await getRouteDecision("/app/admin/utenti", true, [])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows either Admin or Dirigente on /import-atlete (Story 1.3, AC #4)", async () => {
-    expect(await getRouteDecision("/import-atlete", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/import-atlete", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/import-atlete", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/import-atlete", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /import-atlete for other roles", async () => {
-    expect(await getRouteDecision("/import-atlete", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/import-atlete", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
@@ -108,7 +116,7 @@ describe("getRouteDecision", () => {
     );
 
     expect(
-      await getRouteDecision("/precaricamento-allenatori", true, ["ADMIN"])
+      await getRouteDecision("/app/precaricamento-allenatori", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
   });
 
@@ -118,7 +126,7 @@ describe("getRouteDecision", () => {
     );
 
     expect(
-      await getRouteDecision("/precaricamento-allenatori", true, ["ADMIN", "DIRIGENTE"])
+      await getRouteDecision("/app/precaricamento-allenatori", true, ["ADMIN", "DIRIGENTE"])
     ).toEqual({ action: "allow" });
   });
 
@@ -126,266 +134,266 @@ describe("getRouteDecision", () => {
     rottaAbilitataMock.mockResolvedValue(false);
 
     expect(
-      await getRouteDecision("/precaricamento-allenatori", true, ["ALLENATORE"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/precaricamento-allenatori", true, ["ALLENATORE"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
     expect(
-      await getRouteDecision("/precaricamento-allenatori", true, ["DIRIGENTE"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/precaricamento-allenatori", true, ["DIRIGENTE"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("allows only Admin on /impostazioni (Story 9.24)", async () => {
-    expect(await getRouteDecision("/impostazioni", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/impostazioni", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /impostazioni for other roles (Story 9.24)", async () => {
-    expect(await getRouteDecision("/impostazioni", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/impostazioni", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Admin, Dirigente or Segreteria on /conferma-iscrizioni (Story 1.6/1.8: esclusione FR-23 estende l'accesso oltre la sola Segreteria)", async () => {
     expect(
-      await getRouteDecision("/conferma-iscrizioni", true, ["SEGRETERIA"])
+      await getRouteDecision("/app/conferma-iscrizioni", true, ["SEGRETERIA"])
     ).toEqual({ action: "allow" });
     expect(
-      await getRouteDecision("/conferma-iscrizioni", true, ["ADMIN"])
+      await getRouteDecision("/app/conferma-iscrizioni", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
     expect(
-      await getRouteDecision("/conferma-iscrizioni", true, ["DIRIGENTE"])
+      await getRouteDecision("/app/conferma-iscrizioni", true, ["DIRIGENTE"])
     ).toEqual({ action: "allow" });
   });
 
   it("redirects to /non-autorizzato on /conferma-iscrizioni for other roles", async () => {
     expect(
-      await getRouteDecision("/conferma-iscrizioni", true, ["ATLETA"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-iscrizioni", true, ["ATLETA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("allows Admin or Dirigente on /conferma-tesseramenti (Story 13.1)", async () => {
     expect(
-      await getRouteDecision("/conferma-tesseramenti", true, ["ADMIN"])
+      await getRouteDecision("/app/conferma-tesseramenti", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
     expect(
-      await getRouteDecision("/conferma-tesseramenti", true, ["DIRIGENTE"])
+      await getRouteDecision("/app/conferma-tesseramenti", true, ["DIRIGENTE"])
     ).toEqual({ action: "allow" });
   });
 
   it("redirects to /non-autorizzato on /conferma-tesseramenti for Segreteria (Story 13.1: esclusa esplicitamente, a differenza di /conferma-iscrizioni)", async () => {
     expect(
-      await getRouteDecision("/conferma-tesseramenti", true, ["SEGRETERIA"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-tesseramenti", true, ["SEGRETERIA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("redirects to /non-autorizzato on /conferma-tesseramenti for other roles", async () => {
     expect(
-      await getRouteDecision("/conferma-tesseramenti", true, ["ATLETA"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-tesseramenti", true, ["ATLETA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("allows either Admin or Dirigente on /palestre (Story 2.1, FR-1)", async () => {
-    expect(await getRouteDecision("/palestre", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/palestre", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/palestre", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/palestre", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /palestre for other roles", async () => {
-    expect(await getRouteDecision("/palestre", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/palestre", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows either Admin or Dirigente on /gruppi (Story 2.2, FR-6)", async () => {
-    expect(await getRouteDecision("/gruppi", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/gruppi", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/gruppi", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/gruppi", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /gruppi for other roles", async () => {
-    expect(await getRouteDecision("/gruppi", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/gruppi", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows either Admin or Dirigente on /slot (Story 2.5, FR-2)", async () => {
-    expect(await getRouteDecision("/slot", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/slot", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/slot", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/slot", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /slot for other roles", async () => {
-    expect(await getRouteDecision("/slot", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/slot", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Allenatore or Atleta on /mio-orario (Story 2.6 FR-3, Story 2.7 FR-4)", async () => {
-    expect(await getRouteDecision("/mio-orario", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/mio-orario", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/mio-orario", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/mio-orario", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /mio-orario for other roles", async () => {
-    expect(await getRouteDecision("/mio-orario", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/mio-orario", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/mio-orario", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/mio-orario", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Segreteria on /orari (Story 2.8, FR-5)", async () => {
-    expect(await getRouteDecision("/orari", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/orari", true, ["SEGRETERIA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /orari for other roles", async () => {
-    expect(await getRouteDecision("/orari", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/orari", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/orari", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/orari", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Allenatore on /presenze (Story 3.1, FR-8)", async () => {
-    expect(await getRouteDecision("/presenze", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/presenze", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /presenze for other roles", async () => {
-    expect(await getRouteDecision("/presenze", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/presenze", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/presenze", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/presenze", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Allenatore or Atleta on /storico-presenze (Story 3.2, FR-9)", async () => {
-    expect(await getRouteDecision("/storico-presenze", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/storico-presenze", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/storico-presenze", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/storico-presenze", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /storico-presenze for other roles (AC #4: Genitore escluso)", async () => {
-    expect(await getRouteDecision("/storico-presenze", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/storico-presenze", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/storico-presenze", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/storico-presenze", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Genitore or Atleta on /certificato-medico (Story 4.1, FR-11)", async () => {
-    expect(await getRouteDecision("/certificato-medico", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/certificato-medico", true, ["GENITORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/certificato-medico", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/certificato-medico", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /certificato-medico for other roles", async () => {
-    expect(await getRouteDecision("/certificato-medico", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/certificato-medico", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/certificato-medico", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/certificato-medico", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Allenatore or Dirigente on /notifiche (Story 4.2, FR-12)", async () => {
-    expect(await getRouteDecision("/notifiche", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/notifiche", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /notifiche for other roles", async () => {
-    expect(await getRouteDecision("/notifiche", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/notifiche", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/notifiche", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/notifiche", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/notifiche", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Admin on /smtp (Story 7.1, FR-31 - route group (configurazione) non compare nell'URL)", async () => {
-    expect(await getRouteDecision("/smtp", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/smtp", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /smtp for other roles", async () => {
-    expect(await getRouteDecision("/smtp", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/smtp", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/smtp", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/smtp", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Admin on /logo (Story 7.2, FR-32)", async () => {
-    expect(await getRouteDecision("/logo", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/logo", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /logo for other roles", async () => {
-    expect(await getRouteDecision("/logo", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/logo", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/logo", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/logo", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
@@ -415,217 +423,217 @@ describe("getRouteDecision", () => {
   });
 
   it("allows only Dirigente on /vista-dirigente (Story 5.1, FR-29)", async () => {
-    expect(await getRouteDecision("/vista-dirigente", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
   });
 
   it("allows a multi-role user who also has Dirigente on /vista-dirigente (Story 5.1, AC #8: un Utente puo' avere piu' Ruoli)", async () => {
     expect(
-      await getRouteDecision("/vista-dirigente", true, ["ALLENATORE", "DIRIGENTE"])
+      await getRouteDecision("/app/vista-dirigente", true, ["ALLENATORE", "DIRIGENTE"])
     ).toEqual({ action: "allow" });
   });
 
   it("redirects to /non-autorizzato on /vista-dirigente for other roles", async () => {
-    expect(await getRouteDecision("/vista-dirigente", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/vista-dirigente", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/vista-dirigente", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/vista-dirigente", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/vista-dirigente", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/vista-dirigente", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Allenatore on /vista-allenatore (Story 9.26)", async () => {
-    expect(await getRouteDecision("/vista-allenatore", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/vista-allenatore", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /vista-allenatore for other roles (Story 9.26)", async () => {
-    expect(await getRouteDecision("/vista-allenatore", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/vista-allenatore", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/vista-allenatore", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/vista-allenatore", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows only Admin on /permessi-certificati (Story 5.2, FR-27)", async () => {
-    expect(await getRouteDecision("/permessi-certificati", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /permessi-certificati for other roles, incluso Dirigente stesso", async () => {
-    expect(await getRouteDecision("/permessi-certificati", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/permessi-certificati", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/permessi-certificati", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/permessi-certificati", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/permessi-certificati", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-certificati", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Admin, Dirigente or Segreteria on /conferma-certificati (Story 4.4, FR-14)", async () => {
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["ADMIN"])
+      await getRouteDecision("/app/conferma-certificati", true, ["ADMIN"])
     ).toEqual({ action: "allow" });
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["DIRIGENTE"])
+      await getRouteDecision("/app/conferma-certificati", true, ["DIRIGENTE"])
     ).toEqual({ action: "allow" });
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["SEGRETERIA"])
+      await getRouteDecision("/app/conferma-certificati", true, ["SEGRETERIA"])
     ).toEqual({ action: "allow" });
   });
 
   it("redirects to /non-autorizzato on /conferma-certificati for other roles", async () => {
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["ALLENATORE"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-certificati", true, ["ALLENATORE"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["GENITORE"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-certificati", true, ["GENITORE"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
     expect(
-      await getRouteDecision("/conferma-certificati", true, ["ATLETA"])
-    ).toEqual({ action: "redirect", location: "/non-autorizzato" });
+      await getRouteDecision("/app/conferma-certificati", true, ["ATLETA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("allows Allenatore or Atleta on /dati-fisici (Story 6.1, FR-24)", async () => {
-    expect(await getRouteDecision("/dati-fisici", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/dati-fisici", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /dati-fisici for other roles (AC #5: Genitore esplicitamente escluso, a differenza di /certificato-medico)", async () => {
-    expect(await getRouteDecision("/dati-fisici", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/dati-fisici", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/dati-fisici", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/dati-fisici", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/dati-fisici", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Admin or Dirigente on /wizard-nuova-stagione (Story 6.3, FR-28)", async () => {
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /wizard-nuova-stagione for other roles", async () => {
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/wizard-nuova-stagione", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/wizard-nuova-stagione", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Allenatore or Atleta on /il-mio-profilo (Story 9.12)", async () => {
-    expect(await getRouteDecision("/il-mio-profilo", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/il-mio-profilo", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/il-mio-profilo", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/il-mio-profilo", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /il-mio-profilo for other roles", async () => {
-    expect(await getRouteDecision("/il-mio-profilo", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/il-mio-profilo", true, ["ADMIN"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/il-mio-profilo", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/il-mio-profilo", true, ["GENITORE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Admin, Dirigente or Allenatore on /campionati (Story 10.1)", async () => {
-    expect(await getRouteDecision("/campionati", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/campionati", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/campionati", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/campionati", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/campionati", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/campionati", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /campionati for other roles", async () => {
-    expect(await getRouteDecision("/campionati", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/campionati", true, ["ATLETA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/campionati", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/campionati", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
   it("allows Admin, Dirigente or Allenatore on /partite (Story 10.3)", async () => {
-    expect(await getRouteDecision("/partite", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/partite", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["DIRIGENTE"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/partite", true, ["ALLENATORE"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["ALLENATORE"])).toEqual({
       action: "allow",
     });
   });
@@ -633,18 +641,18 @@ describe("getRouteDecision", () => {
   // Story 10.5: estesa ad ATLETA/GENITORE (sola lettura, gating UI in
   // page.tsx) - stesso pattern gia' usato per /certificato-medico.
   it("allows Atleta or Genitore on /partite (Story 10.5)", async () => {
-    expect(await getRouteDecision("/partite", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
-    expect(await getRouteDecision("/partite", true, ["GENITORE"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["GENITORE"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /partite for other roles", async () => {
-    expect(await getRouteDecision("/partite", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/partite", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 
@@ -654,14 +662,14 @@ describe("getRouteDecision", () => {
   it.each(["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"] as const)(
     "allows %s on /sponsor (Story 16.1/16.2)",
     async (ruolo) => {
-      expect(await getRouteDecision("/sponsor", true, [ruolo])).toEqual({
+      expect(await getRouteDecision("/app/sponsor", true, [ruolo])).toEqual({
         action: "allow",
       });
     }
   );
 
   it("matches the nested voucher route /sponsor/[id]/voucher under the same prefix (Story 16.2)", async () => {
-    expect(await getRouteDecision("/sponsor/abc-123/voucher", true, ["ATLETA"])).toEqual({
+    expect(await getRouteDecision("/app/sponsor/abc-123/voucher", true, ["ATLETA"])).toEqual({
       action: "allow",
     });
   });
@@ -673,26 +681,26 @@ describe("getRouteDecision", () => {
   it.each(["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"] as const)(
     "allows %s on /guida (Story 17.1)",
     async (ruolo) => {
-      expect(await getRouteDecision("/guida", true, [ruolo])).toEqual({
+      expect(await getRouteDecision("/app/guida", true, [ruolo])).toEqual({
         action: "allow",
       });
     }
   );
 
   it("allows only Admin on /permessi-accesso (Story 12.1)", async () => {
-    expect(await getRouteDecision("/permessi-accesso", true, ["ADMIN"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-accesso", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
   it("redirects to /non-autorizzato on /permessi-accesso for other roles, incluso Dirigente (Story 12.1)", async () => {
-    expect(await getRouteDecision("/permessi-accesso", true, ["DIRIGENTE"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-accesso", true, ["DIRIGENTE"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
-    expect(await getRouteDecision("/permessi-accesso", true, ["SEGRETERIA"])).toEqual({
+    expect(await getRouteDecision("/app/permessi-accesso", true, ["SEGRETERIA"])).toEqual({
       action: "redirect",
-      location: "/non-autorizzato",
+      location: "/app/non-autorizzato",
     });
   });
 });
@@ -769,7 +777,7 @@ describe("isAutorizzato", () => {
   it("solo /precaricamento-allenatori ha permessiConfigurabili:true in PROTECTED_ROUTES (Story 12.4)", async () => {
     const migrate = PROTECTED_ROUTES.filter((r) => r.permessiConfigurabili);
 
-    expect(migrate.map((r) => r.prefix)).toEqual(["/precaricamento-allenatori"]);
+    expect(migrate.map((r) => r.prefix)).toEqual(["/app/precaricamento-allenatori"]);
   });
 });
 
@@ -828,7 +836,7 @@ describe("getRouteDecision + isAutorizzato integrazione end-to-end (rotta migrat
 
       expect(risultato).toEqual({
         action: "redirect",
-        location: "/non-autorizzato",
+        location: "/app/non-autorizzato",
       });
     } finally {
       PROTECTED_ROUTES.pop();

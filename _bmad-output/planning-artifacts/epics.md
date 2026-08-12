@@ -2063,14 +2063,96 @@ so that possa capire come usare qualunque funzione dell'app senza dover chiedere
 - **Stesso progetto**, non un sito separato: nuove pagine pubbliche (senza autenticazione) in questa stessa app Next.js/Cloudflare — riusa direttamente i dati già esistenti (`Sponsor`, `Partita`/`Campionato`) senza duplicarli in un secondo sistema o costruire un'API pubblica separata.
 - **Direzione dei social è dal social verso il sito**, non il contrario: quando la società pubblica un post sui propri canali social (es. Instagram/Facebook), quel post deve comparire anche sul sito — non è il sito a pubblicare sui social. Nessuna scrittura verso le piattaforme social, solo lettura/mirroring.
 
-**Contesto tecnico rilevante scoperto in analisi**: la rotta `"/"` di questa app è **già occupata** dalla dashboard interna autenticata (`app/page.tsx`, "Area applicativa") ed è protetta di default — `PUBLIC_ROUTES` (`lib/auth/route-guard.ts`) oggi contiene solo `/accedi`, `/registrati`, `/recupera-password`, `/reimposta-password`, nessuna pagina di contenuto. Un sito pubblico non può quindi semplicemente "essere" la radice del dominio senza una decisione esplicita: o (a) il sito pubblico prende un prefisso proprio (es. `/sito`, `/volley`) lasciando `"/"` alla dashboard interna com'è oggi, o (b) la dashboard interna si sposta su un nuovo prefisso (es. `/app`) liberando `"/"` per il sito pubblico. Nessuna delle due è stata ancora decisa — punto aperto critico da risolvere in apertura della prima story, non assunto qui (stesso principio già seguito per il punto aperto "Nome Cognome" di Story 16.2).
+**Contesto tecnico rilevante scoperto in analisi**: la rotta `"/"` di questa app è **già occupata** dalla dashboard interna autenticata (`app/page.tsx`, "Area applicativa") ed è protetta di default — `getRouteDecision` (`lib/auth/route-decision.ts`) reindirizza a `LOGIN_PATH` qualunque rotta non elencata in `PUBLIC_ROUTES`, **anche se non compare in `PROTECTED_ROUTES`** (il match su `PROTECTED_ROUTES` serve solo per il controllo Ruolo, non per decidere se serve autenticazione). `PUBLIC_ROUTES` oggi contiene solo `/accedi`, `/registrati`, `/recupera-password`, `/reimposta-password`, nessuna pagina di contenuto.
 
-**Punti aperti, da chiarire in apertura sviluppo delle singole story (non bloccanti per l'epica, elenco aperto):**
-- **Post social**: come recuperarli/mostrarli — widget di embed ufficiale della piattaforma (più semplice, sola visualizzazione, nessun token da gestire) vs sincronizzazione via API (richiede registrazione app, token, revisione della piattaforma, più fragile) — e quali piattaforme (Instagram? Facebook? entrambe?).
-- **Partite della settimana**: riuso diretto di `Partita`/`Campionato` (Epic 10) in sola lettura pubblica — i dati (squadre, data/ora, luogo, risultato) non sono sensibili, ma va costruito un percorso di lettura pubblico distinto da quello autenticato di `/partite` (che oggi presuppone sempre un Ruolo).
-- **Foto di squadra dei Gruppi**: capacità nuova — oggi esiste solo la foto profilo individuale di Atleta/Allenatore (Story 9.12), nessun campo "foto di squadra" su `Gruppo`. Richiede un nuovo campo/bucket Storage pubblico (mirror diretto del pattern già stabilito per `Sponsor`/logo) e una Server Action di caricamento, presumibilmente Admin/Dirigente — da confermare.
-- **Sezione Sponsor**: la sinergia più diretta con quanto già esiste — stessi dati di `Sponsor` (Epic 16), serve solo una vista pubblica equivalente alla vetrina già costruita in `/sponsor` (Story 16.2) ma raggiungibile senza login.
-- **Registro visivo "accattivante"**: da progettare con Sally (UX designer) in apertura della prima story che tocca il layout pubblico, stesso principio già seguito per il carosello Sponsor in homepage (Story 16.3 estensione).
+**Decisione presa con l'utente (2026-08-11) sul punto aperto critico**: **(b)** — il sito pubblico prende `"/"` come vetrina principale del dominio; la dashboard interna autenticata si sposta sotto un nuovo prefisso `/app`. Conseguenze già identificate in analisi, da trattare nella story fondativa (18.1):
+- Ogni `prefix` in `PROTECTED_ROUTES` (`lib/auth/route-guard.ts`) va riscritto con `/app` davanti (es. `/gruppi` → `/app/gruppi`) — nessun cambio all'autorizzazione per Ruolo, solo al path.
+- `getRouteDecision`/`isPublicRoute` restano invariati nella logica; le nuove rotte pubbliche del sito (homepage `"/"` e le pagine aggiunte dalle story successive) vanno aggiunte a `PUBLIC_ROUTES`.
+- Redirect post-login/registrazione (`app/(auth)/accedi/actions.ts`, `app/(onboarding-import)/registrati/actions.ts`, entrambi oggi `redirect("/")`) vanno aggiornati a `redirect("/app")`.
+- Tutti i link interni/`<Link href="...">` verso le rotte spostate (NavBar, redirect di autorizzazione negata, ecc.) vanno aggiornati con il nuovo prefisso — ricerca sistematica da fare in sviluppo, non enumerata qui.
+- Il layout della dashboard interna (`app/layout.tsx`/NavBar) resta strutturalmente invariato, si sposta solo il path radice sotto cui vive.
+
+**Decisioni prese con l'utente (2026-08-11) sui punti aperti rimanenti:**
+- **Post social**: mirroring tramite embed ufficiale della piattaforma (widget Instagram/Facebook, sola visualizzazione) — non sincronizzazione via API (nessun token/app review da gestire, coerente con NFR6 "soluzione più semplice").
+- **Foto di squadra dei Gruppi**: nuovo campo/bucket Storage pubblico (mirror del pattern già stabilito per `Sponsor`/logo, Story 16.1/7.2) — a differenza delle altre funzionalità di contenuto pubblico del progetto (sempre Admin/Dirigente-only), qui può caricarla **anche l'Allenatore assegnato al Gruppo**, non solo Admin/Dirigente.
+- **Partite pubbliche**: solo la settimana corrente (nessuna estensione a storico/calendario completo) — mirror in sola lettura pubblica di `Partita`/`Campionato` (Epic 10).
+- **Sezione Sponsor pubblica**: vista equivalente alla vetrina già costruita in `/sponsor` (Story 16.2, oggi dietro login) ma raggiungibile senza autenticazione.
+
+**Punti ancora aperti (non bloccanti, da chiarire in apertura delle rispettive story):**
+- **Registro visivo "accattivante"**: da progettare con Sally (UX designer) in apertura della prima story che tocca il layout pubblico (18.1), stesso principio già seguito per il carosello Sponsor in homepage (Story 16.3 estensione).
 - **Elenco aperto**: l'utente ha esplicitamente chiesto di lasciare spazio per richieste future non ancora note — nuove story si aggiungeranno una alla volta, stesso principio di Epic 9/11/17.
 
-Nessuna story creata in questa sessione — solo l'apertura dell'epica, su richiesta esplicita dell'utente ("per il momento scrivi solo l'epica").
+**Rotto in 5 storie (2026-08-11)**: 18.1 fondativa (migrazione dashboard interna a `/app` + nuova home pubblica `"/"`, solo layout/scheletro), poi 18.2/18.3/18.4/18.5 applicano ciascuna una sezione di contenuto alla nuova home pubblica — stesso principio già seguito per Epic 15 (15.1 fondativa, 15.2/15.3/15.4 la applicano).
+
+### Story 18.1: Migrazione dashboard interna a `/app` e nuova home pubblica
+
+As a Visitatore senza account,
+I want raggiungere un sito pubblico del Settore Volley visitando la radice del dominio, con un registro visivo accattivante,
+so that possa scoprire la società senza dover fare login.
+
+**Note aggiuntive:** fondativa — sposta l'intera dashboard interna autenticata sotto `/app` (vedi "Contesto tecnico rilevante" sopra per l'elenco dei file/pattern coinvolti) e introduce la nuova home pubblica su `"/"` come solo layout/scheletro (header, footer, struttura delle sezioni), progettato con Sally (UX) per il registro visivo. Le sezioni di contenuto vere e proprie (sponsor, partite, foto squadra, social) sono fuori scope qui — arrivano con le story successive.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `"/"` **Then** vede la nuova home pubblica del sito (nessun redirect a `/accedi`)
+2. **Given** un Utente autenticato **When** effettua login o si registra **Then** viene reindirizzato a `/app` (non più a `"/"`), dove trova la dashboard interna invariata nel comportamento
+3. **And** ogni rotta oggi raggiungibile senza prefisso (es. `/gruppi`, `/admin`, `/sponsor`) è ora raggiungibile solo sotto `/app` (es. `/app/gruppi`) — stessa identica autorizzazione per Ruolo di prima, nessuna rotta rimasta raggiungibile al vecchio path
+4. **And** un Utente non autenticato che tenta di visitare una rotta sotto `/app` viene reindirizzato a `/accedi` come oggi
+5. **And** nessun link interno della dashboard (NavBar, redirect, azioni post-submit) punta ancora al vecchio path senza prefisso
+6. **And** la nuova home pubblica non richiede autenticazione e non espone alcun dato riservato (nessuna sezione di contenuto ancora presente in questa storia)
+7. **And** l'header della home pubblica mostra un link "Accedi" verso `/accedi`, pattern comune ai siti con un'area riservata (richiesta esplicita dell'utente, 2026-08-11)
+
+### Story 18.2: Sezione Sponsor pubblica in home
+
+As a Visitatore senza account,
+I want vedere sulla home pubblica i Banner pubblicitari e le Convenzioni della società,
+so that possa scoprire gli sponsor senza dover fare login.
+
+**Note aggiuntive:** dipendente da 18.1 (richiede la nuova home pubblica su `"/"`). Vista pubblica equivalente alla vetrina già costruita in `/app/sponsor` (ex `/sponsor`, Story 16.2) ma raggiungibile senza autenticazione — stessi dati (`Sponsor`), stessa distinzione Banner/Convenzioni, stesso principio di generazione voucher senza persistenza dove applicabile a un Visitatore (da confermare in sviluppo se il voucher richiede comunque un Nome/Cognome inseribile a mano da un Visitatore, visto che oggi lo risolve dal profilo Utente).
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede una sezione Sponsor con i Banner/Convenzioni attivi (stessi dati di `/app/sponsor`)
+2. **And** se non ci sono Sponsor attivi, la sezione non compare (nessuna area vuota)
+3. **And** nessun dato riservato dell'app (Utenti, Atlete, ecc.) è raggiungibile da questa sezione pubblica
+
+### Story 18.3: Sezione Partite della settimana in home
+
+As a Visitatore senza account,
+I want vedere sulla home pubblica le partite della settimana corrente dei Gruppi della società,
+so that possa sapere quando e dove giocano le squadre senza dover fare login.
+
+**Note aggiuntive:** dipendente da 18.1. Riuso in sola lettura pubblica di `Partita`/`Campionato` (Epic 10) — solo la settimana corrente, nessuna estensione a storico/calendario completo. Percorso di lettura pubblico distinto da quello autenticato `/app/partite` (che presuppone sempre un Ruolo).
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede l'elenco delle partite della settimana corrente (squadre, data/ora, luogo) per tutti i Gruppi con un Campionato attivo
+2. **And** se nessun Gruppo ha partite nella settimana corrente, la sezione non compare (nessuna area vuota)
+3. **And** nessun dato riservato (es. dettagli interni non pubblici di `Partita`/`Campionato`, se presenti) è esposto in questa vista pubblica
+
+### Story 18.4: Foto di squadra per Gruppo
+
+As a Admin, Dirigente o Allenatore di un Gruppo,
+I want caricare una foto di squadra per il mio Gruppo,
+so that compaia sulla home pubblica del sito.
+
+**Note aggiuntive:** dipendente da 18.1. Nuovo campo/bucket Storage pubblico su `Gruppo` (mirror del pattern già stabilito per `Sponsor`/logo, Story 16.1/7.2) — a differenza delle altre funzionalità di contenuto pubblico del progetto (sempre Admin/Dirigente-only), qui l'upload è permesso anche all'Allenatore assegnato al Gruppo.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin, Dirigente, o Allenatore assegnato al Gruppo **When** carica un'immagine come foto di squadra per quel Gruppo **Then** l'immagine viene salvata e sostituisce quella precedente se già presente (stessa validazione MIME/dimensione/magic-byte già in uso per logo/Sponsor)
+2. **And** un Allenatore non può caricare la foto di squadra di un Gruppo a cui non è assegnato
+3. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede le foto di squadra dei Gruppi che ne hanno caricata una (nessun placeholder per i Gruppi senza foto)
+
+### Story 18.5: Sezione post social in home
+
+As a Visitatore senza account,
+I want vedere sulla home pubblica gli ultimi post pubblicati sui canali social della società,
+so that possa seguire le novità della società senza dover uscire dal sito.
+
+**Note aggiuntive:** dipendente da 18.1. Mirroring tramite embed ufficiale della piattaforma (widget Instagram/Facebook, sola visualizzazione) — nessuna sincronizzazione via API, nessun token da gestire. Piattaforma(e) e configurazione dell'embed (es. handle/pagina da mostrare) da chiarire in apertura di questa story.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita la home pubblica **Then** vede una sezione con gli ultimi post pubblicati sui canali social configurati della società, tramite embed ufficiale della piattaforma
+2. **And** se l'embed non è configurato o non è raggiungibile, la sezione non rompe il resto della pagina (fail-soft)

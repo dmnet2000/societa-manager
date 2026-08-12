@@ -485,13 +485,26 @@ development_status:
   17-2-guida-estensione-completa: done
 
   # Epic 18 (Sito pubblico Settore Volley) aperto il 2026-08-10 su richiesta
-  # esplicita dell'utente - solo l'epica scritta ora ("per il momento
-  # scrivi solo l'epica"), nessuna story creata. Decisioni prese in
-  # apertura: stesso progetto Next.js (nuove pagine pubbliche, non un sito
-  # separato), direzione social->sito (mirroring dei post pubblicati sui
-  # social della societa', non pubblicazione dal sito verso i social).
-  # Punto tecnico critico non ancora risolto: "/" e' gia' occupata dalla
-  # dashboard interna autenticata - va deciso un prefisso per il sito
-  # pubblico o uno spostamento della dashboard, in apertura della prima
-  # story. Elenco APERTO come Epic 9/11/17.
-  epic-18: backlog
+  # esplicita dell'utente - solo l'epica scritta ("per il momento scrivi
+  # solo l'epica"), nessuna story creata. Decisioni prese in apertura:
+  # stesso progetto Next.js (nuove pagine pubbliche, non un sito separato),
+  # direzione social->sito (mirroring dei post pubblicati sui social della
+  # societa', non pubblicazione dal sito verso i social).
+  #
+  # 2026-08-11: risolti tutti i punti aperti con l'utente e rotta in 5
+  # story (vedi epics.md#Epic 18). Punto tecnico critico risolto: "/" (oggi
+  # dashboard interna autenticata) diventa il sito pubblico, la dashboard
+  # si sposta sotto /app - impatta PROTECTED_ROUTES/PUBLIC_ROUTES
+  # (lib/auth/route-guard.ts), redirect post-login/registrazione, tutti i
+  # link interni. Rotta in: 18.1 fondativa (migrazione dashboard + home
+  # pubblica scheletro), 18.2 sponsor pubblico, 18.3 partite della
+  # settimana pubbliche, 18.4 foto squadra Gruppo (upload anche da
+  # Allenatore, non solo Admin/Dirigente), 18.5 post social (embed
+  # ufficiale piattaforma). Elenco APERTO come Epic 9/11/17 - altre story
+  # si aggiungeranno una alla volta.
+  epic-18: in-progress
+  18-1-migrazione-dashboard-app-e-home-pubblica: review
+  18-2-sponsor-pubblico-home: backlog
+  18-3-partite-settimana-home: backlog
+  18-4-foto-squadra-gruppo: backlog
+  18-5-post-social-home: backlog

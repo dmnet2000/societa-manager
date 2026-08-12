@@ -11,10 +11,10 @@ describe("manifest", () => {
     expect(result.short_name).toBeTruthy();
   });
 
-  it("has start_url '/' and standalone display (AC #1, #2)", () => {
+  it("has start_url '/app' and standalone display (AC #1, #2; Story 18.1: la PWA apre la dashboard, non il sito pubblico)", () => {
     const result = manifest();
 
-    expect(result.start_url).toBe("/");
+    expect(result.start_url).toBe("/app");
     expect(result.display).toBe("standalone");
   });
 

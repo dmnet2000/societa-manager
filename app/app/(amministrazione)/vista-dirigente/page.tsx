@@ -1,0 +1,194 @@
+import type { StatoCertificato } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { createClient } from "@/lib/supabase/server";
+import { elencaAtlete } from "@/lib/db-rls/atleta";
+import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { categorizzaStatoCertificato } from "./categorizza-stato-certificato";
+import { GruppoCard, type GruppoCardData } from "./GruppoCard";
+import styles from "./vista-dirigente.module.css";
+import { formattaSlotOrario } from "@/lib/formatta-slot-orario";
+import { contenutoPerRotta } from "@/lib/guida/contenuti";
+import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { TitoloPagina } from "@/app/AiutoContestuale";
+
+// Dati che cambiano ogni giorno per il solo passare del tempo (i bucket di
+// scadenza dipendono da "oggi") - stesso motivo di orari/page.tsx (Story 2.8).
+export const dynamic = "force-dynamic";
+
+export default async function VistaDirigentePage() {
+  // Story 17.2 (review fix): ruoli e annoCorrente non dipendono l'uno
+  // dall'altro - eseguiti in Promise.all, stesso principio gia' stabilito
+  // altrove nel progetto. Sola lettura (Dev Notes Story 1.6): mai
+  // risolviAnnoAgonisticoCorrente in una pagina GET.
+  const [ruoli, annoCorrente] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
+
+  if (!annoCorrente) {
+    return (
+      <main>
+        <TitoloPagina
+          titolo="Vista d'insieme"
+          contenuto={contenutoPerRotta("/app/vista-dirigente", ruoli)}
+        />
+        <p>Nessun Anno Agonistico corrente — nessun Gruppo puo&apos; esistere ancora.</p>
+      </main>
+    );
+  }
+
+  const supabase = await createClient();
+  // Gruppo/Slot/Campo/Palestra/GruppoAtleta non protette da RLS (AD-9) -
+  // Prisma diretto, stesso pattern di gruppi/page.tsx e orari/page.tsx.
+  // Atleta/CertificatoMedico protette da RLS (AD-4) - client Supabase della
+  // sessione Dirigente (createClient, mai createAdminClient: qui esiste una
+  // sessione utente reale) - Dirigente ha gia' accesso ampio (Prerequisito
+  // #1 della storia), nessuna nuova policy necessaria.
+  const [gruppi, gruppoAtleteRows, atlete, certificati, righeVisibiliDirigente] =
+    await Promise.all([
+      prisma.gruppo.findMany({
+        where: { annoAgonisticoId: annoCorrente.id },
+        orderBy: { nome: "asc" },
+        include: {
+          slot: {
+            include: { campo: { include: { palestra: true } } },
+            orderBy: [{ giorno: "asc" }, { oraInizio: "asc" }],
+          },
+        },
+      }),
+      prisma.gruppoAtleta.findMany({
+        where: { annoAgonisticoId: annoCorrente.id },
+        select: { atletaId: true, gruppoId: true },
+      }),
+      elencaAtlete(supabase),
+      elencaCertificati(supabase),
+      // Review fix (Story 5.2): la restrizione per Ruolo Dirigente e' letta
+      // qui, scoped alla stagione corrente (stesso principio della
+      // migrazione 20260724010000, che ha corretto lo stesso bug per la
+      // RLS) - senza questo, un'Atleta esclusa dallo scope del Dirigente
+      // apparirebbe come "senza certificato" invece che "fuori dai
+      // permessi configurati": un dato falso, non solo mancante. Tabella
+      // non protetta da RLS (AD-9), Prisma diretto.
+      prisma.gruppoVisibileDirigente.findMany({
+        where: { gruppo: { annoAgonisticoId: annoCorrente.id } },
+        select: { gruppoId: true },
+      }),
+    ]);
+
+  const gruppoIdsVisibiliDirigente = righeVisibiliDirigente.map((r) => r.gruppoId);
+  // Nessuna riga per la stagione corrente = nessuna restrizione attiva,
+  // stessa semantica della funzione SQL dirigente_vede_certificato_atleta.
+  const restrizioneAttiva = gruppoIdsVisibiliDirigente.length > 0;
+
+  const oggi = new Date();
+  const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
+  const certificatoPerAtletaId = new Map(certificati.map((c) => [c.atletaId, c]));
+
+  const cardData: GruppoCardData[] = gruppi.map((gruppo) => {
+    const atleteIdDelGruppo = gruppoAtleteRows
+      .filter((riga) => riga.gruppoId === gruppo.id)
+      .map((riga) => riga.atletaId);
+
+    // Review fix: se una restrizione e' attiva e questo Gruppo non e' fra
+    // quelli consentiti, i Certificati delle sue Atlete non sono comunque
+    // leggibili (RLS) - mostra questo esplicitamente invece di calcolare
+    // conteggi che sarebbero sistematicamente sbagliati (ogni Atleta
+    // risulterebbe "senza certificato" anche se in realta' confermato).
+    if (restrizioneAttiva && !gruppoIdsVisibiliDirigente.includes(gruppo.id)) {
+      const slotFormattatiEsclusi = gruppo.slot.map((slot) => ({
+        id: slot.id,
+        testo: formattaSlotOrario(slot),
+      }));
+      return {
+        id: gruppo.id,
+        nome: gruppo.nome,
+        categoria: gruppo.categoria,
+        slotFormattati: slotFormattatiEsclusi,
+        conteggi: null,
+        atleteScadute: [],
+        // Story 9.19: nessun dato calcolabile per un Gruppo escluso (i
+        // Certificati non sono leggibili) - coerente con atleteScadute: [].
+        atleteInScadenza: [],
+        numeroAtlete: atleteIdDelGruppo.length,
+      };
+    }
+
+    const conteggi = {
+      IN_REGOLA: 0,
+      IN_SCADENZA: 0,
+      SCADUTO: 0,
+      SENZA_CERTIFICATO: 0,
+    };
+    const atleteScadute: string[] = [];
+    // Story 9.19: stesso ciclo esistente, nessuna nuova query - popolato in
+    // parallelo ad atleteScadute quando lo stato e' IN_SCADENZA.
+    const atleteInScadenza: string[] = [];
+
+    for (const atletaId of atleteIdDelGruppo) {
+      const certificato = certificatoPerAtletaId.get(atletaId);
+      const stato = categorizzaStatoCertificato(
+        (certificato?.dataFineValidita as string | null) ?? null,
+        (certificato?.stato as StatoCertificato | null) ?? null,
+        oggi
+      );
+      conteggi[stato] += 1;
+      if (stato === "SCADUTO" || stato === "IN_SCADENZA") {
+        const atleta = atletaPerId.get(atletaId);
+        if (!atleta) {
+          // Review fix: caso limite difensivo (mai osservato in pratica) -
+          // divergenza fra GruppoAtleta (non RLS) ed elencaAtlete (RLS) -
+          // stesso log distintivo gia' usato per un caso analogo in
+          // caricaCertificato (Story 4.3).
+          console.warn(
+            `Story 5.1: Atleta ${atletaId} non risolvibile nell'elenco per la Vista d'insieme.`
+          );
+        }
+        if (stato === "SCADUTO") {
+          atleteScadute.push(atleta?.nome ?? "Atleta sconosciuta");
+        } else {
+          atleteInScadenza.push(atleta?.nome ?? "Atleta sconosciuta");
+        }
+      }
+    }
+    // Review fix: ordine altrimenti non deterministico (nessun orderBy su
+    // gruppoAtleta.findMany) - a differenza di ogni altra lista della
+    // pagina, gia' ordinata per nome.
+    atleteScadute.sort((a, b) => a.localeCompare(b));
+    atleteInScadenza.sort((a, b) => a.localeCompare(b));
+
+    const slotFormattati = gruppo.slot.map((slot) => ({
+      id: slot.id,
+      testo: formattaSlotOrario(slot),
+    }));
+
+    return {
+      id: gruppo.id,
+      nome: gruppo.nome,
+      categoria: gruppo.categoria,
+      slotFormattati,
+      conteggi,
+      atleteScadute,
+      atleteInScadenza,
+      numeroAtlete: atleteIdDelGruppo.length,
+    };
+  });
+
+  return (
+    <main>
+      <TitoloPagina
+        titolo="Vista d'insieme"
+        contenuto={contenutoPerRotta("/app/vista-dirigente", ruoli)}
+      />
+      {cardData.length === 0 ? (
+        <p>Nessun Gruppo creato per l&apos;Anno Agonistico corrente.</p>
+      ) : (
+        <div className={styles.lista}>
+          {cardData.map((gruppo) => (
+            <GruppoCard key={gruppo.id} gruppo={gruppo} />
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

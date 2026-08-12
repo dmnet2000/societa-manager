@@ -1,4 +1,4 @@
-import type { StatoCertificatoAggregato } from "@/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
+import type { StatoCertificatoAggregato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 
 // Story 9.25: priorita' di visualizzazione quando l'ordinamento per stato e'
 // attivo in /conferma-certificati - Scaduto prima di tutto (piu' urgente),

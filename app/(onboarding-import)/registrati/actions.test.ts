@@ -236,7 +236,7 @@ describe("registrati", () => {
       "ALLENATORE",
       "DIRIGENTE",
     ]);
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/app");
   });
 
   it("hooks up the new Utente to a preloaded Allenatore matching the Codice Fiscale (AC #3)", async () => {

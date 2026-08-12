@@ -1,61 +1,72 @@
-import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { parseRuoli } from "@/lib/ruoli";
-import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
-import { SponsorCarosello } from "./SponsorCarosello";
-import styles from "./home.module.css";
+import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
+import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
+import styles from "./home-pubblica.module.css";
 
-// Dati potenzialmente diversi ad ogni visita (Banner sponsor attivi) -
-// stesso motivo di /sponsor, /notifiche.
+// Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
+// sostituisce la dashboard interna spostata su /app - vedi app/app/page.tsx.
+// Solo layout/scheletro in questa story (AC #7): nessuna sezione di
+// contenuto (sponsor/partite/foto squadra/social arrivano con le Story
+// 18.2-18.5). Logo/nome del settore possono cambiare in qualunque momento
+// dalla console Admin (/app/logo) - stesso motivo di dynamic =
+// "force-dynamic" gia' in uso su /accedi.
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePubblicaPage() {
+  // Nessuna sessione qui (pagina pubblica): createClient() funziona
+  // comunque (usa la sola anon key). Stesso pattern di app/(auth)/accedi/page.tsx
+  // - due try/catch separati (logo/nome settore, entrambi puramente
+  // decorativi) cosi' un errore transitorio su uno non nasconde anche
+  // l'altro.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+  let info = { esiste: false, aggiornatoIl: null as string | null };
+  try {
+    info = await leggiInfoLogo(supabase);
+  } catch (err) {
+    console.error(err);
+  }
 
-  // Story 16.3 (AC #1/#5): solo Atleta/Genitore vedono il carosello Banner -
-  // per ogni altro Ruolo nessuna query, nessun cambiamento alla homepage.
-  const mostraCarosello = ruoli.includes("ATLETA") || ruoli.includes("GENITORE");
+  let nomeSettore: string | null = null;
+  try {
+    nomeSettore = await leggiNomeSettore();
+  } catch (err) {
+    console.error(err);
+  }
 
-  const bannerAttivi = mostraCarosello
-    ? await prisma.sponsor.findMany({
-        where: { tipo: "BANNER", attiva: true },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  const nomeVisualizzato = nomeSettore ?? "Settore Volley";
 
   return (
-    <main>
-      <h1>Area applicativa</h1>
-      {/* Design UX (con Sally, Story 16.3 estensione): il carosello va PRIMA
-          della card di saluto, non dopo - su una home cosi' sparuta, essere
-          il primo elemento e' gia' "in evidenza" (AC #1) senza bisogno di
-          renderlo sticky. Confrontato con un mockup a due colonne (versione
-          sticky vs versione normale): la sidebar e' sticky solo da desktop
-          in su, un carosello sticky sarebbe il primo elemento fisso su
-          mobile, costo permanente di spazio verticale mai più liberato man
-          mano che la home cresce - scartato per questo motivo, non solo
-          per gusto estetico. AC #4: nessuna sezione se non ci sono Banner attivi. */}
-      {bannerAttivi.length > 0 && (
-        <SponsorCarosello
-          banner={bannerAttivi.map((sponsor) => ({
-            id: sponsor.id,
-            nome: sponsor.nome,
-            linkEsterno: sponsor.linkEsterno,
-            // Review fix Story 16.2 (Blind Hunter): cache-busting via
-            // updatedAt, stesso principio di SponsorVetrinaCard.tsx.
-            immagineUrl: `${urlPubblicoImmagineSponsor(supabase, sponsor.id)}?v=${encodeURIComponent(sponsor.updatedAt.toISOString())}`,
-          }))}
-        />
-      )}
-      <div className={styles.card}>
-        <p className={styles.saluto}>Bentornata/o, {user?.email}.</p>
-        <p className={styles.testo}>Ruoli: {ruoli.join(", ") || "nessuno"}</p>
-      </div>
-    </main>
+    <>
+      <header className={styles.header}>
+        <div className={styles.brand}>
+          {info.esiste && (
+            <img
+              className={styles.logo}
+              src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
+              alt=""
+            />
+          )}
+          <span className={styles.nomeSettore}>{nomeVisualizzato}</span>
+        </div>
+        <Link href="/accedi" className={styles.accedi}>
+          Accedi
+        </Link>
+      </header>
+      <main className={styles.hero}>
+        <h1>Benvenuti nel {nomeVisualizzato}</h1>
+        <p className={styles.sottotitolo}>
+          Il sito pubblico del nostro settore volley è in costruzione: presto
+          qui troverai le partite della settimana, i nostri sponsor, le foto
+          delle squadre e gli ultimi post dai nostri canali social.
+        </p>
+      </main>
+      <footer className={styles.footer}>
+        <p>
+          &copy; {new Date().getFullYear()} {nomeVisualizzato}
+        </p>
+      </footer>
+    </>
   );
 }

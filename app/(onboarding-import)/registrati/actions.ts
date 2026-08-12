@@ -292,5 +292,5 @@ export async function registrati(
     };
   }
 
-  redirect("/");
+  redirect("/app");
 }

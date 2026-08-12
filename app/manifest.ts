@@ -7,11 +7,15 @@ import type { MetadataRoute } from "next";
 // decisione presa con l'utente, non il logo reale del club).
 // background_color/theme_color da DESIGN.md (colors.surface/colors.navy),
 // stessi colori gia' usati per lo sfondo pagina/sidebar nel resto dell'app.
+// Story 18.1 (Epic 18): start_url punta a /app (la dashboard interna), non
+// piu' "/" - da quando "/" e' diventata la home pubblica del sito, un
+// Utente che ha installato la PWA per lavorare sulla dashboard deve
+// continuare ad aprirla, non atterrare sul sito pubblico.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Società Manager",
     short_name: "Soc. Manager",
-    start_url: "/",
+    start_url: "/app",
     display: "standalone",
     background_color: "#FFFFFF",
     theme_color: "#312682",

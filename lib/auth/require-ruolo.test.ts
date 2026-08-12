@@ -15,7 +15,7 @@ vi.mock("@/lib/supabase/server", () => ({
 // permessi-configurabili.ts -> lib/prisma.ts) non viene mai caricato.
 // matchProtectedRoute/PROTECTED_ROUTES restano quelli VERI (route-guard.ts,
 // puri, nessun side-effect) - usare rotte reali (es.
-// "/precaricamento-allenatori", gia' migrata da questa stessa story) rende
+// "/app/precaricamento-allenatori", gia' migrata da questa stessa story) rende
 // il test rappresentativo dello scenario reale invece che sintetico.
 const isAutorizzatoMock = vi.fn();
 vi.mock("@/lib/auth/route-decision", () => ({
@@ -109,7 +109,7 @@ describe("requireRuolo", () => {
 
       // /palestre ammette DIRIGENTE nel suo ruoliAmmessi statico, non e'
       // migrata - deve passare dal path hardcoded.
-      expect(await requireRuolo(["ADMIN", "DIRIGENTE"], "/palestre")).toBeNull();
+      expect(await requireRuolo(["ADMIN", "DIRIGENTE"], "/app/palestre")).toBeNull();
       expect(isAutorizzatoMock).not.toHaveBeenCalled();
     });
 
@@ -132,12 +132,12 @@ describe("requireRuolo", () => {
       // ma la rotta e' migrata: isAutorizzato decide, non questo array.
       const risultato = await requireRuolo(
         ["ADMIN"],
-        "/precaricamento-allenatori"
+        "/app/precaricamento-allenatori"
       );
 
       expect(risultato).toBeNull();
       expect(isAutorizzatoMock).toHaveBeenCalledWith(
-        expect.objectContaining({ prefix: "/precaricamento-allenatori" }),
+        expect.objectContaining({ prefix: "/app/precaricamento-allenatori" }),
         ["DIRIGENTE"]
       );
     });
@@ -150,7 +150,7 @@ describe("requireRuolo", () => {
 
       const risultato = await requireRuolo(
         ["ADMIN"],
-        "/precaricamento-allenatori"
+        "/app/precaricamento-allenatori"
       );
 
       expect(risultato).toEqual({

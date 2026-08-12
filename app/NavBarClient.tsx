@@ -375,7 +375,7 @@ export function NavBarClient({
           {menuProfiloAperto && (
             <div className={styles.menuProfiloTendina} role="menu">
               <Link
-                href="/modifica-password"
+                href="/app/modifica-password"
                 role="menuitem"
                 className={styles.voceMenu}
               >
