@@ -714,3 +714,10 @@
 ## Deferred from: code review of 18-6-consenso-cookie (2026-08-12)
 
 - Nessun `aria-live`/annuncio per il banner (`role="region"` non è assertivo) — richiede una decisione di design UX su come annunciarlo senza essere invasivo; non urgente dato che il banner non è bloccante (AC #4) e resta comunque raggiungibile via navigazione a landmark/tab. [app/CookieBanner.tsx]
+
+## Deferred from: code review of 18-3-partite-settimana-home (2026-08-13)
+
+- Nessun campo di esclusione per singola Partita, a differenza di `Sponsor.attiva` — un Admin/Dirigente non può oggi nascondere una singola partita dalla home pubblica (es. amichevole); richiederebbe un nuovo campo di schema, nessun AC di questa storia lo richiede. [prisma/schema.prisma]
+- Gestione di `impianto` nullable incoerente tra testo visibile (nessun fallback) e `aria-label` (fallback "il luogo della partita", che non copre comunque una stringa vuota) — mirror esatto e voluto del pattern già esistente in `app/app/(partite-campionati)/partite/page.tsx` (le Dev Notes di questa storia lo richiedevano esplicitamente), non introdotto da questa storia. [app/page.tsx:259-269]
+- Nessun `take`/limite sulla query pubblica `prisma.partita.findMany` — stesso pattern già accettato per la query Sponsor (Story 16.1/16.3), scala attuale ridotta. [app/page.tsx:112]
+- Nessun ordinamento secondario deterministico tra Gruppi diversi a parità di data/ora — limite pre-esistente di `raggruppaPerSettimana`/`oraInMinuti` (Story 10.3); il Task 1 di questa storia vietava esplicitamente di estendere l'export oltre `lunediDellaSettimana`. [lib/raggruppa-per-settimana.ts]

@@ -1,3 +1,4 @@
+# last_updated: 2026-08-13 (Story 18.3 Sezione Partite della settimana in home: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 4 patch applicati (bug di fuso orario UTC vs Europe/Rome nel calcolo "settimana corrente", trovato indipendentemente da 2 layer; formattaDataIso esportata invece di duplicata; aria-labelledby invece di aria-label ridondante; File List aggiornato per un restyle Sponsor non dichiarato), 4 defer, 4 scartati (incluso un falso positivo da un mio errore di trascrizione nel diff). 1075/1075 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
 # last_updated: 2026-08-10 (Story 17.2 Estensione della guida a tutte le pagine rimanenti: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 3 bug reali trovati indipendentemente da piu' layer: l'icona "?" mancava nel ramo di rendering principale (il caso comune, non l'early-return) di /campionati, /il-mio-profilo, /permessi-certificati - residuo di replace_all che non aveva beccato tutte le occorrenze per differenze di indentazione, corretti. Altri 3 patch minori: indentazione malformata in vista-allenatore/page.tsx, export const dynamic mancante su /import-atlete, conteggio "31 voci totali" errato nel report della storia (sono 29: 2 gia' coperte in Story 17.1 + 27 nuove). 1 decision-needed risolto con l'utente: risolviRuoliPerAiutoContestuale() eseguito in await sequenziale invece di Promise.all su 12 pagine (/admin, /gruppi, /orari, /slot, /wizard-nuova-stagione, /precaricamento-allenatori, /notifiche, /impostazioni, /smtp, /logo, /vista-dirigente, /permessi-accesso, /permessi-certificati) - un giro di rete in piu' sul percorso critico solo per un'icona cosmetica, in violazione della convenzione gia' stabilita nel progetto; l'utente ha scelto di applicarlo subito su tutte e 12. 3 deferred (gap /precaricamento-allenatori + permessiConfigurabili: contenutoPerRotta non consulta l'autorizzazione dinamica, gia' segnalato come fuori scope in Story 17.1; naming condiviso "Orari" tra /orari e /slot, risalente a Story 15.5; chiamata Auth ridondante rispetto a middleware.ts, ottimizzazione architetturale piu' ampia). 3 dismessi come rumore/convenzioni gia' accettate (redesign CSS del pulsante "?" attribuibile al changelog di Story 17.1, nessun test end-to-end sulle pagine - convenzione gia' stabilita, accuratezza prosa dei contenuti guida verificata solo per ruoliAmmessi - limite pre-esistente). 1061/1061 test Vitest passati, 0 errori tsc/eslint. Epic 17: entrambe le storie (17.1, 17.2) done. Status: done.)
 # last_updated: 2026-08-10 (Story 17.2 Estensione della guida a tutte le pagine rimanenti: implementata su richiesta esplicita dell'utente ("procedi con tutte le 29, aggiornami ogni 5-6 pagine"), lavorata a batch con aggiornamento intermedio dopo ogni gruppo. Componente TitoloPagina estratto in app/AiutoContestuale.tsx (titolo + icona "?" come sibling, non piu' nidificato nel <h1> - gia' corretto in Story 17.1, qui centralizzato) e riusato per sponsor/palestre (refactor) oltre alle 29 nuove pagine. Nuovo helper lib/guida/risolvi-ruoli-pagina.ts (risolviRuoliPerAiutoContestuale) per le pagine senza lettura ruoli propria, con test dedicato. Dove una pagina gia' leggeva ruoli/user per la propria logica, riusato senza duplicare getUser(). /import-atlete (unica pagina interamente Client Component nel progetto) convertita a Server Component, logica form estratta in ImportAtleteForm.tsx. Le pagine con piu' return (early-return "account non collegato") hanno TitoloPagina applicato a ogni ramo, non solo al principale. 29 nuovi contenuti guida in lib/guida/contenuti.ts (31 totali), scritti leggendo il codice reale di ciascuna pagina, ruoliAmmessi mirror esatto di PROTECTED_ROUTES - nessun nuovo test per-voce necessario, il test di coerenza gia' scritto in Story 17.1 valida automaticamente ogni voce. Fix di lint non correlato incluso: apostrofo non escapato preesistente in wizard-nuova-stagione/page.tsx. 1061/1061 test Vitest passati (era 1057), 0 errori tsc/eslint, build produzione riuscita (gli errori "Dynamic server usage"/WASM engine mostrati durante `next build` sono quirk noti dell'ambiente locale, gia' documentati per il deploy - non bloccano l'output). Status: review, in attesa di code review adversariale.)
 # last_updated: 2026-08-10 (Story 17.1 Infrastruttura guida in-app: code review completata (3 layer adversariali paralleli) - nessuna violazione degli AC. 9 patch applicati: bug CSS reale sul colore del titolo del pannello + CSS morto, click-esterno/Escape per chiudere il pannello (mirror del pattern gia' in NavBarClient.tsx), role="dialog" errato sostituito con aria-controls/id, pulsante "?" spostato fuori dal <h1> (inquinava il nome accessibile del titolo per uno screen reader), /palestre reso resiliente a un fallimento di Supabase Auth (try/catch fail-soft - prima poteva rompere l'intera pagina di gestione per una funzione cosmetica), log dell'errore getUser() allineato a /sponsor, commento force-dynamic corretto, 2 nuovi test di coerenza (CONTENUTI_GUIDA vs PROTECTED_ROUTES, nessuna rotta duplicata). 3 defer (nessuna copertura di test su AiutoContestuale - richiederebbe React Testing Library, slugPerRotta non gestisce rotte annidate, contenutoPerRotta confronta per uguaglianza esatta invece che per prefisso). 1057/1057 test Vitest passati (era 1055), 0 errori tsc/eslint, build produzione riuscita. Epic 17 resta in-progress (elenco aperto per definizione, come Epic 9/11) - altre pagine da coprire in story future. Status: done.)
@@ -568,10 +569,40 @@ development_status:
   # parseValoreConsenso, +5 test). 1 defer (aria-live, in
   # deferred-work.md). 4 dismessi. 1075/1075 test Vitest passati, 0
   # errori tsc/eslint, build produzione riuscita. Status: done.
+  #
+  # 2026-08-13: Story 18.3 ripresa (dev-story workflow) - tutti i Task
+  # risultavano gia' implementati/marcati [x] (codice committato
+  # direttamente in precedenza), verificati uno per uno contro AC/Task
+  # invece di fidarsi dei soli checkbox. Deviazione nota dal Task 3
+  # letterale documentata nella story: markup a card invece di tabella
+  # (richiesta utente successiva di allineamento ai siti di riferimento
+  # Epic 18), stessi dati/AC. File List e Dev Agent Record completati.
+  # 1075/1075 test Vitest passati, 0 errori tsc/eslint, build produzione
+  # riuscita. Status: review, in attesa di code review.
+  #
+  # 2026-08-13: Story 18.3 code review completata (Blind Hunter + Edge Case
+  # Hunter + Acceptance Auditor in parallelo, diff isolato cab1951..e5f1252
+  # sui 3 file toccati dalla storia). 4 patch applicati: bug di fuso orario
+  # nel calcolo "settimana corrente" (getUTCDay() su new Date() invece del
+  # calendario Europe/Rome, trovato indipendentemente da 2 layer, stessa
+  # causa/soluzione gia' nota nel progetto - certificato-scaduto.ts, Story
+  # 4.5), formattaDataIso esportata da lib/raggruppa-per-settimana.ts
+  # invece di duplicata localmente in app/page.tsx, aria-labelledby al
+  # posto di un aria-label ridondante sulla sezione Partite, File List
+  # aggiornato per un restyle dei titoli Sponsor non dichiarato in
+  # precedenza. 4 defer (nessun campo di esclusione per singola Partita a
+  # differenza di Sponsor.attiva, gestione di impianto nullable ereditata
+  # pari pari da /app/partite, nessun take/limite sulla query pubblica,
+  # nessun ordinamento secondario deterministico tra Gruppi a parita' di
+  # data/ora). 4 scartati come rumore/falsi positivi, incluso un errore di
+  # trascrizione nel diff incollato al Blind Hunter (un paragrafo
+  # "corrotto" mai esistito nel codice reale, verificato e scartato prima
+  # del triage). 1075/1075 test Vitest passati, 0 errori tsc/eslint, build
+  # produzione riuscita. Status: done.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
-  18-3-partite-settimana-home: in-progress
+  18-3-partite-settimana-home: done
   18-4-foto-squadra-gruppo: backlog
   18-5-post-social-home: backlog
   18-6-consenso-cookie: done

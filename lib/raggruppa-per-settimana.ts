@@ -32,7 +32,10 @@ export function parseDataUtc(data: string): Date {
   return new Date(`${data}T00:00:00Z`);
 }
 
-function formattaDataIso(data: Date): string {
+// Esportata (review fix, Story 18.3): riusata da app/page.tsx invece di una
+// seconda implementazione locale identica - stesso principio gia' applicato
+// a lunediDellaSettimana qui sotto.
+export function formattaDataIso(data: Date): string {
   return data.toISOString().slice(0, 10);
 }
 

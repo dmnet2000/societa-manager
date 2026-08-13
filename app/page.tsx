@@ -7,6 +7,7 @@ import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
 import {
+  formattaDataIso,
   lunediDellaSettimana,
   parseDataUtc,
   raggruppaPerSettimana,
@@ -34,10 +35,6 @@ function formattaData(data: string): string {
   return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
 }
 
-function formattaDataIso(data: Date): string {
-  return data.toISOString().slice(0, 10);
-}
-
 export default async function HomePubblicaPage() {
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
   // comunque (usa la sola anon key). Review fix (Blind Hunter, Story 18.1):
@@ -63,7 +60,18 @@ export default async function HomePubblicaPage() {
   // (convenzione italiana) - lunediDellaSettimana esportata da
   // lib/raggruppa-per-settimana.ts (Story 10.3) invece di duplicarne la
   // matematica (offset getUTCDay() non ovvio, gia' corretta e testata).
-  const lunediCorrente = lunediDellaSettimana(new Date());
+  // Review fix: "oggi" calcolato sul calendario di Europe/Rome, non
+  // sull'istante UTC di new Date() - stesso identico problema e stessa
+  // soluzione gia' note nel progetto (certificato-scaduto.ts, Story 4.5
+  // review fix): per 1-2 ore ogni lunedi' (a cavallo della mezzanotte
+  // italiana, CET/CEST) l'istante UTC e' ancora domenica, e getUTCDay()
+  // su new Date() calcolerebbe il lunedi' della settimana PRECEDENTE
+  // proprio nella finestra in cui un visitatore vorrebbe vedere quella
+  // corrente.
+  const oggiIsoItalia = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+  }).format(new Date());
+  const lunediCorrente = lunediDellaSettimana(parseDataUtc(oggiIsoItalia));
   const domenicaCorrente = new Date(
     lunediCorrente.getTime() + 6 * 24 * 60 * 60 * 1000
   );
@@ -235,8 +243,15 @@ export default async function HomePubblicaPage() {
             nella settimana corrente - stesso principio della sezione
             Sponsor sopra. */}
         {mostraPartite && (
-          <section className={styles.sezionePartite} aria-label="Partite della settimana">
-            <h2 className={styles.titoloSezione}>Partite della settimana</h2>
+          // Review fix: aria-labelledby invece di aria-label - a
+          // differenza della sezione Sponsor sopra (due <h2>, nessuno dei
+          // due riassume l'intera sezione), qui c'e' un solo <h2> che gia'
+          // fa da nome accessibile: ripeterne il testo in aria-label lo
+          // avrebbe solo duplicato.
+          <section className={styles.sezionePartite} aria-labelledby="titolo-partite-settimana">
+            <h2 id="titolo-partite-settimana" className={styles.titoloSezione}>
+              Partite della settimana
+            </h2>
             {/* Card invece di tabella (indicazione utente 2026-08-12, vedi
                 commento in home-pubblica.module.css sopra .listaPartite) -
                 stessi campi di sola lettura della vecchia riga <tr>
