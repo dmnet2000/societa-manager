@@ -13,6 +13,12 @@ import { creaAtleta } from "@/lib/db-rls/atleta";
 import { creaNotifica } from "@/lib/db-rls/notifica";
 import { isCodiceFiscaleValido } from "@/lib/matching-codice-fiscale/valida-codice-fiscale";
 import { estraiSessoDaCodiceFiscale } from "@/lib/matching-codice-fiscale/estrai-sesso-da-codice-fiscale";
+import { caricaFotoSquadra } from "@/lib/storage/foto-squadra";
+import {
+  MIME_AMMESSI_IMMAGINE,
+  DIMENSIONE_MASSIMA_IMMAGINE_BYTE,
+  contenutoCorrispondeAlMimeImmagine,
+} from "@/lib/storage/validazione-immagine";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -574,6 +580,99 @@ export async function creaEAssegnaAtleta(
   // Review fix (code review Story 9.18): stessa coppia di revalidatePath gia'
   // usata da assegnaAtleta/rimuoviAtleta - requireRuolo ammette anche
   // ADMIN/DIRIGENTE per questa action, che vedono il roster anche in /gruppi.
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
+  return { success: true };
+}
+
+// Stessa validazione immagine di sponsor/actions.ts e logo/actions.ts
+// (mirror, non reinventare) - vedi lib/storage/validazione-immagine.ts.
+async function validaImmagineFotoSquadra(
+  file: FormDataEntryValue | null
+): Promise<{ code: string; message: string } | { file: File }> {
+  if (!(file instanceof File) || file.size === 0) {
+    return { code: "VALIDATION", message: "Seleziona un'immagine da caricare." };
+  }
+  if (!MIME_AMMESSI_IMMAGINE.includes(file.type)) {
+    return { code: "VALIDATION", message: "Formato immagine non ammesso (solo PNG, JPG)." };
+  }
+  if (file.size > DIMENSIONE_MASSIMA_IMMAGINE_BYTE) {
+    return { code: "VALIDATION", message: "Il file supera la dimensione massima di 2MB." };
+  }
+  if (!(await contenutoCorrispondeAlMimeImmagine(file))) {
+    return {
+      code: "VALIDATION",
+      message: "Il contenuto del file non corrisponde al formato dichiarato.",
+    };
+  }
+  return { file };
+}
+
+// Story 18.4 (AC #1/#2): unica azione dell'Epic 18 ammissibile anche da
+// ALLENATORE (solo sul proprio Gruppo della stagione corrente, tramite
+// risolviPossessoGruppo gia' stabilita sopra per assegnaAtleta/
+// rimuoviAtleta - stessa identica sequenza a 3 passi). Nessun rollback da
+// gestire (a differenza di creaSponsor): il Gruppo esiste gia' di suo,
+// indipendentemente dalla foto - stesso principio di aggiornaSponsor/
+// caricaLogoAction (upload sempre opzionale su un'entita' che vive di suo).
+export async function caricaFotoSquadraAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+
+  let gruppo: { annoAgonisticoId: string } | null;
+  try {
+    // Stesso blocco di risoluzione dell'annoAgonisticoId gia' usato in
+    // assegnaAtleta/rimuoviAtleta - non reinventarlo.
+    gruppo = await prisma.gruppo.findUnique({
+      where: { id: gruppoId },
+      select: { annoAgonisticoId: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto di squadra. Riprova." },
+    };
+  }
+  if (!gruppo) {
+    return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+  }
+
+  // AC #2: un Allenatore puo' caricare la foto solo del proprio Gruppo della
+  // stagione corrente - stesso principio di assegnaAtleta/rimuoviAtleta.
+  // Review fix: controllato PRIMA di validaImmagineFotoSquadra (che legge
+  // fino a 2MB per il controllo magic-byte) - un Allenatore non autorizzato
+  // non deve pagare il costo di una validazione completa del file prima di
+  // ricevere FORBIDDEN.
+  const possesso = await risolviPossessoGruppo(gruppoId, gruppo.annoAgonisticoId);
+  if (!possesso.ok) {
+    return { error: possesso.error };
+  }
+
+  const risultatoImmagine = await validaImmagineFotoSquadra(formData.get("file"));
+  if (!("file" in risultatoImmagine)) return { error: risultatoImmagine };
+
+  try {
+    const supabase = await createClient();
+    await caricaFotoSquadra(supabase, gruppoId, risultatoImmagine.file);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto di squadra. Riprova." },
+    };
+  }
+
+  // Entrambe le pagine mostrano lo stato della foto per il proprio elenco di
+  // Gruppi - stessa coppia di revalidatePath gia' usata da assegnaAtleta/
+  // rimuoviAtleta/rimuoviAllenatore. La home pubblica "/" e' gia'
+  // force-dynamic (Story 18.1), nessun revalidatePath necessario li'.
   revalidatePath("/app/gruppi");
   revalidatePath("/app/i-miei-gruppi");
   return { success: true };

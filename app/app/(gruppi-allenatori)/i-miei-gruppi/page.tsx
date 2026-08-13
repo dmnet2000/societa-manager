@@ -5,6 +5,7 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
+import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
@@ -74,30 +75,34 @@ export default async function IMieiGruppiPage() {
   // policy allenatore_proprie_atlete_certificato_select (Story 4.5) resta
   // scoped ai Gruppi dell'Allenatore (non la nuova policy ampia su "atlete"),
   // nessuno scoping applicativo aggiuntivo necessario qui.
-  const [atlete, gruppoAtleteRows, certificati, iscrizioni, tesseramenti] = await Promise.all([
-    elencaAtlete(supabase),
-    gruppiPropri.length > 0
-      ? prisma.gruppoAtleta.findMany({
-          where: {
-            annoAgonisticoId: annoCorrente!.id,
-            gruppoId: { in: gruppiPropri.map((g) => g.id) },
-          },
-          select: { atletaId: true, gruppoId: true },
-        })
-      : Promise.resolve([]),
-    elencaCertificati(supabase),
-    // Richiesta utente 2026-08-07: stesso layout a 5 colonne di /gruppi
-    // (Story 9.33, round 4/5) applicato anche qui - stesso pattern di
-    // lettura di gruppi/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
-    // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
-    annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
-    annoCorrente
-      ? prisma.tesseramento.findMany({
-          where: { annoAgonisticoId: annoCorrente.id },
-          select: { atletaId: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  const [atlete, gruppoAtleteRows, certificati, iscrizioni, tesseramenti, gruppiConFoto] =
+    await Promise.all([
+      elencaAtlete(supabase),
+      gruppiPropri.length > 0
+        ? prisma.gruppoAtleta.findMany({
+            where: {
+              annoAgonisticoId: annoCorrente!.id,
+              gruppoId: { in: gruppiPropri.map((g) => g.id) },
+            },
+            select: { atletaId: true, gruppoId: true },
+          })
+        : Promise.resolve([]),
+      elencaCertificati(supabase),
+      // Richiesta utente 2026-08-07: stesso layout a 5 colonne di /gruppi
+      // (Story 9.33, round 4/5) applicato anche qui - stesso pattern di
+      // lettura di gruppi/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
+      // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
+      annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
+      annoCorrente
+        ? prisma.tesseramento.findMany({
+            where: { annoAgonisticoId: annoCorrente.id },
+            select: { atletaId: true },
+          })
+        : Promise.resolve([]),
+      // Story 18.4: stesso helper bulk di gruppi/page.tsx - una sola
+      // chiamata Storage invece di N per-Gruppo.
+      elencaGruppiConFoto(supabase),
+    ]);
 
   // Story 9.19: stesso helper condiviso di gruppi/page.tsx - una volta per
   // l'intero elenco Atlete, badge "in scadenza" solo se CONFERMATO
@@ -163,6 +168,9 @@ export default async function IMieiGruppiPage() {
               gruppo={{ id: gruppo.id, nome: gruppo.nome, categoria: gruppo.categoria }}
               atlete={atleteGruppo}
               atleteDisponibili={atleteDisponibili}
+              fotoEsiste={gruppiConFoto.has(gruppo.id)}
+              fotoUrl={urlPubblicoFotoSquadra(supabase, gruppo.id)}
+              fotoAggiornataIl={gruppiConFoto.get(gruppo.id) ?? null}
             />
           );
         })

@@ -1,3 +1,6 @@
+# last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 1 decision-needed risolto con l'utente (gap RLS stagione su utente_possiede_gruppo vs risolviPossessoGruppo, rimandato: impatto nullo dato lo scoping per stagione della home pubblica). 5 patch applicati: verifica possesso riordinata prima della validazione immagine costosa (un Allenatore non autorizzato non paga piu' il costo del controllo magic-byte fino a 2MB), leggiInfoFotoSquadra rimossa come codice morto (mai chiamata da nessuna pagina, tutte usano il bulk elencaGruppiConFoto), bug CSS reale corretto (doppia linea separatrice nel blocco di un Gruppo su GruppoRow.tsx, rigaAllenatori non era piu' l'ultima riga ma manteneva ancora il border-bottom - trovato dall'Acceptance Auditor con citazione di riga precisa), 2 test mancanti aggiunti (file >2MB, prisma.gruppo.findUnique che lancia). 3 defer (paginazione list() a 100 oggetti - trovato indipendentemente da Blind Hunter ed Edge Case Hunter, nessun cleanup foto orfane, il gap RLS stagione di cui sopra). 5 scartati come rumore/pattern pre-esistenti gia' accettati altrove (cache-buster teorico, testo hero incondizionato - stesso trattamento di 18.2/18.3, contentType client-side - mirror di sponsor.ts/logo.ts, nessuna validazione client-side - convenzione consolidata, colSpan verificato corretto). 1093/1093 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done.)
+# last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: implementata (dev-story workflow) - tutti e 6 i Task completati. Bucket Storage pubblico "foto-squadra-gruppo" + RLS (funzione utente_possiede_gruppo, mirror di utente_possiede_allenatore), modulo lib/storage/foto-squadra.ts, Server Action caricaFotoSquadraAction in gruppi/actions.ts (ADMIN/DIRIGENTE/ALLENATORE-assegnato tramite risolviPossessoGruppo), UI di upload condivisa FotoSquadraForm.tsx su /app/gruppi e /app/i-miei-gruppi, nuova sezione pubblica "Foto di squadra" in app/page.tsx scoped alla stagione corrente. Corretta un'assunzione errata della fase di analisi: i wrapper Storage (sponsor.ts/logo.ts) sono in realta' gia' testati nel progetto (mock del client Storage) - 20 nuovi test scritti di conseguenza invece di saltarli. Nessuna migrazione applicata al DB nel sandbox (nessun accesso Supabase), da applicare in produzione come le precedenti migrazioni Storage. 1094/1094 test Vitest passati (+19), 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
+# last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: file di story creato (create-story workflow), stato ready-for-dev. Nessuna nuova colonna Prisma su Gruppo - esistenza/aggiornamento della foto derivati da Supabase Storage list(), stesso principio gia' stabilito per Sponsor/logo. Nuovo bucket pubblico "foto-squadra-gruppo" con path piatto (gruppoId, mirror di sponsor-banner) e nuova funzione RLS utente_possiede_gruppo (mirror di utente_possiede_allenatore, Story 9.12) per permettere l'upload anche all'Allenatore assegnato, non solo Admin/Dirigente - unico caso nell'Epic 18. Ricerca preliminare (Explore) ha isolato 2 lezioni gia' pagate nel progetto da applicare fin da subito: la policy SELECT deve essere pubblica gia' nella prima migrazione (senza, la home pubblica anonima non potrebbe leggere quali Gruppi hanno una foto - il bucket logo ha impiegato 2 migrazioni correttive per arrivarci), e le policy INSERT/UPDATE devono confrontare "name" direttamente (path piatto), non storage.foldername(name)[1] (convenzione nidificata di foto-profilo-*, non applicabile qui). Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
 # last_updated: 2026-08-13 (Story 18.3 Sezione Partite della settimana in home: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 4 patch applicati (bug di fuso orario UTC vs Europe/Rome nel calcolo "settimana corrente", trovato indipendentemente da 2 layer; formattaDataIso esportata invece di duplicata; aria-labelledby invece di aria-label ridondante; File List aggiornato per un restyle Sponsor non dichiarato), 4 defer, 4 scartati (incluso un falso positivo da un mio errore di trascrizione nel diff). 1075/1075 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
 # last_updated: 2026-08-10 (Story 17.2 Estensione della guida a tutte le pagine rimanenti: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 3 bug reali trovati indipendentemente da piu' layer: l'icona "?" mancava nel ramo di rendering principale (il caso comune, non l'early-return) di /campionati, /il-mio-profilo, /permessi-certificati - residuo di replace_all che non aveva beccato tutte le occorrenze per differenze di indentazione, corretti. Altri 3 patch minori: indentazione malformata in vista-allenatore/page.tsx, export const dynamic mancante su /import-atlete, conteggio "31 voci totali" errato nel report della storia (sono 29: 2 gia' coperte in Story 17.1 + 27 nuove). 1 decision-needed risolto con l'utente: risolviRuoliPerAiutoContestuale() eseguito in await sequenziale invece di Promise.all su 12 pagine (/admin, /gruppi, /orari, /slot, /wizard-nuova-stagione, /precaricamento-allenatori, /notifiche, /impostazioni, /smtp, /logo, /vista-dirigente, /permessi-accesso, /permessi-certificati) - un giro di rete in piu' sul percorso critico solo per un'icona cosmetica, in violazione della convenzione gia' stabilita nel progetto; l'utente ha scelto di applicarlo subito su tutte e 12. 3 deferred (gap /precaricamento-allenatori + permessiConfigurabili: contenutoPerRotta non consulta l'autorizzazione dinamica, gia' segnalato come fuori scope in Story 17.1; naming condiviso "Orari" tra /orari e /slot, risalente a Story 15.5; chiamata Auth ridondante rispetto a middleware.ts, ottimizzazione architetturale piu' ampia). 3 dismessi come rumore/convenzioni gia' accettate (redesign CSS del pulsante "?" attribuibile al changelog di Story 17.1, nessun test end-to-end sulle pagine - convenzione gia' stabilita, accuratezza prosa dei contenuti guida verificata solo per ruoliAmmessi - limite pre-esistente). 1061/1061 test Vitest passati, 0 errori tsc/eslint. Epic 17: entrambe le storie (17.1, 17.2) done. Status: done.)
 # last_updated: 2026-08-10 (Story 17.2 Estensione della guida a tutte le pagine rimanenti: implementata su richiesta esplicita dell'utente ("procedi con tutte le 29, aggiornami ogni 5-6 pagine"), lavorata a batch con aggiornamento intermedio dopo ogni gruppo. Componente TitoloPagina estratto in app/AiutoContestuale.tsx (titolo + icona "?" come sibling, non piu' nidificato nel <h1> - gia' corretto in Story 17.1, qui centralizzato) e riusato per sponsor/palestre (refactor) oltre alle 29 nuove pagine. Nuovo helper lib/guida/risolvi-ruoli-pagina.ts (risolviRuoliPerAiutoContestuale) per le pagine senza lettura ruoli propria, con test dedicato. Dove una pagina gia' leggeva ruoli/user per la propria logica, riusato senza duplicare getUser(). /import-atlete (unica pagina interamente Client Component nel progetto) convertita a Server Component, logica form estratta in ImportAtleteForm.tsx. Le pagine con piu' return (early-return "account non collegato") hanno TitoloPagina applicato a ogni ramo, non solo al principale. 29 nuovi contenuti guida in lib/guida/contenuti.ts (31 totali), scritti leggendo il codice reale di ciascuna pagina, ruoliAmmessi mirror esatto di PROTECTED_ROUTES - nessun nuovo test per-voce necessario, il test di coerenza gia' scritto in Story 17.1 valida automaticamente ogni voce. Fix di lint non correlato incluso: apostrofo non escapato preesistente in wizard-nuova-stagione/page.tsx. 1061/1061 test Vitest passati (era 1057), 0 errori tsc/eslint, build produzione riuscita (gli errori "Dynamic server usage"/WASM engine mostrati durante `next build` sono quirk noti dell'ambiente locale, gia' documentati per il deploy - non bloccano l'output). Status: review, in attesa di code review adversariale.)
@@ -599,11 +602,53 @@ development_status:
   # "corrotto" mai esistito nel codice reale, verificato e scartato prima
   # del triage). 1075/1075 test Vitest passati, 0 errori tsc/eslint, build
   # produzione riuscita. Status: done.
+  #
+  # 2026-08-13: file di story 18.4 creato (create-story workflow) - ricerca
+  # preliminare (Explore) su bucket/RLS Sponsor+logo+foto-profilo,
+  # risolviPossessoGruppo (Story 9.15), pagine gruppi/i-miei-gruppi
+  # esistenti. Nessuna nuova colonna Prisma su Gruppo (esistenza foto
+  # derivata da Storage list(), stesso principio di Sponsor/logo). Nuovo
+  # bucket pubblico "foto-squadra-gruppo" (path piatto = gruppoId, mirror
+  # di sponsor-banner) + nuova funzione RLS utente_possiede_gruppo (mirror
+  # di utente_possiede_allenatore) per ammettere anche l'Allenatore
+  # assegnato all'upload, non solo Admin/Dirigente - unico caso
+  # nell'Epic 18. 2 lezioni gia' pagate nel progetto annotate esplicitamente
+  # nella storia da applicare fin da subito: policy SELECT pubblica gia'
+  # nella prima migrazione (la home pubblica e' sempre anonima), policy
+  # INSERT/UPDATE su "name" diretto invece di storage.foldername(name)[1]
+  # (path piatto, non nidificato come foto-profilo-*). Status: ready-for-dev.
+  #
+  # 2026-08-13: Story 18.4 implementata (dev-story workflow) - tutti e 6 i
+  # Task completati esattamente come pianificato in fase di analisi (bucket
+  # pubblico + RLS, lib/storage/foto-squadra.ts, caricaFotoSquadraAction via
+  # risolviPossessoGruppo, FotoSquadraForm.tsx condiviso tra /app/gruppi e
+  # /app/i-miei-gruppi, sezione pubblica scoped alla stagione corrente).
+  # Unica correzione: Task 6 assumeva erroneamente nessun test diretto per i
+  # wrapper Storage - sponsor.ts/logo.ts sono in realta' gia' testati nel
+  # progetto, 20 nuovi test scritti di conseguenza (9 per foto-squadra.ts, 11
+  # per caricaFotoSquadraAction). Migrazione Storage scritta ma non applicata
+  # (nessun accesso Supabase nel sandbox, come le precedenti). 1094/1094 test
+  # Vitest passati, 0 errori tsc/eslint, build produzione riuscita.
+  # Status: review, in attesa di code review.
+  #
+  # 2026-08-13: Story 18.4 code review completata (Blind Hunter + Edge Case
+  # Hunter + Acceptance Auditor in parallelo). 1 decision-needed risolto con
+  # l'utente (gap RLS stagione su utente_possiede_gruppo, rimandato - impatto
+  # nullo dato lo scoping per stagione della home pubblica). 5 patch (ordine
+  # possesso/validazione immagine invertito, leggiInfoFotoSquadra rimossa
+  # come codice morto, bug CSS reale - doppia linea separatrice su
+  # GruppoRow.tsx trovato dall'Acceptance Auditor, 2 test mancanti). 3 defer
+  # (paginazione list() a 100 oggetti - trovato indipendentemente da 2 layer,
+  # nessun cleanup foto orfane, gap RLS stagione). 5 scartati come rumore/
+  # pattern pre-esistenti gia' accettati. 1093/1093 test Vitest passati, 0
+  # errori tsc/eslint, build produzione riuscita. Status: done. Epic 18: 4
+  # storie su 11 done (18.1/18.2/18.3/18.4), 18.6 done separatamente
+  # (infrastruttura cookie), 18.5/18.7-18.11 ancora backlog.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
   18-3-partite-settimana-home: done
-  18-4-foto-squadra-gruppo: backlog
+  18-4-foto-squadra-gruppo: done
   18-5-post-social-home: backlog
   18-6-consenso-cookie: done
   18-7-menu-navigazione-multi-pagina: backlog

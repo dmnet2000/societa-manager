@@ -217,3 +217,38 @@
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* Story 18.4: stessa griglia di card di .listaPartite sopra (Story 18.3) -
+   idioma gia' stabilito in questo file, nessun colore nuovo. */
+.sezioneFotoSquadra {
+  padding: var(--space-8) var(--space-6);
+}
+
+.listaFotoSquadra {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.schedaFotoSquadra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  text-align: center;
+}
+
+.immagineFotoSquadra {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.nomeGruppoFoto {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}

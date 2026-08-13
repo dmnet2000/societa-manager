@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+// Story 18.4: actions.ts importa lib/storage/validazione-immagine.ts e
+// lib/storage/foto-squadra.ts, entrambe con "server-only" in testa - stesso
+// mock gia' stabilito in lib/storage/logo.test.ts / sponsor/actions.test.ts.
+vi.mock("server-only", () => ({}));
+
 const requireRuoloMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
@@ -53,6 +58,15 @@ vi.mock("@/lib/db-rls/notifica", () => ({
   creaNotifica: creaNotificaMock,
 }));
 
+// Story 18.4: caricaFotoSquadraAction riusa caricaFotoSquadra - mockata qui
+// come funzione intera (gia' testata per conto proprio in
+// lib/storage/foto-squadra.test.ts), stesso principio di creaAtleta/
+// creaNotifica sopra.
+const caricaFotoSquadraMock = vi.fn();
+vi.mock("@/lib/storage/foto-squadra", () => ({
+  caricaFotoSquadra: caricaFotoSquadraMock,
+}));
+
 // Story 9.15: assegnaAtleta/rimuoviAtleta ora chiamano risolviPossessoGruppo,
 // che legge la sessione tramite createClient() - stesso pattern di mock gia'
 // usato in app/(partite-campionati)/campionati/actions.test.ts.
@@ -80,14 +94,31 @@ const {
   assegnaAtleta,
   rimuoviAtleta,
   creaEAssegnaAtleta,
+  caricaFotoSquadraAction,
 } = await import("./actions");
 
-function buildFormData(fields: Record<string, string>) {
+function buildFormData(fields: Record<string, string>, file?: File | null) {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
     formData.append(key, value);
   }
+  if (file) formData.append("file", file);
   return formData;
+}
+
+// Story 18.4: bytes reali con magic-byte corretto - validaImmagineFotoSquadra
+// (contenutoCorrispondeAlMimeImmagine) non e' mockata, gira per davvero,
+// stesso principio gia' stabilito in sponsor/actions.test.ts.
+const MAGIC_BYTES: Record<string, number[]> = {
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+};
+
+function fileValido(nome = "squadra.png", tipo = "image/png", dimensione = 1024) {
+  const bytes = new Uint8Array(dimensione);
+  const magic = MAGIC_BYTES[tipo];
+  if (magic && dimensione >= magic.length) bytes.set(magic, 0);
+  return new File([bytes], nome, { type: tipo });
 }
 
 beforeEach(() => {
@@ -107,6 +138,8 @@ beforeEach(() => {
   atletaMaybeSingleMock.mockReset();
   creaAtletaMock.mockReset();
   creaNotificaMock.mockReset();
+  caricaFotoSquadraMock.mockReset();
+  caricaFotoSquadraMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
   // Default: sessione ADMIN, cosi' i test gia' esistenti (scritti prima di
   // Story 9.15) che non configurano esplicitamente getUserMock continuano a
@@ -1158,5 +1191,206 @@ describe("creaEAssegnaAtleta", () => {
 
     expect(result).toEqual({ success: true });
     expect(creaAtletaMock).toHaveBeenCalled();
+  });
+});
+
+describe("caricaFotoSquadraAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente/Allenatore", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when gruppoId is missing", async () => {
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({}, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix: risolviPossessoGruppo ora gira PRIMA della validazione
+  // immagine (vedi actions.ts) - questi tre test devono quindi configurare
+  // un Gruppo risolvibile, altrimenti fallirebbero prima con "Gruppo non
+  // trovato" invece di esercitare il ramo di validazione che intendono
+  // testare.
+  it("returns VALIDATION when no file is selected (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION for a disallowed MIME type (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido("squadra.gif", "image/gif"))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Formato immagine non ammesso (solo PNG, JPG)." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when file content doesn't match the declared MIME type (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    const fileConMimeFinto = new File([new Uint8Array([0, 0, 0, 0])], "squadra.png", {
+      type: "image/png",
+    });
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileConMimeFinto)
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  // AC #1: dimensione massima 2MB - unico ramo di validaImmagineFotoSquadra
+  // non ancora coperto (review fix, Blind Hunter).
+  it("returns VALIDATION when the file exceeds the 2MB size limit (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    const fileTroppoGrande = fileValido("squadra.png", "image/png", 2 * 1024 * 1024 + 1);
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileTroppoGrande)
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il file supera la dimensione massima di 2MB." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Blind Hunter): stesso ramo gia' testato per assegnaAtleta/
+  // rimuoviAtleta (righe 464/781) - mancava qui.
+  it("returns INTERNAL when the Gruppo lookup throws", async () => {
+    gruppoFindUniqueMock.mockRejectedValue(new Error("connection lost"));
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto di squadra. Riprova." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when the Gruppo does not exist", async () => {
+    gruppoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  // AC #2: un Allenatore non assegnato al Gruppo non puo' caricarne la foto -
+  // stesso identico ramo di autorizzazione gia' testato per assegnaAtleta.
+  it("returns FORBIDDEN when an ALLENATORE is not assigned to the Gruppo (AC #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
+  });
+
+  it("uploads and revalidates both pages on success for Admin/Dirigente (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const file = fileValido();
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, file)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(caricaFotoSquadraMock).toHaveBeenCalledWith(expect.anything(), "g1", file);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("uploads on success for an ALLENATORE who owns the Gruppo (AC #1, #2)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ gruppoId: "g1", allenatoreId: "all-1" });
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(caricaFotoSquadraMock).toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL when the upload fails", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    caricaFotoSquadraMock.mockRejectedValue(new Error("storage down"));
+
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, fileValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto di squadra. Riprova." },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });

@@ -178,8 +178,15 @@
    padding/border-bottom (risolvibile per ordine/specificita'), qui era sulla
    proprieta' display stessa - l'ordine non basta, serve delimitare al figlio
    diretto con ">". */
+/* Review fix (Story 18.4, Acceptance Auditor): .rigaAllenatori aggiunta qui
+   - non e' piu' l'ULTIMA riga del blocco di un Gruppo ora che rigaFotoSquadra
+   la segue, quindi ereditava di nuovo il border-bottom di base (.tabella td)
+   producendo una seconda linea separatrice in mezzo a un singolo Gruppo,
+   esattamente il difetto visivo che questo commento avvisa di evitare - il
+   bordo separatore deve restare solo sull'ultima riga (ora rigaFotoSquadra). */
 .rigaPrincipale td,
-.rigaAtlete > td {
+.rigaAtlete > td,
+.rigaAllenatori > td {
   border-bottom: none;
 }
 
@@ -189,6 +196,35 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* Story 18.4 - quarta e ultima riga per Gruppo (dopo rigaAtlete/
+   rigaAllenatori), stesso layout a riga di rigaAllenatori (form inline,
+   nessuno stack verticale come rigaAtlete: qui c'e' solo un form +
+   un'eventuale anteprima, non piu' blocchi indipendenti). Riga terminale del
+   blocco: mantiene il border-bottom di base (.tabella td), non aggiunta
+   all'esclusione sopra. */
+.rigaFotoSquadra > td {
+  padding-top: var(--space-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.fotoSquadra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.anteprimaFotoSquadra {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
 }
 
 /* Richiesta utente 2026-08-06 (estensione Story 9.33, round 3): "riga di

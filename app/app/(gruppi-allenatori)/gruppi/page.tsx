@@ -5,6 +5,7 @@ import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
+import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
@@ -43,8 +44,16 @@ export default async function GruppiPage() {
   // elencaAtlete(supabase) (client Supabase autenticato), mai con un
   // include Prisma su GruppoAtleta.atleta, che bypasserebbe le policy RLS
   // usando la connessione privilegiata di Prisma (vedi Dev Notes Story 2.4).
-  const [gruppi, allenatori, atlete, gruppoAtleteRows, certificati, iscrizioni, tesseramenti] =
-    await Promise.all([
+  const [
+    gruppi,
+    allenatori,
+    atlete,
+    gruppoAtleteRows,
+    certificati,
+    iscrizioni,
+    tesseramenti,
+    gruppiConFoto,
+  ] = await Promise.all([
       annoCorrente
         ? prisma.gruppo.findMany({
             where: { annoAgonisticoId: annoCorrente.id },
@@ -80,6 +89,10 @@ export default async function GruppiPage() {
             select: { atletaId: true },
           })
         : Promise.resolve([]),
+      // Story 18.4: UNA sola chiamata Storage per l'intero elenco Gruppi,
+      // non N chiamate leggiInfoFotoSquadra() per-Gruppo dentro il .map()
+      // sotto - vedi lib/storage/foto-squadra.ts.
+      elencaGruppiConFoto(supabase),
     ]);
 
   // Mappa costruita lato server per abbinare le Atlete (lette via RLS) alle
@@ -153,6 +166,8 @@ export default async function GruppiPage() {
                   }))
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 
+                const fotoAggiornataIl = gruppiConFoto.get(gruppo.id) ?? null;
+
                 return (
                   <GruppoRow
                     key={gruppo.id}
@@ -165,6 +180,9 @@ export default async function GruppiPage() {
                     }}
                     allenatoriDisponibili={allenatori}
                     atleteDisponibili={atleteMinime}
+                    fotoEsiste={gruppiConFoto.has(gruppo.id)}
+                    fotoUrl={urlPubblicoFotoSquadra(supabase, gruppo.id)}
+                    fotoAggiornataIl={fotoAggiornataIl}
                   />
                 );
               })}

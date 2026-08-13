@@ -5,6 +5,7 @@ import { assegnaAllenatore, assegnaAtleta, creaEAssegnaAtleta } from "./actions"
 import type { Atleta } from "./AtletaAssegnata";
 import { AtletaTabellaRiga, type AtletaConStato } from "./AtletaTabellaRiga";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
+import { FotoSquadraForm } from "./FotoSquadraForm";
 import styles from "./gruppi.module.css";
 
 type Gruppo = {
@@ -25,10 +26,16 @@ export function GruppoRow({
   gruppo,
   allenatoriDisponibili,
   atleteDisponibili,
+  fotoEsiste,
+  fotoUrl,
+  fotoAggiornataIl,
 }: {
   gruppo: Gruppo;
   allenatoriDisponibili: Allenatore[];
   atleteDisponibili: Atleta[];
+  fotoEsiste: boolean;
+  fotoUrl: string;
+  fotoAggiornataIl: string | null;
 }) {
   const [allenatoreState, allenatoreFormAction, allenatorePending] =
     useActionState(assegnaAllenatore, undefined);
@@ -297,6 +304,18 @@ export function GruppoRow({
               </p>
             )}
           </form>
+        </td>
+      </tr>
+      <tr className={styles.rigaFotoSquadra}>
+        <td colSpan={2}>
+          <span className={styles.etichettaRigaEstesa}>Foto squadra:</span>
+          <FotoSquadraForm
+            gruppoId={gruppo.id}
+            gruppoNome={gruppo.nome}
+            fotoEsiste={fotoEsiste}
+            fotoUrl={fotoUrl}
+            fotoAggiornataIl={fotoAggiornataIl}
+          />
         </td>
       </tr>
     </>

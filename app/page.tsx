@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
@@ -13,6 +14,7 @@ import {
   raggruppaPerSettimana,
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { NOME_COOKIE_CONSENSO, parseValoreConsenso } from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
@@ -21,9 +23,10 @@ import styles from "./home-pubblica.module.css";
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
 // sostituisce la dashboard interna spostata su /app - vedi app/app/page.tsx.
 // Solo layout/scheletro in Story 18.1 (AC #7); Story 18.2 aggiunge la prima
-// sezione di contenuto (Sponsor); Story 18.3 la sezione Partite. Logo/nome
-// del settore/Sponsor/Partite possono cambiare in qualunque momento -
-// stesso motivo di dynamic = "force-dynamic" gia' in uso su /accedi.
+// sezione di contenuto (Sponsor), Story 18.3 la sezione Partite, Story 18.4
+// la sezione Foto di squadra. Logo/nome del settore/Sponsor/Partite/Foto
+// possono cambiare in qualunque momento - stesso motivo di
+// dynamic = "force-dynamic" gia' in uso su /accedi.
 export const dynamic = "force-dynamic";
 
 // Story 18.3: mirror del wrapper locale gia' in uso in
@@ -38,14 +41,23 @@ function formattaData(data: string): string {
 export default async function HomePubblicaPage() {
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
   // comunque (usa la sola anon key). Review fix (Blind Hunter, Story 18.1):
-  // le tre letture non dipendono l'una dall'altra - eseguite in Promise.all,
+  // le letture non dipendono l'una dall'altra - eseguite in Promise.all,
   // stesso principio gia' stabilito in impostazioni/page.tsx (Story 17.2
   // review fix). Pagina raggiungibile da qualunque visitatore anonimo, non
   // solo da Staff interno come la vecchia dashboard - la latenza extra di
   // letture in sequenza la pagherebbe il pubblico. .catch() inline per
   // restare dentro il Promise.all senza perdere il comportamento fail-soft
   // (un errore transitorio su una non nasconde le altre).
-  const supabase = await createClient();
+  //
+  // Story 18.4: annoCorrente risolto qui (non nel Promise.all sotto) perche'
+  // la query Gruppi/Foto la' dentro dipende dal suo id - sola lettura
+  // (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente in una
+  // pagina GET, stesso vincolo di /app/gruppi). Ancora in parallelo con
+  // createClient() (nessuna dipendenza reciproca tra le due).
+  const [supabase, annoCorrente] = await Promise.all([
+    createClient(),
+    trovaAnnoAgonisticoCorrente(),
+  ]);
 
   // Story 18.6: lettura del cookie di consenso - stesso identico pattern
   // (cookies() da next/headers) gia' in uso in lib/supabase/server.ts.
@@ -78,7 +90,8 @@ export default async function HomePubblicaPage() {
   const lunediIso = formattaDataIso(lunediCorrente);
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
-  const [info, nomeSettore, sponsorAttivi, partiteSettimanaRaw] = await Promise.all([
+  const [info, nomeSettore, sponsorAttivi, partiteSettimanaRaw, gruppiStagione, fotoPerGruppo] =
+    await Promise.all([
     leggiInfoLogo(supabase).catch((err) => {
       console.error(err);
       return { esiste: false, aggiornatoIl: null as string | null };
@@ -136,6 +149,28 @@ export default async function HomePubblicaPage() {
         console.error(err);
         return [];
       }),
+    // Story 18.4 (AC #3): scoped alla sola stagione corrente (AD-8, stesso
+    // filtro di /app/gruppi) - senza, un Gruppo di una stagione passata con
+    // una foto mai ripulita da Storage comparirebbe ancora in home. "select"
+    // esplicito, stesso principio delle query sopra.
+    annoCorrente
+      ? prisma.gruppo
+          .findMany({
+            where: { annoAgonisticoId: annoCorrente.id },
+            orderBy: { nome: "asc" },
+            select: { id: true, nome: true },
+          })
+          .catch((err) => {
+            console.error(err);
+            return [];
+          })
+      : Promise.resolve([]),
+    // Story 18.4: UNA sola chiamata Storage per l'intero bucket, non N
+    // chiamate per-Gruppo - vedi lib/storage/foto-squadra.ts.
+    elencaGruppiConFoto(supabase).catch((err) => {
+      console.error(err);
+      return new Map<string, string | null>();
+    }),
   ]);
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
@@ -164,6 +199,14 @@ export default async function HomePubblicaPage() {
   const partiteSettimana = settimanaCorrente?.partite ?? [];
   const mostraPartite = partiteSettimana.length > 0;
 
+  // Story 18.4 (AC #3): "nessun placeholder per i Gruppi senza foto" - filtro
+  // ai soli Gruppi presenti nella Map (elencaGruppiConFoto), non un elenco di
+  // TUTTI i Gruppi della stagione con un'immagine mancante mostrata a vuoto.
+  const gruppiConFoto = gruppiStagione
+    .filter((g) => fotoPerGruppo.has(g.id))
+    .map((g) => ({ ...g, aggiornatoIl: fotoPerGruppo.get(g.id) ?? null }));
+  const mostraFotoSquadra = gruppiConFoto.length > 0;
+
   return (
     <>
       <header className={styles.header}>
@@ -184,18 +227,17 @@ export default async function HomePubblicaPage() {
       <main>
         <div className={styles.hero}>
           <h1>Benvenuti nel {nomeVisualizzato}</h1>
-          {/* Review fix (Acceptance Auditor, Story 18.2) + Story 18.3: "i
-              nostri sponsor" e "le partite della settimana" rimossi
-              dall'elenco "in arrivo" man mano che le sezioni corrispondenti
-              diventano live sotto - lasciare la vecchia frase avrebbe
-              contraddetto la pagina stessa. Stesso aggiornamento andra'
-              ripetuto per foto squadra/social quando le Story 18.4/18.5 le
-              rendono live (nessun meccanismo automatico lo previene, e'
-              testo statico). */}
+          {/* Review fix (Acceptance Auditor, Story 18.2) + Story 18.3 + Story
+              18.4: "i nostri sponsor", "le partite della settimana" e "le
+              foto delle squadre" rimossi dall'elenco "in arrivo" man mano
+              che le sezioni corrispondenti diventano live sotto - lasciare
+              la vecchia frase avrebbe contraddetto la pagina stessa. Stesso
+              aggiornamento andra' ripetuto per i post social quando la
+              Story 18.5 li rende live (nessun meccanismo automatico lo
+              previene, e' testo statico). */}
           <p className={styles.sottotitolo}>
             Il sito pubblico del nostro settore volley è in costruzione: presto
-            qui troverai le foto delle squadre e gli ultimi post dai nostri
-            canali social.
+            qui troverai gli ultimi post dai nostri canali social.
           </p>
         </div>
 
@@ -292,6 +334,33 @@ export default async function HomePubblicaPage() {
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* Story 18.4 (AC #3): nessuna sezione se nessun Gruppo ha caricato
+            una foto - stesso principio delle sezioni Sponsor/Partite sopra.
+            aria-labelledby (non aria-label), stesso motivo della sezione
+            Partite: un solo <h2> qui, nessun bisogno di ripeterne il testo. */}
+        {mostraFotoSquadra && (
+          <section
+            className={styles.sezioneFotoSquadra}
+            aria-labelledby="titolo-foto-squadra"
+          >
+            <h2 id="titolo-foto-squadra" className={styles.titoloSezione}>
+              Foto di squadra
+            </h2>
+            <div className={styles.listaFotoSquadra}>
+              {gruppiConFoto.map((gruppo) => (
+                <div className={styles.schedaFotoSquadra} key={gruppo.id}>
+                  <img
+                    className={styles.immagineFotoSquadra}
+                    src={`${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(gruppo.aggiornatoIl ?? "")}`}
+                    alt={`Foto di squadra di ${gruppo.nome}`}
+                  />
+                  <span className={styles.nomeGruppoFoto}>{gruppo.nome}</span>
+                </div>
+              ))}
             </div>
           </section>
         )}

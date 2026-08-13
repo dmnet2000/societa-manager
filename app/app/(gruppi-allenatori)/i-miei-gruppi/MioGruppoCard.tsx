@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { assegnaAtleta, creaEAssegnaAtleta } from "../gruppi/actions";
 import type { Atleta } from "../gruppi/AtletaAssegnata";
 import { AtletaTabellaRiga, type AtletaConStato } from "../gruppi/AtletaTabellaRiga";
+import { FotoSquadraForm } from "../gruppi/FotoSquadraForm";
 import styles from "./i-miei-gruppi.module.css";
 
 type Gruppo = {
@@ -24,10 +25,16 @@ export function MioGruppoCard({
   gruppo,
   atlete,
   atleteDisponibili,
+  fotoEsiste,
+  fotoUrl,
+  fotoAggiornataIl,
 }: {
   gruppo: Gruppo;
   atlete: AtletaConStato[];
   atleteDisponibili: Atleta[];
+  fotoEsiste: boolean;
+  fotoUrl: string;
+  fotoAggiornataIl: string | null;
 }) {
   const [state, formAction, pending] = useActionState(assegnaAtleta, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -60,6 +67,13 @@ export function MioGruppoCard({
     <section className={styles.card}>
       <h2>{gruppo.nome}</h2>
       <p className={styles.categoria}>{gruppo.categoria}</p>
+      <FotoSquadraForm
+        gruppoId={gruppo.id}
+        gruppoNome={gruppo.nome}
+        fotoEsiste={fotoEsiste}
+        fotoUrl={fotoUrl}
+        fotoAggiornataIl={fotoAggiornataIl}
+      />
       {atlete.length === 0 ? (
         <p className={styles.nessunaAtleta}>Nessuna Atleta assegnata.</p>
       ) : (
