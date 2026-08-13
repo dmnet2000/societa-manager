@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DURATA_COOKIE_CONSENSO_SECONDI,
   NOME_COOKIE_CONSENSO,
@@ -30,6 +31,7 @@ export function CookieBanner({
 }: {
   valoreIniziale: ValoreConsenso | undefined;
 }) {
+  const router = useRouter();
   const [visibile, setVisibile] = useState(valoreIniziale === undefined);
   // Review fix (code review Story 18.6, Acceptance Auditor): tenuto
   // separato da "visibile" per soddisfare l'AC #3 ("rivedere... la
@@ -58,9 +60,8 @@ export function CookieBanner({
     <div className={styles.banner} role="region" aria-label="Consenso cookie">
       <p className={styles.testo}>
         Questo sito usa cookie tecnici necessari al funzionamento. Con il tuo
-        consenso, potremo in futuro mostrare anche contenuti di terze parti
-        (es. post dai nostri canali social) che utilizzano cookie non
-        essenziali.
+        consenso, mostriamo anche contenuti di terze parti (es. post dai
+        nostri canali social) che utilizzano cookie non essenziali.
         {valoreCorrente && (
           <>
             {" "}
@@ -77,6 +78,16 @@ export function CookieBanner({
             impostaConsenso("rifiutato");
             setValoreCorrente("rifiutato");
             setVisibile(false);
+            // Story 18.5: senza questo refresh, app/page.tsx (Server
+            // Component force-dynamic che legge il cookie a ogni richiesta)
+            // non rigirerebbe finche' non arriva un'altra navigazione - la
+            // sezione social (gated sul consenso, AC #4) non
+            // apparirebbe/sparirebbe subito dopo la scelta. router.refresh()
+            // e' un soft refresh: rifa' girare i Server Component con il
+            // nuovo valore del cookie senza un reload completo, senza
+            // perdere lo stato client (es. il banner che si e' appena
+            // richiuso sopra).
+            router.refresh();
           }}
         >
           Rifiuta
@@ -88,6 +99,7 @@ export function CookieBanner({
             impostaConsenso("accettato");
             setValoreCorrente("accettato");
             setVisibile(false);
+            router.refresh();
           }}
         >
           Accetta

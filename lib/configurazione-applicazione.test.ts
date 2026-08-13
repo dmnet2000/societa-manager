@@ -19,6 +19,8 @@ const {
   salvaNomeSettore,
   leggiEmailSegreteria,
   salvaEmailSegreteria,
+  leggiUrlPaginaFacebook,
+  salvaUrlPaginaFacebook,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -139,6 +141,72 @@ describe("salvaEmailSegreteria", () => {
       where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, emailSegreteria: null },
       update: { emailSegreteria: null },
+    });
+  });
+});
+
+// Story 18.5: mirror esatto dei describe sopra per leggiEmailSegreteria/salvaEmailSegreteria.
+describe("leggiUrlPaginaFacebook", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored urlPaginaFacebook", async () => {
+    findUniqueMock.mockResolvedValue({
+      urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+    });
+
+    const result = await leggiUrlPaginaFacebook();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { urlPaginaFacebook: true },
+    });
+    expect(result).toBe("https://www.facebook.com/miasocieta");
+  });
+
+  it("returns null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiUrlPaginaFacebook();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ urlPaginaFacebook: null });
+
+    const result = await leggiUrlPaginaFacebook();
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("salvaUrlPaginaFacebook", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
+    await salvaUrlPaginaFacebook("https://www.facebook.com/miasocieta");
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: {
+        id: ID_CONFIGURAZIONE_APPLICAZIONE,
+        urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+      },
+      update: { urlPaginaFacebook: "https://www.facebook.com/miasocieta" },
+    });
+  });
+
+  it("allows clearing the value back to null", async () => {
+    await salvaUrlPaginaFacebook(null);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaFacebook: null },
+      update: { urlPaginaFacebook: null },
     });
   });
 });

@@ -1,3 +1,6 @@
+# last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 5 patch applicati: .iframeSocial senza width/height (bug reale, trovato indipendentemente da 2 layer - il feed Facebook sarebbe stato tagliato a ~150px in produzione, stesso precedente .mappaIncorporata/PalestraRow.tsx dimenticato), commento JSX duplicato in app/page.tsx, testo del CookieBanner non aggiornato ("in futuro" -> presente), test "allows DIRIGENTE" fuorviante rimosso, 2 test mancanti aggiunti (protocollo data:, confine esatto 500/501 caratteri). 5 defer (costo di router.refresh() a ogni click, nessuna ri-validazione URL a runtime, nessuna verifica del dominio Facebook, nessun allow/scrolling sull'iframe, nessuna CSP nel progetto). 2 scartati come rumore. 1109/1109 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
+# last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: implementata (dev-story workflow) - tutti e 7 i Task completati esattamente come pianificato in fase di analisi, nessuna deviazione sostanziale. Campo urlPaginaFacebook su ConfigurazioneApplicazione, Server Action ADMIN-o-DIRIGENTE salvaUrlPaginaFacebookAction, sezione Admin su /app/impostazioni, lib/embed-facebook.ts (Page Plugin ufficiale Facebook, nessun token), sezione pubblica in home con gating sul consenso cookie (Story 18.6), router.refresh() aggiunto a CookieBanner.tsx per la reattivita' senza reload completo. Rimosso l'ultimo residuo del paragrafo hero "in arrivo" e il relativo CSS morto (.sottotitolo). Client Prisma rigenerato dopo la modifica a schema.prisma (resta su 6.19.3, mai 7.x). Nessuna migrazione applicata al DB nel sandbox, da applicare in produzione come le precedenti. 1108/1108 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
+# last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: file di story creato (create-story workflow) - decisione presa con l'utente in apertura: solo Facebook (Page Plugin ufficiale, feed automatico reale via iframe, nessun token) in questa storia; Instagram rimandato a una story futura, nessun equivalente ufficiale gratuito per un feed multi-post senza token API (l'unica alternativa gratuita e' un singolo post fisso via permalink, comportamento diverso da un feed). Nuovo campo singolo urlPaginaFacebook su ConfigurazioneApplicazione (mirror di emailSegreteria, Story 9.31), Server Action ADMIN-o-DIRIGENTE (a differenza di quella email, ADMIN-only), nuova sezione pubblica scoped sia su "configurato" sia sul consenso cookie (Story 18.6, haAccettatoCookieNonEssenziali gia' scritta apposta per questa storia). Scoperta tecnica in analisi: CookieBanner.tsx (Story 18.6) scrive il cookie ma non innesca mai un refresh del Server Component genitore - nessun problema finche' nessuna sezione dipendeva dal consenso, questa storia lo rende visibile e richiede di aggiungere router.refresh() li'. Stato ready-for-dev.)
 # last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 1 decision-needed risolto con l'utente (gap RLS stagione su utente_possiede_gruppo vs risolviPossessoGruppo, rimandato: impatto nullo dato lo scoping per stagione della home pubblica). 5 patch applicati: verifica possesso riordinata prima della validazione immagine costosa (un Allenatore non autorizzato non paga piu' il costo del controllo magic-byte fino a 2MB), leggiInfoFotoSquadra rimossa come codice morto (mai chiamata da nessuna pagina, tutte usano il bulk elencaGruppiConFoto), bug CSS reale corretto (doppia linea separatrice nel blocco di un Gruppo su GruppoRow.tsx, rigaAllenatori non era piu' l'ultima riga ma manteneva ancora il border-bottom - trovato dall'Acceptance Auditor con citazione di riga precisa), 2 test mancanti aggiunti (file >2MB, prisma.gruppo.findUnique che lancia). 3 defer (paginazione list() a 100 oggetti - trovato indipendentemente da Blind Hunter ed Edge Case Hunter, nessun cleanup foto orfane, il gap RLS stagione di cui sopra). 5 scartati come rumore/pattern pre-esistenti gia' accettati altrove (cache-buster teorico, testo hero incondizionato - stesso trattamento di 18.2/18.3, contentType client-side - mirror di sponsor.ts/logo.ts, nessuna validazione client-side - convenzione consolidata, colSpan verificato corretto). 1093/1093 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done.)
 # last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: implementata (dev-story workflow) - tutti e 6 i Task completati. Bucket Storage pubblico "foto-squadra-gruppo" + RLS (funzione utente_possiede_gruppo, mirror di utente_possiede_allenatore), modulo lib/storage/foto-squadra.ts, Server Action caricaFotoSquadraAction in gruppi/actions.ts (ADMIN/DIRIGENTE/ALLENATORE-assegnato tramite risolviPossessoGruppo), UI di upload condivisa FotoSquadraForm.tsx su /app/gruppi e /app/i-miei-gruppi, nuova sezione pubblica "Foto di squadra" in app/page.tsx scoped alla stagione corrente. Corretta un'assunzione errata della fase di analisi: i wrapper Storage (sponsor.ts/logo.ts) sono in realta' gia' testati nel progetto (mock del client Storage) - 20 nuovi test scritti di conseguenza invece di saltarli. Nessuna migrazione applicata al DB nel sandbox (nessun accesso Supabase), da applicare in produzione come le precedenti migrazioni Storage. 1094/1094 test Vitest passati (+19), 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
 # last_updated: 2026-08-13 (Story 18.4 Foto di squadra per Gruppo: file di story creato (create-story workflow), stato ready-for-dev. Nessuna nuova colonna Prisma su Gruppo - esistenza/aggiornamento della foto derivati da Supabase Storage list(), stesso principio gia' stabilito per Sponsor/logo. Nuovo bucket pubblico "foto-squadra-gruppo" con path piatto (gruppoId, mirror di sponsor-banner) e nuova funzione RLS utente_possiede_gruppo (mirror di utente_possiede_allenatore, Story 9.12) per permettere l'upload anche all'Allenatore assegnato, non solo Admin/Dirigente - unico caso nell'Epic 18. Ricerca preliminare (Explore) ha isolato 2 lezioni gia' pagate nel progetto da applicare fin da subito: la policy SELECT deve essere pubblica gia' nella prima migrazione (senza, la home pubblica anonima non potrebbe leggere quali Gruppi hanno una foto - il bucket logo ha impiegato 2 migrazioni correttive per arrivarci), e le policy INSERT/UPDATE devono confrontare "name" direttamente (path piatto), non storage.foldername(name)[1] (convenzione nidificata di foto-profilo-*, non applicabile qui). Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
@@ -644,12 +647,52 @@ development_status:
   # errori tsc/eslint, build produzione riuscita. Status: done. Epic 18: 4
   # storie su 11 done (18.1/18.2/18.3/18.4), 18.6 done separatamente
   # (infrastruttura cookie), 18.5/18.7-18.11 ancora backlog.
+  #
+  # 2026-08-13: file di story 18.5 creato (create-story workflow) - decisione
+  # presa con l'utente in apertura: solo Facebook (Page Plugin ufficiale,
+  # feed automatico via iframe, nessun token) in questa storia; Instagram
+  # rimandato a una story futura (nessun equivalente ufficiale gratuito per
+  # un feed multi-post senza token API). Nuovo campo singolo
+  # urlPaginaFacebook su ConfigurazioneApplicazione (mirror di
+  # emailSegreteria, Story 9.31), Server Action ADMIN-o-DIRIGENTE (a
+  # differenza di quella email, ADMIN-only), sezione pubblica scoped sia su
+  # "configurato" sia sul consenso cookie (haAccettatoCookieNonEssenziali,
+  # gia' scritta apposta in Story 18.6 per questa storia). Scoperta tecnica:
+  # CookieBanner.tsx scrive il cookie ma non innesca mai un refresh del
+  # Server Component genitore - va aggiunto router.refresh() li' perche' la
+  # sezione social compaia senza reload dopo un'accettazione. Status:
+  # ready-for-dev.
+  #
+  # 2026-08-13: Story 18.5 implementata (dev-story workflow) - tutti e 7 i
+  # Task completati esattamente come pianificato, nessuna deviazione
+  # sostanziale. Client Prisma rigenerato dopo la modifica a schema.prisma
+  # (resta su 6.19.3). Rimosso anche .sottotitolo come CSS morto (paragrafo
+  # hero residuo tolto). Nessuna migrazione applicata al DB nel sandbox.
+  # 1108/1108 test Vitest passati, 0 errori tsc/eslint, build produzione
+  # riuscita. Status: review, in attesa di code review.
+  #
+  # 2026-08-13: Story 18.5 code review completata (Blind Hunter + Edge Case
+  # Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 5 patch
+  # applicati: .iframeSocial senza width/height (bug reale, trovato
+  # indipendentemente da 2 layer, avrebbe tagliato il feed a ~150px in
+  # produzione - stesso precedente .mappaIncorporata/PalestraRow.tsx
+  # dimenticato), commento JSX duplicato in app/page.tsx, testo del
+  # CookieBanner non aggiornato ("in futuro" -> presente), test "allows
+  # DIRIGENTE" fuorviante rimosso (mock non poteva distinguere i Ruoli), 2
+  # test mancanti aggiunti (protocollo data:, confine esatto 500/501
+  # caratteri). 5 defer (costo di router.refresh() a ogni click, nessuna
+  # ri-validazione URL a runtime, nessuna verifica del dominio Facebook,
+  # nessun allow/scrolling sull'iframe, nessuna CSP nel progetto). 2
+  # scartati come rumore (whitespace di prisma format su altri modelli,
+  # convenzione consolidata). 1109/1109 test Vitest passati, 0 errori
+  # tsc/eslint, build produzione riuscita. Status: done. Epic 18: 5 storie
+  # su 11 done (18.1-18.5), 18.6 done separatamente, 18.7-18.11 backlog.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
   18-3-partite-settimana-home: done
   18-4-foto-squadra-gruppo: done
-  18-5-post-social-home: backlog
+  18-5-post-social-home: done
   18-6-consenso-cookie: done
   18-7-menu-navigazione-multi-pagina: backlog
   18-8-pagina-squadre: backlog

@@ -44,3 +44,22 @@ export async function salvaEmailSegreteria(email: string | null): Promise<void> 
     update: { emailSegreteria: email },
   });
 }
+
+// Story 18.5: mirror esatto di leggiEmailSegreteria/salvaEmailSegreteria
+// sopra - URL della Pagina Facebook pubblica, usato dal Page Plugin
+// ufficiale in home pubblica (embed "ultimi post", nessun token/API).
+export async function leggiUrlPaginaFacebook(): Promise<string | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { urlPaginaFacebook: true },
+  });
+  return configurazione?.urlPaginaFacebook ?? null;
+}
+
+export async function salvaUrlPaginaFacebook(url: string | null): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaFacebook: url },
+    update: { urlPaginaFacebook: url },
+  });
+}

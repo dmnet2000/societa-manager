@@ -65,11 +65,10 @@
   max-width: 720px;
 }
 
-.sottotitolo {
-  max-width: 560px;
-  font-size: 15px;
-  line-height: 1.6;
-}
+/* Story 18.5: .sottotitolo (paragrafo "in arrivo" nell'hero) rimossa come
+   CSS morto - l'ultimo elemento che la usava (il paragrafo statico "presto
+   qui troverai...") e' stato rimosso da app/page.tsx in questa stessa
+   storia, nessun consumer rimasto. */
 
 /* Review fix (Story 18.6): padding-bottom aggiuntivo cosi' il banner/pulsante
    fisso "Preferenze cookie" (CookieBanner.module.css, position:fixed in
@@ -251,4 +250,33 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--color-text-primary);
+}
+
+/* Story 18.5 - stesso padding di sezione gia' stabilito sopra
+   (.sezionePartite/.sezioneFotoSquadra), nessun colore nuovo. L'iframe del
+   Page Plugin di Facebook ha una larghezza fissa nativa (width=340 nell'URL,
+   lib/embed-facebook.ts) - centrato invece di stirato a piena larghezza. */
+.sezioneSocial {
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Review fix: width/height espliciti - senza, un <iframe> ricade sul default
+   del browser (~300x150), tagliando il contenuto che il Page Plugin di
+   Facebook renderizza internamente a 340x500 (i parametri width/height
+   nell'URL, lib/embed-facebook.ts, controllano solo il contenuto DENTRO
+   l'iframe, non la scatola dell'elemento nella pagina ospite) - stesso
+   principio gia' applicato a .mappaIncorporata (PalestraRow.tsx, Story 9.6),
+   qui dimenticato nella prima stesura. Valori allineati 1:1 ai parametri
+   width/height dell'URL di embed. */
+.iframeSocial {
+  display: block;
+  width: 340px;
+  height: 500px;
+  max-width: 100%;
+  margin-top: var(--space-3);
+  border: none;
 }

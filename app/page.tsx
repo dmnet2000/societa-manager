@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
-import { leggiNomeSettore } from "@/lib/configurazione-applicazione";
+import {
+  leggiNomeSettore,
+  leggiUrlPaginaFacebook,
+} from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
 import {
@@ -15,7 +18,12 @@ import {
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
-import { NOME_COOKIE_CONSENSO, parseValoreConsenso } from "@/lib/cookie-consenso";
+import { costruisciLinkPaginaFacebookIncorporata } from "@/lib/embed-facebook";
+import {
+  NOME_COOKIE_CONSENSO,
+  haAccettatoCookieNonEssenziali,
+  parseValoreConsenso,
+} from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
 import styles from "./home-pubblica.module.css";
@@ -64,9 +72,13 @@ export default async function HomePubblicaPage() {
   // Nessuna dipendenza da Promise.all sopra: e' una lettura locale della
   // richiesta in corso, non una chiamata di rete/DB.
   const cookieStore = await cookies();
-  const valoreConsensoIniziale = parseValoreConsenso(
-    cookieStore.get(NOME_COOKIE_CONSENSO)?.value
-  );
+  const valoreCookieConsenso = cookieStore.get(NOME_COOKIE_CONSENSO)?.value;
+  const valoreConsensoIniziale = parseValoreConsenso(valoreCookieConsenso);
+  // Story 18.5 (AC #4): unico controllo da riusare per decidere se caricare
+  // uno strumento non essenziale (embed Facebook) - scritto apposta in
+  // Story 18.6 per questa storia, non ri-derivato confrontando di nuovo la
+  // stringa "accettato".
+  const consentitoSocial = haAccettatoCookieNonEssenziali(valoreCookieConsenso);
 
   // Story 18.3: confini lunedi'-domenica della sola settimana corrente
   // (convenzione italiana) - lunediDellaSettimana esportata da
@@ -90,8 +102,15 @@ export default async function HomePubblicaPage() {
   const lunediIso = formattaDataIso(lunediCorrente);
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
-  const [info, nomeSettore, sponsorAttivi, partiteSettimanaRaw, gruppiStagione, fotoPerGruppo] =
-    await Promise.all([
+  const [
+    info,
+    nomeSettore,
+    sponsorAttivi,
+    partiteSettimanaRaw,
+    gruppiStagione,
+    fotoPerGruppo,
+    urlPaginaFacebook,
+  ] = await Promise.all([
     leggiInfoLogo(supabase).catch((err) => {
       console.error(err);
       return { esiste: false, aggiornatoIl: null as string | null };
@@ -171,6 +190,12 @@ export default async function HomePubblicaPage() {
       console.error(err);
       return new Map<string, string | null>();
     }),
+    // Story 18.5 (AC #5): fail-soft, stesso pattern delle altre query
+    // pubbliche - un errore di lettura non deve rompere il resto della home.
+    leggiUrlPaginaFacebook().catch((err) => {
+      console.error(err);
+      return null;
+    }),
   ]);
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
@@ -227,18 +252,12 @@ export default async function HomePubblicaPage() {
       <main>
         <div className={styles.hero}>
           <h1>Benvenuti nel {nomeVisualizzato}</h1>
-          {/* Review fix (Acceptance Auditor, Story 18.2) + Story 18.3 + Story
-              18.4: "i nostri sponsor", "le partite della settimana" e "le
-              foto delle squadre" rimossi dall'elenco "in arrivo" man mano
-              che le sezioni corrispondenti diventano live sotto - lasciare
-              la vecchia frase avrebbe contraddetto la pagina stessa. Stesso
-              aggiornamento andra' ripetuto per i post social quando la
-              Story 18.5 li rende live (nessun meccanismo automatico lo
-              previene, e' testo statico). */}
-          <p className={styles.sottotitolo}>
-            Il sito pubblico del nostro settore volley è in costruzione: presto
-            qui troverai gli ultimi post dai nostri canali social.
-          </p>
+          {/* Story 18.5: ultimo residuo del paragrafo "in arrivo" rimosso -
+              Sponsor/Partite/Foto squadra (Story 18.2/18.3/18.4) avevano già
+              tolto la propria clausola, "gli ultimi post dai nostri canali
+              social" era l'ultima rimasta. Nessun testo sensato restava dopo
+              averla tolta, quindi l'intero paragrafo è stato rimosso invece
+              di lasciarne uno vuoto o riscritto senza contenuto. */}
         </div>
 
         {/* Story 18.2 (AC #2): nessuna sezione se non ci sono Sponsor attivi
@@ -362,6 +381,39 @@ export default async function HomePubblicaPage() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Story 18.5 (AC #3/#4): nessuna sezione se non configurato O se il
+            consenso ai cookie non essenziali non è stato dato - stesso
+            messaggio visivo (sezione assente) per entrambi i casi, nessuna
+            UI intermedia "accetta i cookie per vedere i post" (scelta di
+            semplicità, nessun AC la richiede). Nessuno script/iframe di
+            terze parti viene incluso nel markup quando questa condizione è
+            falsa (Story 18.6 AC #5). Condizione scritta come
+            "urlPaginaFacebook && consentitoSocial" (non una variabile
+            mostraSocial separata) per il narrowing diretto di TypeScript su
+            urlPaginaFacebook (string | null), senza un'asserzione non-null
+            nel src dell'iframe sotto. */}
+        {urlPaginaFacebook && consentitoSocial && (
+          <section className={styles.sezioneSocial} aria-labelledby="titolo-social">
+            <h2 id="titolo-social" className={styles.titoloSezione}>
+              Ultimi post
+            </h2>
+            {/* Page Plugin ufficiale di Facebook - iframe, nessun token/API
+                (lib/embed-facebook.ts). Stessi attributi già stabiliti per
+                l'unico altro iframe del progetto (PalestraRow.tsx, Story
+                9.6): loading lazy, title esplicito, referrerPolicy
+                "no-referrer". Nessun onError/fallback: un problema di
+                rendering lato Facebook resta contenuto nell'iframe stesso,
+                non si propaga al resto della pagina (AC #5). */}
+            <iframe
+              className={styles.iframeSocial}
+              src={costruisciLinkPaginaFacebookIncorporata(urlPaginaFacebook)}
+              title="Ultimi post dalla nostra Pagina Facebook"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
           </section>
         )}
       </main>

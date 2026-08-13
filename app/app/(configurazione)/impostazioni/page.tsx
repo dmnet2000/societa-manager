@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
-import { leggiEmailSegreteria } from "@/lib/configurazione-applicazione";
+import {
+  leggiEmailSegreteria,
+  leggiUrlPaginaFacebook,
+} from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
+import { PaginaFacebookForm } from "./PaginaFacebookForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -36,9 +40,14 @@ export default async function ImpostazioniPage() {
   // principio di ogni altro effetto collaterale non bloccante di questo
   // progetto (il .catch qui sostituisce il try/catch precedente per poter
   // stare dentro il Promise.all senza perdere il comportamento fail-soft).
-  const [ruoli, emailSegreteria] = await Promise.all([
+  const [ruoli, emailSegreteria, urlPaginaFacebook] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
     leggiEmailSegreteria().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
+    leggiUrlPaginaFacebook().catch((err) => {
       console.error(err);
       return null;
     }),
@@ -75,6 +84,19 @@ export default async function ImpostazioniPage() {
           </p>
         )}
         <EmailSegreteriaForm emailAttuale={emailSegreteria} />
+
+        <h2 className={styles.titoloSezione}>Pagina Facebook</h2>
+        {/* Story 18.5 (AC #3): stesso principio di avviso soft gia' usato
+            sopra per Email Segreteria - senza l'URL configurato, la sezione
+            "ultimi post" non compare in home pubblica. */}
+        {!urlPaginaFacebook && (
+          <p className={styles.avviso}>
+            Pagina Facebook non configurata: la sezione &quot;ultimi
+            post&quot; non comparirà sulla home pubblica finché non imposti
+            l&apos;URL qui sotto.
+          </p>
+        )}
+        <PaginaFacebookForm urlAttuale={urlPaginaFacebook} />
       </div>
     </main>
   );

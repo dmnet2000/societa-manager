@@ -70,8 +70,8 @@ enum Sesso {
 // differenza di Utente/UtenteRuolo. Onboarding-Import e' l'unico proprietario
 // dei campi identitari (AD-10) - nessun altro modulo scrive su queste colonne.
 model Atleta {
-  id                    String             @id @default(uuid())
-  codiceFiscale         String             @unique
+  id                    String              @id @default(uuid())
+  codiceFiscale         String              @unique
   nome                  String
   sesso                 Sesso
   dataNascita           DateTime
@@ -90,8 +90,8 @@ model Atleta {
   // (import federale, Story 1.2, non li fornisce).
   email                 String?
   cellulare             String?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
   genitori              GenitoreAtleta[]
   iscrizioni            Iscrizione[]
   tesseramenti          Tesseramento[]
@@ -161,13 +161,13 @@ model Allenatore {
 // mai per una figlia - senza questa colonna, un Utente con doppio Ruolo
 // Atleta+Genitore otterrebbe accesso allo storico presenze della figlia.
 model GenitoreAtleta {
-  id            String   @id @default(uuid())
-  utenteId      String
-  atletaId      String
-  autoAggancio  Boolean  @default(false)
-  utente        Utente   @relation(fields: [utenteId], references: [id], onDelete: Cascade)
-  atleta        Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  utenteId     String
+  atletaId     String
+  autoAggancio Boolean  @default(false)
+  utente       Utente   @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+  atleta       Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
 
   @@unique([utenteId, atletaId])
   @@map("genitori_atlete")
@@ -341,15 +341,20 @@ model ConfigurazioneSmtp {
 // sessione. Sempre via Prisma diretto (lib/configurazione-applicazione.ts),
 // stesso trattamento di Palestra/Gruppo/AnnoAgonistico.
 model ConfigurazioneApplicazione {
-  id              String   @id @default(uuid())
-  nomeSettore     String?
+  id                String   @id @default(uuid())
+  nomeSettore       String?
   // Story 9.31: destinatario unico dell'email di notifica upload Certificato
   // Medico (Story 4.3) - sostituisce la derivazione precedente da ogni
   // Utente con Ruolo Segreteria (lib/utenti/email-per-ruolo.ts, ancora
   // usata dal promemoria scadenza verso Dirigente, Story 4.6, invariato).
-  emailSegreteria String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  emailSegreteria   String?
+  // Story 18.5: URL della Pagina Facebook pubblica, usato per il Page
+  // Plugin ufficiale (embed "ultimi post" in home pubblica). Solo Facebook
+  // in questa storia - Instagram non ha un equivalente ufficiale gratuito
+  // per un feed multi-post senza token API (decisione presa con l'utente).
+  urlPaginaFacebook String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("configurazione_applicazione")
 }
@@ -394,18 +399,18 @@ model Campo {
 // relazione con Allenatore (molti-a-molti, tramite GruppoAllenatore) e'
 // stata aggiunta in Story 2.3.
 model Gruppo {
-  id               String             @id @default(uuid())
-  nome             String
-  categoria        String
-  annoAgonisticoId String
-  annoAgonistico   AnnoAgonistico     @relation(fields: [annoAgonisticoId], references: [id])
-  createdAt        DateTime           @default(now())
-  allenatori       GruppoAllenatore[]
-  atlete           GruppoAtleta[]
-  slot             Slot[]
+  id                String                   @id @default(uuid())
+  nome              String
+  categoria         String
+  annoAgonisticoId  String
+  annoAgonistico    AnnoAgonistico           @relation(fields: [annoAgonisticoId], references: [id])
+  createdAt         DateTime                 @default(now())
+  allenatori        GruppoAllenatore[]
+  atlete            GruppoAtleta[]
+  slot              Slot[]
   visibileDirigente GruppoVisibileDirigente?
-  campionati       Campionato[]
-  partite          Partita[]
+  campionati        Campionato[]
+  partite           Partita[]
 
   @@map("gruppi")
 }
