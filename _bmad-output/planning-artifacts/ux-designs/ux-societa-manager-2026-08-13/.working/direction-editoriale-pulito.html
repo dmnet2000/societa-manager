@@ -1,0 +1,507 @@
+<!--
+DIREZIONE 2 — EDITORIALE PULITO E SOCIAL
+Rationale: Registro da magazine sportivo moderno, vicino al tono calmo di volleyrocasaldepazzi.it e
+gassalespiacenza.it. Molto spazio bianco, tipografia sans-serif pulita con un solo accento condensato
+per i titoli, uso dell'accento colore limitato a dettagli (bordi sottili, tag, numeri maglia), fotografia
+presente in card equilibrate ma mai invasiva. Griglia regolare, bordi leggeri, nessuna diagonale.
+Palette: --azzurro:#00A3E0; --navy:#312682; --magenta:#E6007C; --bianco:#FFFFFF;
+         --carta:#FAFBFC; --inchiostro:#1A2233; --grigio:#6B7686; --linea:#E4E8EC;
+-->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Mogliano Volley — Direzione Editoriale Pulito</title>
+<style>
+  :root{
+    --azzurro:#00A3E0;
+    --navy:#312682;
+    --magenta:#E6007C;
+    --bianco:#FFFFFF;
+    --carta:#FAFBFC;
+    --inchiostro:#1A2233;
+    --grigio:#6B7686;
+    --linea:#E4E8EC;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    color:var(--inchiostro);
+    background:var(--bianco);
+  }
+  .frame{max-width:1280px;margin:0 auto;border:1px solid var(--linea);}
+  h1,h2,h3{
+    font-family:'Segoe UI Semibold','Segoe UI',Arial,sans-serif;
+    font-weight:700;
+    letter-spacing:-0.5px;
+  }
+
+  /* HEADER */
+  header.site{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 40px;
+    height:80px;
+    border-bottom:1px solid var(--linea);
+    background:var(--bianco);
+    position:sticky;top:0;
+  }
+  .logo-badge{display:flex;align-items:center;gap:12px;}
+  .logo-shield{
+    width:38px;height:38px;
+    border-radius:8px;
+    background:var(--azzurro);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--bianco);font-weight:700;font-size:13px;
+  }
+  .logo-word{font-size:17px;font-weight:700;letter-spacing:0;color:var(--inchiostro);}
+  .logo-word span{color:var(--grigio);font-weight:400;}
+  nav.main ul{list-style:none;display:flex;gap:40px;}
+  nav.main a{
+    color:var(--inchiostro);
+    text-decoration:none;
+    font-size:15px;
+    font-weight:500;
+    padding-bottom:4px;
+    border-bottom:2px solid transparent;
+    transition:border-color .2s ease, color .2s ease; /* micro-animazione: sottolineatura on hover */
+  }
+  nav.main a:hover{border-color:var(--azzurro);color:var(--azzurro);}
+  .accedi-link{
+    color:var(--grigio);
+    text-decoration:none;
+    font-size:13px;
+    padding:8px 16px;
+    border:1px solid var(--linea);
+    border-radius:20px;
+    transition:background .2s ease;
+  }
+  .accedi-link:hover{background:var(--carta);}
+
+  /* HERO */
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    gap:0;
+    border-bottom:1px solid var(--linea);
+  }
+  .hero-text{
+    padding:88px 56px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .hero-eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--azzurro);
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    margin-bottom:20px;
+  }
+  .hero-eyebrow::before{content:"";width:24px;height:2px;background:var(--azzurro);}
+  .hero h1{
+    font-size:48px;
+    line-height:1.1;
+    color:var(--inchiostro);
+    margin-bottom:20px;
+  }
+  .hero h1 span{color:var(--azzurro);}
+  .hero p.lead{
+    font-size:17px;
+    color:var(--grigio);
+    line-height:1.6;
+    max-width:440px;
+    margin-bottom:32px;
+  }
+  .btn-primary{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--inchiostro);
+    color:var(--bianco);
+    font-weight:600;
+    font-size:14px;
+    padding:14px 26px;
+    border-radius:8px;
+    text-decoration:none;
+    width:fit-content;
+    transition:background .2s ease; /* micro-animazione: colore on hover */
+  }
+  .btn-primary:hover{background:var(--azzurro);}
+
+  .hero-photo{
+    position:relative;
+    background:
+      repeating-linear-gradient(45deg, #EFF2F5, #EFF2F5 16px, #E4E8EC 16px, #E4E8EC 32px);
+    border-left:1px solid var(--linea);
+  }
+  .hero-photo::before{
+    content:"[FOTO SQUADRA]";
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--grigio);
+    font-size:13px;font-weight:600;letter-spacing:1px;
+  }
+
+  /* NEXT MATCH */
+  .next-match{
+    display:flex;
+    align-items:center;
+    gap:40px;
+    padding:24px 56px;
+    background:var(--carta);
+    border-bottom:1px solid var(--linea);
+  }
+  .next-match .tag{
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--bianco);
+    background:var(--navy);
+    padding:6px 14px;
+    border-radius:20px;
+  }
+  .next-match .teams{font-size:17px;font-weight:600;}
+  .next-match .meta{font-size:14px;color:var(--grigio);}
+  .countdown{display:flex;gap:8px;margin-left:auto;}
+  .countdown .box{
+    background:var(--bianco);
+    border:1px solid var(--linea);
+    border-radius:8px;
+    padding:8px 12px;
+    text-align:center;
+    min-width:52px;
+  }
+  .countdown .box b{display:block;font-size:18px;color:var(--inchiostro);}
+  .countdown .box small{font-size:9px;color:var(--grigio);letter-spacing:1px;text-transform:uppercase;}
+
+  /* SECTIONS */
+  .section{padding:72px 56px;}
+  .section-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    margin-bottom:40px;
+  }
+  .section-head h2{font-size:30px;}
+  .section-head p{color:var(--grigio);font-size:14px;margin-top:6px;}
+  .section-head a.all{
+    font-size:14px;font-weight:600;color:var(--azzurro);text-decoration:none;
+  }
+
+  /* SQUADRE */
+  .team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .team-card{
+    border:1px solid var(--linea);
+    border-radius:12px;
+    overflow:hidden;
+    background:var(--bianco);
+    transition:box-shadow .2s ease, transform .2s ease; /* micro-animazione: sollevamento sottile on hover */
+  }
+  .team-card:hover{box-shadow:0 8px 24px rgba(26,34,51,0.08);transform:translateY(-3px);}
+  .team-photo{
+    height:210px;
+    position:relative;
+    background:repeating-linear-gradient(45deg,#EFF2F5,#EFF2F5 14px,#E4E8EC 14px,#E4E8EC 28px);
+  }
+  .team-photo::before{
+    content:"[FOTO SQUADRA]";
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--grigio);font-size:12px;font-weight:600;
+  }
+  .team-info{padding:20px;}
+  .team-info-top{display:flex;align-items:center;justify-content:space-between;}
+  .team-info h3{font-size:18px;}
+  .team-number{
+    font-size:13px;font-weight:700;color:var(--azzurro);
+    border:1px solid var(--linea);
+    border-radius:6px;
+    padding:2px 8px;
+  }
+  .team-info .ruolo{font-size:13px;color:var(--grigio);margin-top:6px;}
+
+  /* PARTITE */
+  .match-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+  .match-card{
+    border:1px solid var(--linea);
+    border-radius:12px;
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .match-card .comp{font-size:12px;font-weight:600;color:var(--magenta);text-transform:uppercase;letter-spacing:1px;}
+  .match-teams{display:flex;align-items:center;gap:12px;font-size:19px;font-weight:700;}
+  .match-teams .vs{font-size:13px;color:var(--grigio);font-weight:400;}
+  .match-meta{display:flex;gap:20px;font-size:13px;color:var(--grigio);border-top:1px solid var(--linea);padding-top:14px;}
+
+  /* SPONSOR */
+  .sponsor{
+    background:var(--carta);
+    padding:48px 56px;
+    border-top:1px solid var(--linea);
+    border-bottom:1px solid var(--linea);
+    text-align:center;
+  }
+  .sponsor h3{font-size:12px;font-weight:600;letter-spacing:2px;color:var(--grigio);text-transform:uppercase;margin-bottom:24px;}
+  .sponsor-row{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}
+  .sponsor-box{
+    width:160px;height:70px;
+    background:var(--bianco);
+    border:1px solid var(--linea);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:var(--grigio);font-weight:600;
+  }
+
+  /* FOOTER */
+  footer.site{padding:56px 56px 32px;}
+  .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:36px;}
+  footer.site h4{font-size:13px;font-weight:700;margin-bottom:14px;}
+  footer.site p,footer.site a{font-size:14px;color:var(--grigio);line-height:1.8;text-decoration:none;}
+  .social-row{display:flex;gap:10px;margin-top:14px;}
+  .social-dot{
+    width:36px;height:36px;
+    border-radius:50%;
+    border:1px solid var(--linea);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;color:var(--grigio);
+    transition:border-color .2s, color .2s;
+  }
+  .social-dot:hover{border-color:var(--azzurro);color:var(--azzurro);}
+  .footer-bottom{border-top:1px solid var(--linea);padding-top:20px;font-size:12px;color:var(--grigio);text-align:center;}
+
+  /* MOBILE */
+  .mobile-demo-label{
+    text-align:center;padding:32px 0 12px;
+    font-size:12px;font-weight:600;color:var(--grigio);letter-spacing:2px;text-transform:uppercase;
+    background:var(--carta);
+  }
+  .mobile-frame{
+    width:375px;margin:0 auto 60px;
+    border:8px solid var(--inchiostro);
+    border-radius:28px;overflow:hidden;background:var(--bianco);
+    box-shadow:0 20px 40px rgba(0,0,0,0.1);
+  }
+  .m-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px;border-bottom:1px solid var(--linea);
+  }
+  .m-logo{font-size:15px;font-weight:700;}
+  .m-burger{display:flex;flex-direction:column;gap:4px;}
+  .m-burger span{width:20px;height:2px;background:var(--inchiostro);display:block;}
+  .m-hero{padding:32px 20px;}
+  .m-hero-eyebrow{font-size:11px;font-weight:600;color:var(--azzurro);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:block;}
+  .m-hero h1{font-size:26px;line-height:1.15;margin-bottom:14px;}
+  .m-hero-photo{
+    height:160px;margin:0 20px 20px;border-radius:12px;
+    position:relative;
+    background:repeating-linear-gradient(45deg,#EFF2F5,#EFF2F5 10px,#E4E8EC 10px,#E4E8EC 20px);
+  }
+  .m-hero-photo::before{
+    content:"[FOTO SQUADRA]";
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--grigio);font-size:10px;font-weight:600;
+  }
+  .m-nextmatch{background:var(--carta);padding:16px 20px;border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);}
+  .m-nextmatch .tag{font-size:10px;font-weight:600;background:var(--navy);color:var(--bianco);padding:4px 10px;border-radius:16px;}
+  .m-nextmatch .teams{font-size:15px;font-weight:700;margin-top:8px;}
+  .m-nextmatch .meta{font-size:12px;color:var(--grigio);margin-top:4px;}
+  .m-section{padding:24px 20px;}
+  .m-section h2{font-size:20px;margin-bottom:16px;}
+  .m-team-card{border:1px solid var(--linea);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .m-team-photo{
+    height:130px;position:relative;
+    background:repeating-linear-gradient(45deg,#EFF2F5,#EFF2F5 10px,#E4E8EC 10px,#E4E8EC 20px);
+  }
+  .m-team-photo::before{
+    content:"[FOTO SQUADRA]";
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--grigio);font-size:10px;font-weight:600;
+  }
+  .m-team-info{padding:14px 16px;}
+  .m-team-info h3{font-size:16px;}
+  .m-team-info .ruolo{font-size:12px;color:var(--grigio);margin-top:4px;}
+  .m-footer{padding:24px 20px;font-size:13px;color:var(--grigio);border-top:1px solid var(--linea);}
+
+  @media (max-width:900px){
+    nav.main{display:none;}
+    .hero{grid-template-columns:1fr;}
+    .team-grid{grid-template-columns:1fr;}
+    .match-grid{grid-template-columns:1fr;}
+    .footer-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <header class="site">
+    <div class="logo-badge">
+      <div class="logo-shield">MV</div>
+      <div class="logo-word">Mogliano <span>Volley</span></div>
+    </div>
+    <nav class="main">
+      <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Squadre</a></li>
+        <li><a href="#">Calendario</a></li>
+        <li><a href="#">Staff</a></li>
+        <li><a href="#">Contatti</a></li>
+      </ul>
+    </nav>
+    <a href="#" class="accedi-link">Accedi</a>
+  </header>
+
+  <section class="hero">
+    <div class="hero-text">
+      <span class="hero-eyebrow">Stagione 2026/27</span>
+      <h1>Una squadra, <span>un'unica</span> famiglia biancoazzurra</h1>
+      <p class="lead">Mogliano Volley porta in campo la Serie C femminile e il vivaio giovanile: scopri rose, risultati e prossime partite del nostro settore volley.</p>
+      <a href="#" class="btn-primary">Scopri le squadre →</a>
+    </div>
+    <div class="hero-photo"></div>
+  </section>
+
+  <div class="next-match">
+    <span class="tag">Prossima partita</span>
+    <span class="teams">Mogliano Volley vs Tv3i Spinea</span>
+    <span class="meta">Sab 22 Ago · 20:45 · PalaBanca, Mogliano V.to</span>
+    <div class="countdown">
+      <div class="box"><b>04</b><small>gg</small></div>
+      <div class="box"><b>12</b><small>ore</small></div>
+      <div class="box"><b>37</b><small>min</small></div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <h2>Le nostre squadre</h2>
+        <p>Rose, ruoli e numeri di maglia della stagione in corso</p>
+      </div>
+      <a href="#" class="all">Vedi tutte le squadre →</a>
+    </div>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-photo"></div>
+        <div class="team-info">
+          <div class="team-info-top"><h3>Giulia Bortoletto</h3><span class="team-number">N. 7</span></div>
+          <div class="ruolo">Schiacciatrice</div>
+        </div>
+      </div>
+      <div class="team-card">
+        <div class="team-photo"></div>
+        <div class="team-info">
+          <div class="team-info-top"><h3>Marco Zanetti</h3><span class="team-number">N. 1</span></div>
+          <div class="ruolo">Palleggiatore</div>
+        </div>
+      </div>
+      <div class="team-card">
+        <div class="team-photo"></div>
+        <div class="team-info">
+          <div class="team-info-top"><h3>Sara Furlan</h3><span class="team-number">N. 14</span></div>
+          <div class="ruolo">Libero</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0;">
+    <div class="section-head">
+      <div>
+        <h2>Partite della settimana</h2>
+        <p>Il calendario aggiornato delle prossime sfide</p>
+      </div>
+      <a href="#" class="all">Calendario completo →</a>
+    </div>
+    <div class="match-grid">
+      <div class="match-card">
+        <span class="comp">Serie C Femminile — Girone B</span>
+        <div class="match-teams">Mogliano <span class="vs">vs</span> Tv3i Spinea</div>
+        <div class="match-meta"><span>Sab 22 Ago · 20:45</span><span>PalaBanca, Mogliano V.to</span></div>
+      </div>
+      <div class="match-card">
+        <span class="comp">Under 16 — Amichevole</span>
+        <div class="match-teams">Mogliano <span class="vs">vs</span> Pallavolo Treviso</div>
+        <div class="match-meta"><span>Dom 23 Ago · 17:00</span><span>Palestra Comunale, Preganziol</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sponsor">
+    <h3>I nostri sponsor</h3>
+    <div class="sponsor-row">
+      <div class="sponsor-box">Sponsor 01</div>
+      <div class="sponsor-box">Sponsor 02</div>
+      <div class="sponsor-box">Sponsor 03</div>
+      <div class="sponsor-box">Sponsor 04</div>
+      <div class="sponsor-box">Sponsor 05</div>
+    </div>
+  </div>
+
+  <footer class="site">
+    <div class="footer-grid">
+      <div>
+        <h4>Mogliano Volley</h4>
+        <p>Via dello Sport, 12<br>31021 Mogliano Veneto (TV)<br>info@moglianovolley.it</p>
+        <div class="social-row">
+          <div class="social-dot">FB</div>
+          <div class="social-dot">IG</div>
+          <div class="social-dot">YT</div>
+        </div>
+      </div>
+      <div>
+        <h4>Menu</h4>
+        <p><a href="#">Home</a><br><a href="#">Squadre</a><br><a href="#">Calendario</a><br><a href="#">Staff</a></p>
+      </div>
+      <div>
+        <h4>Società</h4>
+        <p><a href="#">Contatti</a><br><a href="#">Accedi all'area riservata</a></p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Mogliano Volley — Settore Volley della Polisportiva Mogliano</div>
+  </footer>
+</div>
+
+<div class="mobile-demo-label">Stato secondario — Vista mobile (375px)</div>
+<div class="mobile-frame">
+  <div class="m-header">
+    <div class="m-logo">Mogliano Volley</div>
+    <div class="m-burger"><span></span><span></span><span></span></div>
+  </div>
+  <div class="m-hero">
+    <span class="m-hero-eyebrow">Stagione 2026/27</span>
+    <h1>Una squadra, un'unica famiglia biancoazzurra</h1>
+  </div>
+  <div class="m-hero-photo"></div>
+  <div class="m-nextmatch">
+    <span class="tag">Prossima partita</span>
+    <div class="teams">Mogliano vs Tv3i Spinea</div>
+    <div class="meta">Sab 22 Ago · 20:45 · PalaBanca</div>
+  </div>
+  <div class="m-section">
+    <h2>Squadre</h2>
+    <div class="m-team-card">
+      <div class="m-team-photo"></div>
+      <div class="m-team-info"><h3>Giulia Bortoletto</h3><div class="ruolo">Schiacciatrice · N. 7</div></div>
+    </div>
+    <div class="m-team-card">
+      <div class="m-team-photo"></div>
+      <div class="m-team-info"><h3>Marco Zanetti</h3><div class="ruolo">Palleggiatore · N. 1</div></div>
+    </div>
+  </div>
+  <div class="m-footer">
+    Mogliano Volley — Via dello Sport, 12, Mogliano V.to<br>info@moglianovolley.it
+  </div>
+</div>
+
+</body>
+</html>
