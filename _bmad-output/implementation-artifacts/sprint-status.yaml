@@ -1,3 +1,5 @@
+# last_updated: 2026-08-13 (Story 18.8 Pagina pubblica "Squadre": implementata (dev-story workflow) - tutti e 4 i Task completati esattamente come pianificato, nessuna deviazione. HeaderPubblico.tsx/FooterPubblico.tsx estratti self-contained con moduli CSS dedicati, app/page.tsx refactorizzato per usarli (classi .header/.brand/.logo/.nomeSettore/.accedi/.footer spostate, non copiate). Nuova rotta app/squadre/page.tsx: elenco Gruppi stagione corrente con Allenatori (select, mai include), foto quando presente, messaggio esplicito se nessun Gruppo. 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita (/squadre presente nell'output). Status: review, in attesa di code review.)
+# last_updated: 2026-08-13 (Story 18.8 Pagina pubblica "Squadre": file di story creato (create-story workflow) - decisione presa con l'utente in apertura: estrarre HeaderPubblico/FooterPubblico come componenti Server condivisi (refactorizzando anche app/page.tsx), invece di duplicare header/footer una terza volta - questa e' la seconda pagina pubblica reale, stesso punto in cui il progetto estrae sempre al "secondo consumer reale" (es. icone-azione-riga.tsx, Story 9.30). FooterPubblico prende un prop conSpazioCookieBanner (solo la home lo passa true) perche' CookieBanner resta scoped alla sola home per decisione gia' presa in Story 18.6, non riaperta qui. Query Gruppi/Allenatori mirror di /app/gruppi/page.tsx ma con select invece di include (convenzione public-page). Nessuna modifica a PUBLIC_ROUTES necessaria (rotta gia' pubblica da Story 18.7). Stato ready-for-dev.)
 # last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 2 patch applicati: le 4 rotte del menu (/squadre, /calendario, /staff, /contatti) aggiunte a PUBLIC_ROUTES (bug reale trovato indipendentemente da 2 layer - senza, un Visitatore anonimo veniva reindirizzato a /accedi invece del 404 previsto; deviazione dal piano originale, che rimandava questa aggiunta alle Story 18.8-18.11 - IMPORTANTE per quelle story: le 4 rotte sono GIA' in PUBLIC_ROUTES da questa storia, non serve riaggiungerle), bug di specificita' CSS .voce:hover vs .voceAttiva corretto. 4 defer, 6 scartati come rumore/comportamento atteso. 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
 # last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: implementata (dev-story workflow) - tutti e 4 i Task completati esattamente come pianificato. Nuovo Client Component riusabile NavPubblica.tsx (usePathname per lo stato attivo, mirror CookieBanner.tsx) montato in app/page.tsx tra brand e Accedi, con NavPubblica.module.css dedicato. Aggiunta non esplicitamente prevista dal piano: flex-wrap: wrap su .header (home-pubblica.module.css) oltre al wrap gia' interno al menu, necessario per garantire l'AC #4 su schermi molto stretti. Nessuna delle 4 rotte destinazione (/squadre, /calendario, /staff, /contatti) esiste ancora - atteso, PUBLIC_ROUTES non toccata (compito delle Story 18.8-18.11). 1109/1109 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
 # last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: file di story creato (create-story workflow) - fondativa per le Story 18.8-18.11 (Squadre/Calendario/Staff/Contatti, tutte ancora backlog): introduce solo la struttura del menu, i link a quelle 4 rotte punteranno a pagine non ancora esistenti (atteso, non un difetto). Decisione presa con l'utente in apertura: nessun drawer/hamburger (a differenza della NavBar interna, pensata per un elenco piu' lungo e ruolo-dipendente) - elenco orizzontale con flex-wrap su mobile, piu' semplice e sufficiente per 5 voci corte. Nuovo Client Component riusabile NavPubblica.tsx (usePathname per lo stato attivo, mirror del pattern CookieBanner.tsx Server+Client gia' stabilito) con il proprio CSS module dedicato (unica eccezione alla convenzione "un modulo per pagina" - qui giustificata perche' il componente sara' rimontato da piu' pagine future). PUBLIC_ROUTES non toccata da questa storia (le 4 rotte non esistono ancora, resta compito di ciascuna story 18.8-18.11). Stato ready-for-dev.)
@@ -717,6 +719,24 @@ development_status:
   # corretto. 4 defer, 6 scartati. 1113/1113 test Vitest passati, 0 errori
   # tsc/eslint, build produzione riuscita. Status: done. Epic 18: 6 storie
   # su 11 done (18.1-18.5, 18.7), 18.6 done separatamente, 18.8-18.11 backlog.
+  #
+  # 2026-08-13: file di story 18.8 creato (create-story workflow) - decisione
+  # presa con l'utente: estrarre HeaderPubblico/FooterPubblico ora (seconda
+  # pagina pubblica reale, stesso punto in cui il progetto estrae sempre al
+  # "secondo consumer reale"), refactorizzando anche app/page.tsx. Ogni
+  # componente self-contained (propria lettura leggiNomeSettore/leggiInfoLogo,
+  # nessun prop obbligatorio) - piccola ridondanza di letture accettata per
+  # mantenere ogni componente indipendente. FooterPubblico ha un prop
+  # conSpazioCookieBanner (solo la home true) perche' CookieBanner resta
+  # scoped alla sola home per decisione gia' presa in Story 18.6. Query
+  # Gruppi/Allenatori mirror di /app/gruppi/page.tsx con select invece di
+  # include. Nessuna modifica a PUBLIC_ROUTES necessaria. Status: ready-for-dev.
+  #
+  # 2026-08-13: Story 18.8 implementata (dev-story workflow) - tutti e 4 i
+  # Task completati esattamente come pianificato, nessuna deviazione.
+  # 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione
+  # riuscita (/squadre presente nell'output). Status: review, in attesa di
+  # code review.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
@@ -725,7 +745,7 @@ development_status:
   18-5-post-social-home: done
   18-6-consenso-cookie: done
   18-7-menu-navigazione-multi-pagina: done
-  18-8-pagina-squadre: backlog
+  18-8-pagina-squadre: review
   18-9-pagina-calendario: backlog
   18-10-pagina-staff: backlog
   18-11-pagina-contatti: backlog

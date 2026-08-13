@@ -1,0 +1,67 @@
+/* Story 18.8: modulo dedicato alla pagina /squadre, convenzione del
+   progetto "un CSS module per pagina, mai condiviso" (stabilita da Story
+   18.2 in poi) - non riusa home-pubblica.module.css. Stessi token
+   DESIGN.md gia' in uso nelle altre pagine pubbliche, nessun colore nuovo. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+.titolo {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+/* Stessa griglia di card gia' stabilita in home-pubblica.module.css
+   (.listaFotoSquadra/.listaPartite, Story 18.3/18.4) - non condivisa
+   (convenzione un modulo per pagina), ma stesso idioma visivo. */
+.listaGruppi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.schedaGruppo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.immagineGruppo {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.nomeGruppo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.categoriaGruppo {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.listaAllenatori {
+  margin-top: var(--space-1);
+  padding-left: var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}

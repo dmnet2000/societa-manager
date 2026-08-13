@@ -1,9 +1,7 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { leggiInfoLogo, urlPubblicoLogo } from "@/lib/storage/logo";
 import {
   leggiNomeSettore,
   leggiUrlPaginaFacebook,
@@ -26,7 +24,8 @@ import {
 } from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
-import { NavPubblica } from "./NavPubblica";
+import { HeaderPubblico } from "./HeaderPubblico";
+import { FooterPubblico } from "./FooterPubblico";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -104,7 +103,6 @@ export default async function HomePubblicaPage() {
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
   const [
-    info,
     nomeSettore,
     sponsorAttivi,
     partiteSettimanaRaw,
@@ -112,10 +110,12 @@ export default async function HomePubblicaPage() {
     fotoPerGruppo,
     urlPaginaFacebook,
   ] = await Promise.all([
-    leggiInfoLogo(supabase).catch((err) => {
-      console.error(err);
-      return { esiste: false, aggiornatoIl: null as string | null };
-    }),
+    // Story 18.8: leggiInfoLogo (usata per <img> del logo) spostata in
+    // HeaderPubblico.tsx, non piu' letta qui - questa pagina resta con la
+    // propria lettura di nomeSettore perche' la usa anche per il proprio
+    // <h1> (HeaderPubblico e FooterPubblico ora fanno la propria lettura
+    // indipendente per il proprio uso, stessa logica duplicata di proposito
+    // per restare componenti self-contained, vedi Dev Notes della storia).
     leggiNomeSettore().catch((err) => {
       console.error(err);
       return null;
@@ -235,24 +235,9 @@ export default async function HomePubblicaPage() {
 
   return (
     <>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          {info.esiste && (
-            <img
-              className={styles.logo}
-              src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
-              alt=""
-            />
-          )}
-          <span className={styles.nomeSettore}>{nomeVisualizzato}</span>
-        </div>
-        {/* Story 18.7 (AC #1): menu tra brand e Accedi - Accedi resta un
-            elemento separato (Story 18.1 AC #7), non una sesta voce. */}
-        <NavPubblica />
-        <Link href="/accedi" className={styles.accedi}>
-          Accedi
-        </Link>
-      </header>
+      {/* Story 18.8: estratto in HeaderPubblico.tsx (secondo consumer
+          reale, insieme a app/squadre/page.tsx). */}
+      <HeaderPubblico />
       <main>
         <div className={styles.hero}>
           <h1>Benvenuti nel {nomeVisualizzato}</h1>
@@ -421,11 +406,11 @@ export default async function HomePubblicaPage() {
           </section>
         )}
       </main>
-      <footer className={styles.footer}>
-        <p>
-          &copy; {new Date().getFullYear()} {nomeVisualizzato}
-        </p>
-      </footer>
+      {/* Story 18.8: estratto in FooterPubblico.tsx - conSpazioCookieBanner
+          perche' questa e' l'unica pagina che monta ancora <CookieBanner>
+          (decisione gia' presa in Story 18.6, non riaperta), quindi ha
+          bisogno del padding-bottom di sicurezza contro il pulsante fisso. */}
+      <FooterPubblico conSpazioCookieBanner />
       {/* Story 18.6: sempre montato (non condizionato come
           mostraSponsor/mostraPartite sopra) - deve restare raggiungibile
           come pulsante "Preferenze cookie" anche dopo la scelta (AC #3),

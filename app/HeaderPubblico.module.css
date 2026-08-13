@@ -1,0 +1,60 @@
+/* Story 18.8: modulo dedicato (non home-pubblica.module.css) - spostato da
+   li' insieme all'estrazione di HeaderPubblico.tsx, riusato da piu' pagine
+   pubbliche (app/page.tsx oggi, app/squadre/page.tsx e le future Story
+   18.9-18.11) - stesso principio gia' stabilito per NavPubblica.module.css
+   (Story 18.7): un componente condiviso ha il proprio modulo, eccezione
+   esplicita alla convenzione "un modulo per pagina" (quella vale per il
+   contenuto specifico di una pagina, non per un componente riusato). Stessi
+   token DESIGN.md gia' in uso, nessun colore nuovo. */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Story 18.7 (AC #4): flex-wrap sull'header (sopra) - con brand + menu (5
+   voci) + Accedi tutti sulla stessa riga, uno schermo molto stretto
+   potrebbe non avere spazio per tutti e tre; il wrap sull'header stesso li
+   impila su piu' righe invece di comprimerli/tagliarli, oltre al wrap gia'
+   interno al menu stesso (NavPubblica.module.css, .lista). */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.logo {
+  max-height: 40px;
+  max-width: 120px;
+}
+
+.nomeSettore {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.accedi {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+}
+
+.accedi:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

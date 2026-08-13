@@ -1,0 +1,20 @@
+/* Story 18.8: modulo dedicato, mirror del principio gia' spiegato in
+   HeaderPubblico.module.css (componente condiviso, non pagina specifica). */
+
+.footer {
+  padding: var(--space-4) var(--space-6);
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* Review fix (Story 18.6): padding-bottom aggiuntivo cosi' il banner/pulsante
+   fisso "Preferenze cookie" (CookieBanner.module.css, position:fixed in
+   basso) non copre mai il testo del copyright - 44px (altezza minima del
+   pulsante) + var(--space-4) di margine sopra e sotto. Applicato solo dove
+   il chiamante passa conSpazioCookieBanner (oggi solo la home, che monta
+   ancora <CookieBanner>) - le altre pagine pubbliche non hanno quel
+   pulsante fisso, quindi non hanno bisogno dello spazio extra. */
+.footerConCookieBanner {
+  padding-bottom: calc(44px + var(--space-4) * 2);
+}
