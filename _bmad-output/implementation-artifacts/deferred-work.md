@@ -735,3 +735,10 @@
 - `urlPaginaFacebookValido` verifica solo protocollo/lunghezza, non che l'host sia effettivamente un dominio Facebook — un Admin/Dirigente che incolla un URL sbagliato lo scopre visitando la home pubblica, nessun rischio di sicurezza; stesso livello di validazione già accettato per `linkEsterno`/`linkFipav`. [app/app/(configurazione)/impostazioni/actions.ts]
 - Nessun attributo `allow`/`scrolling` sull'iframe rispetto al markup ufficiale del Page Plugin di Facebook — cosmetico, da verificare/aggiustare con un test dal vivo quando l'URL reale della Pagina sarà configurato in produzione. [app/page.tsx]
 - Nessuna difesa in profondità (CSP/`frame-src`) oltre al condizionale JSX per il gating del consenso cookie — nessuna CSP esiste nel progetto (prima occorrenza in cui sarebbe rilevante), introdurne una è un lavoro trasversale più ampio di questa storia. [app/page.tsx]
+
+## Deferred from: code review of 18-7-menu-navigazione-multi-pagina (2026-08-13)
+
+- Nessuna verifica visiva reale (screenshot/test dal vivo) del comportamento di doppio wrap (`.header` + `.lista`) su schermo stretto — nessuno strumento di verifica visiva disponibile nel sandbox, demandato all'utente. [app/home-pubblica.module.css, app/NavPubblica.module.css]
+- `<Link>` prefetcha di default le 4 rotte del menu che non hanno ancora una pagina reale dietro — traffico di prefetch verso un 404 finché le Story 18.8-18.11 non le costruiscono, costo minimo e temporaneo. [app/NavPubblica.tsx]
+- Doppia fonte di verità per le 4 rotte future: l'array `VOCI` in `NavPubblica.tsx` e `PUBLIC_ROUTES` in `route-guard.ts` devono restare sincronizzati a mano, nessun collegamento tipizzato tra i due. [app/NavPubblica.tsx, lib/auth/route-guard.ts]
+- `font-size: 13.5px` in `.voce` senza riferimento a un token DESIGN.md, diverso dal vicino `.accedi` (12.5px) nello stesso header — nessun token di dimensione font esiste per questo contesto. [app/NavPubblica.module.css]

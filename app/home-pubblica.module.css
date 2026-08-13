@@ -5,6 +5,7 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
@@ -12,6 +13,12 @@
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Story 18.7 (AC #4): flex-wrap sull'header (sopra) - con brand + menu (5
+   voci) + Accedi tutti sulla stessa riga, uno schermo molto stretto
+   potrebbe non avere spazio per tutti e tre; il wrap sull'header stesso li
+   impila su piu' righe invece di comprimerli/tagliarli, oltre al wrap gia'
+   interno al menu stesso (NavPubblica.module.css, .lista). */
 
 .brand {
   display: flex;

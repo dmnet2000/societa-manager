@@ -1,3 +1,6 @@
+# last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 2 patch applicati: le 4 rotte del menu (/squadre, /calendario, /staff, /contatti) aggiunte a PUBLIC_ROUTES (bug reale trovato indipendentemente da 2 layer - senza, un Visitatore anonimo veniva reindirizzato a /accedi invece del 404 previsto; deviazione dal piano originale, che rimandava questa aggiunta alle Story 18.8-18.11 - IMPORTANTE per quelle story: le 4 rotte sono GIA' in PUBLIC_ROUTES da questa storia, non serve riaggiungerle), bug di specificita' CSS .voce:hover vs .voceAttiva corretto. 4 defer, 6 scartati come rumore/comportamento atteso. 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
+# last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: implementata (dev-story workflow) - tutti e 4 i Task completati esattamente come pianificato. Nuovo Client Component riusabile NavPubblica.tsx (usePathname per lo stato attivo, mirror CookieBanner.tsx) montato in app/page.tsx tra brand e Accedi, con NavPubblica.module.css dedicato. Aggiunta non esplicitamente prevista dal piano: flex-wrap: wrap su .header (home-pubblica.module.css) oltre al wrap gia' interno al menu, necessario per garantire l'AC #4 su schermi molto stretti. Nessuna delle 4 rotte destinazione (/squadre, /calendario, /staff, /contatti) esiste ancora - atteso, PUBLIC_ROUTES non toccata (compito delle Story 18.8-18.11). 1109/1109 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
+# last_updated: 2026-08-13 (Story 18.7 Menu di navigazione multi-pagina: file di story creato (create-story workflow) - fondativa per le Story 18.8-18.11 (Squadre/Calendario/Staff/Contatti, tutte ancora backlog): introduce solo la struttura del menu, i link a quelle 4 rotte punteranno a pagine non ancora esistenti (atteso, non un difetto). Decisione presa con l'utente in apertura: nessun drawer/hamburger (a differenza della NavBar interna, pensata per un elenco piu' lungo e ruolo-dipendente) - elenco orizzontale con flex-wrap su mobile, piu' semplice e sufficiente per 5 voci corte. Nuovo Client Component riusabile NavPubblica.tsx (usePathname per lo stato attivo, mirror del pattern CookieBanner.tsx Server+Client gia' stabilito) con il proprio CSS module dedicato (unica eccezione alla convenzione "un modulo per pagina" - qui giustificata perche' il componente sara' rimontato da piu' pagine future). PUBLIC_ROUTES non toccata da questa storia (le 4 rotte non esistono ancora, resta compito di ciascuna story 18.8-18.11). Stato ready-for-dev.)
 # last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 5 patch applicati: .iframeSocial senza width/height (bug reale, trovato indipendentemente da 2 layer - il feed Facebook sarebbe stato tagliato a ~150px in produzione, stesso precedente .mappaIncorporata/PalestraRow.tsx dimenticato), commento JSX duplicato in app/page.tsx, testo del CookieBanner non aggiornato ("in futuro" -> presente), test "allows DIRIGENTE" fuorviante rimosso, 2 test mancanti aggiunti (protocollo data:, confine esatto 500/501 caratteri). 5 defer (costo di router.refresh() a ogni click, nessuna ri-validazione URL a runtime, nessuna verifica del dominio Facebook, nessun allow/scrolling sull'iframe, nessuna CSP nel progetto). 2 scartati come rumore. 1109/1109 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done. Vedi dettaglio completo piu' sotto nel blocco Epic 18.)
 # last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: implementata (dev-story workflow) - tutti e 7 i Task completati esattamente come pianificato in fase di analisi, nessuna deviazione sostanziale. Campo urlPaginaFacebook su ConfigurazioneApplicazione, Server Action ADMIN-o-DIRIGENTE salvaUrlPaginaFacebookAction, sezione Admin su /app/impostazioni, lib/embed-facebook.ts (Page Plugin ufficiale Facebook, nessun token), sezione pubblica in home con gating sul consenso cookie (Story 18.6), router.refresh() aggiunto a CookieBanner.tsx per la reattivita' senza reload completo. Rimosso l'ultimo residuo del paragrafo hero "in arrivo" e il relativo CSS morto (.sottotitolo). Client Prisma rigenerato dopo la modifica a schema.prisma (resta su 6.19.3, mai 7.x). Nessuna migrazione applicata al DB nel sandbox, da applicare in produzione come le precedenti. 1108/1108 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review, in attesa di code review.)
 # last_updated: 2026-08-13 (Story 18.5 Sezione post social in home: file di story creato (create-story workflow) - decisione presa con l'utente in apertura: solo Facebook (Page Plugin ufficiale, feed automatico reale via iframe, nessun token) in questa storia; Instagram rimandato a una story futura, nessun equivalente ufficiale gratuito per un feed multi-post senza token API (l'unica alternativa gratuita e' un singolo post fisso via permalink, comportamento diverso da un feed). Nuovo campo singolo urlPaginaFacebook su ConfigurazioneApplicazione (mirror di emailSegreteria, Story 9.31), Server Action ADMIN-o-DIRIGENTE (a differenza di quella email, ADMIN-only), nuova sezione pubblica scoped sia su "configurato" sia sul consenso cookie (Story 18.6, haAccettatoCookieNonEssenziali gia' scritta apposta per questa storia). Scoperta tecnica in analisi: CookieBanner.tsx (Story 18.6) scrive il cookie ma non innesca mai un refresh del Server Component genitore - nessun problema finche' nessuna sezione dipendeva dal consenso, questa storia lo rende visibile e richiede di aggiungere router.refresh() li'. Stato ready-for-dev.)
@@ -687,6 +690,33 @@ development_status:
   # convenzione consolidata). 1109/1109 test Vitest passati, 0 errori
   # tsc/eslint, build produzione riuscita. Status: done. Epic 18: 5 storie
   # su 11 done (18.1-18.5), 18.6 done separatamente, 18.7-18.11 backlog.
+  #
+  # 2026-08-13: file di story 18.7 creato (create-story workflow) - decisione
+  # presa con l'utente: nessun drawer/hamburger, elenco orizzontale con
+  # flex-wrap su mobile. Nuovo Client Component riusabile NavPubblica.tsx
+  # (usePathname per lo stato attivo, mirror CookieBanner.tsx) con CSS
+  # module dedicato (unica eccezione alla convenzione "un modulo per
+  # pagina", giustificata perche' verra' rimontato dalle Story 18.8-18.11).
+  # PUBLIC_ROUTES non toccata (le 4 rotte destinazione non esistono ancora).
+  # Status: ready-for-dev.
+  #
+  # 2026-08-13: Story 18.7 implementata (dev-story workflow) - tutti e 4 i
+  # Task completati esattamente come pianificato. flex-wrap: wrap aggiunto
+  # anche a .header (non esplicitamente previsto, necessario per l'AC #4).
+  # 1109/1109 test Vitest passati, 0 errori tsc/eslint, build produzione
+  # riuscita. Status: review, in attesa di code review.
+  #
+  # 2026-08-13: Story 18.7 code review completata (Blind Hunter + Edge Case
+  # Hunter + Acceptance Auditor in parallelo) - 0 decision-needed. 2 patch:
+  # /squadre, /calendario, /staff, /contatti aggiunte a PUBLIC_ROUTES (bug
+  # reale, trovato indipendentemente da 2 layer - un Visitatore anonimo
+  # veniva reindirizzato a /accedi invece del 404 previsto; deviazione dal
+  # piano che rimandava questa aggiunta alle Story 18.8-18.11 - IMPORTANTE
+  # per quelle story: le 4 rotte sono GIA' pubbliche da questa storia, non
+  # vanno riaggiunte), bug di specificita' CSS .voce:hover vs .voceAttiva
+  # corretto. 4 defer, 6 scartati. 1113/1113 test Vitest passati, 0 errori
+  # tsc/eslint, build produzione riuscita. Status: done. Epic 18: 6 storie
+  # su 11 done (18.1-18.5, 18.7), 18.6 done separatamente, 18.8-18.11 backlog.
   epic-18: in-progress
   18-1-migrazione-dashboard-app-e-home-pubblica: done
   18-2-sponsor-pubblico-home: done
@@ -694,7 +724,7 @@ development_status:
   18-4-foto-squadra-gruppo: done
   18-5-post-social-home: done
   18-6-consenso-cookie: done
-  18-7-menu-navigazione-multi-pagina: backlog
+  18-7-menu-navigazione-multi-pagina: done
   18-8-pagina-squadre: backlog
   18-9-pagina-calendario: backlog
   18-10-pagina-staff: backlog

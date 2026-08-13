@@ -26,6 +26,7 @@ import {
 } from "@/lib/cookie-consenso";
 import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
+import { NavPubblica } from "./NavPubblica";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -245,6 +246,9 @@ export default async function HomePubblicaPage() {
           )}
           <span className={styles.nomeSettore}>{nomeVisualizzato}</span>
         </div>
+        {/* Story 18.7 (AC #1): menu tra brand e Accedi - Accedi resta un
+            elemento separato (Story 18.1 AC #7), non una sesta voce. */}
+        <NavPubblica />
         <Link href="/accedi" className={styles.accedi}>
           Accedi
         </Link>

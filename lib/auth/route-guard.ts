@@ -23,12 +23,30 @@ export const NON_AUTORIZZATO_PATH = "/app/non-autorizzato";
 // pubbliche di contenuto introdotte dalle story successive (18.2-18.5)
 // andranno aggiunte qui esplicitamente una per una, non sono coperte
 // automaticamente da questa voce.
+//
+// Review fix (Story 18.7, Blind Hunter + Edge Case Hunter, trovato
+// indipendentemente da entrambi): /squadre, /calendario, /staff, /contatti
+// aggiunte QUI, non dalle rispettive Story 18.8-18.11 come pianificato in
+// analisi - il piano originale assumeva che un Visitatore anonimo che
+// clicca una di queste voci nel nuovo menu (app/NavPubblica.tsx) ricevesse
+// un 404, ma senza questa voce getRouteDecision (lib/auth/route-decision.ts)
+// le tratta come rotte protette e reindirizza a /accedi (isAuthenticated
+// e' false per un Visitatore anonimo) - un login-wall silenzioso su un menu
+// che promette contenuto pubblico, peggiore del 404 originariamente
+// previsto. Nessuna pagina esiste ancora dietro questi path: Next.js
+// mostra la propria 404 predefinita (nessun app/not-found.tsx personalizzato
+// nel progetto) per una richiesta che supera il Proxy senza trovare una
+// rotta - lo stesso 404 gia' atteso dalla story, ora davvero raggiungibile.
 export const PUBLIC_ROUTES = [
   "/",
   "/accedi",
   "/registrati",
   "/recupera-password",
   "/reimposta-password",
+  "/squadre",
+  "/calendario",
+  "/staff",
+  "/contatti",
 ];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte

@@ -60,6 +60,20 @@ describe("getRouteDecision", () => {
     expect(isPublicRoute("/")).toBe(true);
   });
 
+  // Review fix (Story 18.7, Blind Hunter + Edge Case Hunter): senza
+  // l'aggiunta a PUBLIC_ROUTES, un Visitatore anonimo che clicca una voce
+  // del nuovo menu pubblico (app/NavPubblica.tsx) veniva reindirizzato a
+  // /accedi invece di ricevere la 404 prevista - nessuna pagina esiste
+  // ancora dietro questi path (Story 18.8-18.11), ma il Proxy deve
+  // comunque lasciarli passare perche' Next.js mostri la propria 404.
+  it.each(["/squadre", "/calendario", "/staff", "/contatti"])(
+    "allows unauthenticated access to '%s' (menu pubblico, Story 18.7 - nessuna pagina dietro ancora, la 404 e' di Next.js)",
+    async (pathname) => {
+      expect(await getRouteDecision(pathname, false, [])).toEqual({ action: "allow" });
+      expect(isPublicRoute(pathname)).toBe(true);
+    }
+  );
+
   // Review fix (Blind Hunter, Story 18.1): usava "/" prima che diventasse
   // pubblica (Story 18.1) - il test era diventato ridondante col test
   // pubblico appena sopra e non copriva piu' nessun caso di autenticazione
