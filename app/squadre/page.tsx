@@ -18,8 +18,16 @@ export default async function SquadrePage() {
     // Sola lettura (trovaAnnoAgonisticoCorrente, MAI risolviAnnoAgonisticoCorrente
     // in una pagina GET - side-effect di scrittura non ammissibile qui,
     // stesso vincolo gia' rispettato in /app/gruppi/page.tsx e in "/" per
-    // la sezione Foto squadra, Story 18.4).
-    trovaAnnoAgonisticoCorrente(),
+    // la sezione Foto squadra, Story 18.4). Review fix (Blind Hunter + Edge
+    // Case Hunter, trovato indipendentemente da entrambi): .catch() fail-soft
+    // aggiunto - senza, un errore DB transiente qui fa crashare l'intera
+    // pagina invece di degradare al messaggio esplicito gia' previsto
+    // dall'AC #4 (che qui si applica anche all'assenza di una stagione
+    // corrente, non solo a una stagione senza Gruppi).
+    trovaAnnoAgonisticoCorrente().catch((err) => {
+      console.error(err);
+      return null;
+    }),
   ]);
 
   const [gruppi, fotoPerGruppo] = await Promise.all([
@@ -79,13 +87,17 @@ export default async function SquadrePage() {
         ) : (
           <div className={styles.listaGruppi}>
             {gruppi.map((gruppo) => {
-              const aggiornatoIl = fotoPerGruppo.get(gruppo.id) ?? null;
+              // Review fix: un solo lookup nella Map (non has() + get()) -
+              // undefined distingue "nessuna foto" da "foto con
+              // aggiornatoIl null" altrettanto bene di has(), stesso
+              // risultato con una chiamata invece di due.
+              const fotoInfo = fotoPerGruppo.get(gruppo.id);
               return (
                 <div className={styles.schedaGruppo} key={gruppo.id}>
-                  {fotoPerGruppo.has(gruppo.id) && (
+                  {fotoInfo !== undefined && (
                     <img
                       className={styles.immagineGruppo}
-                      src={`${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(aggiornatoIl ?? "")}`}
+                      src={`${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(fotoInfo ?? "")}`}
                       alt={`Foto di squadra di ${gruppo.nome}`}
                     />
                   )}

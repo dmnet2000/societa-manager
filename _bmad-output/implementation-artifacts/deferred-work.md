@@ -742,3 +742,12 @@
 - `<Link>` prefetcha di default le 4 rotte del menu che non hanno ancora una pagina reale dietro — traffico di prefetch verso un 404 finché le Story 18.8-18.11 non le costruiscono, costo minimo e temporaneo. [app/NavPubblica.tsx]
 - Doppia fonte di verità per le 4 rotte future: l'array `VOCI` in `NavPubblica.tsx` e `PUBLIC_ROUTES` in `route-guard.ts` devono restare sincronizzati a mano, nessun collegamento tipizzato tra i due. [app/NavPubblica.tsx, lib/auth/route-guard.ts]
 - `font-size: 13.5px` in `.voce` senza riferimento a un token DESIGN.md, diverso dal vicino `.accedi` (12.5px) nello stesso header — nessun token di dimensione font esiste per questo contesto. [app/NavPubblica.module.css]
+
+## Deferred from: code review of 18-8-pagina-squadre (2026-08-13)
+
+- `leggiNomeSettore()` letta 3 volte per singola richiesta sulla home (pagina + `HeaderPubblico` + `FooterPubblico`), 2 volte su `/squadre` — decisione esplicita già presa con l'utente in fase di creazione della storia per mantenere i componenti self-contained, costo trascurabile su una tabella singleton non protetta da RLS. [app/HeaderPubblico.tsx, app/FooterPubblico.tsx, app/page.tsx]
+- `elencaGruppiConFoto(supabase)` eseguita anche quando `annoCorrente` è `null` (risultato mai usabile) — inefficienza minima, scala ridotta del progetto. [app/squadre/page.tsx]
+- Un fallimento della query Gruppi produce lo stesso messaggio "Nessuna squadra disponibile" di una stagione realmente vuota, indistinguibile per il visitatore/operatore — stesso pattern fail-soft già accettato in tutto il progetto per ogni query pubblica. [app/squadre/page.tsx]
+- Nessun `loading="lazy"` sul nuovo `<img>` della foto di squadra — stesso gap già presente nella sezione Foto squadra della home (Story 18.4), non introdotto da questa storia. [app/squadre/page.tsx]
+- `orderBy` su Gruppi/Allenatori senza tiebreaker su `id` — ordine non garantito stabile in caso di valori duplicati, stesso pattern già in uso in `/app/gruppi/page.tsx`. [app/squadre/page.tsx]
+- Il messaggio di stato vuoto non distingue "nessuna stagione corrente configurata" da "stagione corrente senza Gruppi" — due problemi amministrativi diversi con lo stesso testo visitatore, nessun AC richiede di distinguerli. [app/squadre/page.tsx]

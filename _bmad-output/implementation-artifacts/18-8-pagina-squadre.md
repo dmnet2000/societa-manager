@@ -4,7 +4,7 @@ baseline_commit: 7ac822a
 
 # Story 18.8: Pagina pubblica "Squadre"
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -66,6 +66,22 @@ so that possa conoscere l'organizzazione sportiva del settore volley.
   - [x] Nessun test diretto su `HeaderPubblico.tsx`/`FooterPubblico.tsx`/`app/squadre/page.tsx` (convenzione consolidata del progetto, nessun componente di rendering ne ha — stesso limite già accettato per `NavBarClient.tsx`/`CookieBanner.tsx`/`NavPubblica.tsx`).
   - [x] `npx vitest run`, `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti — in particolare verificare che il refactor di `app/page.tsx` (Task 1/2) non abbia rotto nulla della home pubblica esistente (nessun test diretto la copre, ma la build/tsc intercetterebbero un errore di markup/import).
 
+### Review Findings
+
+- [x] [Review][Patch] `trovaAnnoAgonisticoCorrente()` senza `.catch()` — un errore DB transiente faceva crashare l'intera pagina invece di degradare al messaggio esplicito già previsto dall'AC #4 [app/squadre/page.tsx] — trovato indipendentemente da Blind Hunter ed Edge Case Hunter. Risolto: `.catch()` fail-soft aggiunto, stesso principio già applicato alla query Gruppi subito sotto nello stesso file.
+- [x] [Review][Patch] Doppio lookup nella Map (`fotoPerGruppo.has(...)` seguito da `fotoPerGruppo.get(...)`) invece di un solo `get()` riusato [app/squadre/page.tsx] — trovato dal Blind Hunter. Risolto: un solo `get()`, `undefined` distingue "nessuna foto" con la stessa precisione di `has()`.
+- [x] [Review][Patch] Commento di `squadre.module.css` afferma "un CSS module per pagina, mai condiviso" senza citare l'eccezione già introdotta nello stesso commit (`HeaderPubblico.module.css`/`FooterPubblico.module.css`) — un futuro lettore che apre questo file per primo riceve un'affermazione fuorviante della regola [app/squadre/squadre.module.css] — trovato dal Blind Hunter. Risolto: commento aggiornato con il rimando esplicito.
+- [x] [Review][Defer] `leggiNomeSettore()` letta 3 volte per singola richiesta sulla home (pagina + `HeaderPubblico` + `FooterPubblico`), 2 volte su `/squadre` — **non un difetto**: decisione esplicita già presa con l'utente in fase di creazione di questa storia (vedi Dev Notes "Estrazione HeaderPubblico/FooterPubblico"), per mantenere i componenti self-contained e riusabili senza prop-drilling. Costo trascurabile su una tabella singleton non protetta da RLS.
+- [x] [Review][Defer] `elencaGruppiConFoto(supabase)` eseguita anche quando `annoCorrente` è `null` (il suo risultato non può mai essere usato, `gruppi` è già `[]`) [app/squadre/page.tsx] — deferred, inefficienza minima, scala ridotta del progetto.
+- [x] [Review][Defer] Un fallimento della query Gruppi (`.catch(() => [])`) produce lo stesso messaggio "Nessuna squadra disponibile" di una stagione realmente vuota — indistinguibile per il visitatore/operatore [app/squadre/page.tsx] — deferred, stesso pattern fail-soft già accettato in tutto il progetto per ogni query pubblica.
+- [x] [Review][Defer] Nessun `loading="lazy"` sul nuovo `<img>` della foto di squadra [app/squadre/page.tsx] — deferred, stesso gap già presente nella sezione Foto squadra della home (Story 18.4), non introdotto né peggiorato da questa storia.
+- [x] [Review][Defer] `orderBy` su Gruppi/Allenatori senza tiebreaker su `id` — ordine non garantito stabile in caso di valori duplicati [app/squadre/page.tsx] — deferred, nessuno scenario concreto di duplicazione nota, stesso pattern già in uso in `/app/gruppi/page.tsx`.
+- [x] [Review][Defer] Il messaggio di stato vuoto non distingue "nessuna stagione corrente configurata" da "stagione corrente senza Gruppi" — due problemi amministrativi diversi con lo stesso testo visitatore [app/squadre/page.tsx] — deferred, nessun AC richiede di distinguerli.
+- [x] [Review][Dismiss] `conSpazioCookieBanner` come "leaky abstraction" — decisione di design già presa esplicitamente nei Dev Notes della storia (approvata in fase di creazione), non un difetto.
+- [x] [Review][Dismiss] Fail-soft con solo `console.error`, nessun error-reporting condiviso — convenzione già stabilita in ogni query pubblica del progetto, non specifica di questa storia.
+- [x] [Review][Dismiss] `createClient()` in `HeaderPubblico.tsx` non avvolto in try/catch — stesso identico pattern già presente ovunque nel progetto (mai guardato in nessuna pagina), nessun precedente di guardia su questa chiamata.
+- [x] [Review][Dismiss] Possibile disallineamento tra `HeaderPubblico` e `FooterPubblico` se `nomeSettore` cambia a metà richiesta — teorico, esplicitamente etichettato come tale dallo stesso reviewer, nessuno scenario concreto.
+
 ## Dev Notes
 
 ### Decisioni di analisi (vedi `epics.md#Epic 18`, Story 18.8)
@@ -123,14 +139,16 @@ claude-sonnet-5
 - `FooterPubblico` riceve `conSpazioCookieBanner` (default `false`) — solo `app/page.tsx` lo passa `true`, `/squadre` no (`CookieBanner` resta scoped alla sola home, decisione già presa in Story 18.6, non riaperta qui).
 - Classi CSS `.header`/`.brand`/`.logo`/`.nomeSettore`/`.accedi`/`.footer` **spostate** (non copiate) da `home-pubblica.module.css` a `HeaderPubblico.module.css`/`FooterPubblico.module.css` — nessun residuo lasciato in `home-pubblica.module.css`, verificato.
 - Query Gruppi/Allenatori in `app/squadre/page.tsx` con `select` esplicito (mai `include`), mirror del filtro/ordinamento di `/app/gruppi/page.tsx` — nessun campo di `Atleta`/`GruppoAtleta` toccato dalla query, AC #2 soddisfatto per costruzione.
+- **Code review completata** (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) — 0 decision-needed, 3 patch applicati (`trovaAnnoAgonisticoCorrente()` senza `.catch()` — trovato indipendentemente da 2 layer, minacciava direttamente l'intento dell'AC #4; doppio lookup Map; commento CSS fuorviante sulla convenzione "un modulo per pagina"), 6 defer (letture triplicate di `nomeSettore` — decisione già presa esplicitamente in fase di analisi, non un difetto; query Foto squadra eseguita a vuoto quando non c'è stagione; fallimento query indistinguibile da stagione vuota; nessun `loading="lazy"`; `orderBy` senza tiebreaker; messaggio vuoto non distingue le due cause), 4 scartati come rumore/decisioni già prese/convenzioni consolidate. Vedi Review Findings sopra.
 - Verifica: `npx vitest run` (1113/1113 passati, nessun nuovo test necessario — convenzione consolidata "nessun test diretto su componenti di rendering"), `npx tsc --noEmit`, `npm run lint` (0 errori, solo warning `<img>`/`no-img-element` preesistenti + 2 nuovi coerenti con lo stesso stile), `npm run build` puliti (`/squadre` compare correttamente come rotta dinamica nell'output).
 
 ### File List
 
 - Nuovi: `app/HeaderPubblico.tsx`, `app/HeaderPubblico.module.css`, `app/FooterPubblico.tsx`, `app/FooterPubblico.module.css`, `app/squadre/page.tsx`, `app/squadre/squadre.module.css`.
-- Modificati: `app/page.tsx` (rimosso il markup inline di header/footer, sostituito con `<HeaderPubblico />`/`<FooterPubblico conSpazioCookieBanner />`; rimossi import `leggiInfoLogo`/`urlPubblicoLogo`/`Link` non più usati; rimossa `info` dal `Promise.all`), `app/home-pubblica.module.css` (rimosse le classi spostate: `.header`, `.brand`, `.logo`, `.nomeSettore`, `.accedi`, `.footer`).
+- Modificati: `app/page.tsx` (rimosso il markup inline di header/footer, sostituito con `<HeaderPubblico />`/`<FooterPubblico conSpazioCookieBanner />`; rimossi import `leggiInfoLogo`/`urlPubblicoLogo`/`Link` non più usati; rimossa `info` dal `Promise.all`), `app/home-pubblica.module.css` (rimosse le classi spostate: `.header`, `.brand`, `.logo`, `.nomeSettore`, `.accedi`, `.footer`), `app/squadre/page.tsx` (review fix: `.catch()` su `trovaAnnoAgonisticoCorrente()`, lookup Map singolo), `app/squadre/squadre.module.css` (review fix: commento chiarito).
 
 ## Change Log
 
 - 2026-08-13: File di story creato (create-story workflow) — decisione presa con l'utente in apertura: estrarre `HeaderPubblico`/`FooterPubblico` come componenti Server condivisi (refactorizzando anche `app/page.tsx`) invece di duplicare header/footer una terza volta, stesso principio già seguito nel progetto per l'estrazione "al secondo consumer reale". `CookieBanner` resta scoped alla sola home (decisione già presa in Story 18.6, non riaperta). Stato ready-for-dev.
 - 2026-08-13: Implementata (dev-story workflow) - tutti e 4 i Task completati. `HeaderPubblico.tsx`/`FooterPubblico.tsx` estratti (self-contained, propria lettura dati) con moduli CSS dedicati, `app/page.tsx` refactorizzato per usarli. Nuova rotta `app/squadre/page.tsx`: elenco Gruppi della stagione corrente con Allenatori assegnati (query `select`, mai `include`), foto di squadra quando presente, messaggio esplicito se nessun Gruppo esiste. 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita (`/squadre` presente nell'output). Status: review.
+- 2026-08-13: Code review completata (Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo). 0 decision-needed. 3 patch applicati: `trovaAnnoAgonisticoCorrente()` senza `.catch()` corretto (trovato indipendentemente da 2 layer, minacciava l'intento dell'AC #4 — un errore DB crashava l'intera pagina invece di degradare al messaggio esplicito), doppio lookup Map ridotto a uno, commento CSS su `squadre.module.css` chiarito. 6 defer (letture triplicate di `nomeSettore` — decisione già presa, non un difetto; query Foto squadra a vuoto senza stagione; fallimento query indistinguibile da stagione vuota; nessun `loading="lazy"`; `orderBy` senza tiebreaker; messaggio vuoto non distingue le due cause). 4 scartati come rumore/decisioni già prese/convenzioni consolidate. 1113/1113 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: done.

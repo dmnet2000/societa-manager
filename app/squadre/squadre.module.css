@@ -1,6 +1,10 @@
-/* Story 18.8: modulo dedicato alla pagina /squadre, convenzione del
-   progetto "un CSS module per pagina, mai condiviso" (stabilita da Story
-   18.2 in poi) - non riusa home-pubblica.module.css. Stessi token
+/* Story 18.8: modulo dedicato al CONTENUTO della pagina /squadre,
+   convenzione del progetto "un CSS module per pagina, mai condiviso"
+   (stabilita da Story 18.2 in poi) - non riusa home-pubblica.module.css.
+   Review fix: la convenzione vale per il contenuto specifico di una
+   pagina, non per i componenti condivisi (HeaderPubblico.module.css/
+   FooterPubblico.module.css/NavPubblica.module.css, ciascuno con la
+   propria eccezione esplicita gia' documentata li'). Stessi token
    DESIGN.md gia' in uso nelle altre pagine pubbliche, nessun colore nuovo. */
 
 .main {
