@@ -115,7 +115,7 @@ export default async function CalendarioPage() {
                               href={linkNaviga}
                               target="_blank"
                               rel="noopener noreferrer"
-                              aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
+                              aria-label={`Naviga verso ${partita.impianto || "il luogo della partita"}`}
                             >
                               Naviga
                             </a>

@@ -4,7 +4,7 @@ baseline_commit: a957215
 
 # Story 18.10: Pagina pubblica "Staff"
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,9 +23,9 @@ so that possa conoscere lo staff tecnico della società.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Query pubblica sola lettura Allenatore → Gruppi, lato opposto di `/squadre` (AC: #1, #2, #3)
-  - [ ] `annoCorrente` risolto con `trovaAnnoAgonisticoCorrente()` (`@/lib/anno-agonistico`), **mai** `risolviAnnoAgonisticoCorrente` (side-effect di scrittura non ammissibile in una pagina GET — stesso vincolo già rispettato in `app/squadre/page.tsx`, Story 18.8, e in `app/calendario/page.tsx`, Story 18.9). Applicare `.catch()` fail-soft **fin da subito** (non rimandarlo a un fix di code review, come accaduto nella prima stesura di Story 18.8): `trovaAnnoAgonisticoCorrente().catch((err) => { console.error(err); return null; })`.
-  - [ ] Query `prisma.allenatore.findMany` con **`select` esplicito** (mai `include`, convenzione public-page stabilita da Story 18.2 in poi) — **lato opposto** della relazione `GruppoAllenatore` rispetto a `app/squadre/page.tsx` (che parte da `Gruppo` e annida `allenatori`): qui si parte da `Allenatore` e si filtra/annida `gruppi`. Mirror diretto della forma già usata in `app/app/(gruppi-allenatori)/i-miei-gruppi/page.tsx` (che filtra `Gruppo` per un singolo `allenatoreId`), ma invertita e senza scoping per singolo Allenatore:
+- [x] Task 1: Query pubblica sola lettura Allenatore → Gruppi, lato opposto di `/squadre` (AC: #1, #2, #3)
+  - [x] `annoCorrente` risolto con `trovaAnnoAgonisticoCorrente()` (`@/lib/anno-agonistico`), **mai** `risolviAnnoAgonisticoCorrente` (side-effect di scrittura non ammissibile in una pagina GET — stesso vincolo già rispettato in `app/squadre/page.tsx`, Story 18.8, e in `app/calendario/page.tsx`, Story 18.9). Applicare `.catch()` fail-soft **fin da subito** (non rimandarlo a un fix di code review, come accaduto nella prima stesura di Story 18.8): `trovaAnnoAgonisticoCorrente().catch((err) => { console.error(err); return null; })`.
+  - [x] Query `prisma.allenatore.findMany` con **`select` esplicito** (mai `include`, convenzione public-page stabilita da Story 18.2 in poi) — **lato opposto** della relazione `GruppoAllenatore` rispetto a `app/squadre/page.tsx` (che parte da `Gruppo` e annida `allenatori`): qui si parte da `Allenatore` e si filtra/annida `gruppi`. Mirror diretto della forma già usata in `app/app/(gruppi-allenatori)/i-miei-gruppi/page.tsx` (che filtra `Gruppo` per un singolo `allenatoreId`), ma invertita e senza scoping per singolo Allenatore:
     ```ts
     annoCorrente
       ? prisma.allenatore
@@ -52,32 +52,32 @@ so that possa conoscere lo staff tecnico della società.
       : Promise.resolve([])
     ```
     Il `where` sull'Allenatore (`gruppi: { some: { gruppo: { annoAgonisticoId: ... } } } }`) è ciò che realizza **da solo** l'AC #2 (un Allenatore senza alcun Gruppo nella stagione corrente non compare mai nel risultato — non serve un `.filter()` applicativo dopo). Il `where` **ripetuto** dentro il `select` di `gruppi` serve a **restringere anche i Gruppi annidati** alla sola stagione corrente (senza di esso, un Allenatore con Gruppi in stagioni diverse mostrerebbe anche i Gruppi di stagioni passate insieme a quelli correnti — un Allenatore può avere storicamente più Gruppi in Anni Agonistici diversi, mai filtrati automaticamente dalla sola relazione).
-  - [ ] AC #3 per costruzione: il `select` non tocca mai `codiceFiscale`, `utenteId`, né alcun campo di `Utente` (email) — non serve alcun filtro applicativo successivo, la query stessa è il confine di sicurezza (stesso principio già stabilito per `Atleta`/`GruppoAtleta` in Story 18.8, qui applicato a `Allenatore.codiceFiscale`/`Utente.email`).
-  - [ ] Nessuna sessione/`createClient()` necessaria in questa pagina: `Allenatore`/`GruppoAllenatore` non sono protetti da RLS (AD-9, Prisma diretto), e a differenza di `/squadre` questa pagina non mostra foto di squadra — solo Prisma.
+  - [x] AC #3 per costruzione: il `select` non tocca mai `codiceFiscale`, `utenteId`, né alcun campo di `Utente` (email) — non serve alcun filtro applicativo successivo, la query stessa è il confine di sicurezza (stesso principio già stabilito per `Atleta`/`GruppoAtleta` in Story 18.8, qui applicato a `Allenatore.codiceFiscale`/`Utente.email`).
+  - [x] Nessuna sessione/`createClient()` necessaria in questa pagina: `Allenatore`/`GruppoAllenatore` non sono protetti da RLS (AD-9, Prisma diretto), e a differenza di `/squadre` questa pagina non mostra foto di squadra — solo Prisma.
 
-- [ ] Task 2: Nuova pagina `/staff` — **sostituire**, non estendere, il placeholder (AC: #1, #2, #4)
-  - [ ] **Sostituire interamente** `app/staff/page.tsx` (oggi 20 righe, monta solo `<HeaderPubblico />` + `<InSviluppoPubblico titolo="Staff" />` + `<FooterPubblico />`, stopgap del 2026-08-13). Il commento nel file placeholder dice esplicitamente "sostituire con la pagina reale quando la Story 18.10 verrà implementata, non estendere questo file" — rimuovere completamente l'import e l'uso di `InSviluppoPubblico`.
-  - [ ] `export const dynamic = "force-dynamic"` (mantenuto identico al placeholder — i dati possono cambiare in qualunque momento dalla console Admin, stesso motivo già in uso su `/`, `/squadre`).
-  - [ ] Markup: `<HeaderPubblico />`, `<main>` con `<h1>Staff</h1>` + elenco `staff-list`, `<FooterPubblico />` — **nessun** `conSpazioCookieBanner` e nessun `<CookieBanner>` montato (stessa scelta già fatta per `/squadre` e `/calendario`: il banner cookie resta scoped alla sola home, decisione presa nella code review di Story 18.6, non riaperta qui).
-  - [ ] Per ogni Allenatore risultante: una riga con nome+cognome, e sotto l'elenco dei nomi dei Gruppi (`gruppo.nome`) a cui è assegnato nella stagione corrente — nessun elenco vuoto possibile per costruzione (Task 1 garantisce che ogni Allenatore nel risultato ha `gruppi.length >= 1`).
+- [x] Task 2: Nuova pagina `/staff` — **sostituire**, non estendere, il placeholder (AC: #1, #2, #4)
+  - [x] **Sostituire interamente** `app/staff/page.tsx` (oggi 20 righe, monta solo `<HeaderPubblico />` + `<InSviluppoPubblico titolo="Staff" />` + `<FooterPubblico />`, stopgap del 2026-08-13). Il commento nel file placeholder dice esplicitamente "sostituire con la pagina reale quando la Story 18.10 verrà implementata, non estendere questo file" — rimuovere completamente l'import e l'uso di `InSviluppoPubblico`.
+  - [x] `export const dynamic = "force-dynamic"` (mantenuto identico al placeholder — i dati possono cambiare in qualunque momento dalla console Admin, stesso motivo già in uso su `/`, `/squadre`).
+  - [x] Markup: `<HeaderPubblico />`, `<main>` con `<h1>Staff</h1>` + elenco `staff-list`, `<FooterPubblico />` — **nessun** `conSpazioCookieBanner` e nessun `<CookieBanner>` montato (stessa scelta già fatta per `/squadre` e `/calendario`: il banner cookie resta scoped alla sola home, decisione presa nella code review di Story 18.6, non riaperta qui).
+  - [x] Per ogni Allenatore risultante: una riga con nome+cognome, e sotto l'elenco dei nomi dei Gruppi (`gruppo.nome`) a cui è assegnato nella stagione corrente — nessun elenco vuoto possibile per costruzione (Task 1 garantisce che ogni Allenatore nel risultato ha `gruppi.length >= 1`).
 
-- [ ] Task 3: Stato vuoto esplicito (AC: #4)
-  - [ ] Quando `allenatori.length === 0` (nessun Allenatore assegnato a un Gruppo nella stagione corrente, incluso il caso `annoCorrente` stesso assente/null) → messaggio esplicito al posto dell'elenco, testo proposto: **"Nessun Allenatore assegnato a un Gruppo per la stagione in corso."** (coerente col tono diretto già stabilito in `EXPERIENCE.md` → Voce e Tono, mai un placeholder generico "presto disponibile"). Stesso principio già applicato in `app/squadre/page.tsx` (Story 18.8)/`app/calendario/page.tsx` (Story 18.9): l'intera pagina esiste solo per questo contenuto → messaggio testuale, non il pattern "sezione nascosta" di Sponsor/Partite/FotoSquadra in home (quello è per una sezione opzionale dentro una pagina più ampia).
+- [x] Task 3: Stato vuoto esplicito (AC: #4)
+  - [x] Quando `allenatori.length === 0` (nessun Allenatore assegnato a un Gruppo nella stagione corrente, incluso il caso `annoCorrente` stesso assente/null) → messaggio esplicito al posto dell'elenco, testo proposto: **"Nessun Allenatore assegnato a un Gruppo per la stagione in corso."** (coerente col tono diretto già stabilito in `EXPERIENCE.md` → Voce e Tono, mai un placeholder generico "presto disponibile"). Stesso principio già applicato in `app/squadre/page.tsx` (Story 18.8)/`app/calendario/page.tsx` (Story 18.9): l'intera pagina esiste solo per questo contenuto → messaggio testuale, non il pattern "sezione nascosta" di Sponsor/Partite/FotoSquadra in home (quello è per una sezione opzionale dentro una pagina più ampia).
 
-- [ ] Task 4: Stile "Poster Sportivo" — componente `staff-list` (`DESIGN.md`/`EXPERIENCE.md`, 2026-08-13) applicato dall'inizio — nessun AC numerato dedicato, ma requisito esplicito di questa storia (vedi Dev Notes "Perché questa pagina va stilizzata subito, non da 18.12")
-  - [ ] Nuovo `app/staff/staff.module.css` (un modulo per pagina, convenzione consolidata — vedi `Project Structure Notes`).
-  - [ ] `<h1>Staff</h1>`: `typography.display-section` (40px/900 desktop) con `typography.display-section-mobile` (22px/900 sotto i 900px) — stesso token semantico già assegnato al `<h1>` di `/calendario` (Story 18.9 Dev Notes), coerente con `DESIGN.md.components.staff-list.heading-typography`/`heading-typography-mobile`, che citano esattamente questi due token.
-  - [ ] Contenitore elenco: `background: #FFFFFF` (`{colors.bianco}`, `DESIGN.md.components.staff-list.background`).
-  - [ ] Ogni riga Allenatore: `border-bottom: 1px solid #E5E9EE` (`{colors.bordo-chiaro}`, `DESIGN.md.components.staff-list.row-border-bottom`) — righe separate da bordo sottile, **non** card (coerente con un elenco denso, vedi `DESIGN.md` nota di rubric review).
-  - [ ] Nome+cognome dell'Allenatore: `font-family: 'Arial Black','Arial Narrow',Impact,sans-serif; font-size: 22px; font-weight: 900; line-height: 1.15; letter-spacing: 0.5px` (`{typography.display-card}`, `DESIGN.md.components.staff-list.name-typography`), `color: #0B0E14` (`{colors.nero}`, `.name-color`).
-  - [ ] Elenco Gruppi seguiti, sotto il nome: `font-family: 'Arial,sans-serif'; font-size: 14px; font-weight: 400; line-height: 1.8` (`{typography.body}`, `.gruppi-typography`), `color: #5B6472` (`{colors.grigio}`, `.gruppi-color`).
-  - [ ] Nessun custom property CSS per la palette "Poster Sportivo" in `app/globals.css` — stessa decisione già presa in Story 18.9: valori hex letterali dentro `staff.module.css`, ciascuno annotato con un commento che cita il nome esatto del token `DESIGN.md` (vedi Dev Notes "Convenzione hex-con-commento"). Nessuno dei colori usati qui (`#0B0E14`, `#5B6472`, `#E5E9EE`, `#FFFFFF`) ha un corrispondente identico in `globals.css` — tutti hex letterali commentati, nessuna eccezione `var(--color-*)` applicabile qui (a differenza di `/calendario`, che riusa `var(--color-primary)`/`var(--color-navy)`/`var(--color-magenta)` per i 3 colori con hex identico).
-  - [ ] Nessun elemento interattivo nella riga `staff-list` (nessun link, nessun pulsante) — nessun contorno di focus da implementare per questo componente specifico (a differenza di `match-card`/`Naviga` in `/calendario`).
+- [x] Task 4: Stile "Poster Sportivo" — componente `staff-list` (`DESIGN.md`/`EXPERIENCE.md`, 2026-08-13) applicato dall'inizio — nessun AC numerato dedicato, ma requisito esplicito di questa storia (vedi Dev Notes "Perché questa pagina va stilizzata subito, non da 18.12")
+  - [x] Nuovo `app/staff/staff.module.css` (un modulo per pagina, convenzione consolidata — vedi `Project Structure Notes`).
+  - [x] `<h1>Staff</h1>`: `typography.display-section` (40px/900 desktop) con `typography.display-section-mobile` (22px/900 sotto i 900px) — stesso token semantico già assegnato al `<h1>` di `/calendario` (Story 18.9 Dev Notes), coerente con `DESIGN.md.components.staff-list.heading-typography`/`heading-typography-mobile`, che citano esattamente questi due token.
+  - [x] Contenitore elenco: `background: #FFFFFF` (`{colors.bianco}`, `DESIGN.md.components.staff-list.background`).
+  - [x] Ogni riga Allenatore: `border-bottom: 1px solid #E5E9EE` (`{colors.bordo-chiaro}`, `DESIGN.md.components.staff-list.row-border-bottom`) — righe separate da bordo sottile, **non** card (coerente con un elenco denso, vedi `DESIGN.md` nota di rubric review).
+  - [x] Nome+cognome dell'Allenatore: `font-family: 'Arial Black','Arial Narrow',Impact,sans-serif; font-size: 22px; font-weight: 900; line-height: 1.15; letter-spacing: 0.5px` (`{typography.display-card}`, `DESIGN.md.components.staff-list.name-typography`), `color: #0B0E14` (`{colors.nero}`, `.name-color`).
+  - [x] Elenco Gruppi seguiti, sotto il nome: `font-family: 'Arial,sans-serif'; font-size: 14px; font-weight: 400; line-height: 1.8` (`{typography.body}`, `.gruppi-typography`), `color: #5B6472` (`{colors.grigio}`, `.gruppi-color`).
+  - [x] Nessun custom property CSS per la palette "Poster Sportivo" in `app/globals.css` — stessa decisione già presa in Story 18.9: valori hex letterali dentro `staff.module.css`, ciascuno annotato con un commento che cita il nome esatto del token `DESIGN.md` (vedi Dev Notes "Convenzione hex-con-commento"). Nessuno dei colori usati qui (`#0B0E14`, `#5B6472`, `#E5E9EE`, `#FFFFFF`) ha un corrispondente identico in `globals.css` — tutti hex letterali commentati, nessuna eccezione `var(--color-*)` applicabile qui (a differenza di `/calendario`, che riusa `var(--color-primary)`/`var(--color-navy)`/`var(--color-magenta)` per i 3 colori con hex identico).
+  - [x] Nessun elemento interattivo nella riga `staff-list` (nessun link, nessun pulsante) — nessun contorno di focus da implementare per questo componente specifico (a differenza di `match-card`/`Naviga` in `/calendario`).
 
-- [ ] Task 5: Verifica (AC: tutti)
-  - [ ] Nessun test diretto su `app/staff/page.tsx` (convenzione consolidata del progetto — nessun componente di rendering ne ha, stesso limite già accettato per `app/squadre/page.tsx`, `app/calendario/page.tsx`, `HeaderPubblico.tsx`, `FooterPubblico.tsx`, `NavPubblica.tsx`). Nessuna nuova utility condivisa introdotta da questa storia (a differenza di `raggruppaPerSettimana` in Story 18.9) — quindi nessun nuovo file `*.test.ts` atteso.
-  - [ ] Verifica esplicita AC #3 in fase di implementazione/review: rileggere il `select` di Task 1 e confermare per ispezione che nessun campo `email`, `codiceFiscale`, `utenteId` (di `Allenatore` o `Utente`) compare in nessun punto della query né del markup — non un test automatico dedicato, ma un controllo esplicito da annotare nei Completion Notes (stesso livello di rigore già richiesto per l'AC #2 di Story 18.8, verificato "per costruzione" della query).
-  - [ ] `npx vitest run`, `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti.
+- [x] Task 5: Verifica (AC: tutti)
+  - [x] Nessun test diretto su `app/staff/page.tsx` (convenzione consolidata del progetto — nessun componente di rendering ne ha, stesso limite già accettato per `app/squadre/page.tsx`, `app/calendario/page.tsx`, `HeaderPubblico.tsx`, `FooterPubblico.tsx`, `NavPubblica.tsx`). Nessuna nuova utility condivisa introdotta da questa storia (a differenza di `raggruppaPerSettimana` in Story 18.9) — quindi nessun nuovo file `*.test.ts` atteso.
+  - [x] Verifica esplicita AC #3 in fase di implementazione/review: rileggere il `select` di Task 1 e confermare per ispezione che nessun campo `email`, `codiceFiscale`, `utenteId` (di `Allenatore` o `Utente`) compare in nessun punto della query né del markup — non un test automatico dedicato, ma un controllo esplicito da annotare nei Completion Notes (stesso livello di rigore già richiesto per l'AC #2 di Story 18.8, verificato "per costruzione" della query).
+  - [x] `npx vitest run`, `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti.
 
 ## Dev Notes
 
@@ -170,8 +170,33 @@ Questo progetto usa una versione di Next.js con differenze rispetto al training 
 
 ### Agent Model Used
 
+Claude Sonnet 5 (claude-sonnet-5)
+
 ### Debug Log References
+
+Nessuno — implementazione lineare. Verificati direttamente `prisma/schema.prisma` (`Allenatore.gruppi: GruppoAllenatore[]`, `GruppoAllenatore.gruppo`/`.allenatore`) prima di scrivere la query, confermando esattamente la forma già data nei Dev Notes.
 
 ### Completion Notes List
 
+- `app/staff/page.tsx` riscritto interamente (rimosso `InSviluppoPubblico` e il suo import). Query `prisma.allenatore.findMany` lato opposto di `/squadre`: `where: { gruppi: { some: { gruppo: { annoAgonisticoId: ... } } } } }` realizza l'AC #2 per costruzione (un Allenatore senza Gruppi nella stagione corrente non compare mai), `where` ripetuto nel `select` di `gruppi` restringe anche i Gruppi annidati alla stagione corrente.
+- **Verifica esplicita AC #3** (Task 5): riletto il `select` — campi selezionati sono solo `id`, `nome`, `cognome`, `gruppi.gruppo.{id,nome}`. Nessun `email`/`codiceFiscale`/`utenteId` in nessun punto della query né del markup, confermato per ispezione diretta di `app/staff/page.tsx`.
+- `trovaAnnoAgonisticoCorrente()` con `.catch()` fail-soft applicato fin dalla prima stesura (stessa lezione di Story 18.8/18.9).
+- Nuovo `app/staff/staff.module.css`, registro "Poster Sportivo" applicato dall'inizio (componente `staff-list`): righe separate da bordo sottile (non card), nome Allenatore in tipografia condensata 900, elenco Gruppi in corpo testo grigio sotto il nome. Nessuno dei 4 colori usati coincide con un `var(--color-*)` esistente in `app/globals.css` — tutti hex letterali commentati (a differenza di `/calendario`, che aveva 3 eccezioni riusabili).
+- Nessun test diretto su `app/staff/page.tsx` (convenzione consolidata). Nessuna nuova utility condivisa introdotta, nessun nuovo file `*.test.ts`.
+- Verifica: `npx tsc --noEmit` pulito, `npx vitest run` 1113/1113 passati (nessuna regressione), `npm run lint` 0 errori (11 warning pre-esistenti in file non toccati da questa storia), `npm run build` riuscito (`/staff` presente nell'output come rotta dinamica `ƒ`).
+
 ### File List
+
+- `app/staff/page.tsx` (sostituito interamente; 1 patch da code review)
+- `app/staff/staff.module.css` (nuovo; 1 patch da code review)
+
+## Senior Developer Review (AI)
+
+**Esito**: 2 finding, entrambi minori — 1 patch applicato (risolve entrambi), nessun defer.
+
+- **Applicato**: l'elenco Gruppi per Allenatore era reso come un'unica stringa unita da virgole (`allenatore.gruppi.map(({ gruppo }) => gruppo.nome).join(", ")` dentro un solo `<div>`), inconsistente col pattern già stabilito per l'elenco Allenatori annidato in `/squadre` (`<ul>/<li>`, `styles.listaAllenatori`) — uno screen reader annuncia i Gruppi come un'unica stringa invece di elementi di elenco discreti. Corretto con `<ul className={styles.listaGruppi}><li key={gruppo.id}>{gruppo.nome}</li>...</ul>`, mirror esatto del pattern di `/squadre`. Questo fix risolve anche il secondo finding del reviewer (`gruppo.id` selezionato ma mai usato, Task 1): ora è la key di ogni `<li>`, non più dato morto.
+
+## Change Log
+
+- 2026-08-14: Implementazione completa (Task 1-5), tutti gli AC soddisfatti, Status → review.
+- 2026-08-14: Code review (Blind Hunter + Edge Case Hunter in parallelo) — 2 finding minori, 1 patch applicato (risolve entrambi: elenco Gruppi da stringa a `<ul>/<li>`, `gruppo.id` ora usato come key). 1113/1113 test Vitest passati dopo il fix, 0 errori tsc/eslint. Status → done.

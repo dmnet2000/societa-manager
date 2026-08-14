@@ -1,0 +1,86 @@
+/* Story 18.10: modulo dedicato al contenuto di /staff, convenzione del
+   progetto "un CSS module per pagina". Seconda pagina pubblica (dopo
+   /calendario, Story 18.9) costruita direttamente sul registro "Poster
+   Sportivo" (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13)
+   - Home/Squadre restano sul registro provvisorio del portale interno fino
+   al restyling di Story 18.12. Nessun nuovo custom property in
+   app/globals.css: nessuno dei colori usati da staff-list coincide con un
+   valore gia' presente li' (a differenza di /calendario, che riusa
+   var(--color-primary)/--color-navy/--color-magenta) - tutti hex letterali
+   commentati con il nome del token DESIGN.md di origine. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+/* {typography.display-section} - 40px/900 desktop, ridotto sotto i 900px
+   (DESIGN.md.components.staff-list.heading-typography/-mobile). */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+/* {colors.bianco} #FFFFFF (DESIGN.md.components.staff-list.background). */
+.listaStaff {
+  margin-top: var(--space-4);
+  background: #ffffff;
+}
+
+/* Righe separate da bordo sottile, non card (DESIGN.md.components.staff-list
+   .row-border-bottom, {colors.bordo-chiaro} #E5E9EE). */
+.rigaAllenatore {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid #e5e9ee;
+}
+
+.rigaAllenatore:first-child {
+  padding-top: 0;
+}
+
+.rigaAllenatore:last-child {
+  border-bottom: none;
+}
+
+/* {typography.display-card} + {colors.nero} #0B0E14
+   (DESIGN.md.components.staff-list.name-typography/.name-color). */
+.nomeAllenatore {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #0b0e14;
+}
+
+/* {typography.body} + {colors.grigio} #5B6472
+   (DESIGN.md.components.staff-list.gruppi-typography/.gruppi-color).
+   <ul>/<li> (non una stringa unita da virgole) - stesso pattern gia'
+   stabilito per .listaAllenatori in squadre.module.css, elenco puntato
+   di default del browser, nessun list-style override. */
+.listaGruppi {
+  margin-top: var(--space-1);
+  padding-left: var(--space-4);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: #5b6472;
+}

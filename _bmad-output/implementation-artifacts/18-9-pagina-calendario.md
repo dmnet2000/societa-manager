@@ -4,7 +4,7 @@ baseline_commit: a957215
 
 # Story 18.9: Pagina pubblica "Calendario"
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -207,9 +207,17 @@ Nessuno — implementazione lineare, nessun blocco incontrato. Tutte le decision
 
 ### File List
 
-- `app/calendario/page.tsx` (sostituito interamente)
+- `app/calendario/page.tsx` (sostituito interamente; 1 patch da code review)
 - `app/calendario/calendario.module.css` (nuovo)
+
+## Senior Developer Review (AI)
+
+**Esito**: 2 finding, entrambi minori — 1 patch applicato, 1 defer.
+
+- **Applicato**: `aria-label` del link "Naviga" usava `partita.impianto ?? "il luogo della partita"` (nullish coalescing) mentre il rendering visivo dello stesso campo usava un controllo truthy (`partita.impianto && ...`) — un `impianto` stringa vuota (colonna nullable senza vincolo type-level di non-vuotezza) avrebbe nascosto lo span visivo ma prodotto `aria-label="Naviga verso "` (vuoto, spazio finale) invece del fallback testuale. Non raggiungibile oggi dai percorsi di scrittura esistenti (import/`modificaPartita` normalizzano stringa vuota a `null`), ma non è un invariante a livello di tipo. Corretto allineando a `partita.impianto || "il luogo della partita"`.
+- **Defer**: `formattaData` è ora triplicata verbatim (stessa identica funzione già in `app/page.tsx` e `app/app/(partite-campionati)/partite/page.tsx`) invece di essere esportata una sola volta da `lib/raggruppa-per-settimana.ts` insieme a `parseDataUtc`. Non è un bug — è la stessa convenzione già accettata esplicitamente nei Dev Notes di questa storia ("stesso identico pattern già duplicato... mai un secondo parsing indipendente" riferito a `parseDataUtc`, non a `formattaData` stesso) — lasciato come nota aperta per un'eventuale estrazione futura, fuori scope di questa storia.
 
 ## Change Log
 
 - 2026-08-14: Implementazione completa (Task 1-5), tutti gli AC soddisfatti, Status → review.
+- 2026-08-14: Code review (Blind Hunter + Edge Case Hunter in parallelo) — 1 patch applicato (aria-label impianto vuoto), 1 defer (formattaData triplicata, convenzione già accettata). 1113/1113 test Vitest passati dopo il fix, 0 errori tsc/eslint. Status → done.
