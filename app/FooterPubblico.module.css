@@ -1,20 +1,71 @@
 /* Story 18.8: modulo dedicato, mirror del principio gia' spiegato in
-   HeaderPubblico.module.css (componente condiviso, non pagina specifica). */
+   HeaderPubblico.module.css (componente condiviso, non pagina specifica).
+   Story 18.12: restyle al registro "Poster Sportivo". Nessun custom
+   property nuovo in app/globals.css - hex letterali commentati, eccezione
+   solo per i 4 valori con hex identico gia' verificati nella storia. */
 
 .footer {
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-6);
   text-align: center;
-  font-size: 12.5px;
-  color: var(--color-text-secondary);
+  /* {colors.nero} #0B0E14 - letterale. */
+  background: #0b0e14;
+  /* {typography.meta}. */
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  /* {colors.testo-scuro-muto} #7B8697 - letterale, contrasto 5.24:1 su
+     {colors.nero} verificato in DESIGN.md (corretto in accessibility
+     review: il valore originale #6B7480 falliva la soglia AA). */
+  color: #7b8697;
 }
 
 /* Review fix (Story 18.6): padding-bottom aggiuntivo cosi' il banner/pulsante
    fisso "Preferenze cookie" (CookieBanner.module.css, position:fixed in
-   basso) non copre mai il testo del copyright - 44px (altezza minima del
-   pulsante) + var(--space-4) di margine sopra e sotto. Applicato solo dove
-   il chiamante passa conSpazioCookieBanner (oggi solo la home, che monta
-   ancora <CookieBanner>) - le altre pagine pubbliche non hanno quel
-   pulsante fisso, quindi non hanno bisogno dello spazio extra. */
+   basso) non copre mai il testo del copyright - INVARIATO da Story 18.12
+   (solo colore/tipografia sopra cambiano, non la logica di spaziatura). */
 .footerConCookieBanner {
   padding-bottom: calc(44px + var(--space-4) * 2);
+}
+
+/* Icona social (elemento nuovo, AC #4 - vedi Dev Notes "Elementi nuovi
+   richiesti"). {rounded.full}, area cliccabile reale 44x44px anche con
+   resa visiva 38px (hit-area via padding). Colori: sfondo
+   {colors.placeholder-hatch-alt} #1C2433, testo var(--color-primary)
+   (eccezione, stesso hex di {colors.azzurro}), hover invertito. */
+.iconaSocial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-top: var(--space-4);
+  border-radius: 9999px;
+  background: #1c2433;
+  color: var(--color-primary);
+  font-family: "Arial Black", sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.iconaSocial:hover {
+  background: var(--color-primary);
+  color: #0b0e14;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iconaSocial {
+    transition: none;
+  }
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - il footer e' su sfondo
+   {colors.nero}, non var(--color-focus-ring) (falso amico). */
+.iconaSocial:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }

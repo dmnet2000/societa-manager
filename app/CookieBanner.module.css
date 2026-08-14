@@ -1,12 +1,10 @@
 /* Story 18.6: banner di consenso cookie, trattato come superficie
-   transitoria - stessi ombra/raggio gia' stabiliti in DESIGN.md per il
-   menu profilo (Story 9.4): "0 1px 3px rgba(16,24,32,0.08)" + --radius-sm
-   (mai --radius-md, riservato a contenitori piu' ampi). Nessun colore
-   nuovo, solo token esistenti. */
-/* Review fix: 30, non un valore arbitrariamente alto - resta sopra la
-   scala esistente dell'app (NavBar.module.css: drawer 20, overlay 21, il
-   massimo finora), senza dichiarare un nuovo tier "sempre in cima" non
-   documentato. */
+   transitoria.
+   Story 18.12: restyle al registro "Poster Sportivo"
+   (DESIGN.md.components.cookie-banner). Nessuna modifica a CookieBanner.tsx
+   (solo CSS) - position:fixed/z-index:30/logica invariati. Nessun custom
+   property nuovo in app/globals.css - hex letterali commentati, eccezione
+   solo per i 4 valori con hex identico gia' verificati nella storia. */
 .banner {
   position: fixed;
   left: var(--space-4);
@@ -21,17 +19,24 @@
   max-width: 720px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-5);
+  /* {colors.bianco} - eccezione, var(--color-surface) e' gia' bianco. */
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+  /* DESIGN.md specifica solo border-top (non un bordo su tutti i lati). */
+  border-top: 2px solid #0b0e14;
+  border-radius: 0;
+  /* Ombra verso l'alto (component-specific in DESIGN.md -> Elevazione),
+     diversa dalla generica "0 1px 3px" del portale interno. */
+  box-shadow: 0 -4px 16px rgba(11, 14, 20, 0.12);
 }
 
 .testo {
   flex: 1 1 260px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text-primary);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  /* {colors.nero} #0B0E14 - letterale. */
+  color: #0b0e14;
 }
 
 .azioni {
@@ -41,41 +46,79 @@
 }
 
 /* min-height diretto sul pulsante, non affidato allo stretch del genitore
-   flex (lezione gia' nota nel progetto: align-items:center su un
-   contenitore vanificherebbe un min-height solo sul contenitore stesso). */
+   flex - INVARIATO da Story 18.12 (AC #4). */
 .bottone,
 .bottoneSecondario {
   min-height: 44px;
   padding: 0 var(--space-5);
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: 12.5px;
-  letter-spacing: 0.03em;
+  border-radius: 0;
   cursor: pointer;
-}
-
-.bottone {
-  background: var(--color-button-bg);
-  color: var(--color-surface);
   border: none;
 }
 
-.bottoneSecondario {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+/* button-primary: sfondo pieno azzurro, testo nero, maiuscolo via
+   text-transform (mai testo sorgente maiuscolo). */
+.bottone {
+  background: var(--color-primary);
+  color: #0b0e14;
+  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
+/* Fix di code review: il trattamento hover generico di button-primary
+   (sfondo bianco, DESIGN.md) presuppone un contesto scuro circostante
+   (hero/header) - qui il banner e' su sfondo bianco (.banner), quindi
+   "sfondo bianco all'hover" renderebbe il pulsante invisibile contro il
+   proprio contenitore. Scurito invece verso var(--color-primary-hover)
+   (portale interno, #0086bd - riuso pragmatico di una sfumatura piu' scura
+   dello stesso azzurro, nessun token dedicato in DESIGN.md per questo
+   contesto specifico) + sollevamento, coerente col principio "solo
+   transizioni di stato essenziali". */
+.bottone:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottone {
+    transition: none;
+  }
+
+  .bottone:hover {
+    transform: none;
+  }
+}
+
+/* {typography.button-label-secondary} - non maiuscolo forzato come il
+   primario. {colors.grigio} #5B6472 su bianco (~5.46:1, verificato in
+   accessibility review) - stesso peso visivo di "Accetta" (nessun dark
+   pattern, EXPERIENCE.md -> Voce e Tono), non ridotto in dimensione/opacita'. */
+.bottoneSecondario {
+  background: var(--color-surface);
+  color: #5b6472;
+  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* {colors.focus-ring} #0072A3 - banner su sfondo bianco (non nero), token
+   diverso da Task 1/4/8 (dove il contesto e' scuro). Non var(--color-focus-ring)
+   (falso amico, #006da6). */
 .bottone:focus-visible,
 .bottoneSecondario:focus-visible,
 .preferenze:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid #0072a3;
   outline-offset: 2px;
 }
 
-/* Trigger per riaprire il banner dopo la prima scelta (AC #3) - sempre
-   presente, discreto, stesso trattamento elevazione del banner sopra. */
+/* Trigger per riaprire il banner dopo la prima scelta (AC #3) - stesso
+   trattamento cta-secondaria del bottoneSecondario sopra. */
 .preferenze {
   position: fixed;
   left: var(--space-4);
@@ -84,10 +127,12 @@
   min-height: 44px;
   padding: 0 var(--space-4);
   background: var(--color-surface);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(16, 24, 32, 0.08);
+  color: #5b6472;
+  border: none;
+  border-top: 2px solid #0b0e14;
+  border-radius: 0;
+  box-shadow: 0 -4px 16px rgba(11, 14, 20, 0.12);
+  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;

@@ -2,8 +2,10 @@
    sara' rimontato da piu' pagine pubbliche future (18.8-18.11), ciascuna con
    il proprio CSS module di pagina - unica eccezione nell'Epic 18 alla
    convenzione "un modulo per pagina", qui giustificata dalla condivisione
-   del componente stesso. Stessi token di DESIGN.md gia' in uso in
-   home-pubblica.module.css, nessun colore nuovo. */
+   del componente stesso.
+   Story 18.12: restyle al registro "Poster Sportivo". Nessun custom
+   property nuovo in app/globals.css - hex letterali commentati, eccezione
+   solo per i 4 valori con hex identico (azzurro/navy/magenta/bianco). */
 
 .nav {
   display: flex;
@@ -12,7 +14,9 @@
 /* Elenco orizzontale con wrap (decisione utente 2026-08-13) - nessun
    drawer/hamburger come la NavBar interna autenticata (Story 9.2), pensata
    per un elenco piu' lungo e ruolo-dipendente: qui bastano 5 voci corte,
-   vanno semplicemente a capo su schermi stretti. */
+   vanno semplicemente a capo su schermi stretti. INVARIATO da Story 18.12
+   (AC #3) - il mockup di riferimento del nuovo registro mostra un hamburger
+   solo a scopo illustrativo, non e' il pattern reale. */
 .lista {
   display: flex;
   flex-wrap: wrap;
@@ -23,46 +27,74 @@
 
 /* Touch target 44px sul link stesso, non su un contenitore - lezione gia'
    documentata nel progetto (min-height su un elemento non-flex/non-inline-flex
-   non basta se il figlio cliccabile non riempie l'altezza dichiarata),
-   stesso principio gia' applicato a .accedi (home-pubblica.module.css). */
+   non basta se il figlio cliccabile non riempie l'altezza dichiarata).
+   display:inline-flex/align-items:center/min-height:44px INVARIATI da
+   Story 18.12 (AC #4) - solo colori/tipografia cambiano qui sotto. */
 .voce {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   padding: 0 var(--space-3);
-  color: var(--color-text-secondary);
-  font-weight: 700;
-  font-size: 13.5px;
+  position: relative;
+  /* {typography.nav-item} - 'Arial Narrow',Arial,'Helvetica Neue',sans-serif;
+     14px; 900; letter-spacing:1px. Colore {colors.bianco} #FFFFFF -
+     eccezione, stesso valore di var(--color-surface). */
+  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #ffffff;
   text-decoration: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
 }
 
-.voce:hover {
-  color: var(--color-text-primary);
+/* Micro-animazione hover (DESIGN.md -> Componenti, header-nav): sottolineatura
+   {colors.azzurro} che si espande da 0 a piena larghezza, 250ms. Solo su
+   hover, non su .voceAttiva (che ha gia' la sottolineatura sempre visibile). */
+.voce::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 3px;
+  background: var(--color-primary);
+  transition: width 0.25s ease;
 }
 
+.voce:hover::after {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voce::after {
+    transition: none;
+  }
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - sfondo header e' {colors.nero}, non
+   var(--color-focus-ring) (falso amico, valore diverso da {colors.focus-ring}). */
 .voce:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
 
-/* Stato attivo (AC #3) - stesso colore gia' usato per l'elemento attivo
-   della NavBar interna (DESIGN.md: {colors.button-bg}, mai {colors.primary},
-   per motivi di contrasto), qui su sfondo chiaro (.header e' surface, non
-   navy) invece che come sfondo pieno: colore di testo pieno + sottolineatura,
-   nessun nuovo token. */
+/* Stato attivo (AC #3) - sottolineatura {colors.azzurro} 3px SEMPRE visibile
+   (non solo su hover), border-bottom invece di text-decoration per un
+   controllo preciso dello spessore. */
 .voceAttiva {
-  color: var(--color-button-bg);
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  color: #ffffff;
+  border-bottom: 3px solid var(--color-primary);
 }
 
-/* Review fix (Edge Case Hunter): senza questa regola, ".voce:hover" sopra
-   (classe + pseudo-classe, specificita' 0-2-0) vince su ".voceAttiva" (una
-   sola classe, 0-1-0) indipendentemente dall'ordine nel file - passando il
-   mouse sulla voce attiva il colore tornava a quello di hover generico,
-   lasciando solo la sottolineatura a indicare lo stato attivo (AC #3
-   indebolito durante l'hover). */
-.voceAttiva:hover {
-  color: var(--color-button-bg);
+.voceAttiva::after {
+  content: none;
 }
+
+/* Fix di code review (Story 18.12): il review fix originale di Story 18.7
+   (".voceAttiva:hover") proteggeva da un conflitto di specificita' su
+   "color" tra ".voce:hover" e ".voceAttiva" - con il nuovo registro
+   ".voce:hover" non imposta piu' alcun "color" (solo l'animazione
+   "::after"), quindi il conflitto che quella regola preveniva non puo' piu'
+   verificarsi: ".voceAttiva" da sola gia' garantisce il bianco in ogni
+   stato. Regola rimossa perche' inerte, non perche' l'AC #3 sia cambiato. */

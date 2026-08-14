@@ -4,7 +4,7 @@ baseline_commit: a957215
 
 # Story 18.11: Pagina pubblica "Contatti"
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -229,6 +229,13 @@ Nessuno — implementazione lineare. Verificato direttamente `prisma/schema.pris
 - **Test**: 22 nuovi test — `lib/configurazione-applicazione.test.ts` (`leggiContattiPubblici`/`salvaContattiPubblici`/`nessunContattoPubblicoConfigurato`), `actions.test.ts` (`salvaContattiPubbliciAction`: FORBIDDEN, salvataggio con trim, tutti vuoti, caso misto con un solo campo indipendente, VALIDATION per ciascun campo, formato telefono valido, INTERNAL fail-closed). Nessun test diretto su `app/contatti/page.tsx` (convenzione consolidata).
 - Verifica: `npx tsc --noEmit` pulito, `npx vitest run` 1135/1135 passati (1113 + 22 nuovi, nessuna regressione), `npm run lint` 0 errori (11 warning pre-esistenti in file non toccati), `npm run build` riuscito (`/contatti` presente nell'output come rotta dinamica `ƒ`).
 
+## Senior Developer Review (AI)
+
+**Esito**: 2 finding, entrambi minori — 0 patch applicati, 2 defer motivati.
+
+- **Defer**: `salvaContattiPubblici` scrive sempre tutti e 3 i campi insieme dallo snapshot del form al momento del submit — un Admin e un Dirigente che aprono `/app/impostazioni` quasi contemporaneamente e modificano ciascuno un campo diverso possono sovrascriversi a vicenda (lost update silenzioso), diversamente dalle funzioni per-campo esistenti (`salvaEmailSegreteria`/`salvaUrlPaginaFacebook`), immuni per costruzione. **Non corretto**: la causa reale non è la scrittura combinata in sé ma lo snapshot del form caricato a un istante T (lo stesso problema si presenterebbe identico anche con 3 upsert separati nella stessa azione, perché il browser tiene comunque un form non aggiornato tra un caricamento pagina e l'altro) — correggerlo davvero richiederebbe optimistic concurrency control, fuori scope per una pagina di configurazione a bassissimo traffico con pochissimi Admin/Dirigente attivi. Stessa classe di race condition già accettata esplicitamente altrove nel progetto (`risolvi-anno-agonistico-corrente.ts`, commento "bassa probabilità, singolo utente attivo").
+- **Defer**: dopo un salvataggio con trim (es. spazi iniziali/finali rimossi), il campo mostra ancora il valore non-trimmato finché la pagina non viene ricaricata — `useActionState` re-renderizza il Server Component genitore con il valore aggiornato, ma `defaultValue` su un `<input>` non controllato già montato non si riapplica. **Non corretto qui**: è lo stesso identico pattern già presente e mai corretto in `EmailSegreteriaForm.tsx`/`PaginaFacebookForm.tsx` (mirror esatto, non una deviazione introdotta da questa storia) — un fix isolato solo su `ContattiPubbliciForm.tsx` introdurrebbe un'inconsistenza tra i 3 form invece di risolverne una; un eventuale fix andrebbe applicato a tutti e 3 insieme, fuori scope di questa storia.
+
 ### File List
 
 - `prisma/schema.prisma` (3 nuovi campi su `ConfigurazioneApplicazione`)
@@ -246,3 +253,4 @@ Nessuno — implementazione lineare. Verificato direttamente `prisma/schema.pris
 ## Change Log
 
 - 2026-08-14: Implementazione completa (Task 1-7), tutti gli AC soddisfatti, Status → review.
+- 2026-08-14: Code review (Blind Hunter + Edge Case Hunter in parallelo) — 2 finding minori, entrambi deferred con motivazione esplicita (race condition a bassa probabilità su form di configurazione a basso traffico; quirk di visualizzazione post-trim già presente identico nei 2 form gemelli esistenti, non una deviazione di questa storia). Nessun patch necessario. Status → done.

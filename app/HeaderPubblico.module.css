@@ -4,8 +4,12 @@
    18.9-18.11) - stesso principio gia' stabilito per NavPubblica.module.css
    (Story 18.7): un componente condiviso ha il proprio modulo, eccezione
    esplicita alla convenzione "un modulo per pagina" (quella vale per il
-   contenuto specifico di una pagina, non per un componente riusato). Stessi
-   token DESIGN.md gia' in uso, nessun colore nuovo. */
+   contenuto specifico di una pagina, non per un componente riusato).
+   Story 18.12: restyle al registro "Poster Sportivo" (DESIGN.md/EXPERIENCE.md,
+   ux-designs/ux-societa-manager-2026-08-13). Nessun custom property nuovo in
+   app/globals.css (appartiene al DESIGN.md 2026-07-22 del portale interno) -
+   hex letterali commentati, eccezione solo per i 4 valori con hex identico
+   gia' verificati nella storia (azzurro/navy/magenta/bianco). */
 
 .header {
   display: flex;
@@ -13,16 +17,26 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-6);
+  /* min-height (non height fisso): {spacing.header-height} 76px e' il
+     valore nominale a riga singola - un height fisso avrebbe clampato il
+     contenitore mentre il testo bianco delle voci nav (wrappate su piu'
+     righe su schermi stretti, AC #3) trabocca sotto, invisibile/sovrapposto
+     al contenuto della pagina (fix di code review). */
+  min-height: 76px;
+  /* {colors.nero} #0B0E14 - nessun corrispondente in globals.css. */
+  background: #0b0e14;
+  /* {colors.azzurro} #00A3E0 - eccezione, stesso valore di var(--color-primary). */
+  border-bottom: 4px solid var(--color-primary);
 }
 
 /* Story 18.7 (AC #4): flex-wrap sull'header (sopra) - con brand + menu (5
    voci) + Accedi tutti sulla stessa riga, uno schermo molto stretto
    potrebbe non avere spazio per tutti e tre; il wrap sull'header stesso li
    impila su piu' righe invece di comprimerli/tagliarli, oltre al wrap gia'
-   interno al menu stesso (NavPubblica.module.css, .lista). */
+   interno al menu stesso (NavPubblica.module.css, .lista). Non toccato da
+   Story 18.12 (solo colori/tipografia cambiano, mai il meccanismo di layout
+   - vedi Dev Notes della storia). */
 
 .brand {
   display: flex;
@@ -35,26 +49,59 @@
   max-width: 120px;
 }
 
+/* {typography.wordmark} - 'Arial Black',sans-serif; 20px; 900; line-height:1.
+   Colore {colors.bianco} #FFFFFF - eccezione, stesso valore di
+   var(--color-surface). Nessun markup nuovo per evidenziare una parola: il
+   testo e' libero/configurabile da Admin, non affidabile per un match di
+   sottostringa (vedi Dev Notes). */
 .nomeSettore {
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-family: "Arial Black", sans-serif;
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1;
+  color: #ffffff;
 }
 
+/* .accedi NON e' il pulsante primario - e' il trattamento distinto
+   header-nav.accedi-link-* di DESIGN.md: bordo sottile, testo smorzato,
+   nessun riempimento pieno. min-height:44px/inline-flex invariati (AC #4,
+   nessuna regressione sul touch target). */
 .accedi {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 var(--space-5);
-  background: var(--color-button-bg);
-  color: var(--color-surface);
-  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  /* {colors.testo-chiaro-debole} #8891A0 - letterale, contrasto su nero
+     verificato 6.08:1 in DESIGN.md. */
+  color: #8891a0;
+  /* {colors.bordo-scuro-forte} #333B47 - letterale. */
+  border: 1px solid #333b47;
+  /* {rounded.sm} 2px - falso amico, var(--radius-sm) vale 6px, non riusabile. */
+  border-radius: 2px;
   text-transform: uppercase;
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 12px;
   letter-spacing: 0.03em;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
+.accedi:hover {
+  color: #ffffff;
+  border-color: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accedi {
+    transition: none;
+  }
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - sfondo header e' {colors.nero}, non
+   var(--color-focus-ring) (falso amico, #006da6 diverso da {colors.focus-ring}
+   #0072A3 - qui comunque serve il ring chiaro per il contesto scuro). */
 .accedi:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
 }

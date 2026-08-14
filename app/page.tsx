@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
@@ -240,13 +241,28 @@ export default async function HomePubblicaPage() {
       <HeaderPubblico />
       <main>
         <div className={styles.hero}>
-          <h1>Benvenuti nel {nomeVisualizzato}</h1>
-          {/* Story 18.5: ultimo residuo del paragrafo "in arrivo" rimosso -
-              Sponsor/Partite/Foto squadra (Story 18.2/18.3/18.4) avevano già
-              tolto la propria clausola, "gli ultimi post dai nostri canali
-              social" era l'ultima rimasta. Nessun testo sensato restava dopo
-              averla tolta, quindi l'intero paragrafo è stato rimosso invece
-              di lasciarne uno vuoto o riscritto senza contenuto. */}
+          {/* Story 18.12 (AC #1/#5): foto placeholder e innesto diagonale -
+              trattamento intenzionale finche' non esistono foto reali (vedi
+              EXPERIENCE.md -> Fotografia Placeholder), non un segnaposto da
+              wireframe. aria-hidden: puramente decorativi. */}
+          <div className={styles.heroFoto} aria-hidden="true" />
+          <div className={styles.heroDiagonale} aria-hidden="true" />
+          <div className={styles.heroContenuto}>
+            <h1>Benvenuti nel {nomeVisualizzato}</h1>
+            {/* Story 18.5: ultimo residuo del paragrafo "in arrivo" rimosso -
+                Sponsor/Partite/Foto squadra (Story 18.2/18.3/18.4) avevano già
+                tolto la propria clausola, "gli ultimi post dai nostri canali
+                social" era l'ultima rimasta. Nessun testo sensato restava dopo
+                averla tolta, quindi l'intero paragrafo è stato rimosso invece
+                di lasciarne uno vuoto o riscritto senza contenuto. */}
+            {/* Story 18.12 (AC #4): CTA primario nuovo, richiesto
+                letteralmente da EXPERIENCE.md -> Pattern dei Componenti
+                ("Hero: Un solo CTA primario 'Scopri le squadre' -> /squadre") -
+                nessun nuovo dato, solo un link verso una rotta già esistente. */}
+            <Link href="/squadre" className={styles.heroCta}>
+              Scopri le squadre
+            </Link>
+          </div>
         </div>
 
         {/* Story 18.2 (AC #2): nessuna sezione se non ci sono Sponsor attivi
@@ -260,7 +276,7 @@ export default async function HomePubblicaPage() {
 
             {banner.length > 0 && (
               <div className={styles.gruppoSponsor}>
-                <h2 className={styles.titoloSezione}>I nostri sponsor</h2>
+                <h2 className={styles.titoloSponsor}>I nostri sponsor</h2>
                 <div className={styles.listaSponsor}>
                   {banner.map((sponsor) => (
                     <SponsorPubblicoCard
@@ -274,7 +290,7 @@ export default async function HomePubblicaPage() {
             )}
             {convenzioni.length > 0 && (
               <div className={styles.gruppoSponsor}>
-                <h2 className={styles.titoloSezione}>Convenzioni</h2>
+                <h2 className={styles.titoloSponsor}>Convenzioni</h2>
                 <div className={styles.listaSponsor}>
                   {convenzioni.map((sponsor) => (
                     <SponsorPubblicoCard

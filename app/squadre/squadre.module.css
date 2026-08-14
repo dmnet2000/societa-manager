@@ -1,22 +1,35 @@
 /* Story 18.8: modulo dedicato al CONTENUTO della pagina /squadre,
-   convenzione del progetto "un CSS module per pagina, mai condiviso"
-   (stabilita da Story 18.2 in poi) - non riusa home-pubblica.module.css.
-   Review fix: la convenzione vale per il contenuto specifico di una
-   pagina, non per i componenti condivisi (HeaderPubblico.module.css/
-   FooterPubblico.module.css/NavPubblica.module.css, ciascuno con la
-   propria eccezione esplicita gia' documentata li'). Stessi token
-   DESIGN.md gia' in uso nelle altre pagine pubbliche, nessun colore nuovo. */
+   convenzione del progetto "un CSS module per pagina, mai condiviso".
+   Story 18.12: restyle completo al registro "Poster Sportivo"
+   (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13).
+   Nessun custom property nuovo in app/globals.css - hex letterali
+   commentati, eccezione solo per i 4 valori con hex identico gia'
+   verificati nella storia. */
 
+/* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
+   var(--color-surface-alt). DESIGN.md elenca esplicitamente "sezione
+   Squadre" tra le superfici a sfondo grigio-chiaro dedicato. */
 .main {
   padding: var(--space-8) var(--space-6);
+  background: #f2f5f7;
 }
 
+/* {typography.display-section}, stesso token del titolo di /calendario. */
 .titolo {
-  font-size: 13px;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
   font-weight: 900;
-  letter-spacing: 0.04em;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
 }
 
 .messaggioVuoto {
@@ -24,48 +37,135 @@
   color: var(--color-text-secondary);
 }
 
-/* Stessa griglia di card gia' stabilita in home-pubblica.module.css
-   (.listaFotoSquadra/.listaPartite, Story 18.3/18.4) - non condivisa
-   (convenzione un modulo per pagina), ma stesso idioma visivo. */
+/* team-grid: 3 colonne desktop, 1 colonna sotto i 900px. {spacing.card-gap}
+   28px - letterale. */
 .listaGruppi {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
   margin-top: var(--space-4);
 }
 
+@media (max-width: 900px) {
+  .listaGruppi {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* components.team-card: sfondo {colors.bianco}, nessun angolo arrotondato,
+   ombra leggera (unica ammessa nel sistema, riservata alle superfici
+   chiare), sollevamento all'hover (micro-animazione di stato). */
 .schedaGruppo {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
   background: var(--color-surface);
+  border-radius: 0;
+  padding: var(--space-4);
+  box-shadow: 0 8px 24px rgba(11, 14, 20, 0.08);
+  transition: transform 0.25s ease;
+}
+
+.schedaGruppo:hover {
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedaGruppo {
+    transition: none;
+  }
+
+  .schedaGruppo:hover {
+    transform: none;
+  }
+}
+
+/* {team-card.photo-height-desktop/-mobile} 260px/140px, clip-path
+   diagonale sul bordo inferiore. Condivisa da .immagineGruppo (foto reale)
+   e .placeholderFoto (nuovo, AC #5) - stessa dimensione/taglio per un
+   passaggio visivo coerente quando una foto viene caricata in seguito. */
+.immagineGruppo,
+.placeholderFoto {
+  width: 100%;
+  height: 260px;
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+  border-radius: 0;
 }
 
 .immagineGruppo {
-  width: 100%;
-  aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
 }
 
-.nomeGruppo {
-  font-size: 15px;
+@media (max-width: 900px) {
+  .immagineGruppo,
+  .placeholderFoto {
+    height: 140px;
+  }
+}
+
+/* Placeholder foto per Gruppo senza foto caricata (AC #5) - trattamento
+   visivo intenzionale finche' la foto non arriva (Story 18.4), non
+   un'icona rotta o un'area vuota. Trama diagonale {colors.nero}/
+   {colors.placeholder-hatch-alt}, didascalia centrata. Distinto dalla
+   galleria "parziale" della home (nessun placeholder li', vedi
+   home-pubblica.module.css). */
+.placeholderFoto {
+  position: relative;
+  background: repeating-linear-gradient(
+    -45deg,
+    #0b0e14,
+    #0b0e14 10px,
+    #1c2433 10px,
+    #1c2433 20px
+  );
+}
+
+.placeholderFoto::before {
+  content: "[FOTO SQUADRA]";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* {typography.display-card}. */
+.nomeGruppo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   color: var(--color-text-primary);
 }
 
+/* {typography.label-tag} + {colors.azzurro-scuro} #0072A3 - letterale,
+   var(--color-primary-hover) vale #0086bd, valore diverso, non riusabile. */
 .categoriaGruppo {
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #0072a3;
 }
 
+/* {typography.body}. */
 .listaAllenatori {
   margin-top: var(--space-1);
   padding-left: var(--space-4);
-  font-size: 13px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
   color: var(--color-text-primary);
 }

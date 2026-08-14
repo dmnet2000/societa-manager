@@ -1,57 +1,190 @@
 /* Story 18.1 (Epic 18): hero, sezioni di contenuto della home pubblica.
-   Story 18.2: prima sezione di contenuto (Sponsor). Nessun colore nuovo -
-   stesso gradiente navy->blu gia' approvato per lo sfondo di /accedi
-   (accedi.module.css), stessi token di DESIGN.md.
    Story 18.8: .header/.brand/.logo/.nomeSettore/.accedi/.footer SPOSTATE
    (non copiate) in HeaderPubblico.module.css/FooterPubblico.module.css -
    header/footer sono ora componenti condivisi tra piu' pagine pubbliche,
-   non piu' specifici di questa pagina. */
+   non piu' specifici di questa pagina.
+   Story 18.12: restyle completo al registro "Poster Sportivo"
+   (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13).
+   Nessun custom property nuovo in app/globals.css (appartiene al DESIGN.md
+   2026-07-22 del portale interno, vocabolario diverso) - hex letterali
+   commentati, eccezione solo per i 4 valori con hex identico gia'
+   verificati nella storia: {colors.azzurro}=var(--color-primary),
+   {colors.navy}=var(--color-navy), {colors.magenta}=var(--color-magenta),
+   {colors.bianco}=var(--color-surface). */
 
+/* ===== HERO ===== */
 .hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-4);
-  padding: var(--space-8) var(--space-4);
+  align-items: flex-end;
   min-height: 60vh;
+  background: #0b0e14;
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
+}
+
+/* Foto placeholder (EXPERIENCE.md -> Fotografia Placeholder: "Hero -
+   presumibilmente permanente"). {colors.nero} alternato a
+   {colors.placeholder-hatch-alt} #1C2433. */
+.heroFoto {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    #0b0e14,
+    #0b0e14 14px,
+    #1c2433 14px,
+    #1c2433 28px
+  );
+}
+
+.heroFoto::before {
+  content: "[FOTO AZIONE]";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-navy), var(--color-button-bg));
-  color: var(--color-surface);
-}
-
-.hero h1 {
-  max-width: 720px;
-}
-
-/* Story 18.5: .sottotitolo (paragrafo "in arrivo" nell'hero) rimossa come
-   CSS morto - l'ultimo elemento che la usava (il paragrafo statico "presto
-   qui troverai...") e' stato rimosso da app/page.tsx in questa stessa
-   storia, nessun consumer rimasto. */
-
-/* Riferimento di tipologia (indicazione utente 2026-08-12): struttura a
-   sezioni con intestazione decisa (maiuscolo/tracking) ispirata a siti di
-   club volley reali (volleyrocasaldepazzi.it, gassalespiacenza.it) - solo
-   il PATTERN di intestazione, nessun colore nuovo: stesso trattamento gia'
-   stabilito per ".sezione h2" in sponsor.module.css (Story 16.1), qui
-   applicato a tutte le intestazioni di sezione della home pubblica per
-   coerenza tipografica con il resto dell'app. */
-.titoloSezione {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  padding: var(--space-6);
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.5);
 }
 
-/* Story 18.2: prima sezione di contenuto reale della home pubblica - riusa
-   gli stessi token gia' in uso qui sopra (Story 18.1), nessun colore
-   nuovo. Struttura ispirata a .schedaVetrina/.listaVetrina di
-   sponsor.module.css (Story 16.2) come riferimento visivo, non condivisa
-   (convenzione del progetto: un CSS module per pagina, mai importato tra
-   route diverse). */
+/* Innesto diagonale {colors.azzurro}->{colors.navy}, valori RGBA
+   equivalenti agli hex con l'opacita' specificata in DESIGN.md. */
+.heroDiagonale {
+  position: absolute;
+  top: 0;
+  right: -10%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(0, 163, 224, 0.85) 35%,
+    rgba(49, 38, 130, 0.9) 100%
+  );
+  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0% 100%);
+}
+
+.heroContenuto {
+  position: relative;
+  z-index: 2;
+  padding: 64px 48px 88px;
+  max-width: 720px;
+  color: #ffffff;
+}
+
+/* {typography.display-hero} desktop, {typography.display-hero-mobile}
+   sotto i 900px (vedi media query in fondo al file). */
+.heroContenuto h1 {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 68px;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  margin-bottom: var(--space-6);
+}
+
+/* CTA primario nuovo (AC #4, EXPERIENCE.md -> Pattern dei Componenti: "Un
+   solo CTA primario 'Scopri le squadre' -> /squadre"). Stessi token
+   button-primary di DESIGN.md, letterali (nessun custom property
+   equivalente). */
+.heroCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  background: var(--color-primary);
+  color: #0b0e14;
+  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: var(--space-4) var(--space-8);
+  border-radius: 0;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.heroCta:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+}
+
+.heroCta:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroCta {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .heroContenuto {
+    padding: 24px 20px;
+  }
+
+  .heroContenuto h1 {
+    font-size: 44px;
+    line-height: 0.95;
+  }
+}
+
+/* ===== INTESTAZIONI DI SEZIONE (Partite/Foto squadra/Post social) =====
+   {typography.display-section} - stesso ruolo semantico gia' assegnato
+   esplicitamente a social-embed.heading-typography in DESIGN.md, qui
+   esteso per inferenza (Dev Notes) alle altre sezioni home "a piena
+   pagina". display-section-mobile sotto i 900px. */
+.titoloSezione {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titoloSezione {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+/* Intestazione dedicata alla sezione Sponsor (components.sponsor-strip,
+   diversa da .titoloSezione sopra: {typography.label-tag} con
+   letter-spacing 3px in override, non 1.5px di default). */
+.titoloSponsor {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  /* {colors.grigio} #5B6472 - letterale. */
+  color: #5b6472;
+}
+
+/* ===== SPONSOR ===== */
 .sezioneSponsor {
   padding: var(--space-8) var(--space-6);
+  /* {colors.bordo-chiaro} #E5E9EE - letterale, diverso da var(--color-border). */
+  border-top: 1px solid #e5e9ee;
+  border-bottom: 1px solid #e5e9ee;
 }
 
 .gruppoSponsor + .gruppoSponsor {
@@ -66,8 +199,11 @@
 }
 
 .schedaSponsor {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  /* {colors.bordo-chiaro} #E5E9EE - letterale. {rounded.none} - nessun
+     angolo arrotondato tranne le 2 eccezioni esplicite del sistema
+     (Accedi, icone social), che non includono le card. */
+  border: 1px solid #e5e9ee;
+  border-radius: 0;
   padding: var(--space-4);
   background: var(--color-surface);
 }
@@ -76,97 +212,134 @@
   display: block;
   width: 100%;
   max-width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid #e5e9ee;
+  border-radius: 0;
 }
 
 .linkImmagineSponsor {
   display: block;
 }
 
+/* {colors.focus-ring} #0072A3 - sfondo chiaro qui (bianco/scheda sponsor),
+   non var(--color-focus-ring) (falso amico, #006da6). */
 .linkImmagineSponsor:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid #0072a3;
   outline-offset: 2px;
 }
 
-/* Story 18.3, rivista su indicazione utente (2026-08-12): sezione a card
-   (una per partita) invece di tabella - stesso identico dato (Giorno/Ora/
-   Squadre/Luogo/Gruppo), nessuna colonna "Azioni". Il layout a card e' il
-   pattern con cui i siti di riferimento (volleyrocasaldepazzi.it,
-   gassalespiacenza.it) evidenziano le partite ("ultima/prossima partita"),
-   piu' leggibile di una tabella su mobile dove la maggior parte del
-   pubblico visita la home. Token DESIGN.md invariati, nessun colore nuovo
-   - stessa griglia di .listaSponsor sopra (Story 18.2). */
+/* ===== PARTITE DELLA SETTIMANA -> match-card ===== */
 .sezionePartite {
   padding: var(--space-8) var(--space-6);
 }
 
+/* match-grid: 2 colonne desktop, 1 colonna sotto i 900px (unico breakpoint
+   esplicito di EXPERIENCE.md -> Responsive & Piattaforma). {spacing.card-gap}
+   28px - letterale, non un multiplo pulito di 4px. */
 .listaPartite {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
   margin-top: var(--space-3);
 }
 
+@media (max-width: 900px) {
+  .listaPartite {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* components.match-card: sfondo {colors.nero}, testo {colors.bianco},
+   taglio diagonale asimmetrico angolo in basso a sinistra, {rounded.none}. */
 .schedaPartita {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   align-items: flex-start;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: #0b0e14;
+  color: #ffffff;
   padding: var(--space-4);
-  background: var(--color-surface);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Corner-accent decorativo (triangolo azzurro 15% opacita', angolo in alto
+   a destra) - dettaglio minore, non legato ad alcun AC numerato. */
+.schedaPartita::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 56px;
+  height: 56px;
+  background: var(--color-primary);
+  opacity: 0.15;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+
+/* {typography.meta} + {colors.testo-chiaro-muto} #AEB6C2 - stesso
+   trattamento di .luogoPartita sotto (Dev Notes: entrambi meta). */
 .dataPartita {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   width: 100%;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #aeb6c2;
 }
 
+/* {typography.display-card}. */
 .squadrePartita {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #ffffff;
 }
 
 .luogoPartita {
+  font-family: Arial, sans-serif;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  font-weight: 400;
+  line-height: 1.4;
+  color: #aeb6c2;
 }
 
-/* Stesso sfondo/testo gia' stabilito per ".attendance-row" in DESIGN.md
-   (colors.surface-alt + testo colors.text-primary) - nessuna nuova coppia
-   colore da verificare, riuso di una combinazione gia' in uso nell'app. */
+/* {typography.label-tag} + {colors.azzurro} (eccezione, var(--color-primary)).
+   Nessuno sfondo a chip (rimosso rispetto alla versione precedente): match-card
+   non prevede uno sfondo pieno per l'etichetta categoria/girone. */
 .gruppoPartita {
-  font-size: 10.5px;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-alt);
-  color: var(--color-text-primary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-primary);
 }
 
 .linkNaviga {
-  color: var(--color-button-bg);
-  font-size: 12px;
+  color: var(--color-primary);
+  font-size: 13px;
   font-weight: 700;
 }
 
+/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo {colors.nero}
+   della match-card, non var(--color-focus-ring) (falso amico). */
 .linkNaviga:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
 
-/* Story 18.4: stessa griglia di card di .listaPartite sopra (Story 18.3) -
-   idioma gia' stabilito in questo file, nessun colore nuovo. */
+/* ===== FOTO DI SQUADRA (teaser home, galleria PARZIALE) =====
+   Nessun placeholder qui per i Gruppi senza foto - regola permanente di
+   Story 18.4 AC #3, non toccata da questa storia (vedi Dev Notes "Le due
+   regole del placeholder-foto"). */
 .sezioneFotoSquadra {
   padding: var(--space-8) var(--space-6);
 }
@@ -186,40 +359,45 @@
   text-align: center;
 }
 
+/* clip-path diagonale sul bordo inferiore, mirror del trattamento
+   team-card.photo di DESIGN.md. {rounded.none}. */
 .immagineFotoSquadra {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+  border-radius: 0;
 }
 
+/* {typography.label-tag}, colore {colors.nero} #0B0E14 letterale (diverso
+   da var(--color-text-primary), non intercambiabili). */
 .nomeGruppoFoto {
-  font-size: 13px;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #0b0e14;
 }
 
-/* Story 18.5 - stesso padding di sezione gia' stabilito sopra
-   (.sezionePartite/.sezioneFotoSquadra), nessun colore nuovo. L'iframe del
-   Page Plugin di Facebook ha una larghezza fissa nativa (width=340 nell'URL,
-   lib/embed-facebook.ts) - centrato invece di stirato a piena larghezza. */
+/* ===== POST SOCIAL -> social-embed ===== */
+/* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
+   var(--color-surface-alt). Padding {spacing.6} = 24px = var(--space-6),
+   riusabile. */
 .sezioneSocial {
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  background: #f2f5f7;
 }
 
-/* Review fix: width/height espliciti - senza, un <iframe> ricade sul default
-   del browser (~300x150), tagliando il contenuto che il Page Plugin di
-   Facebook renderizza internamente a 340x500 (i parametri width/height
-   nell'URL, lib/embed-facebook.ts, controllano solo il contenuto DENTRO
-   l'iframe, non la scatola dell'elemento nella pagina ospite) - stesso
-   principio gia' applicato a .mappaIncorporata (PalestraRow.tsx, Story 9.6),
-   qui dimenticato nella prima stesura. Valori allineati 1:1 ai parametri
-   width/height dell'URL di embed. */
+/* Review fix (Story 18.5): width/height espliciti - senza, un <iframe>
+   ricade sul default del browser (~300x150), tagliando il contenuto che il
+   Page Plugin di Facebook renderizza internamente a 340x500. Valori
+   INVARIATI da Story 18.12 (nessun cambio dimensionale, solo il contenitore
+   esterno cambia sfondo). */
 .iframeSocial {
   display: block;
   width: 340px;

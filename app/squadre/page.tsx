@@ -94,11 +94,22 @@ export default async function SquadrePage() {
               const fotoInfo = fotoPerGruppo.get(gruppo.id);
               return (
                 <div className={styles.schedaGruppo} key={gruppo.id}>
-                  {fotoInfo !== undefined && (
+                  {fotoInfo !== undefined ? (
                     <img
                       className={styles.immagineGruppo}
                       src={`${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(fotoInfo ?? "")}`}
                       alt={`Foto di squadra di ${gruppo.nome}`}
+                    />
+                  ) : (
+                    // Story 18.12 (AC #5): placeholder intenzionale finché
+                    // il Gruppo non carica una foto - distinto dalla
+                    // galleria "parziale" della home (Story 18.4 AC #3,
+                    // non toccata da questa storia), dove l'assenza di
+                    // foto resta invece "nessun placeholder".
+                    <div
+                      className={styles.placeholderFoto}
+                      role="img"
+                      aria-label={`Nessuna foto di squadra caricata per ${gruppo.nome}`}
                     />
                   )}
                   <h2 className={styles.nomeGruppo}>{gruppo.nome}</h2>
