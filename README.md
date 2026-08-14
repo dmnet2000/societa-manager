@@ -78,7 +78,7 @@ app/(nome-modulo)/   # route group per modulo (es. (orari-palestre), (gruppi-all
 lib/                 # helper condivisi (anno-agonistico, auth, db-rls, ...)
 prisma/              # schema.prisma, migrazioni scritte a mano, seed
 _bmad-output/         # planning artifacts (PRD, architettura, epics) e story di implementazione
-docs/                 # panoramica di prodotto
+docs/                 # panoramica di prodotto, manuale utente, deploy, guide di configurazione
 ```
 
 Ogni modulo (`app/(nome-modulo)/`) possiede in esclusiva la mutazione delle proprie entità — un modulo legge le entità di un altro solo tramite le sue funzioni/query, mai scrivendo direttamente sulle sue tabelle. Le tabelle protette da RLS si leggono/scrivono solo tramite client Supabase autenticato (`lib/db-rls/`), mai con una query Prisma diretta a runtime.

@@ -64,6 +64,10 @@ Dalla pagina **Configurazione SMTP** si inseriscono i parametri del server di po
 
 Dalla pagina **Configurazione logo** si carica un'immagine (PNG o JPG, max 2MB) che diventa il logo mostrato nella barra di navigazione, e si imposta il nome del settore mostrato in navigazione e nella pagina di login.
 
+### Configurare il carosello Facebook della home pubblica
+
+Dalla pagina **Impostazioni**, sezione "Token Facebook", si incolla il Token di accesso della Pagina Facebook della società: serve al carosello "Ultimi post" della home pubblica del sito per leggere davvero i post recenti della Pagina (sostituisce il vecchio widget incorporato di Facebook). Il token non viene mai mostrato in chiaro dopo il salvataggio — si lascia vuoto per non modificarlo. Un avviso compare se il token non è ancora configurato o se l'ultima lettura dei post è fallita (tipicamente perché il token è scaduto e va rigenerato). Procedura completa passo-passo, incluso come ottenere il token da Facebook: [`docs/guida-configurazione-facebook.md`](guida-configurazione-facebook.md). Anche il Dirigente può configurare questa sezione.
+
 ### Configurare i permessi sui certificati medici del Dirigente
 
 Dalla pagina **Permessi certificati** l'Admin sceglie quali Gruppi il Dirigente può vedere nella propria Vista d'insieme relativamente allo stato dei certificati medici. Nessuna selezione significa visibilità su tutti i Gruppi (comportamento predefinito); selezionandone uno o più si restringe la visibilità a quei soli Gruppi.
