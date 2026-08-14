@@ -13,22 +13,36 @@
    {colors.bianco}=var(--color-surface). */
 
 /* ===== HERO ===== */
+/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post Facebook
+   sostituisce il placeholder "FOTO AZIONE" come sfondo dell'hero - il
+   titolo/CTA restano sovrapposti come prima, la fascia testo+controlli del
+   post si aggiunge sotto di loro. flex-direction:column + justify-content
+   (non piu' align-items:flex-end su riga singola) ancora il gruppo
+   .heroContenuto+.infoPost in fondo all'hero, uno sopra l'altro - i livelli
+   assolutamente posizionati (.heroFoto/.heroFotoPost/.heroDiagonale) non
+   partecipano al flex, invariati in questo. z-index esplicito su ogni
+   livello (non piu' affidato al solo ordine nel DOM) perche' ora .heroFoto/
+   .heroFotoPost possono comparire in punti diversi del markup a seconda
+   che ci siano post da mostrare. */
 .hero {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
   min-height: 60vh;
   background: #0f2438;
   clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
 }
 
 /* Foto placeholder (EXPERIENCE.md -> Fotografia Placeholder: "Hero -
-   presumibilmente permanente"). {colors.blu-carbone} alternato a
-   {colors.placeholder-hatch-alt} #17384F. */
+   presumibilmente permanente") - fallback quando nessun post Facebook e'
+   disponibile (vedi .heroFotoPost sotto per il caso con post). {colors.blu-carbone}
+   alternato a {colors.placeholder-hatch-alt} #17384F. */
 .heroFoto {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: repeating-linear-gradient(
     45deg,
     #0f2438,
@@ -55,6 +69,34 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* Sfondo fotografico reale (post Facebook) - stesso ruolo/posizionamento
+   di .heroFoto sopra, ma object-fit:cover a piena altezza dell'hero (non
+   il piccolo riquadro 280px del vecchio carosello a fondo pagina): il
+   ritaglio ai bordi e' il trattamento standard e atteso di uno sfondo
+   hero (stesso principio gia' previsto per la futura foto reale, Story
+   18.14), non un difetto da correggere. Scrim scuro sopra la foto (::after)
+   per garantire leggibilita' del titolo/testo qualunque sia la foto
+   sottostante. */
+.heroFotoPost {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.heroFotoPost::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 36, 56, 0.25) 0%,
+    rgba(15, 36, 56, 0.55) 55%,
+    rgba(15, 36, 56, 0.92) 100%
+  );
+}
+
 /* Innesto diagonale {colors.azzurro}->{colors.navy}, valori RGBA
    equivalenti agli hex con l'opacita' specificata in DESIGN.md. */
 .heroDiagonale {
@@ -63,6 +105,7 @@
   right: -10%;
   width: 60%;
   height: 100%;
+  z-index: 1;
   background: linear-gradient(
     100deg,
     transparent 0%,
@@ -75,22 +118,29 @@
 .heroContenuto {
   position: relative;
   z-index: 2;
-  padding: 64px 48px 88px;
+  padding: 64px 48px 24px;
   max-width: 720px;
   color: #ffffff;
 }
 
-/* {typography.display-hero} desktop, {typography.display-hero-mobile}
-   sotto i 900px (vedi media query in fondo al file). */
+/* {typography.display-section} - stessa scala gia' in uso per i titoli di
+   sezione del resto del registro (.titoloSezione sotto), non piu'
+   {typography.display-hero} 68px: richiesta esplicita dell'utente
+   (2026-08-14, "non mi piace la scritta... lo metterei più in piccolo") -
+   ridotto anche il peso/il carattere da "Arial Black" 900 (molto pesante,
+   pensato per il placeholder piatto) a "Arial Narrow" 700, piu' leggero
+   ora che il titolo si sovrappone a una foto reale che cambia. Scelta di
+   giudizio, non specificata a parole dall'utente - verificare dal vivo e
+   aggiustare se non e' quello che aveva in mente. */
 .heroContenuto h1 {
-  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
-  font-size: 68px;
-  font-weight: 900;
-  line-height: 0.92;
+  font-family: "Arial Narrow", Arial, sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.05;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 /* CTA primario nuovo (AC #4, EXPERIENCE.md -> Pattern dei Componenti: "Un
@@ -133,14 +183,137 @@
   }
 }
 
+/* ===== FASCIA POST FACEBOOK NELL'HERO =====
+   Richiesta esplicita dell'utente (2026-08-14): sostituisce la vecchia
+   sezione "Ultimi post" a fondo pagina (Story 18.13). Testo troncato a 3
+   righe (line-clamp) - deviazione deliberata dall'AC #1 originale della
+   Story 18.13 ("mai troncato"), scritto per il carosello a se stante con
+   spazio verticale generoso: qui il testo condivide lo spazio dell'hero
+   col titolo, un post lungo per intero renderebbe l'hero eccessivamente
+   alto. Il link "Vedi su Facebook" resta sempre disponibile per leggere
+   il post completo. */
+.infoPost {
+  position: relative;
+  z-index: 2;
+  padding: 0 48px 32px;
+  max-width: 720px;
+  color: #ffffff;
+}
+
+.testoPost {
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #eaf4fb;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.metaPost {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.linkPost {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.linkPost:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.controlliPost {
+  margin-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.frecciaPost,
+.pausaPost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0;
+  background: rgba(15, 36, 56, 0.4);
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.frecciaPost:focus-visible,
+.pausaPost:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.indicatoriPost {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pallinoPost {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.pallinoPost::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.pallinoPostAttivo::after {
+  background: #ffffff;
+}
+
+.pallinoPost:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .infoPost {
+    padding: 0 20px 24px;
+  }
+
+  .testoPost {
+    font-size: 14px;
+    -webkit-line-clamp: 2;
+  }
+}
+
 @media (max-width: 900px) {
   .heroContenuto {
     padding: 24px 20px;
   }
 
   .heroContenuto h1 {
-    font-size: 44px;
-    line-height: 0.95;
+    font-size: 26px;
+    line-height: 1.1;
   }
 }
 
@@ -398,18 +571,5 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #0f2438;
-}
-
-/* ===== POST SOCIAL -> social-embed ===== */
-/* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
-   var(--color-surface-alt). Padding {spacing.6} = 24px = var(--space-6),
-   riusabile. */
-.sezioneSocial {
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background: #f2f5f7;
 }
 

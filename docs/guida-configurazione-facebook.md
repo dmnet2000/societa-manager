@@ -2,7 +2,7 @@
 
 Guida per un Admin o Dirigente: come ottenere il **Token di accesso** della Pagina Facebook della società e configurarlo su `/app/impostazioni`, così che la home pubblica del sito (`/`) mostri gli ultimi post reali della Pagina in un carosello automatico (sezione "Ultimi post" — Story 18.13, sostituisce il vecchio widget incorporato di Facebook).
 
-Stato aggiornato al 2026-08-14.
+Stato aggiornato al 2026-08-14. Versione delle Graph API in uso: **v26.0** (verificata dal vivo).
 
 ## Cosa serve prima di iniziare
 
@@ -48,7 +48,7 @@ Uno User Access Token appena generato dura poche ore. Va scambiato con uno **lon
 3. Apri questo URL nel browser (sostituendo i tre valori tra `{ }`, senza le parentesi graffe):
 
    ```
-   https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id={APP_ID}&client_secret={APP_SECRET}&fb_exchange_token={TOKEN_DEL_PASSO_3}
+   https://graph.facebook.com/v26.0/oauth/access_token?grant_type=fb_exchange_token&client_id={APP_ID}&client_secret={APP_SECRET}&fb_exchange_token={TOKEN_DEL_PASSO_3}
    ```
 
 4. La risposta è un JSON con un campo `access_token` — è il tuo **User Access Token long-lived** (~60 giorni). Copialo.
@@ -60,12 +60,20 @@ Il token che serve all'app **non** è quello dell'utente, ma quello specifico de
 1. Apri (sostituendo `{TOKEN_LONG_LIVED}` con il token del Passo 4):
 
    ```
-   https://graph.facebook.com/v21.0/me/accounts?access_token={TOKEN_LONG_LIVED}
+   https://graph.facebook.com/v26.0/me/accounts?access_token={TOKEN_LONG_LIVED}
    ```
 
 2. La risposta elenca tutte le Pagine che amministri, ciascuna con il proprio `id`, `name` e — questo è il valore che serve — `access_token`. Individua la Pagina della società per `name` e copia il suo `access_token`.
 
 Questo è il **Token di accesso** da incollare nell'app al Passo 6.
+
+**Se la risposta è `{"data":[]}` (nessuna Pagina elencata)**: la chiamata funziona ma non trova Pagine collegate al token — quasi sempre perché la Pagina è gestita tramite un **Business Portfolio** (Meta Business Suite) e l'app creata al Passo 2 non è ancora collegata a quel portfolio (il vecchio selettore "le tue Pagine" durante l'autorizzazione del Passo 3 in quel caso resta vuoto, anche se sei amministratore). Per risolvere:
+
+1. Vai su https://business.facebook.com/settings.
+2. **Account → Pagine**: verifica che la Pagina della società compaia lì (se non c'è, aggiungila/rivendicala).
+3. **Account → App**: aggiungi l'App creata al Passo 2 incollando il suo **App ID** (Impostazioni → Di base nel pannello developers.facebook.com).
+4. Apri la scheda dell'app appena aggiunta e assegnale accesso alla Pagina (di solito un pulsante "Assegna asset"/"Aggiungi persone o asset" → seleziona la Pagina → concedi controllo).
+5. Torna al Passo 3 e rigenera il token da capo: ora il selettore Pagine dovrebbe mostrarla.
 
 ## Passo 6 — Inserire il token nell'app
 

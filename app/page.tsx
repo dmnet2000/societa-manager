@@ -27,7 +27,7 @@ import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
 import { HeaderPubblico } from "./HeaderPubblico";
 import { FooterPubblico } from "./FooterPubblico";
-import { PostFacebookCarosello } from "./PostFacebookCarosello";
+import { HeroPostFacebook } from "./HeroPostFacebook";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -254,11 +254,16 @@ export default async function HomePubblicaPage() {
       <HeaderPubblico />
       <main>
         <div className={styles.hero}>
-          {/* Story 18.12 (AC #1/#5): foto placeholder e innesto diagonale -
-              trattamento intenzionale finche' non esistono foto reali (vedi
-              EXPERIENCE.md -> Fotografia Placeholder), non un segnaposto da
-              wireframe. aria-hidden: puramente decorativi. */}
-          <div className={styles.heroFoto} aria-hidden="true" />
+          {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
+              Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
+              dell'hero - foto reali della Pagina al posto del pattern
+              statico, quando disponibili. Il placeholder resta come
+              fallback quando non ci sono post da mostrare (nessun token/URL
+              configurato, consenso cookie non dato, o nessun post con
+              testo) - stesso principio fail-soft già stabilito. */}
+          {postFacebook.length === 0 && (
+            <div className={styles.heroFoto} aria-hidden="true" />
+          )}
           <div className={styles.heroDiagonale} aria-hidden="true" />
           <div className={styles.heroContenuto}>
             <h1>Benvenuti nel {nomeVisualizzato}</h1>
@@ -276,6 +281,12 @@ export default async function HomePubblicaPage() {
               Scopri le squadre
             </Link>
           </div>
+          {/* Radice <> con due elementi: lo sfondo fotografico (position:
+              absolute, inset:0) e la fascia informativa del post (testo +
+              controlli) sotto al titolo - stesso stato (indice/pausa)
+              condiviso tra i due, non due componenti indipendenti che
+              potrebbero desincronizzarsi. */}
+          {postFacebook.length > 0 && <HeroPostFacebook post={postFacebook} />}
         </div>
 
         {/* Story 18.2 (AC #2): nessuna sezione se non ci sono Sponsor attivi
@@ -402,24 +413,6 @@ export default async function HomePubblicaPage() {
           </section>
         )}
 
-        {/* Story 18.13 (AC #1/#3): sostituisce l'embed statico (iframe Page
-            Plugin, Story 18.5) con un carosello attivo - postFacebook e'
-            gia' [] per ogni caso di assenza/errore (token non configurato/
-            non valido, consenso non dato, chiamata Graph API fallita,
-            nessun post con testo - vedi lib/facebook-graph.ts), quindi la
-            lunghezza dell'array e' l'unica fonte di verita' "c'e' qualcosa
-            da mostrare", non piu' "urlPaginaFacebook && consentitoSocial"
-            (quella condizione ora vive solo nel calcolo di postFacebook
-            sopra). Nessuna immagine Facebook nel markup quando l'array e'
-            vuoto (AC #5, invariato). */}
-        {postFacebook.length > 0 && (
-          <section className={styles.sezioneSocial} aria-labelledby="titolo-social">
-            <h2 id="titolo-social" className={styles.titoloSezione}>
-              Ultimi post
-            </h2>
-            <PostFacebookCarosello post={postFacebook} />
-          </section>
-        )}
       </main>
       {/* Story 18.8: estratto in FooterPubblico.tsx - conSpazioCookieBanner
           perche' questa e' l'unica pagina che monta ancora <CookieBanner>

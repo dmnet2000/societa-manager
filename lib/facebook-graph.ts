@@ -41,10 +41,10 @@ export type PostFacebook = {
   dataPubblicazione: string;
 };
 
-const VERSIONE_GRAPH_API = "v21.0";
-// Verificare in sviluppo la versione stabile corrente delle Graph API -
-// nessun precedente in questo progetto per un valore gia' "pinnato",
-// Facebook deprecha le versioni vecchie a rotazione.
+// v26.0 verificata dal vivo dall'utente il 2026-08-14 (generazione riuscita
+// del Page Access Token e prima lettura post). Facebook deprecha le
+// versioni vecchie a rotazione - da ricontrollare periodicamente.
+const VERSIONE_GRAPH_API = "v26.0";
 const LIMITE_POST = 10;
 const TIMEOUT_MS = 8000;
 
