@@ -64,14 +64,14 @@
   color: #5b6472;
 }
 
-/* {typography.body} + {colors.nero} #0B0E14
+/* {typography.body} + {colors.blu-carbone} #0F2438
    (DESIGN.md.components.contact-block.value-typography/.value-color). */
 .valore {
   font-family: Arial, sans-serif;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.8;
-  color: #0b0e14;
+  color: #0f2438;
 }
 
 /* Link mailto:/tel: - stessa tipografia/colore di .valore, sottolineato
@@ -83,7 +83,7 @@
   font-size: 14px;
   font-weight: 400;
   line-height: 1.8;
-  color: #0b0e14;
+  color: #0f2438;
   width: fit-content;
 }
 
@@ -101,7 +101,7 @@
    mirror esplicito di components.footer.social-icon-hit-area). Colori
    riusati da components.footer per inferenza esplicita (contact-block non
    ne definisce di propri, vedi Dev Notes della storia): sfondo
-   {colors.placeholder-hatch-alt} #1C2433, testo var(--color-primary)
+   {colors.placeholder-hatch-alt} #17384F, testo var(--color-primary)
    (eccezione: stesso hex di {colors.azzurro}), hover invertito. */
 .iconaSocial {
   display: flex;
@@ -110,7 +110,7 @@
   width: 44px;
   height: 44px;
   border-radius: 9999px;
-  background: #1c2433;
+  background: #17384f;
   color: var(--color-primary);
   font-family: "Arial Black", sans-serif;
   font-size: 14px;
@@ -120,11 +120,11 @@
 
 .iconaSocial:hover {
   background: var(--color-primary);
-  color: #0b0e14;
+  color: #0f2438;
 }
 
 /* {colors.focus-ring-chiaro} #FFFFFF - l'icona ha uno sfondo scuro proprio
-   (#1C2433), stessa regola contestuale "scuro->bianco" gia' applicata a
+   (#17384F), stessa regola contestuale "scuro->bianco" gia' applicata a
    header-nav/footer. */
 .iconaSocial:focus-visible {
   outline: 2px solid #ffffff;

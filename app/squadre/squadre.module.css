@@ -62,7 +62,7 @@
   background: var(--color-surface);
   border-radius: 0;
   padding: var(--space-4);
-  box-shadow: 0 8px 24px rgba(11, 14, 20, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 36, 56, 0.08);
   transition: transform 0.25s ease;
 }
 
@@ -105,7 +105,7 @@
 
 /* Placeholder foto per Gruppo senza foto caricata (AC #5) - trattamento
    visivo intenzionale finche' la foto non arriva (Story 18.4), non
-   un'icona rotta o un'area vuota. Trama diagonale {colors.nero}/
+   un'icona rotta o un'area vuota. Trama diagonale {colors.blu-carbone}/
    {colors.placeholder-hatch-alt}, didascalia centrata. Distinto dalla
    galleria "parziale" della home (nessun placeholder li', vedi
    home-pubblica.module.css). */
@@ -113,10 +113,10 @@
   position: relative;
   background: repeating-linear-gradient(
     -45deg,
-    #0b0e14,
-    #0b0e14 10px,
-    #1c2433 10px,
-    #1c2433 20px
+    #0f2438,
+    #0f2438 10px,
+    #17384f 10px,
+    #17384f 20px
   );
 }
 
@@ -134,7 +134,7 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* {typography.display-card}. */

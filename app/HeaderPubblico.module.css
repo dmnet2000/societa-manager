@@ -24,8 +24,8 @@
      righe su schermi stretti, AC #3) trabocca sotto, invisibile/sovrapposto
      al contenuto della pagina (fix di code review). */
   min-height: 76px;
-  /* {colors.nero} #0B0E14 - nessun corrispondente in globals.css. */
-  background: #0b0e14;
+  /* {colors.blu-carbone} #0F2438 - nessun corrispondente in globals.css. */
+  background: #0f2438;
   /* {colors.azzurro} #00A3E0 - eccezione, stesso valore di var(--color-primary). */
   border-bottom: 4px solid var(--color-primary);
 }
@@ -71,8 +71,9 @@
   align-items: center;
   min-height: 44px;
   padding: 0 14px;
-  /* {colors.testo-chiaro-debole} #8891A0 - letterale, contrasto su nero
-     verificato 6.08:1 in DESIGN.md. */
+  /* {colors.testo-chiaro-debole} #8891A0 - letterale, contrasto su
+     {colors.blu-carbone} 4.97:1 in DESIGN.md (ricalcolato durante la
+     sessione UX di Story 18.15, era 6.08:1 col vecchio quasi-nero). */
   color: #8891a0;
   /* {colors.bordo-scuro-forte} #333B47 - letterale. */
   border: 1px solid #333b47;
@@ -98,9 +99,10 @@
   }
 }
 
-/* {colors.focus-ring-chiaro} #FFFFFF - sfondo header e' {colors.nero}, non
-   var(--color-focus-ring) (falso amico, #006da6 diverso da {colors.focus-ring}
-   #0072A3 - qui comunque serve il ring chiaro per il contesto scuro). */
+/* {colors.focus-ring-chiaro} #FFFFFF - sfondo header e' {colors.blu-carbone},
+   non var(--color-focus-ring) (falso amico, #006da6 diverso da
+   {colors.focus-ring} #0072A3 - qui comunque serve il ring chiaro per il
+   contesto scuro). */
 .accedi:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;

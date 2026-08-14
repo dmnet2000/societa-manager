@@ -58,7 +58,7 @@
   border-bottom: none;
 }
 
-/* {typography.display-card} + {colors.nero} #0B0E14
+/* {typography.display-card} + {colors.blu-carbone} #0F2438
    (DESIGN.md.components.staff-list.name-typography/.name-color). */
 .nomeAllenatore {
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
@@ -67,7 +67,7 @@
   line-height: 1.15;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #0b0e14;
+  color: #0f2438;
 }
 
 /* {typography.body} + {colors.grigio} #5B6472

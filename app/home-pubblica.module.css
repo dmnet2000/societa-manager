@@ -19,22 +19,22 @@
   display: flex;
   align-items: flex-end;
   min-height: 60vh;
-  background: #0b0e14;
+  background: #0f2438;
   clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
 }
 
 /* Foto placeholder (EXPERIENCE.md -> Fotografia Placeholder: "Hero -
-   presumibilmente permanente"). {colors.nero} alternato a
-   {colors.placeholder-hatch-alt} #1C2433. */
+   presumibilmente permanente"). {colors.blu-carbone} alternato a
+   {colors.placeholder-hatch-alt} #17384F. */
 .heroFoto {
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
     45deg,
-    #0b0e14,
-    #0b0e14 14px,
-    #1c2433 14px,
-    #1c2433 28px
+    #0f2438,
+    #0f2438 14px,
+    #17384f 14px,
+    #17384f 28px
   );
 }
 
@@ -52,7 +52,7 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Innesto diagonale {colors.azzurro}->{colors.navy}, valori RGBA
@@ -103,7 +103,7 @@
   justify-content: center;
   min-height: 44px;
   background: var(--color-primary);
-  color: #0b0e14;
+  color: #0f2438;
   font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
   font-weight: 900;
   font-size: 14px;
@@ -248,14 +248,15 @@
   }
 }
 
-/* components.match-card: sfondo {colors.nero}, testo {colors.bianco},
-   taglio diagonale asimmetrico angolo in basso a sinistra, {rounded.none}. */
+/* components.match-card: sfondo {colors.azzurro-partite} #2E6F99, testo
+   {colors.bianco}, taglio diagonale asimmetrico angolo in basso a
+   sinistra, {rounded.none}. */
 .schedaPartita {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   align-items: flex-start;
-  background: #0b0e14;
+  background: #2e6f99;
   color: #ffffff;
   padding: var(--space-4);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
@@ -278,18 +279,21 @@
   clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
 
-/* {typography.meta} + {colors.testo-chiaro-muto} #AEB6C2 - stesso
-   trattamento di .luogoPartita sotto (Dev Notes: entrambi meta). */
+/* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB - stesso
+   trattamento di .luogoPartita sotto (Dev Notes: entrambi meta). Layout
+   gap-based (non piu' space-between, mirror di .meta in
+   calendario.module.css) - allinea i metadati a sinistra invece di
+   spingerli ai due margini opposti della card. */
 .dataPartita {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  gap: var(--space-3);
   width: 100%;
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-  color: #aeb6c2;
+  color: #eaf4fb;
 }
 
 /* {typography.display-card}. */
@@ -303,34 +307,50 @@
   color: #ffffff;
 }
 
+/* {colors.magenta-chiaro} #FFCBE6 - letterale, non var(--color-magenta):
+   il magenta pieno scenderebbe a 1.21:1 su questo sfondo, quasi la stessa
+   luminanza dello sfondo - mai piu' piccolo di {typography.display-card}
+   (mirror esatto di .vs in calendario.module.css). */
+.vs {
+  color: #ffcbe6;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
 .luogoPartita {
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-  color: #aeb6c2;
+  color: #eaf4fb;
 }
 
-/* {typography.label-tag} + {colors.azzurro} (eccezione, var(--color-primary)).
-   Nessuno sfondo a chip (rimosso rispetto alla versione precedente): match-card
-   non prevede uno sfondo pieno per l'etichetta categoria/girone. */
+/* {typography.label-tag} + {colors.testo-chiaro-partite} #EAF4FB -
+   letterale, non var(--color-primary): l'azzurro pieno scenderebbe a
+   1.90:1 su questo sfondo piu' chiaro, sotto soglia AA. Nessuno sfondo a
+   chip (rimosso rispetto alla versione precedente): match-card non
+   prevede uno sfondo pieno per l'etichetta categoria/girone. */
 .gruppoPartita {
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: #eaf4fb;
 }
 
+/* {colors.testo-chiaro-partite} #EAF4FB, non var(--color-primary): stesso
+   motivo di .gruppoPartita sopra, l'azzurro pieno scende a 1.90:1 su
+   questo sfondo (fix code review). */
 .linkNaviga {
-  color: var(--color-primary);
+  color: #eaf4fb;
   font-size: 13px;
   font-weight: 700;
 }
 
-/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo {colors.nero}
-   della match-card, non var(--color-focus-ring) (falso amico). */
+/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo scuro
+   ({colors.azzurro-partite}) della match-card, non var(--color-focus-ring)
+   (falso amico). */
 .linkNaviga:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
@@ -369,15 +389,15 @@
   border-radius: 0;
 }
 
-/* {typography.label-tag}, colore {colors.nero} #0B0E14 letterale (diverso
-   da var(--color-text-primary), non intercambiabili). */
+/* {typography.label-tag}, colore {colors.blu-carbone} #0F2438 letterale
+   (diverso da var(--color-text-primary), non intercambiabili). */
 .nomeGruppoFoto {
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #0b0e14;
+  color: #0f2438;
 }
 
 /* ===== POST SOCIAL -> social-embed ===== */

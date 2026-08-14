@@ -335,7 +335,7 @@ export default async function HomePubblicaPage() {
                       <span>{partita.ora}</span>
                     </div>
                     <div className={styles.squadrePartita}>
-                      {partita.squadraCasa} - {partita.squadraOspite}
+                      {partita.squadraCasa} <span className={styles.vs}>vs</span> {partita.squadraOspite}
                     </div>
                     <div className={styles.luogoPartita}>
                       {partita.impianto}

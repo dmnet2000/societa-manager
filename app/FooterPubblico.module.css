@@ -7,17 +7,17 @@
 .footer {
   padding: var(--space-6);
   text-align: center;
-  /* {colors.nero} #0B0E14 - letterale. */
-  background: #0b0e14;
+  /* {colors.blu-carbone} #0F2438 - letterale. */
+  background: #0f2438;
   /* {typography.meta}. */
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-  /* {colors.testo-scuro-muto} #7B8697 - letterale, contrasto 5.24:1 su
-     {colors.nero} verificato in DESIGN.md (corretto in accessibility
-     review: il valore originale #6B7480 falliva la soglia AA). */
-  color: #7b8697;
+  /* {colors.testo-scuro-muto} #838E9E - letterale, corretto durante la
+     sessione UX di Story 18.15 (il valore precedente #7B8697 scendeva a
+     4.29:1 sul nuovo sfondo {colors.blu-carbone}, sotto soglia AA). */
+  color: #838e9e;
 }
 
 /* Review fix (Story 18.6): padding-bottom aggiuntivo cosi' il banner/pulsante
@@ -31,7 +31,7 @@
 /* Icona social (elemento nuovo, AC #4 - vedi Dev Notes "Elementi nuovi
    richiesti"). {rounded.full}, area cliccabile reale 44x44px anche con
    resa visiva 38px (hit-area via padding). Colori: sfondo
-   {colors.placeholder-hatch-alt} #1C2433, testo var(--color-primary)
+   {colors.placeholder-hatch-alt} #17384F, testo var(--color-primary)
    (eccezione, stesso hex di {colors.azzurro}), hover invertito. */
 .iconaSocial {
   display: inline-flex;
@@ -41,7 +41,7 @@
   height: 44px;
   margin-top: var(--space-4);
   border-radius: 9999px;
-  background: #1c2433;
+  background: #17384f;
   color: var(--color-primary);
   font-family: "Arial Black", sans-serif;
   font-size: 13px;
@@ -54,7 +54,7 @@
 
 .iconaSocial:hover {
   background: var(--color-primary);
-  color: #0b0e14;
+  color: #0f2438;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -64,7 +64,7 @@
 }
 
 /* {colors.focus-ring-chiaro} #FFFFFF - il footer e' su sfondo
-   {colors.nero}, non var(--color-focus-ring) (falso amico). */
+   {colors.blu-carbone}, non var(--color-focus-ring) (falso amico). */
 .iconaSocial:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;

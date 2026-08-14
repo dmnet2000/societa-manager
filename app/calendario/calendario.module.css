@@ -77,15 +77,15 @@
   }
 }
 
-/* components.match-card: sfondo {colors.nero} #0B0E14, testo {colors.bianco},
-   taglio diagonale asimmetrico nell'angolo in basso a sinistra,
-   {rounded.none} (nessun angolo arrotondato - divergenza deliberata dal
-   resto del sistema, vedi DESIGN.md -> Forme). */
+/* components.match-card: sfondo {colors.azzurro-partite} #2E6F99, testo
+   {colors.bianco}, taglio diagonale asimmetrico nell'angolo in basso a
+   sinistra, {rounded.none} (nessun angolo arrotondato - divergenza
+   deliberata dal resto del sistema, vedi DESIGN.md -> Forme). */
 .matchCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  background: #0b0e14;
+  background: #2e6f99;
   color: #ffffff;
   padding: var(--space-4);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
@@ -108,15 +108,16 @@
   clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
 
-/* {typography.label-tag} + {colors.azzurro} (eccezione: stesso valore
-   esadecimale di var(--color-primary)). */
+/* {typography.label-tag} + {colors.testo-chiaro-partite} #EAF4FB -
+   letterale, non var(--color-primary): l'azzurro pieno scenderebbe a
+   1.90:1 su questo sfondo piu' chiaro, sotto soglia AA. */
 .categoria {
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: #eaf4fb;
 }
 
 /* {typography.display-card}. */
@@ -132,17 +133,18 @@
   text-transform: uppercase;
 }
 
-/* {colors.magenta} (eccezione: stesso valore esadecimale di
-   var(--color-magenta)) - mai piu' piccolo di {typography.display-card}
-   (a dimensione ridotta il contrasto magenta-su-nero scenderebbe sotto
-   soglia AA, vedi DESIGN.md -> Colori). */
+/* {colors.magenta-chiaro} #FFCBE6 - letterale, non var(--color-magenta):
+   il magenta pieno scenderebbe a 1.21:1 su questo sfondo, quasi la stessa
+   luminanza dello sfondo - mai piu' piccolo di {typography.display-card}
+   (a dimensione ridotta il contrasto scenderebbe ulteriormente, gia'
+   stretto a 3.88:1, vedi DESIGN.md -> Colori). */
 .vs {
-  color: var(--color-magenta);
+  color: #ffcbe6;
   font-size: inherit;
   font-weight: inherit;
 }
 
-/* {typography.meta} + {colors.testo-chiaro-muto} #AEB6C2 (nessun
+/* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB (nessun
    corrispondente in globals.css, hex letterale). */
 .meta {
   display: flex;
@@ -152,19 +154,20 @@
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-  color: #aeb6c2;
+  color: #eaf4fb;
 }
 
-/* Link "Naviga" - var(--color-primary) su sfondo nero, gia' verificato
-   6.73:1 in DESIGN.md -> Colori (stesso valore di {colors.azzurro}). */
+/* Link "Naviga" - {colors.testo-chiaro-partite} #EAF4FB, non
+   var(--color-primary): stesso motivo di .categoria/.meta sopra, l'azzurro
+   pieno scende a 1.90:1 su questo sfondo (fix code review). */
 .linkNaviga {
-  color: var(--color-primary);
+  color: #eaf4fb;
   font-weight: 700;
 }
 
-/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo
-   {colors.nero}, stessa regola contestuale DESIGN.md (focus scuro->bianco,
-   mai lo stesso colore del testo circostante). */
+/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo scuro
+   ({colors.azzurro-partite}), stessa regola contestuale DESIGN.md (focus
+   scuro->bianco, mai lo stesso colore del testo circostante). */
 .linkNaviga:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;

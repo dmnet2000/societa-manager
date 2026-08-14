@@ -22,11 +22,11 @@
   /* {colors.bianco} - eccezione, var(--color-surface) e' gia' bianco. */
   background: var(--color-surface);
   /* DESIGN.md specifica solo border-top (non un bordo su tutti i lati). */
-  border-top: 2px solid #0b0e14;
+  border-top: 2px solid #0f2438;
   border-radius: 0;
   /* Ombra verso l'alto (component-specific in DESIGN.md -> Elevazione),
      diversa dalla generica "0 1px 3px" del portale interno. */
-  box-shadow: 0 -4px 16px rgba(11, 14, 20, 0.12);
+  box-shadow: 0 -4px 16px rgba(15, 36, 56, 0.12);
 }
 
 .testo {
@@ -35,8 +35,8 @@
   font-size: 14px;
   font-weight: 400;
   line-height: 1.8;
-  /* {colors.nero} #0B0E14 - letterale. */
-  color: #0b0e14;
+  /* {colors.blu-carbone} #0F2438 - letterale. */
+  color: #0f2438;
 }
 
 .azioni {
@@ -56,11 +56,11 @@
   border: none;
 }
 
-/* button-primary: sfondo pieno azzurro, testo nero, maiuscolo via
-   text-transform (mai testo sorgente maiuscolo). */
+/* button-primary: sfondo pieno azzurro, testo {colors.blu-carbone},
+   maiuscolo via text-transform (mai testo sorgente maiuscolo). */
 .bottone {
   background: var(--color-primary);
-  color: #0b0e14;
+  color: #0f2438;
   font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
   font-weight: 900;
   font-size: 14px;
@@ -129,9 +129,9 @@
   background: var(--color-surface);
   color: #5b6472;
   border: none;
-  border-top: 2px solid #0b0e14;
+  border-top: 2px solid #0f2438;
   border-radius: 0;
-  box-shadow: 0 -4px 16px rgba(11, 14, 20, 0.12);
+  box-shadow: 0 -4px 16px rgba(15, 36, 56, 0.12);
   font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
   font-size: 12px;
   font-weight: 700;
