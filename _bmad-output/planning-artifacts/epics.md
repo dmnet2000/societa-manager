@@ -2427,6 +2427,48 @@ Testo quasi-nero usato come colore di *testo* (non sfondo — es. nomi Allenator
 3. **Given** `DESIGN.md` aggiornato **When** la nuova story di implementazione viene creata ed eseguita **Then** nessuno dei file elencati sopra usa più `#0B0E14`/`{colors.nero}` come sfondo — verificabile con una ricerca testuale nel codice, stesso controllo già fatto per scrivere questa storia
 4. **And** nessuna regressione funzionale (visibilità condizionale delle sezioni, nav wrap, touch target, focus) — stesso vincolo già rispettato da ogni story di restyling precedente (18.9-18.12)
 
+### Story 18.16: Applicare al codice reale il nuovo colore del registro "Poster Sportivo" (blu carbone + azzurro medio dei blocchi partite)
+
+*(Aggiunta post-apertura epica — 2026-08-14, seconda fase della Story 18.15: la revisione UX con Sally è completata (`DESIGN.md`/`EXPERIENCE.md` aggiornati in due iterazioni, entrambe nella stessa sessione), questa storia applica la nuova palette ai file CSS reali già shippati — stesso tipo di lavoro già fatto in Story 18.12, non un redesign.)*
+
+As a Visitatore senza account,
+I want che il sito pubblico live rifletta la palette aggiornata (nessun nero, blocchi partite in un azzurro medio dedicato, testo delle partite leggibile e ben allineato),
+so that il sito che vedo corrisponda a quanto deciso nella revisione UX, non a una versione superata.
+
+**Nota di scope**: questa storia copre **due cambi distinti**, entrambi decisi nella sessione UX di Story 18.15:
+1. **Prima iterazione** (rimozione del nero): ogni sfondo/bordo che oggi usa `#0B0E14`/`{colors.nero}` letterale diventa `{colors.blu-carbone}` `#0F2438`; il pattern placeholder-foto passa da `#0B0E14`/`#1C2433` a `#0F2438`/`#17384F` (`{colors.placeholder-hatch-alt}` aggiornato); la didascalia dei placeholder-foto passa da opacità 0.5 a 0.55 fissa (correzione di contrasto della sessione UX).
+2. **Seconda iterazione** (colore dedicato dei blocchi partite): le match-card (uniche superfici "partite" realmente implementate oggi — vedi nota sotto) passano da sfondo `{colors.blu-carbone}` a un nuovo `{colors.azzurro-partite}` `#2E6F99`, con i testi secondari corrispondenti aggiornati a `{colors.testo-chiaro-partite}` `#EAF4FB` e il divisore "vs" a `{colors.magenta-chiaro}` `#FFCBE6`.
+
+**Discrepanza reale scoperta preparando questa storia (verificata leggendo il codice, non solo `DESIGN.md`)**: le match-card di `/` (home, `.schedaPartita` in `home-pubblica.module.css`, Story 18.3/18.12) e quelle di `/calendario` (`.matchCard` in `calendario.module.css`, Story 18.9) **non sono implementate allo stesso modo**, anche se `DESIGN.md` descrive un solo componente `match-card` condiviso:
+- `/calendario` ha già un divisore "vs" colorato (`.vs{color:var(--color-magenta)}`) e un layout meta a sinistra basato su `gap` (`.squadre{display:flex;gap:var(--space-2)}`, `.meta{display:flex;flex-wrap:wrap;gap:var(--space-3)}`) — **già coerente** con `DESIGN.md`.
+- `/` non ha alcun divisore "vs" (il testo è un'unica stringa piatta `"{squadraCasa} - {squadraOspite}"`, nessuno span colorato) e la riga data/ora (`.dataPartita`) usa `justify-content: space-between`, che spinge data e ora ai due margini opposti della card invece di tenerle insieme a sinistra — **probabile causa reale** del feedback dell'utente ("il testo lo sposterei più a sinistra"), verificata leggendo il markup di `app/page.tsx` (righe 332-340): non esiste alcun elemento "vs" da riallineare in home, il problema è nella riga data/ora.
+
+Questa storia porta la home **alla pari** con calendario (stesso `gap`-based layout, stesso divisore "vs"), invece di introdurre due pattern diversi per lo stesso componente logico.
+
+**Nota — `next-match-strip` non esiste nel codice**: `DESIGN.md` descrive anche un componente separato `next-match-strip` (fascia azzurra a piena larghezza con countdown, sopra le match-card) — non è mai stato implementato: la Story 18.3 ha costruito solo la griglia di match-card (`.listaPartite`/`.schedaPartita`), non una fascia dedicata con countdown. Questa storia **non introduce** quel componente (fuori scope, richiederebbe una nuova sezione con logica di countdown mai richiesta da nessun AC esistente) — si limita a ricolorare ciò che esiste davvero.
+
+**Inventario reale dei file da modificare** (verificato nel codice, non solo in `DESIGN.md`):
+
+| File | Cosa cambia |
+|---|---|
+| `app/HeaderPubblico.module.css` (riga 28) | `background: #0b0e14` → `#0f2438` |
+| `app/FooterPubblico.module.css` (righe 11, 44, 57) | sfondo footer `#0b0e14` → `#0f2438`; sfondo idle icone social `#1c2433` → `#17384f`; colore riga copyright `#0b0e14` → `#0f2438` (nota: il valore corretto per il copyright in `DESIGN.md` è `{colors.testo-scuro-muto}` `#838E9E`, non blu-carbone — verificare quale dei due era il colore realmente inteso a riga 57 prima di applicare, potrebbe essere già un refuso della Story 18.12) |
+| `app/CookieBanner.module.css` (righe 25, 39, 63, 132) | `border-top`/`color` `#0b0e14` → `#0f2438` (2 occorrenze border-top, 2 occorrenze color testo) |
+| `app/home-pubblica.module.css` (righe 22, 34-37, 106, 258, 292, 296-303 nuovo `.vs`, 311, 317-323, 380) | hero: `background`/pattern `#0b0e14`/`#1c2433` → `#0f2438`/`#17384f` (righe 22, 34-37); `.heroCta` colore testo `#0b0e14` → `#0f2438` (riga 106); `.schedaPartita` sfondo `#0b0e14` → `{colors.azzurro-partite}` `#2e6f99` (riga 258); `.dataPartita` da `justify-content:space-between` a `display:flex;gap:var(--space-3)` (allineato a sinistra) e colore `#aeb6c2` → `{colors.testo-chiaro-partite}` `#eaf4fb` (riga 292); `.squadrePartita` markup aggiornato per introdurre un divisore "vs" colorato (mirror esatto di `.squadre`/`.vs` di `calendario.module.css`, richiede una piccola modifica a `app/page.tsx` oltre al CSS: sostituire il testo piatto `{squadraCasa} - {squadraOspite}` con `{squadraCasa} <span>vs</span> {squadraOspite}`, colore dello span `{colors.magenta-chiaro}` `#ffcbe6`); `.luogoPartita` colore `#aeb6c2` → `#eaf4fb` (riga 311); `.gruppoPartita` colore da `var(--color-primary)` a `#eaf4fb` letterale (riga 317-323, l'azzurro pieno scenderebbe sotto soglia sul nuovo sfondo); `.nomeGruppoFoto` `#0b0e14` → `#0f2438` (riga 380) |
+| `app/calendario/calendario.module.css` (righe 88, 113 nuovo, 119, 140, 155) | `.matchCard` sfondo `#0b0e14` → `{colors.azzurro-partite}` `#2e6f99` (riga 88); `.categoria` colore da `var(--color-primary)` a `#eaf4fb` letterale (riga 113/119, stesso motivo della home); `.vs` colore da `var(--color-magenta)` a `#ffcbe6` letterale (riga 140); `.meta` colore `#aeb6c2` → `#eaf4fb` (riga 155) — layout già corretto (`gap`), nessuna modifica di allineamento qui |
+| `app/squadre/squadre.module.css` (righe 116-119, 137) | pattern placeholder `#0b0e14`/`#1c2433` → `#0f2438`/`#17384f`; didascalia opacità `0.5` → `0.55` |
+| `app/contatti/contatti.module.css` (righe 74, 86, 113, 123) | `.valore`/`.link` colore `#0b0e14` → `#0f2438`; `.iconaSocial` sfondo `#1c2433` → `#17384f`, hover colore `#0b0e14` → `#0f2438` |
+| `app/staff/staff.module.css` (riga 70) | `.nomeAllenatore` colore `#0b0e14` → `#0f2438` |
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore **When** visita qualunque pagina pubblica (`/`, `/squadre`, `/calendario`, `/staff`, `/contatti`) **Then** nessun elemento usa più `#0B0E14`/`#0b0e14` (verificabile con una ricerca testuale nel codice) — ogni occorrenza è sostituita da `#0F2438` (`{colors.blu-carbone}`) o, per le match-card, da `#2E6F99` (`{colors.azzurro-partite}`) secondo l'inventario sopra
+2. **And** ogni occorrenza di `#1C2433`/`#1c2433` (`{colors.placeholder-hatch-alt}`) diventa `#17384F`
+3. **And** la didascalia dei placeholder-foto (hero e team-card) ha opacità 0.55, non più 0.5
+4. **And** le match-card di `/` e `/calendario` hanno lo stesso layout: divisore "vs" colorato `{colors.magenta-chiaro}` tra le squadre, metadati (data/ora, luogo, categoria) allineati a sinistra via `gap` — non più `justify-content: space-between` in nessuna delle due pagine
+5. **And** nessuna regressione funzionale: le regole di visibilità condizionale, il wrap della nav, i target di tocco 44px e i contorni di focus restano invariati — questa storia cambia solo colori/layout interno delle match-card, non aggiunge/rimuove alcuna condizione già validata (18.2 AC#2, 18.3 AC#2, 18.4 AC#3, 18.9 AC#3)
+6. **And** ogni test esistente che verifica contenuto/comportamento resta valido; i test che verificano dettagli implementativi CSS/markup del testo piatto delle squadre in home vanno aggiornati per il nuovo markup con lo span "vs"
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
