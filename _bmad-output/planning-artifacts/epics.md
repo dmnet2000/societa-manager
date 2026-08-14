@@ -1740,6 +1740,63 @@ so that le email automatiche/di prova arrivino davvero a destinazione.
 
 **Risolto (2026-07-27):** causa confermata — entrambe le ipotesi erano corrette in sequenza: prima le credenziali SMTP salvate erano sbagliate (`AUTH`/"Invalid login"), poi, dopo averle corrette, l'"Indirizzo mittente" configurato era diverso dall'account SMTP autenticato ("Utente"), causando il rifiuto del comando `MAIL FROM`. Nessun difetto di codice: entrambe cause di configurazione, corrette dall'utente direttamente in `/smtp`. Email di prova inviata con successo.
 
+### Story 11.4: Registrazione non completabile da Safari/iOS — il link dopo la registrazione non funziona
+
+As a Utente che si registra da Safari su iOS,
+I want che il flusso di registrazione si completi correttamente,
+so that possa accedere all'app senza restare bloccato su un link che non fa nulla.
+
+**Note aggiuntive:** segnalato dall'utente (2026-08-14): "problemi ad accedere da Safari dopo registrazione, non si apre il link da browser Safari" — confermato dall'utente che il sintomo si presenta **solo su Safari/iOS**, non su Android/Windows (dove la registrazione funziona regolarmente). A differenza di Story 11.1/11.2/11.3, questa storia non parte da un log di produzione ma da un'analisi di codice preliminare (nessun log ancora raccolto).
+
+**Analisi di codice (2026-08-14)**: `registrati()` (`app/(onboarding-import)/registrati/actions.ts`) chiama `supabase.auth.signUp({ email, password })` senza alcun `emailRedirectTo`, poi esegue subito `redirect("/app")` — nessuno step "controlla la tua email" nel codice applicativo. Coerente con la configurazione locale (`supabase/config.toml`, `enable_confirmations = false`) e con la decisione esplicita di Story 1.1 ("non serve conferma email prima di poter accedere"). **Nessuna rotta di callback/conferma esiste nel progetto**: nessun `exchangeCodeForSession`, nessun `verifyOtp` per `type: "signup"` in nessun file. L'unico consumo di OTP esistente è quello del recupero password (`reimposta-password/actions.ts`), che usa deliberatamente un `token_hash` in un URL proprio invece dell'`action_link` di Supabase (commento nel codice: "mai action_link, punta al dominio Supabase non gestito dall'adapter cookie di questa app") — la stessa lezione non è mai stata applicata al percorso di registrazione, perché lì la conferma email è sempre stata considerata disattivata.
+
+**Causa probabile ma NON confermata — da verificare in fase di sviluppo, non assumere**: la configurazione locale (`enable_confirmations = false`) potrebbe non essere applicata al progetto Supabase di **produzione** — se sul Dashboard di produzione "Confirm email" fosse invece attivo (Authentication → Providers → Email), l'Utente riceverebbe un'email di conferma reale che il sito non ha alcun codice per gestire. Il client Supabase di questo progetto usa il flusso PKCE di default (nessun `flowType` esplicito in `lib/supabase/client.ts`/`server.ts`) — questo flusso lega un "code verifier" al browser/dispositivo che ha avviato la registrazione: se il link di conferma si apre in un contesto diverso (es. l'app Mail su iPhone che lancia Safari, invece della stessa sessione/browser della registrazione), lo scambio fallirebbe comunque anche se una rotta di callback esistesse. Questo spiegherebbe perché il sintomo è più visibile su Safari/iOS (dove il percorso email→app Mail→Safari è quello predefinito del sistema operativo) mentre su Android/Windows, se si apre l'email nello stesso browser della registrazione, il salto di contesto non si presenta — ma resta un'ipotesi: potrebbe trattarsi invece di un problema di configurazione Redirect URLs/Site URL sul Dashboard Supabase, o di un comportamento cookie/ITP specifico di Safari non ancora identificato.
+
+**Acceptance Criteria:**
+
+**Given** un Utente compila il form di registrazione da Safari su iOS con dati validi
+**When** invia il form
+**Then** può accedere all'app senza restare bloccato — via redirect diretto se la conferma email risulta disattivata in produzione, o completando con successo il link di conferma se risulta invece attiva
+
+**Given** la causa reale viene identificata in fase di sviluppo, a partire dalla verifica esplicita se "Confirm email" è attivo o no sul Dashboard Supabase di produzione
+**When** viene corretta
+**Then** la causa e la correzione vengono documentate in questa storia. Se si confermasse "conferma email attiva in produzione senza alcuna rotta di callback nel codice", la correzione più diretta è disattivare "Confirm email" sul Dashboard per allinearlo al comportamento già inteso e codificato (Story 1.1) — costruire una rotta di callback dedicata (mirror del pattern già stabilito per il recupero password, `token_hash` in un URL proprio, mai `action_link`) resta un'alternativa solo se si volesse invece attivare la conferma email deliberatamente, ma è una decisione di prodotto separata, non richiesta da questo bug
+
+### Story 11.5: Errore in console dal widget Facebook nella sezione "Ultimi post" (Chrome desktop)
+
+As a Visitatore che apre la home pubblica con Google Chrome da browser locale,
+I want che la sezione "Ultimi post" non generi errori visibili in console,
+so that l'esperienza resti percepita come affidabile anche osservando gli strumenti sviluppatore.
+
+**Note aggiuntive:** segnalato dall'utente (2026-08-14) da Chrome desktop. Evidenza raccolta (console del browser):
+
+```
+[Violation] Permissions policy violation: unload is not allowed in this document.
+ErrorUtils caught an error:
+Found null hrp, blocking mods: ExceptionDialog; non-blocking mods: ; response error: 1357032, summary: Si è verificato un errore, description: Prova ad aggiornare la pagina oppure a chiudere e riaprire la finestra del browser.
+{column: '17878', clientTime: 1786702551, extra: {…}, guardList: Array(1), hash: 'azfgob', …}
+```
+
+**Causa probabile ma NON confermata — da verificare in fase di sviluppo, non assumere** (nessuna riproduzione possibile in sandbox: la sezione richiede una Pagina Facebook reale configurata):
+- `ErrorUtils caught an error`, `hrp`, `ExceptionDialog`, `guardList` sono nomi/pattern del framework front-end interno di Facebook — **verificato che non compaiono in nessun file di questo repository**: quasi certamente un errore che avviene dentro l'iframe del Page Plugin (`lib/embed-facebook.ts`, dominio `facebook.com`), non nel codice applicativo di questo progetto.
+- La violazione "Permissions policy violation: unload is not allowed" è coerente con la deprecazione in corso dell'evento `unload` nei browser Chromium — **verificato che questo progetto non imposta alcun header `Permissions-Policy` proprio** (nessuna occorrenza nel codice): non è una configurazione introdotta da quest'app, è il codice interno del widget Facebook che tenta di registrare un handler ormai limitato dal browser stesso.
+- Se confermato, è un problema del widget di terze parti, coerente con la nota già scritta in Story 18.5 ("un problema di rendering lato Facebook resta contenuto nell'iframe stesso, non si propaga al resto della pagina", AC #5) — l'iframe è isolato dal resto della pagina per costruzione, l'errore non dovrebbe rompere il funzionamento del sito, solo comparire in console.
+- **Collegamento diretto con Story 18.13** (già in backlog): quella storia sostituisce l'intero widget Page Plugin con un carosello proprio basato sulle API Graph di Facebook, eliminando l'iframe e con esso questa intera classe di errori — se confermato che l'errore è interno al widget e senza impatto funzionale, la risoluzione più diretta è lasciare che Story 18.13 lo risolva sostituendo il componente, non tentare di "patchare" codice di terze parti non modificabile.
+
+**Acceptance Criteria:**
+
+**Given** un Visitatore apre la home pubblica da Chrome desktop con la sezione "Ultimi post" configurata e visibile
+**When** la pagina/il widget si carica
+**Then** viene confermato se l'errore ha un impatto funzionale reale (contenuto che non si carica, sezione che sparisce, altro malfunzionamento visibile) oppure resta rumore di console senza conseguenze visibili
+
+**Given** la causa viene confermata come interna al widget Facebook (iframe di terze parti) senza impatto funzionale
+**When** si decide come procedere
+**Then** questa storia viene chiusa come "nessun difetto di codice applicativo", con riferimento esplicito alla Story 18.13 come percorso di risoluzione naturale (sostituzione del widget) — nessuna patch tentata su codice di terze parti
+
+**Given** invece la causa viene confermata come un problema reale introdotto dal codice applicativo di questo progetto (es. header, attributo iframe, configurazione)
+**When** viene identificata
+**Then** viene corretta e la causa/correzione vengono documentate in questa storia
+
 ## Epic 12: Permessi Configurabili da Admin
 
 *(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, emersa discutendo la Story 9.22. Analisi di apertura completata il 2026-08-04, stesso approccio già usato per Epic 10 — vedi decisioni sotto. Rotto in 4 story fondative + un elenco aperto di story di estensione (una rotta alla volta, deliberatamente incrementale, non un refactor big-bang).)*
@@ -2271,3 +2328,113 @@ so that percepisca l'identità del Settore Volley fin dal primo sguardo, non sol
 5. **And** le foto di squadra non ancora caricate (Story 18.4) mostrano il trattamento placeholder intenzionale (`DESIGN.md` → `placeholder-foto`), non un'area vuota o un'icona rotta
 6. **And** tutte le coppie di contrasto testo/sfondo usate nel restyling rispettano i valori calcolati in `DESIGN.md → Colori` (nessuna combinazione nuova introdotta senza verifica)
 7. **And** nessun test esistente si rompe per il solo cambio di classi/stili CSS (i test che verificano contenuto/comportamento restano validi, quelli che verificano dettagli implementativi CSS vanno aggiornati di conseguenza)
+
+### Story 18.13: Carosello automatico dei post Facebook in home (sostituisce l'embed statico)
+
+*(Aggiunta post-apertura epica — 2026-08-14, richiesta esplicita dell'utente a partire da uno studio di usabilità: "la sezione contenuti Facebook... è in fondo alla home page e non è carino come si vede, se possibile al posto della foto centrale farei scorrere gli ultimi post da facebook in automatico in modo che si legga tutto il testo del post con uno cambio ogni 10 sec".)*
+
+As a Visitatore senza account,
+I want vedere gli ultimi post della Pagina Facebook della società con il testo completo, che si susseguono automaticamente ogni 10 secondi,
+so that possa leggere le novità della società senza dover scorrere manualmente dentro un widget esterno.
+
+**Studio di usabilità (2026-08-14) — problema riscontrato nella sezione esistente (Story 18.5):**
+
+Il widget attuale (Page Plugin ufficiale di Facebook, `lib/embed-facebook.ts`, `tabs=timeline`) ha tre problemi distinti, non solo estetici:
+1. **Posizione**: è l'ultima sezione della home — bassa probabilità che un Visitatore la raggiunga scorrendo.
+2. **Integrazione visiva**: è un riquadro fisso e stretto (340×500px, centrato) circondato dal registro "Poster Sportivo" a piena larghezza (Story 18.9-18.12) — sembra un elemento incollato a parte, non parte del sito.
+3. **Passività del contenuto**: è uno scroll interno controllato da Facebook — un Visitatore che non interagisce attivamente col widget vede al più la foto del primo post, mai il testo dei successivi.
+
+**Raccomandazione**: sostituire il widget passivo con un carosello attivo (stesso principio già stabilito per lo Sponsor carousel, Story 16.3) che mostri un post alla volta con testo completo leggibile, avanzamento automatico ogni 10s, controlli manuali e pausa. Sulla posizione: si raccomanda di **lasciarla invariata** (ultima sezione — la priorità informativa di un Visitatore resta prossima partita/squadre/sponsor prima delle notizie social) ma di dare al componente lo stesso peso visivo a piena larghezza delle altre sezioni, invece di spostarla — un'eventuale promozione di posizione resta un'iterazione futura separata, non bloccante qui.
+
+**Decisione riaperta rispetto a Story 18.5**: quella storia aveva scelto esplicitamente "embed ufficiale... non sincronizzazione via API (nessun token/app review da gestire, coerente con NFR6 'soluzione più semplice')". Il carosello richiesto qui **non è ottenibile con un iframe** (dominio Facebook, contenuto opaco al sito — nessun modo di leggere/pilotare il testo dei singoli post dall'esterno): richiede le **API Graph di Facebook** con un **Page Access Token**, riaprendo deliberatamente quella decisione su richiesta esplicita dell'utente (2026-08-14).
+
+**Note tecniche (analisi preliminare, da confermare in fase di sviluppo):**
+
+- **Il token è un segreto reale**, diverso da `urlPaginaFacebook` (pubblico): **non va in `ConfigurazioneApplicazione`** (non protetta da RLS, letta anche pre-autenticazione) — mirror del pattern già stabilito per la password SMTP (`ConfigurazioneSmtp`, protetta da RLS + ADMIN-only, nessuna cifratura applicativa oltre RLS, AD-12): nuova tabella singleton dedicata con la stessa protezione, es. `ConfigurazioneSocialFacebook` (`accessToken`, eventualmente un timestamp dell'ultimo aggiornamento/ultima lettura riuscita).
+- **Nessun nuovo campo "Page ID"**: riusare lo slug/username già presente in `urlPaginaFacebook` (Story 18.5) come identificatore del nodo Graph API (`GET /{page-slug}/posts`) — da verificare in sviluppo che Facebook accetti lo username testuale al posto dell'ID numerico (atteso di sì per le Pagine con URL personalizzato).
+- **Lettura live, nessuna cache di post**: chiamata Graph API server-side dentro la home (`app/page.tsx`), stesso pattern `.catch(() => [])` fail-soft di ogni altra query pubblica — coerente con NFR6, nessuna nuova tabella per i post stessi. Se in futuro il carico lo giustificasse, uno spostamento a lettura cron-periodica (mirror di `app/api/cron/promemoria-certificati`, unico precedente cron del progetto) resta un miglioramento successivo, non di questa storia.
+- **Nuovo componente `PostFacebookCarosello.tsx`**, mirror diretto di `SponsorCarosello.tsx` (Story 16.3): `INTERVALLO_MS = 10000` (non 5000), stesso controllo di pausa/ripresa (WCAG 2.2.2), stessa navigazione manuale prev/next. L'aritmetica di avanzamento (`avanti`/`indietro`/`indiceEntroLimiti`, oggi in `lib/sponsor/carosello-indice.ts`) è generica — questa storia ne è il **secondo consumer reale**: da promuovere a una posizione condivisa (es. `lib/carosello-indice.ts`), stesso principio di estrazione già più volte applicato in questo progetto, aggiornando anche l'import dello Sponsor carousel esistente invece di duplicare la logica.
+- **`prefers-reduced-motion`**: da rispettare fin da subito sul nuovo componente (lo Sponsor carousel esistente non lo fa — gap pre-esistente, segnalato ma fuori scope, non va corretto retroattivamente qui senza una decisione a parte).
+- **Consenso cookie (Story 18.6)**: la sezione resta dietro lo stesso consenso già richiesto oggi — cambia la motivazione (non più cookie di terze parti dell'iframe, ma il caricamento di immagini `full_picture` ospitate su CDN Facebook, che comunque condivide IP/user-agent del Visitatore con Facebook), non il comportamento. Da confermare con l'utente se questa lettura resta valida o se preferisce un trattamento diverso.
+- **Ciclo di vita del token**: un Page Access Token (specie se long-lived) scade tipicamente dopo ~60 giorni e va rigenerato manualmente da un Admin con ruolo sulla Pagina Facebook — nessun refresh automatico in questa storia (richiederebbe il flusso OAuth completo di Facebook Login, complessità non richiesta). Alla scadenza la sezione deve sparire in modo fail-soft (come ogni altra sezione pubblica) **ma restare visibile all'Admin** con un avviso esplicito su `/app/impostazioni` (mirror degli avvisi già esistenti per Email Segreteria/Pagina Facebook non configurate) — senza, un Admin non avrebbe modo di accorgersi che il token è scaduto finché un Visitatore non gli segnala che la sezione è sparita.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita la home pubblica e la Pagina Facebook è configurata con un token valido **Then** vede un carosello che mostra un post alla volta con il testo completo (non troncato, nessuno scroll interno necessario)
+2. **And** il carosello avanza automaticamente ogni 10 secondi, con un controllo esplicito di pausa/ripresa (WCAG 2.2.2) e navigazione manuale precedente/successivo — stesso livello di accessibilità già garantito dal carosello Sponsor (Story 16.3)
+3. **And** se il token non è configurato, non è (più) valido, o la chiamata alle API di Facebook fallisce, la sezione non compare e non rompe il resto della pagina (fail-soft, stesso principio già stabilito per l'embed precedente, Story 18.5 AC #3)
+4. **And** il token di accesso Facebook non è mai esposto al browser — nessun valore del token raggiunge un Client Component o il markup renderizzato, stesso principio già stabilito per la password SMTP
+5. **And** la sezione resta dietro lo stesso consenso cookie non essenziale già richiesto per l'embed precedente (Story 18.6) — nessuna immagine di Facebook viene caricata prima del consenso esplicito del Visitatore
+6. **And** un Admin/Dirigente può configurare il token da `/app/impostazioni`, con un avviso esplicito se il token non è configurato o se l'ultima lettura è fallita
+7. **And** lo stile del carosello segue il registro "Poster Sportivo" già applicato al resto della home (Story 18.9-18.12) — a piena larghezza, integrato visivamente, non un widget incorporato a parte
+
+### Story 18.14: Caricamento della foto di sfondo dell'hero da Admin/Dirigente
+
+*(Aggiunta post-apertura epica — 2026-08-14, richiesta esplicita dell'utente: "la foto di sfondo del sito dove la posso inserire?" — oggi non esiste alcun meccanismo di caricamento, il placeholder `.heroFoto` (Story 18.12) è puro CSS.)*
+
+As a Admin o Dirigente,
+I want caricare una foto reale per lo sfondo dell'hero della home pubblica,
+so that il sito mostri un'immagine vera della squadra/società invece del placeholder grafico.
+
+**Note aggiuntive:** mirror del pattern di caricamento immagini già stabilito 3 volte in questo progetto (logo, Story 7.2; sponsor banner, Story 16.1; foto squadra per Gruppo, Story 18.4) — nessuna soluzione nuova da inventare.
+
+- La foto hero è a livello di **sito** (singleton), non per-entità (a differenza di Sponsor/foto squadra, per Sponsor/Gruppo) — il pattern più vicino è quello del **logo**: path fisso in bucket, nessun campo Prisma, esistenza verificata via Storage `list()` (`{ esiste, aggiornatoIl }`), non una colonna DB.
+- Nuovo bucket pubblico dedicato `foto-hero`, stesso limite già stabilito da `lib/storage/validazione-immagine.ts` (2MB, solo PNG/JPEG, controllo magic-byte) — riuso diretto, nessuna nuova regola di validazione.
+- **Perimetro Ruoli: Admin/Dirigente** (non Admin-only come il logo) — coerente con la maggior parte dei contenuti pubblici già gestibili da questi due Ruoli (Sponsor, Contatti pubblici, Pagina Facebook, Story 18.11/18.13); non Allenatore (a differenza di foto squadra, che è per Gruppo e quindi apribile anche da chi lo allena — l'hero è un contenuto di sito, non di Gruppo).
+- Nuovo `lib/storage/foto-hero.ts`, mirror di `lib/storage/logo.ts`: `caricaFotoHero`, `urlPubblicoFotoHero`, `leggiInfoFotoHero`. Migrazione bucket con policy SELECT pubblica fin dalla prima stesura (lezione già pagata due volte in questo progetto: il logo l'ha imparata dopo una seconda migrazione correttiva, foto-squadra l'ha già applicata fin da subito — qui va fatto lo stesso fin dall'inizio).
+- Il placeholder CSS esistente (`.heroFoto`/`.heroFoto::before`, `app/home-pubblica.module.css`) **resta** come stato di fallback quando nessuna foto è ancora stata caricata — non va rimosso, va condizionato su `esiste`.
+- **Pagina di caricamento — da confermare in sviluppo**: estendere `/app/logo` (stessa natura di "immagine del brand del sito", pagina meno affollata) oppure aggiungere una sezione a `/app/impostazioni` (dove vivono già Contatti pubblici/Pagina Facebook, Story 18.11/18.13) — nessuna decisione presa qui, entrambe coerenti con pattern già esistenti.
+- Verificare in sviluppo che il testo dell'hero (titolo, CTA "Scopri le squadre") resti leggibile sopra una foto reale — l'ombra testo già prevista per questo scopo (`text-shadow`, Story 18.12) dovrebbe bastare per la maggior parte delle foto, ma va controllato visivamente con un'immagine reale, non solo assunto.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente **When** carica un'immagine PNG/JPEG entro 2MB come foto di sfondo dell'hero **Then** l'immagine viene salvata e sostituisce quella precedente se già presente (stessa validazione MIME/dimensione/magic-byte già in uso per logo/Sponsor/foto squadra)
+2. **And** un Utente con un altro Ruolo (Allenatore, Segreteria, Atleta, Genitore) non può caricare la foto hero
+3. **Given** un Visitatore senza sessione **When** visita la home pubblica e una foto hero è stata caricata **Then** la vede come sfondo dell'hero al posto del placeholder grafico
+4. **And** se nessuna foto è mai stata caricata, il placeholder grafico attuale (`[FOTO AZIONE]`) resta visibile — nessuna area vuota o immagine rotta
+5. **And** il testo dell'hero (titolo, CTA) resta leggibile sopra la foto reale caricata
+
+### Story 18.15: Rimuovere il nero dal registro visivo "Poster Sportivo" — revisione DESIGN.md con Sally
+
+*(Aggiunta post-apertura epica — 2026-08-14, feedback diretto dell'utente sul sito pubblico live: "non voglio vedere il colore nero sul sito, lo stile grafico del resto non è male". Richiede il coinvolgimento dell'agente UX (Sally, `bmad-ux`) per rivedere `DESIGN.md` — non è una modifica CSS isolata: `{colors.nero}` `#0B0E14` è oggi un colore **strutturale** del registro "Poster Sportivo" (Story 18.9-18.13), non un dettaglio.)*
+
+As a Utente che ha visto il sito pubblico live,
+I want che il sito non usi il nero come colore di sfondo,
+so that il registro visivo resti energico e riconoscibile senza il tono "scuro/da stadio" che non mi piace.
+
+**Nota di scope**: il feedback dell'utente conferma esplicitamente che il resto del registro (tagli diagonali, tipografia condensata, blocchi azzurro pieni, accenti magenta) **va bene così com'è** — questa storia riguarda **solo** la sostituzione del nero, non un redesign completo. Non partire da zero: la sessione UX esistente (`ux-designs/ux-societa-manager-2026-08-13/`) resta la base, va **aggiornata** (modalità Update di `bmad-ux`), non rifatta.
+
+**Inventario reale di dove il nero è usato oggi come sfondo/riempimento strutturale** (verificato nel codice, non solo in `DESIGN.md` — questi sono i punti che cambiano visivamente in modo sostanziale):
+- `app/HeaderPubblico.module.css` — sfondo dell'intera barra di navigazione (ogni pagina pubblica)
+- `app/FooterPubblico.module.css` — sfondo dell'intero footer (ogni pagina pubblica)
+- `app/home-pubblica.module.css` — sfondo dell'hero (home), sfondo delle `match-card` (sezione Partite), pattern del placeholder foto hero
+- `app/calendario/calendario.module.css` — sfondo delle `match-card` (intera pagina Calendario)
+- `app/squadre/squadre.module.css` — pattern del placeholder foto squadra (solo per i Gruppi senza foto caricata)
+- `app/CookieBanner.module.css` — solo un bordo sottile (`border-top`, 2px) e colore testo sui pulsanti, impatto visivo minore rispetto ai punti sopra
+
+Testo quasi-nero usato come colore di *testo* (non sfondo — es. nomi Allenatore in `/staff`, valori in `/contatti`) resta probabilmente fuori discussione: è testo leggibile su sfondo chiaro, la lamentela dell'utente riguarda plausibilmente i **blocchi di sfondo neri**, non il colore del testo — **da confermare esplicitamente con l'utente in apertura della sessione UX**, non assumere.
+
+**Ipotesi di lavoro per Sally (non una decisione presa — da validare/proporre in sessione)**: il colore più diretto per sostituire il nero mantenendo l'energia del registro è il **navy** (`{colors.navy}` `#312682`), già presente nel sistema come colore dello stemma/logo del club (non un colore nuovo da introdurre) — userebbe un tono scuro "di marca" al posto di un nero generico da poster. Resta una proposta, non una scelta: Sally deve comunque presentare alternative (es. azzurro scuro, o abbandonare del tutto i blocchi scuri a favore di un registro più chiaro) e far scegliere l'utente, coerente col principio della skill UX ("mai imporre colori/pattern, elicitare").
+
+**Percorso di esecuzione**: questa storia si esegue in due fasi distinte, non una sola:
+1. **Sessione UX con Sally** (`bmad-ux`, modalità Update sulla sessione `ux-societa-manager-2026-08-13`): rivede `DESIGN.md` sostituendo ogni uso strutturale di `{colors.nero}` con la nuova scelta, aggiorna `EXPERIENCE.md` se necessario, eventualmente un nuovo mockup di riferimento per confronto prima/dopo.
+2. **Story di implementazione separata** (da creare dopo che `DESIGN.md` è aggiornato e finalizzato): applica la nuova palette ai file elencati sopra — stesso tipo di lavoro già fatto in Story 18.12, non ripetuto qui in dettaglio.
+
+**Acceptance Criteria:**
+
+1. **Given** la sessione UX con Sally **When** viene completata **Then** `DESIGN.md` non contiene più `{colors.nero}` come colore di sfondo per alcun componente strutturale (header-nav, hero, match-card, footer, placeholder-foto) — sostituito da una scelta esplicita, validata con l'utente, non imposta
+2. **And** il resto del registro "Poster Sportivo" (tagli diagonali, tipografia, blocchi azzurro, accenti magenta) resta esplicitamente invariato in `DESIGN.md` — questa storia non riapre quelle decisioni
+3. **Given** `DESIGN.md` aggiornato **When** la nuova story di implementazione viene creata ed eseguita **Then** nessuno dei file elencati sopra usa più `#0B0E14`/`{colors.nero}` come sfondo — verificabile con una ricerca testuale nel codice, stesso controllo già fatto per scrivere questa storia
+4. **And** nessuna regressione funzionale (visibilità condizionale delle sezioni, nav wrap, touch target, focus) — stesso vincolo già rispettato da ogni story di restyling precedente (18.9-18.12)
+
+## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
+
+*(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
+
+**Requisito originale (testo dell'utente, 2026-08-14):** un nuovo Ruolo dedicato ("Site Manager") per la gestione della parte di sito statico/pubblico della società: aggiunta/modifica delle sezioni e del menu di navigazione pubblico, aggiunta/modifica delle foto, aggiunta/modifica dei contenuti.
+
+**Contesto tecnico rilevante da verificare in fase di analisi (non ancora approfondito, solo osservazioni preliminari):**
+- Il progetto ha oggi 6 Ruoli (`prisma/schema.prisma`, enum `Ruolo`: `ALLENATORE`, `ATLETA`, `GENITORE`, `SEGRETERIA`, `DIRIGENTE`, `ADMIN`). Aggiungerne un settimo tocca lo schema, `lib/ruoli.ts`, `lib/auth/route-guard.ts` (`PROTECTED_ROUTES`/`requireRuolo`) e ogni Server Action che oggi limita esplicitamente a un sottoinsieme di Ruoli le funzionalità che il nuovo Ruolo dovrebbe poter gestire — impatto potenzialmente ampio, da mappare in dettaglio in apertura.
+- Il menu del sito pubblico (`app/NavPubblica.tsx`) è oggi **hard-coded** (5 voci fisse in un array nel componente), non pilotato da alcun modello dati né UI di gestione — "aggiunta/modifica di sezioni/menu" è probabilmente la parte di maggiore impatto architetturale di questa epica, richiederebbe con ogni probabilità un nuovo modello dati per le voci di menu/sezioni pubbliche, oggi inesistente.
+- La gestione di foto e contenuti pubblici esiste già oggi in forma sparsa, ciascuna con un proprio perimetro di Ruoli diverso: foto di squadra per Gruppo (Story 18.4, apribile da Admin/Dirigente/Allenatore assegnato al Gruppo), contatti pubblici (Story 18.11, Admin/Dirigente), Sponsor (Admin/Dirigente), logo/nome settore (Admin), post social (Admin/Dirigente). Da chiarire in apertura se il nuovo Ruolo Site Manager **sostituisce** questi permessi sparsi con un unico Ruolo dedicato, li **affianca** (accesso aggiuntivo, non esclusivo), o copre solo una parte di essi.
+- Nessuna decisione presa su: nome esatto del Ruolo (l'utente ha usato "Site Manager", in inglese, diverso dalla convenzione italiana degli altri 6 Ruoli — da confermare o tradurre in apertura), se il Ruolo è cumulabile con altri Ruoli esistenti su uno stesso Utente, se serve una nuova interfaccia di gestione dedicata o basta estendere quelle esistenti (`/app/impostazioni`, `/app/sponsor`, `/app/gruppi`).
