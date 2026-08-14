@@ -353,6 +353,13 @@ model ConfigurazioneApplicazione {
   // in questa storia - Instagram non ha un equivalente ufficiale gratuito
   // per un feed multi-post senza token API (decisione presa con l'utente).
   urlPaginaFacebook String?
+  // Story 18.11: contatti pubblici per la pagina "/contatti" - ciascuno
+  // indipendentemente opzionale, editabili da Admin/Dirigente su
+  // /app/impostazioni. Distinti da emailSegreteria (dato interno, mai
+  // esposto pubblicamente) - questo campo esiste apposta per esserlo.
+  indirizzoSede     String?
+  telefonoPubblico  String?
+  emailPubblica     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

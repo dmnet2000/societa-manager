@@ -1,0 +1,132 @@
+/* Story 18.11: modulo dedicato al contenuto di /contatti, convenzione del
+   progetto "un CSS module per pagina". Terza pagina pubblica (dopo
+   /calendario e /staff) costruita direttamente sul registro "Poster
+   Sportivo" (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13)
+   - Home/Squadre restano sul registro provvisorio del portale interno fino
+   al restyling di Story 18.12. Nessun nuovo custom property in
+   app/globals.css: nessuno dei colori usati da contact-block coincide con
+   un valore gia' presente li' - tutti hex letterali commentati, stessa
+   convenzione di /calendario e /staff. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+/* {typography.display-section} - 40px/900 desktop, ridotto sotto i 900px
+   (DESIGN.md.components.contact-block.heading-typography/-mobile). */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+/* {colors.grigio-chiaro} #F2F5F7, padding {spacing.8} {spacing.6}
+   (DESIGN.md.components.contact-block.background/.padding). */
+.contactBlock {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  background: #f2f5f7;
+  padding: var(--space-8) var(--space-6);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* {typography.label-tag} + {colors.grigio} #5B6472
+   (DESIGN.md.components.contact-block.label-typography/.label-color). */
+.etichetta {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #5b6472;
+}
+
+/* {typography.body} + {colors.nero} #0B0E14
+   (DESIGN.md.components.contact-block.value-typography/.value-color). */
+.valore {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: #0b0e14;
+}
+
+/* Link mailto:/tel: - stessa tipografia/colore di .valore, sottolineato
+   solo all'hover (nessun contorno di focus dedicato diverso dal default
+   del browser non e' ammissibile: {colors.focus-ring} #0072A3, valore per
+   sfondi chiari, DESIGN.md.components.button-primary.focus-outline). */
+.link {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: #0b0e14;
+  width: fit-content;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: 2px solid #0072a3;
+  outline-offset: 2px;
+}
+
+/* Icona social - {rounded.full}, area cliccabile reale minimo 44x44px
+   (DESIGN.md.components.contact-block.social-icon-shape/.social-icon-hit-area,
+   mirror esplicito di components.footer.social-icon-hit-area). Colori
+   riusati da components.footer per inferenza esplicita (contact-block non
+   ne definisce di propri, vedi Dev Notes della storia): sfondo
+   {colors.placeholder-hatch-alt} #1C2433, testo var(--color-primary)
+   (eccezione: stesso hex di {colors.azzurro}), hover invertito. */
+.iconaSocial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: #1c2433;
+  color: var(--color-primary);
+  font-family: "Arial Black", sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.iconaSocial:hover {
+  background: var(--color-primary);
+  color: #0b0e14;
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - l'icona ha uno sfondo scuro proprio
+   (#1C2433), stessa regola contestuale "scuro->bianco" gia' applicata a
+   header-nav/footer. */
+.iconaSocial:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}

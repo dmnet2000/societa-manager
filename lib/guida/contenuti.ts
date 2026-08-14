@@ -181,6 +181,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Questa è la pagina hub della configurazione: da qui raggiungi Configurazione SMTP e Configurazione logo.",
       "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",
+      "Qui imposti anche l'URL della Pagina Facebook della società (mostra gli ultimi post sulla home pubblica) e i contatti pubblici - indirizzo, telefono ed email mostrati sulla pagina pubblica \"Contatti\": ogni campo è indipendente, un campo lasciato vuoto smette semplicemente di comparire sulla pagina pubblica.",
     ],
   },
   {

@@ -3,12 +3,14 @@ import { PROTECTED_ROUTES } from "@/lib/auth/route-guard";
 import {
   leggiEmailSegreteria,
   leggiUrlPaginaFacebook,
+  leggiContattiPubblici,
 } from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import { PaginaFacebookForm } from "./PaginaFacebookForm";
+import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -40,7 +42,7 @@ export default async function ImpostazioniPage() {
   // principio di ogni altro effetto collaterale non bloccante di questo
   // progetto (il .catch qui sostituisce il try/catch precedente per poter
   // stare dentro il Promise.all senza perdere il comportamento fail-soft).
-  const [ruoli, emailSegreteria, urlPaginaFacebook] = await Promise.all([
+  const [ruoli, emailSegreteria, urlPaginaFacebook, contattiPubblici] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
     leggiEmailSegreteria().catch((err) => {
       console.error(err);
@@ -50,6 +52,13 @@ export default async function ImpostazioniPage() {
     leggiUrlPaginaFacebook().catch((err) => {
       console.error(err);
       return null;
+    }),
+    // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
+    // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
+    // con i 3 campi, mai un valore nullable a se stante.
+    leggiContattiPubblici().catch((err) => {
+      console.error(err);
+      return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
     }),
   ]);
 
@@ -97,6 +106,18 @@ export default async function ImpostazioniPage() {
           </p>
         )}
         <PaginaFacebookForm urlAttuale={urlPaginaFacebook} />
+
+        <h2 className={styles.titoloSezione}>Contatti pubblici</h2>
+        {/* Nessun avviso soft qui (a differenza di Email Segreteria/Pagina
+            Facebook sopra, che bloccano un comportamento a valle se assenti)
+            - l'assenza di questi campi e' semplicemente "non compaiono su
+            /contatti", gia' comunicato dall'AC #2/#3 di quella pagina, non
+            serve un secondo avviso ridondante qui. */}
+        <ContattiPubbliciForm
+          indirizzoSedeAttuale={contattiPubblici.indirizzoSede}
+          telefonoPubblicoAttuale={contattiPubblici.telefonoPubblico}
+          emailPubblicaAttuale={contattiPubblici.emailPubblica}
+        />
       </div>
     </main>
   );

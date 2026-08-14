@@ -4,7 +4,7 @@ baseline_commit: a957215
 
 # Story 18.11: Pagina pubblica "Contatti"
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,8 +23,8 @@ so that possa mettermi in contatto o raggiungere la sede senza dover cercare alt
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Migrazione Prisma — 3 nuovi campi nullable su `ConfigurazioneApplicazione` (AC: #1)
-  - [ ] Nuova migrazione `prisma/migrations/<timestamp>_add_contatti_pubblici/migration.sql`:
+- [x] Task 1: Migrazione Prisma — 3 nuovi campi nullable su `ConfigurazioneApplicazione` (AC: #1)
+  - [x] Nuova migrazione `prisma/migrations/<timestamp>_add_contatti_pubblici/migration.sql`:
     ```sql
     ALTER TABLE "configurazione_applicazione"
       ADD COLUMN "indirizzoSede" TEXT,
@@ -32,50 +32,50 @@ so that possa mettermi in contatto o raggiungere la sede senza dover cercare alt
       ADD COLUMN "emailPubblica" TEXT;
     ```
     Mirror esatto di `20260806000000_add_email_segreteria`/`20260813010000_add_url_pagina_facebook` (colonne nullable su tabella già strutturale/no-RLS, nessun `GRANT` da toccare) — le 3 colonne raggruppate in un'unica migrazione perché introdotte insieme da questa unica storia (a differenza di `emailSegreteria`/`urlPaginaFacebook`, arrivate in storie separate).
-  - [ ] Aggiungere i 3 campi a `model ConfigurazioneApplicazione` in `prisma/schema.prisma` (dopo `urlPaginaFacebook`, riga ~355), ciascuno con un commento che cita questa storia — mirror del commento già presente sopra `urlPaginaFacebook` per Story 18.5.
-  - [ ] Nomi campo esatti (confermati contro l'unica proposta dell'epica, nessuna divergenza trovata in analisi): `indirizzoSede`, `telefonoPubblico`, `emailPubblica`.
+  - [x] Aggiungere i 3 campi a `model ConfigurazioneApplicazione` in `prisma/schema.prisma` (dopo `urlPaginaFacebook`, riga ~355), ciascuno con un commento che cita questa storia — mirror del commento già presente sopra `urlPaginaFacebook` per Story 18.5.
+  - [x] Nomi campo esatti (confermati contro l'unica proposta dell'epica, nessuna divergenza trovata in analisi): `indirizzoSede`, `telefonoPubblico`, `emailPubblica`.
 
-- [ ] Task 2: Funzioni dati + Server Action Admin/Dirigente (AC: #1)
-  - [ ] `lib/configurazione-applicazione.ts`: nuove `leggiContattiPubblici()` e `salvaContattiPubblici(valori)` — vedi Dev Notes "Una funzione combinata, non 3 funzioni separate" per la firma esatta e la motivazione della singola scrittura raggruppata (diverso dal pattern granulare 1-funzione-per-campo di `nomeSettore`/`emailSegreteria`/`urlPaginaFacebook`, ma stesso upsert atomico sull'id fisso `ID_CONFIGURAZIONE_APPLICAZIONE`).
-  - [ ] `app/app/(configurazione)/impostazioni/actions.ts`: nuova `salvaContattiPubbliciAction(_prevState, formData)` — **un solo Server Action per i 3 campi insieme** (mirror del perimetro di autorizzazione di `salvaUrlPaginaFacebookAction`: `requireRuolo(["ADMIN", "DIRIGENTE"])`, **non** l'ADMIN-only di `salvaEmailSegreteriaAction` — l'epica dice esplicitamente "Editabili da Admin/Dirigente").
-  - [ ] Validazione per campo (ognuno indipendentemente opzionale — stringa vuota = rimuovi quel campo, esattamente come `emailSegreteria`/`urlPaginaFacebook`):
+- [x] Task 2: Funzioni dati + Server Action Admin/Dirigente (AC: #1)
+  - [x] `lib/configurazione-applicazione.ts`: nuove `leggiContattiPubblici()` e `salvaContattiPubblici(valori)` — vedi Dev Notes "Una funzione combinata, non 3 funzioni separate" per la firma esatta e la motivazione della singola scrittura raggruppata (diverso dal pattern granulare 1-funzione-per-campo di `nomeSettore`/`emailSegreteria`/`urlPaginaFacebook`, ma stesso upsert atomico sull'id fisso `ID_CONFIGURAZIONE_APPLICAZIONE`).
+  - [x] `app/app/(configurazione)/impostazioni/actions.ts`: nuova `salvaContattiPubbliciAction(_prevState, formData)` — **un solo Server Action per i 3 campi insieme** (mirror del perimetro di autorizzazione di `salvaUrlPaginaFacebookAction`: `requireRuolo(["ADMIN", "DIRIGENTE"])`, **non** l'ADMIN-only di `salvaEmailSegreteriaAction` — l'epica dice esplicitamente "Editabili da Admin/Dirigente").
+  - [x] Validazione per campo (ognuno indipendentemente opzionale — stringa vuota = rimuovi quel campo, esattamente come `emailSegreteria`/`urlPaginaFacebook`):
     - `indirizzoSede`: solo limite di lunghezza, **nessun formato imposto** (indirizzo è testo libero) — max 300 caratteri.
     - `telefonoPubblico`: max 30 caratteri, formato permissivo `/^[0-9+\-\s().\/]+$/` (cifre, spazi, `+ - ( ) . /`) — nessun precedente di validazione telefono esiste nel progetto, questo è il primo; stesso livello di rigore già accettato per `FORMATO_EMAIL` (scarta solo valori chiaramente non plausibili, non una validazione E.164 completa).
     - `emailPubblica`: mirror esatto di `FORMATO_EMAIL`/`LUNGHEZZA_MASSIMA_EMAIL` (254 caratteri, stesso regex) già in `actions.ts` per `emailSegreteria` — **campo distinto**, non riusare/sovrascrivere `emailSegreteria` (AC #4: l'email Segreteria interna non va mai esposta qui).
-  - [ ] Ogni campo validato **indipendentemente**: un errore su un solo campo (es. email malformata) blocca l'intero submit (nessun salvataggio parziale) e riporta il messaggio d'errore specifico — stesso principio fail-closed già in uso nelle action esistenti.
-  - [ ] `revalidatePath("/app/impostazioni")` dopo il salvataggio (mirror esatto).
+  - [x] Ogni campo validato **indipendentemente**: un errore su un solo campo (es. email malformata) blocca l'intero submit (nessun salvataggio parziale) e riporta il messaggio d'errore specifico — stesso principio fail-closed già in uso nelle action esistenti.
+  - [x] `revalidatePath("/app/impostazioni")` dopo il salvataggio (mirror esatto).
 
-- [ ] Task 3: Sezione form "Contatti pubblici" su `/app/impostazioni` (AC: #1)
-  - [ ] Nuovo `app/app/(configurazione)/impostazioni/ContattiPubbliciForm.tsx` — un solo form con 3 campi (`indirizzoSede` testo, `telefonoPubblico` `type="tel"`, `emailPubblica` `type="email"`) e un solo pulsante "Salva", mirror strutturale di `EmailSegreteriaForm.tsx`/`PaginaFacebookForm.tsx` (`useActionState`, stessi blocchi errore/successo, stesse classi `impostazioni.module.css`).
-  - [ ] `app/app/(configurazione)/impostazioni/page.tsx`: aggiungere `leggiContattiPubblici()` al `Promise.all` esistente (stesso pattern fail-soft `.catch(() => null)` già usato per `emailSegreteria`/`urlPaginaFacebook`), nuova sezione `<h2>Contatti pubblici</h2>` + `<ContattiPubbliciForm />` sotto la sezione "Pagina Facebook" esistente. Nessun avviso soft "non configurato" per questi campi (a differenza di `emailSegreteria`/`urlPaginaFacebook`, che bloccano un comportamento a valle se assenti — qui l'assenza è semplicemente "quel campo non compare su `/contatti`", già comunicato dall'AC #2/#3, non serve un secondo avviso ridondante in Admin).
+- [x] Task 3: Sezione form "Contatti pubblici" su `/app/impostazioni` (AC: #1)
+  - [x] Nuovo `app/app/(configurazione)/impostazioni/ContattiPubbliciForm.tsx` — un solo form con 3 campi (`indirizzoSede` testo, `telefonoPubblico` `type="tel"`, `emailPubblica` `type="email"`) e un solo pulsante "Salva", mirror strutturale di `EmailSegreteriaForm.tsx`/`PaginaFacebookForm.tsx` (`useActionState`, stessi blocchi errore/successo, stesse classi `impostazioni.module.css`).
+  - [x] `app/app/(configurazione)/impostazioni/page.tsx`: aggiungere `leggiContattiPubblici()` al `Promise.all` esistente (stesso pattern fail-soft `.catch(() => null)` già usato per `emailSegreteria`/`urlPaginaFacebook`), nuova sezione `<h2>Contatti pubblici</h2>` + `<ContattiPubbliciForm />` sotto la sezione "Pagina Facebook" esistente. Nessun avviso soft "non configurato" per questi campi (a differenza di `emailSegreteria`/`urlPaginaFacebook`, che bloccano un comportamento a valle se assenti — qui l'assenza è semplicemente "quel campo non compare su `/contatti`", già comunicato dall'AC #2/#3, non serve un secondo avviso ridondante in Admin).
 
-- [ ] Task 4: Nuova pagina pubblica `/contatti` — **sostituire**, non estendere, il placeholder (AC: #2, #4)
-  - [ ] **Sostituire interamente** `app/contatti/page.tsx` (oggi 20 righe, monta solo `<HeaderPubblico />` + `<InSviluppoPubblico titolo="Contatti" />` + `<FooterPubblico />`). Il commento sorgente dice esplicitamente "sostituire con la pagina reale quando la Story 18.11 verrà implementata, non estendere questo file" — rimuovere completamente l'import e l'uso di `InSviluppoPubblico`.
-  - [ ] `export const dynamic = "force-dynamic"` (mantenuto identico al placeholder).
-  - [ ] Leggere `leggiContattiPubblici()` **e** `leggiUrlPaginaFacebook()` (funzione già esistente, Story 18.5 `done` — vedi Dev Notes "Il campo social esiste già: `urlPaginaFacebook`") in `Promise.all`, ciascuna con `.catch()` fail-soft che ritorna `null`/`{indirizzoSede:null,...}`.
-  - [ ] Markup: `<HeaderPubblico />`, `<main>` con `<h1>Contatti</h1>` + blocco `contact-block`, `<FooterPubblico />` — **nessun** `conSpazioCookieBanner`/`<CookieBanner>` (stessa scelta già fatta per `/squadre`/`/calendario`/`/staff`).
-  - [ ] Rendering **campo per campo, indipendentemente condizionale** (AC #2): ogni campo (`indirizzoSede`, `telefonoPubblico`, `emailPubblica`, link social se `urlPaginaFacebook` presente) compare **solo se valorizzato** — nessuna etichetta orfana, nessun testo "non disponibile"/"-" al posto del valore mancante. Vedi Dev Notes "La regola più facile da violare" per un esempio esplicito corretto/sbagliato.
-  - [ ] Campo email: se presente, reso anche come `<a href="mailto:...">`. Campo telefono: se presente, reso anche come `<a href="tel:...">` (normalizzare rimuovendo spazi per l'`href`, mostrare il valore così com'è salvato nel testo visibile). Campo indirizzo: solo testo (nessun link — nessuna integrazione mappa richiesta da questa storia, a differenza di `costruisciLinkNaviga` usato per le palestre in `/calendario`, dominio diverso).
-  - [ ] Link social: se `urlPaginaFacebook` è presente, un'icona/link verso la Pagina Facebook (`target="_blank" rel="noopener noreferrer"`) — **link diretto alla pagina**, non l'embed/widget della home (Story 18.5, dominio diverso: quello mostra gli ultimi post incorporati, questo è solo un collegamento in uscita).
+- [x] Task 4: Nuova pagina pubblica `/contatti` — **sostituire**, non estendere, il placeholder (AC: #2, #4)
+  - [x] **Sostituire interamente** `app/contatti/page.tsx` (oggi 20 righe, monta solo `<HeaderPubblico />` + `<InSviluppoPubblico titolo="Contatti" />` + `<FooterPubblico />`). Il commento sorgente dice esplicitamente "sostituire con la pagina reale quando la Story 18.11 verrà implementata, non estendere questo file" — rimuovere completamente l'import e l'uso di `InSviluppoPubblico`.
+  - [x] `export const dynamic = "force-dynamic"` (mantenuto identico al placeholder).
+  - [x] Leggere `leggiContattiPubblici()` **e** `leggiUrlPaginaFacebook()` (funzione già esistente, Story 18.5 `done` — vedi Dev Notes "Il campo social esiste già: `urlPaginaFacebook`") in `Promise.all`, ciascuna con `.catch()` fail-soft che ritorna `null`/`{indirizzoSede:null,...}`.
+  - [x] Markup: `<HeaderPubblico />`, `<main>` con `<h1>Contatti</h1>` + blocco `contact-block`, `<FooterPubblico />` — **nessun** `conSpazioCookieBanner`/`<CookieBanner>` (stessa scelta già fatta per `/squadre`/`/calendario`/`/staff`).
+  - [x] Rendering **campo per campo, indipendentemente condizionale** (AC #2): ogni campo (`indirizzoSede`, `telefonoPubblico`, `emailPubblica`, link social se `urlPaginaFacebook` presente) compare **solo se valorizzato** — nessuna etichetta orfana, nessun testo "non disponibile"/"-" al posto del valore mancante. Vedi Dev Notes "La regola più facile da violare" per un esempio esplicito corretto/sbagliato.
+  - [x] Campo email: se presente, reso anche come `<a href="mailto:...">`. Campo telefono: se presente, reso anche come `<a href="tel:...">` (normalizzare rimuovendo spazi per l'`href`, mostrare il valore così com'è salvato nel testo visibile). Campo indirizzo: solo testo (nessun link — nessuna integrazione mappa richiesta da questa storia, a differenza di `costruisciLinkNaviga` usato per le palestre in `/calendario`, dominio diverso).
+  - [x] Link social: se `urlPaginaFacebook` è presente, un'icona/link verso la Pagina Facebook (`target="_blank" rel="noopener noreferrer"`) — **link diretto alla pagina**, non l'embed/widget della home (Story 18.5, dominio diverso: quello mostra gli ultimi post incorporati, questo è solo un collegamento in uscita).
 
-- [ ] Task 5: Stato vuoto esplicito (AC: #3)
-  - [ ] Quando **nessuno dei 4 campi** (`indirizzoSede`, `telefonoPubblico`, `emailPubblica`, `urlPaginaFacebook`) è configurato → messaggio esplicito al posto del blocco `contact-block`, testo proposto: **"Nessun contatto pubblico configurato al momento."** (coerente col tono diretto di `EXPERIENCE.md` → Voce e Tono). Vedi Dev Notes per la conferma che il campo social è incluso nel conteggio "nessun campo".
-  - [ ] Estrarre la condizione di stato vuoto in una funzione pura testabile (vedi Task 7 — soddisfa la richiesta di test sul "rendering condizionale" senza introdurre un test di rendering JSX, convenzione assente in questo progetto per le pagine pubbliche).
+- [x] Task 5: Stato vuoto esplicito (AC: #3)
+  - [x] Quando **nessuno dei 4 campi** (`indirizzoSede`, `telefonoPubblico`, `emailPubblica`, `urlPaginaFacebook`) è configurato → messaggio esplicito al posto del blocco `contact-block`, testo proposto: **"Nessun contatto pubblico configurato al momento."** (coerente col tono diretto di `EXPERIENCE.md` → Voce e Tono). Vedi Dev Notes per la conferma che il campo social è incluso nel conteggio "nessun campo".
+  - [x] Estrarre la condizione di stato vuoto in una funzione pura testabile (vedi Task 7 — soddisfa la richiesta di test sul "rendering condizionale" senza introdurre un test di rendering JSX, convenzione assente in questo progetto per le pagine pubbliche).
 
-- [ ] Task 6: Stile "Poster Sportivo" — componente `contact-block` (`DESIGN.md`/`EXPERIENCE.md`, 2026-08-13) applicato dall'inizio — nessun AC numerato dedicato, ma requisito esplicito di questa storia (stesso principio già applicato in Story 18.9/18.10, vedi Dev Notes "Perché questa pagina va stilizzata subito")
-  - [ ] Nuovo `app/contatti/contatti.module.css` (un modulo per pagina, convenzione consolidata).
-  - [ ] `<h1>Contatti</h1>`: `typography.display-section` (40px/900 desktop) con `typography.display-section-mobile` (22px/900 sotto i 900px) — citato esplicitamente come `heading-typography`/`heading-typography-mobile` in `DESIGN.md.components.contact-block`.
-  - [ ] Contenitore `contact-block`: `background: #F2F5F7` (`{colors.grigio-chiaro}`), `padding: 32px 24px` (`{spacing.8} {spacing.6}`).
-  - [ ] Per ogni campo configurato: etichetta sopra il valore — etichetta `font-family: Arial,sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px` (`{typography.label-tag}`), `color: #5B6472` (`{colors.grigio}`); valore `font-family: Arial,sans-serif; font-size: 14px; font-weight: 400; line-height: 1.8` (`{typography.body}`), `color: #0B0E14` (`{colors.nero}`).
-  - [ ] Link social (se presente): cerchio (`border-radius: 9999px`, `{rounded.full}`), area cliccabile reale minimo 44×44px anche se la resa visiva è più piccola (mirror esplicito di `components.footer.social-icon-hit-area`, citato testualmente da `DESIGN.md.components.contact-block.social-icon-hit-area`: "stesso vincolo 44px di `components.footer.social-icon-hit-area`") — vedi Dev Notes "Icona social: nessun token colore proprio in `contact-block`" per i colori esatti da riusare da `components.footer`. Contorno di focus `2px solid #FFFFFF` (`{colors.focus-ring-chiaro}`, stessa regola contestuale "scuro→bianco" già applicata a `header-nav`/`footer`).
-  - [ ] Link `mailto:`/`tel:` dentro il blocco: nessun contorno di focus dedicato diverso dal default del browser non è ammissibile — applicare `2px solid #0072A3` (`{colors.focus-ring}`, valore per sfondi chiari `{colors.bianco}`/`{colors.grigio-chiaro}`, citato in `DESIGN.md.components.button-primary.focus-outline` come regola contestuale generale del sistema) dato che questi link vivono su `{colors.grigio-chiaro}`.
-  - [ ] Nessun custom property CSS per la palette "Poster Sportivo" in `app/globals.css` — stessa decisione già presa in Story 18.9/18.10: valori hex letterali dentro `contatti.module.css`, ciascuno annotato con un commento che cita il nome esatto del token `DESIGN.md` (vedi Dev Notes "Convenzione hex-con-commento"). Nessuno dei colori usati qui (`#F2F5F7`, `#5B6472`, `#0B0E14`, `#FFFFFF`, `#0072A3`) ha un corrispondente identico in `globals.css` — tutti hex letterali commentati.
+- [x] Task 6: Stile "Poster Sportivo" — componente `contact-block` (`DESIGN.md`/`EXPERIENCE.md`, 2026-08-13) applicato dall'inizio — nessun AC numerato dedicato, ma requisito esplicito di questa storia (stesso principio già applicato in Story 18.9/18.10, vedi Dev Notes "Perché questa pagina va stilizzata subito")
+  - [x] Nuovo `app/contatti/contatti.module.css` (un modulo per pagina, convenzione consolidata).
+  - [x] `<h1>Contatti</h1>`: `typography.display-section` (40px/900 desktop) con `typography.display-section-mobile` (22px/900 sotto i 900px) — citato esplicitamente come `heading-typography`/`heading-typography-mobile` in `DESIGN.md.components.contact-block`.
+  - [x] Contenitore `contact-block`: `background: #F2F5F7` (`{colors.grigio-chiaro}`), `padding: 32px 24px` (`{spacing.8} {spacing.6}`).
+  - [x] Per ogni campo configurato: etichetta sopra il valore — etichetta `font-family: Arial,sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px` (`{typography.label-tag}`), `color: #5B6472` (`{colors.grigio}`); valore `font-family: Arial,sans-serif; font-size: 14px; font-weight: 400; line-height: 1.8` (`{typography.body}`), `color: #0B0E14` (`{colors.nero}`).
+  - [x] Link social (se presente): cerchio (`border-radius: 9999px`, `{rounded.full}`), area cliccabile reale minimo 44×44px anche se la resa visiva è più piccola (mirror esplicito di `components.footer.social-icon-hit-area`, citato testualmente da `DESIGN.md.components.contact-block.social-icon-hit-area`: "stesso vincolo 44px di `components.footer.social-icon-hit-area`") — vedi Dev Notes "Icona social: nessun token colore proprio in `contact-block`" per i colori esatti da riusare da `components.footer`. Contorno di focus `2px solid #FFFFFF` (`{colors.focus-ring-chiaro}`, stessa regola contestuale "scuro→bianco" già applicata a `header-nav`/`footer`).
+  - [x] Link `mailto:`/`tel:` dentro il blocco: nessun contorno di focus dedicato diverso dal default del browser non è ammissibile — applicare `2px solid #0072A3` (`{colors.focus-ring}`, valore per sfondi chiari `{colors.bianco}`/`{colors.grigio-chiaro}`, citato in `DESIGN.md.components.button-primary.focus-outline` come regola contestuale generale del sistema) dato che questi link vivono su `{colors.grigio-chiaro}`.
+  - [x] Nessun custom property CSS per la palette "Poster Sportivo" in `app/globals.css` — stessa decisione già presa in Story 18.9/18.10: valori hex letterali dentro `contatti.module.css`, ciascuno annotato con un commento che cita il nome esatto del token `DESIGN.md` (vedi Dev Notes "Convenzione hex-con-commento"). Nessuno dei colori usati qui (`#F2F5F7`, `#5B6472`, `#0B0E14`, `#FFFFFF`, `#0072A3`) ha un corrispondente identico in `globals.css` — tutti hex letterali commentati.
 
-- [ ] Task 7: Test Vitest (AC: tutti)
-  - [ ] `lib/configurazione-applicazione.test.ts`: nuovi `describe("leggiContattiPubblici")`/`describe("salvaContattiPubblici")` — mirror strutturale dei blocchi esistenti per `leggiUrlPaginaFacebook`/`salvaUrlPaginaFacebook` (stesso `findUniqueMock`/`upsertMock`, casi: valori presenti, riga assente, valori `null`, upsert con tutti e 3 i campi, upsert con un sottoinsieme `null`).
-  - [ ] `app/app/(configurazione)/impostazioni/actions.test.ts`: nuovo `describe("salvaContattiPubbliciAction (Server Action)")` — mirror dei casi già coperti per `salvaUrlPaginaFacebookAction`: FORBIDDEN (verificare `requireRuoloMock` chiamato con `["ADMIN", "DIRIGENTE"]`), salvataggio con trim, singolo campo lasciato vuoto → quel campo `null` (mentre gli altri due restano quelli forniti — **non** un test "tutti vuoti = tutti null" soltanto, serve anche il caso misto per verificare che i 3 campi sono indipendenti), VALIDATION per email malformata/oltre 254 caratteri, VALIDATION per telefono con caratteri non ammessi, VALIDATION per indirizzo oltre 300 caratteri, INTERNAL fail-closed quando `salvaContattiPubblici` lancia.
-  - [ ] Nuova funzione pura `nessunContattoPubblicoConfigurato(contatti: { indirizzoSede: string | null; telefonoPubblico: string | null; emailPubblica: string | null; urlPaginaFacebook: string | null }): boolean` in `lib/configurazione-applicazione.ts` (o file dedicato, a discrezione dello sviluppo — vedi Dev Notes), usata da `app/contatti/page.tsx` per il ramo Task 5 **e** testata direttamente: tutti e 4 null/vuoti → `true`; un solo campo valorizzato (a turno, tutti e 4 i casi) → `false`; tutti valorizzati → `false`. Questo soddisfa la richiesta di test sul "rendering condizionale" (vedi Dev Notes) restando coerente con la convenzione consolidata "nessun test diretto su un componente di rendering di pagina pubblica" (nessun test JSX su `app/contatti/page.tsx` stesso, stesso limite già accettato per `app/squadre/page.tsx`, `app/calendario/page.tsx`, `app/staff/page.tsx`).
-  - [ ] `npx vitest run`, `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti.
+- [x] Task 7: Test Vitest (AC: tutti)
+  - [x] `lib/configurazione-applicazione.test.ts`: nuovi `describe("leggiContattiPubblici")`/`describe("salvaContattiPubblici")` — mirror strutturale dei blocchi esistenti per `leggiUrlPaginaFacebook`/`salvaUrlPaginaFacebook` (stesso `findUniqueMock`/`upsertMock`, casi: valori presenti, riga assente, valori `null`, upsert con tutti e 3 i campi, upsert con un sottoinsieme `null`).
+  - [x] `app/app/(configurazione)/impostazioni/actions.test.ts`: nuovo `describe("salvaContattiPubbliciAction (Server Action)")` — mirror dei casi già coperti per `salvaUrlPaginaFacebookAction`: FORBIDDEN (verificare `requireRuoloMock` chiamato con `["ADMIN", "DIRIGENTE"]`), salvataggio con trim, singolo campo lasciato vuoto → quel campo `null` (mentre gli altri due restano quelli forniti — **non** un test "tutti vuoti = tutti null" soltanto, serve anche il caso misto per verificare che i 3 campi sono indipendenti), VALIDATION per email malformata/oltre 254 caratteri, VALIDATION per telefono con caratteri non ammessi, VALIDATION per indirizzo oltre 300 caratteri, INTERNAL fail-closed quando `salvaContattiPubblici` lancia.
+  - [x] Nuova funzione pura `nessunContattoPubblicoConfigurato(contatti: { indirizzoSede: string | null; telefonoPubblico: string | null; emailPubblica: string | null; urlPaginaFacebook: string | null }): boolean` in `lib/configurazione-applicazione.ts` (o file dedicato, a discrezione dello sviluppo — vedi Dev Notes), usata da `app/contatti/page.tsx` per il ramo Task 5 **e** testata direttamente: tutti e 4 null/vuoti → `true`; un solo campo valorizzato (a turno, tutti e 4 i casi) → `false`; tutti valorizzati → `false`. Questo soddisfa la richiesta di test sul "rendering condizionale" (vedi Dev Notes) restando coerente con la convenzione consolidata "nessun test diretto su un componente di rendering di pagina pubblica" (nessun test JSX su `app/contatti/page.tsx` stesso, stesso limite già accettato per `app/squadre/page.tsx`, `app/calendario/page.tsx`, `app/staff/page.tsx`).
+  - [x] `npx vitest run`, `npx tsc --noEmit`, `npm run lint`, `npm run build` puliti.
 
 ## Dev Notes
 
@@ -209,8 +209,40 @@ Questo progetto usa una versione di Next.js con differenze rispetto al training 
 
 ### Agent Model Used
 
+Claude Sonnet 5 (claude-sonnet-5)
+
 ### Debug Log References
+
+Nessuno — implementazione lineare. Verificato direttamente `prisma/schema.prisma` e `sprint-status.yaml` per confermare che Story 18.5 (`urlPaginaFacebook`) fosse davvero già `done` prima di riusarla (come richiesto dai Dev Notes), non assunto.
 
 ### Completion Notes List
 
+- **Migrazione**: `prisma/migrations/20260814000000_add_contatti_pubblici/migration.sql` — 3 colonne nullable (`indirizzoSede`, `telefonoPubblico`, `emailPubblica`), mirror esatto di `20260813010000_add_url_pagina_facebook`. `prisma/schema.prisma` aggiornato, `npx prisma generate` eseguito per rigenerare i tipi. Nessuna migrazione applicata al DB in questo sandbox (nessun accesso Supabase) — da applicare in produzione come le precedenti.
+- **Dati**: `leggiContattiPubblici`/`salvaContattiPubblici` (una funzione combinata sui 3 campi insieme, non 3 separate — decisione motivata nei Dev Notes) e `nessunContattoPubblicoConfigurato` (funzione pura, include il campo social nel conteggio) aggiunte a `lib/configurazione-applicazione.ts`.
+- **Server Action**: `salvaContattiPubbliciAction` in `actions.ts`, perimetro `requireRuolo(["ADMIN", "DIRIGENTE"])` (non l'ADMIN-only di `salvaEmailSegreteriaAction`). Validazione indipendente per campo: indirizzo solo lunghezza (300), telefono formato permissivo + lunghezza (30), email mirror di `FORMATO_EMAIL`/254 caratteri già esistente. Un errore su un campo blocca l'intero submit.
+- **Form Admin**: `ContattiPubbliciForm.tsx`, un solo form/pulsante per i 3 campi, montato su `/app/impostazioni` sotto la sezione Pagina Facebook esistente — nessun avviso soft (decisione esplicita nei Dev Notes, l'assenza è già comunicata dall'AC #2/#3 lato pubblico).
+- **Pagina pubblica**: `app/contatti/page.tsx` riscritto interamente (rimosso `InSviluppoPubblico`). Rendering campo-per-campo indipendentemente condizionale (AC #2) — nessuna etichetta orfana, nessun "non disponibile". Email/telefono resi anche come `mailto:`/`tel:`. Link social riusa `leggiUrlPaginaFacebook()` esistente (Story 18.5, invariata) come link diretto in uscita, non l'embed della home.
+- **Stato vuoto** (AC #3): condizione su tutti e 4 i campi (3 nuovi + social), non solo i 3 introdotti da questa storia — coerente con `EXPERIENCE.md`.
+- **AC #4 verificato per ispezione**: `select` di `leggiContattiPubblici` limitato a `indirizzoSede`/`telefonoPubblico`/`emailPubblica`, non tocca mai `emailSegreteria` né alcun campo `Utente`.
+- **Stile "Poster Sportivo"**: nuovo `app/contatti/contatti.module.css`, componente `contact-block` (etichetta/valore, icona social 44px hit-area, focus contestuale bianco su icona/blu su link chiari) — stessa convenzione hex-con-commento di `/calendario`/`/staff`.
+- **Guida in-app** (regola permanente del progetto): contenuto di `/app/impostazioni` in `lib/guida/contenuti.ts` aggiornato per menzionare sia Pagina Facebook (gap pre-esistente da Story 18.5, colmato qui) sia i nuovi Contatti pubblici.
+- **Test**: 22 nuovi test — `lib/configurazione-applicazione.test.ts` (`leggiContattiPubblici`/`salvaContattiPubblici`/`nessunContattoPubblicoConfigurato`), `actions.test.ts` (`salvaContattiPubbliciAction`: FORBIDDEN, salvataggio con trim, tutti vuoti, caso misto con un solo campo indipendente, VALIDATION per ciascun campo, formato telefono valido, INTERNAL fail-closed). Nessun test diretto su `app/contatti/page.tsx` (convenzione consolidata).
+- Verifica: `npx tsc --noEmit` pulito, `npx vitest run` 1135/1135 passati (1113 + 22 nuovi, nessuna regressione), `npm run lint` 0 errori (11 warning pre-esistenti in file non toccati), `npm run build` riuscito (`/contatti` presente nell'output come rotta dinamica `ƒ`).
+
 ### File List
+
+- `prisma/schema.prisma` (3 nuovi campi su `ConfigurazioneApplicazione`)
+- `prisma/migrations/20260814000000_add_contatti_pubblici/migration.sql` (nuovo)
+- `lib/configurazione-applicazione.ts` (nuove `leggiContattiPubblici`/`salvaContattiPubblici`/`nessunContattoPubblicoConfigurato`)
+- `lib/configurazione-applicazione.test.ts` (nuovi test)
+- `app/app/(configurazione)/impostazioni/actions.ts` (nuova `salvaContattiPubbliciAction`)
+- `app/app/(configurazione)/impostazioni/actions.test.ts` (nuovi test)
+- `app/app/(configurazione)/impostazioni/ContattiPubbliciForm.tsx` (nuovo)
+- `app/app/(configurazione)/impostazioni/page.tsx` (nuova sezione)
+- `app/contatti/page.tsx` (sostituito interamente)
+- `app/contatti/contatti.module.css` (nuovo)
+- `lib/guida/contenuti.ts` (contenuto `/app/impostazioni` aggiornato)
+
+## Change Log
+
+- 2026-08-14: Implementazione completa (Task 1-7), tutti gli AC soddisfatti, Status → review.

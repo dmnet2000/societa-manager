@@ -21,6 +21,9 @@ const {
   salvaEmailSegreteria,
   leggiUrlPaginaFacebook,
   salvaUrlPaginaFacebook,
+  leggiContattiPubblici,
+  salvaContattiPubblici,
+  nessunContattoPubblicoConfigurato,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -208,5 +211,167 @@ describe("salvaUrlPaginaFacebook", () => {
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaFacebook: null },
       update: { urlPaginaFacebook: null },
     });
+  });
+});
+
+// Story 18.11: a differenza dei describe sopra (1 funzione per campo), qui i
+// 3 campi sono letti/scritti insieme in una sola chiamata.
+describe("leggiContattiPubblici", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored contatti", async () => {
+    findUniqueMock.mockResolvedValue({
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: "+39 012 3456789",
+      emailPubblica: "info@esempio.it",
+    });
+
+    const result = await leggiContattiPubblici();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { indirizzoSede: true, telefonoPubblico: true, emailPubblica: true },
+    });
+    expect(result).toEqual({
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: "+39 012 3456789",
+      emailPubblica: "info@esempio.it",
+    });
+  });
+
+  it("returns all null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiContattiPubblici();
+
+    expect(result).toEqual({
+      indirizzoSede: null,
+      telefonoPubblico: null,
+      emailPubblica: null,
+    });
+  });
+
+  it("returns null per-field when the stored values are null", async () => {
+    findUniqueMock.mockResolvedValue({
+      indirizzoSede: null,
+      telefonoPubblico: null,
+      emailPubblica: null,
+    });
+
+    const result = await leggiContattiPubblici();
+
+    expect(result).toEqual({
+      indirizzoSede: null,
+      telefonoPubblico: null,
+      emailPubblica: null,
+    });
+  });
+});
+
+describe("salvaContattiPubblici", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - all 3 fields together", async () => {
+    const valori = {
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: "+39 012 3456789",
+      emailPubblica: "info@esempio.it",
+    };
+
+    await salvaContattiPubblici(valori);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ...valori },
+      update: valori,
+    });
+  });
+
+  it("allows clearing a subset of fields back to null (indipendenti)", async () => {
+    const valori = {
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: null,
+      emailPubblica: null,
+    };
+
+    await salvaContattiPubblici(valori);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ...valori },
+      update: valori,
+    });
+  });
+});
+
+describe("nessunContattoPubblicoConfigurato", () => {
+  it("returns true when all 4 fields (including social) are null", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: null,
+        telefonoPubblico: null,
+        emailPubblica: null,
+        urlPaginaFacebook: null,
+      })
+    ).toBe(true);
+  });
+
+  it("returns false when only indirizzoSede is set", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: "Via dello Sport 1",
+        telefonoPubblico: null,
+        emailPubblica: null,
+        urlPaginaFacebook: null,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when only telefonoPubblico is set", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: null,
+        telefonoPubblico: "+39 012 3456789",
+        emailPubblica: null,
+        urlPaginaFacebook: null,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when only emailPubblica is set", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: null,
+        telefonoPubblico: null,
+        emailPubblica: "info@esempio.it",
+        urlPaginaFacebook: null,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when only urlPaginaFacebook (social) is set - conta come campo a pieno titolo", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: null,
+        telefonoPubblico: null,
+        emailPubblica: null,
+        urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when all 4 fields are set", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: "Via dello Sport 1",
+        telefonoPubblico: "+39 012 3456789",
+        emailPubblica: "info@esempio.it",
+        urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+      })
+    ).toBe(false);
   });
 });

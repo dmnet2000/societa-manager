@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const requireRuoloMock = vi.fn();
 const salvaEmailSegreteriaMock = vi.fn();
 const salvaUrlPaginaFacebookMock = vi.fn();
+const salvaContattiPubbliciMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -12,15 +13,18 @@ vi.mock("@/lib/auth/require-ruolo", () => ({
 vi.mock("@/lib/configurazione-applicazione", () => ({
   salvaEmailSegreteria: salvaEmailSegreteriaMock,
   salvaUrlPaginaFacebook: salvaUrlPaginaFacebookMock,
+  salvaContattiPubblici: salvaContattiPubbliciMock,
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { salvaEmailSegreteriaAction, salvaUrlPaginaFacebookAction } = await import(
-  "./actions"
-);
+const {
+  salvaEmailSegreteriaAction,
+  salvaUrlPaginaFacebookAction,
+  salvaContattiPubbliciAction,
+} = await import("./actions");
 
 function buildFormData(valore: string) {
   const formData = new FormData();
@@ -34,6 +38,18 @@ function buildFormDataFacebook(valore: string) {
   return formData;
 }
 
+function buildFormDataContatti(valori: {
+  indirizzoSede?: string;
+  telefonoPubblico?: string;
+  emailPubblica?: string;
+}) {
+  const formData = new FormData();
+  formData.append("indirizzoSede", valori.indirizzoSede ?? "");
+  formData.append("telefonoPubblico", valori.telefonoPubblico ?? "");
+  formData.append("emailPubblica", valori.emailPubblica ?? "");
+  return formData;
+}
+
 beforeEach(() => {
   requireRuoloMock.mockReset();
   requireRuoloMock.mockResolvedValue(null);
@@ -41,6 +57,8 @@ beforeEach(() => {
   salvaEmailSegreteriaMock.mockResolvedValue(undefined);
   salvaUrlPaginaFacebookMock.mockReset();
   salvaUrlPaginaFacebookMock.mockResolvedValue(undefined);
+  salvaContattiPubbliciMock.mockReset();
+  salvaContattiPubbliciMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
 
@@ -265,6 +283,159 @@ describe("salvaUrlPaginaFacebookAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile salvare la Pagina Facebook. Riprova." },
+    });
+  });
+});
+
+// Story 18.11.
+describe("salvaContattiPubbliciAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #1)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ indirizzoSede: "Via dello Sport 1" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("salva i 3 valori forniti (trim applicato) e revalida /impostazioni (AC #1)", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({
+        indirizzoSede: "  Via dello Sport 1  ",
+        telefonoPubblico: "  +39 012 3456789  ",
+        emailPubblica: "  info@esempio.it  ",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaContattiPubbliciMock).toHaveBeenCalledWith({
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: "+39 012 3456789",
+      emailPubblica: "info@esempio.it",
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("salva null per tutti e 3 quando ogni campo e' lasciato vuoto", async () => {
+    const result = await salvaContattiPubbliciAction(undefined, buildFormDataContatti({}));
+
+    expect(result).toEqual({ success: true });
+    expect(salvaContattiPubbliciMock).toHaveBeenCalledWith({
+      indirizzoSede: null,
+      telefonoPubblico: null,
+      emailPubblica: null,
+    });
+  });
+
+  it("lascia un solo campo vuoto (null) mentre gli altri due restano quelli forniti - campi indipendenti", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({
+        indirizzoSede: "Via dello Sport 1",
+        telefonoPubblico: "",
+        emailPubblica: "info@esempio.it",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaContattiPubbliciMock).toHaveBeenCalledWith({
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: null,
+      emailPubblica: "info@esempio.it",
+    });
+  });
+
+  it("returns VALIDATION per un indirizzo oltre i 300 caratteri", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ indirizzoSede: "x".repeat(301) })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "L'indirizzo supera i 300 caratteri." },
+    });
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un telefono oltre i 30 caratteri", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ telefonoPubblico: "0".repeat(31) })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il telefono supera i 30 caratteri." },
+    });
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un telefono con caratteri non ammessi", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ telefonoPubblico: "chiamami!" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Numero di telefono non valido." },
+    });
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts un telefono con cifre, spazi e + - ( ) . /", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ telefonoPubblico: "+39 (012) 345-6789" })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns VALIDATION per un'email pubblica non plausibile", async () => {
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ emailPubblica: "non-e-una-email" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Indirizzo email non valido." },
+    });
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un'email pubblica oltre i 254 caratteri", async () => {
+    const valoreTroppoLungo = `${"x".repeat(250)}@a.it`;
+
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ emailPubblica: valoreTroppoLungo })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "L'indirizzo email supera i 254 caratteri.",
+      },
+    });
+    expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed quando salvaContattiPubblici lancia", async () => {
+    salvaContattiPubbliciMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ indirizzoSede: "Via dello Sport 1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare i Contatti pubblici. Riprova." },
     });
   });
 });
