@@ -145,11 +145,19 @@
 }
 
 /* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB (nessun
-   corrispondente in globals.css, hex letterale). */
+   corrispondente in globals.css, hex letterale). Fix bug segnalato
+   dall'utente: .meta e' l'ultima riga della card, proprio dove il
+   clip-path diagonale di .matchCard (angolo in basso a sinistra) taglia
+   di piu' - il testo chiaro a ridosso del bordo tagliato si fondeva
+   visivamente con lo sfondo bianco della pagina sottostante ("bianco su
+   bianco"). padding-left aggiuntivo sposta il testo a destra, fuori dalla
+   zona del taglio, senza toccare categoria/squadre sopra (non a rischio,
+   il taglio e' quasi nullo in alto). */
 .meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+  padding-left: var(--space-4);
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 400;

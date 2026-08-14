@@ -413,16 +413,3 @@
   background: #f2f5f7;
 }
 
-/* Review fix (Story 18.5): width/height espliciti - senza, un <iframe>
-   ricade sul default del browser (~300x150), tagliando il contenuto che il
-   Page Plugin di Facebook renderizza internamente a 340x500. Valori
-   INVARIATI da Story 18.12 (nessun cambio dimensionale, solo il contenitore
-   esterno cambia sfondo). */
-.iframeSocial {
-  display: block;
-  width: 340px;
-  height: 500px;
-  max-width: 100%;
-  margin-top: var(--space-3);
-  border: none;
-}

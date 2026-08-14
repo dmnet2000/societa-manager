@@ -103,6 +103,15 @@
   color: var(--color-danger);
 }
 
+/* Story 18.13: stato "configurato/non configurato" del Token Facebook -
+   mai il valore reale (AC #4), solo un'etichetta testuale. */
+.statoToken {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
 .successo {
   margin-top: var(--space-3);
   font-size: 13px;

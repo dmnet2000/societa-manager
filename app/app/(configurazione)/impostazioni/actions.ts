@@ -2,11 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
+import { createClient } from "@/lib/supabase/server";
 import {
   salvaEmailSegreteria,
   salvaUrlPaginaFacebook,
   salvaContattiPubblici,
 } from "@/lib/configurazione-applicazione";
+import {
+  leggiConfigurazioneSocialFacebook,
+  salvaTokenFacebook,
+} from "@/lib/db-rls/configurazione-social-facebook";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -76,9 +81,10 @@ const LUNGHEZZA_MASSIMA_LINK_ESTERNO = 500;
 
 // Mirror di linkEsternoValido (app/(sponsor)/sponsor/actions.ts, Story 16.1
 // review fix) / linkFipavValido (app/(partite-campionati)/campionati/actions.ts,
-// Story 10.8 review fix) - il valore finisce incorporato nell'URL del Page
-// Plugin di Facebook (lib/embed-facebook.ts), un javascript:/data: non
-// validato qui sarebbe un problema anche in quel contesto.
+// Story 10.8 review fix) - il valore e' usato come link diretto in /contatti
+// e come base per estrarre lo slug della Pagina (lib/facebook-graph.ts,
+// Story 18.13), un javascript:/data: non validato qui sarebbe un problema
+// anche in quei contesti.
 function urlPaginaFacebookValido(valore: string): boolean {
   if (valore.length > LUNGHEZZA_MASSIMA_LINK_ESTERNO) return false;
   try {
@@ -221,6 +227,81 @@ export async function salvaContattiPubbliciAction(
       error: {
         code: "INTERNAL",
         message: "Impossibile salvare i Contatti pubblici. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type TokenFacebookActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+const LUNGHEZZA_MASSIMA_TOKEN = 512;
+
+// Story 18.13 (AC #6): a differenza della password SMTP (salvaConfigurazione,
+// smtp/actions.ts, ADMIN-only), qui requireRuolo ammette anche DIRIGENTE -
+// stesso perimetro di salvaUrlPaginaFacebookAction/salvaContattiPubbliciAction
+// sopra (vedi Dev Notes della storia per la motivazione, la nota tecnica
+// preliminare di epics.md suggeriva "stessa protezione di ConfigurazioneSmtp"
+// ma l'AC #6 e' esplicito su Admin/Dirigente - risolto a favore dell'AC).
+//
+// Valore vuoto = NON modificare il token esistente (mirror della password
+// SMTP) - a differenza di urlPaginaFacebook/Contatti pubblici sopra, qui un
+// valore vuoto non rimuove la configurazione: un token e' un segreto,
+// svuotarlo per un submit senza intenzione esplicita sarebbe distruttivo.
+// Nessun AC richiede la possibilita' di rimuovere il token, non implementata.
+export async function salvaTokenFacebookAction(
+  _prevState: TokenFacebookActionState,
+  formData: FormData
+): Promise<TokenFacebookActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const accessToken = String(formData.get("accessToken") ?? "").trim();
+
+  if (accessToken.length > LUNGHEZZA_MASSIMA_TOKEN) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il token supera i ${LUNGHEZZA_MASSIMA_TOKEN} caratteri.`,
+      },
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    if (!accessToken) {
+      // Fix code review: prima un submit vuoto restituiva sempre successo,
+      // anche se nessun token era mai stato configurato (bypassabile senza
+      // JS, l'unico guard era l'attributo HTML required) - un vero "non
+      // modificare" ha senso solo se esiste gia' qualcosa da non
+      // modificare, mirror esatto del controllo gia' fatto da
+      // salvaConfigurazione (SMTP, smtp/actions.ts) prima di accettare una
+      // password vuota.
+      const esistente = await leggiConfigurazioneSocialFacebook(supabase);
+      if (!esistente) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Il token è obbligatorio al primo salvataggio.",
+          },
+        };
+      }
+      return { success: true };
+    }
+
+    await salvaTokenFacebook(supabase, accessToken);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare il Token Facebook. Riprova.",
       },
     };
   }

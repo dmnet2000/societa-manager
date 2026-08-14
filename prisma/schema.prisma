@@ -333,6 +333,26 @@ model ConfigurazioneSmtp {
   @@map("configurazione_smtp")
 }
 
+// Story 18.13: riga singola su id fisso (stesso pattern/stesso id letterale
+// di ConfigurazioneSmtp), RLS ADMIN+DIRIGENTE (non ADMIN-only come SMTP -
+// vedi Dev Notes della storia per la motivazione) - contiene un Page Access
+// Token Facebook in chiaro, protezione solo RLS (stessa scelta deliberata
+// gia' fatta per la password SMTP, AD-12). ultimaLetturaOk/ultimoErrore sono
+// scritti solo da lib/facebook-graph.ts dopo ogni tentativo di lettura dei
+// post (mai da un salvataggio manuale del token, che li resetta invece a
+// true/null) - permettono l'avviso Admin su token scaduto/non funzionante
+// senza che un Visitatore anonimo debba segnalarlo.
+model ConfigurazioneSocialFacebook {
+  id              String   @id @default(uuid())
+  accessToken     String
+  ultimaLetturaOk Boolean  @default(true)
+  ultimoErrore    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("configurazione_social_facebook")
+}
+
 // 2026-07-25: riga singola su id fisso (stesso pattern di
 // ConfigurazioneSmtp/ID_CONFIGURAZIONE_SMTP), ma NON protetta da RLS (AD-9,
 // a differenza di quella) - "nomeSettore" e' dato puramente strutturale

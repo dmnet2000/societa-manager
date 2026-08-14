@@ -177,11 +177,15 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     rotta: "/app/impostazioni",
     titolo: "Impostazioni",
-    ruoliAmmessi: ["ADMIN"],
+    // Fix code review (Story 18.13): rotta allargata a ADMIN+DIRIGENTE in
+    // route-guard.ts - mirror qui obbligatorio, il test di coerenza
+    // CONTENUTI_GUIDA/PROTECTED_ROUTES lo verifica.
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
       "Questa è la pagina hub della configurazione: da qui raggiungi Configurazione SMTP e Configurazione logo.",
       "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",
       "Qui imposti anche l'URL della Pagina Facebook della società (mostra gli ultimi post sulla home pubblica) e i contatti pubblici - indirizzo, telefono ed email mostrati sulla pagina pubblica \"Contatti\": ogni campo è indipendente, un campo lasciato vuoto smette semplicemente di comparire sulla pagina pubblica.",
+      "Qui imposti anche il Token Facebook: serve al carosello \"Ultimi post\" della home pubblica per leggere i post reali della Pagina. Lascialo vuoto per non modificare il token già salvato. Un avviso ti segnala se manca o se l'ultima lettura dei post è fallita (es. token scaduto, da rigenerare periodicamente).",
     ],
   },
   {

@@ -17,7 +17,7 @@ import {
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
-import { costruisciLinkPaginaFacebookIncorporata } from "@/lib/embed-facebook";
+import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
 import {
   NOME_COOKIE_CONSENSO,
   haAccettatoCookieNonEssenziali,
@@ -27,6 +27,7 @@ import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
 import { HeaderPubblico } from "./HeaderPubblico";
 import { FooterPubblico } from "./FooterPubblico";
+import { PostFacebookCarosello } from "./PostFacebookCarosello";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -199,6 +200,18 @@ export default async function HomePubblicaPage() {
       return null;
     }),
   ]);
+
+  // Story 18.13 (AC #3/#5): non puo' stare nel Promise.all sopra - dipende
+  // dal valore di urlPaginaFacebook che quello stesso Promise.all risolve.
+  // Nessuna chiamata di rete ne' caricamento immagini Facebook prima del
+  // consenso esplicito (AC #5) - se consentitoSocial e' falso, non si
+  // chiama nemmeno leggiUltimiPostFacebook, non solo se ne nasconde il
+  // risultato. leggiUltimiPostFacebook non lancia mai (vedi lib/facebook-graph.ts),
+  // nessun .catch() necessario qui.
+  const postFacebook =
+    urlPaginaFacebook && consentitoSocial
+      ? await leggiUltimiPostFacebook(urlPaginaFacebook)
+      : [];
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
 
@@ -389,36 +402,22 @@ export default async function HomePubblicaPage() {
           </section>
         )}
 
-        {/* Story 18.5 (AC #3/#4): nessuna sezione se non configurato O se il
-            consenso ai cookie non essenziali non è stato dato - stesso
-            messaggio visivo (sezione assente) per entrambi i casi, nessuna
-            UI intermedia "accetta i cookie per vedere i post" (scelta di
-            semplicità, nessun AC la richiede). Nessuno script/iframe di
-            terze parti viene incluso nel markup quando questa condizione è
-            falsa (Story 18.6 AC #5). Condizione scritta come
-            "urlPaginaFacebook && consentitoSocial" (non una variabile
-            mostraSocial separata) per il narrowing diretto di TypeScript su
-            urlPaginaFacebook (string | null), senza un'asserzione non-null
-            nel src dell'iframe sotto. */}
-        {urlPaginaFacebook && consentitoSocial && (
+        {/* Story 18.13 (AC #1/#3): sostituisce l'embed statico (iframe Page
+            Plugin, Story 18.5) con un carosello attivo - postFacebook e'
+            gia' [] per ogni caso di assenza/errore (token non configurato/
+            non valido, consenso non dato, chiamata Graph API fallita,
+            nessun post con testo - vedi lib/facebook-graph.ts), quindi la
+            lunghezza dell'array e' l'unica fonte di verita' "c'e' qualcosa
+            da mostrare", non piu' "urlPaginaFacebook && consentitoSocial"
+            (quella condizione ora vive solo nel calcolo di postFacebook
+            sopra). Nessuna immagine Facebook nel markup quando l'array e'
+            vuoto (AC #5, invariato). */}
+        {postFacebook.length > 0 && (
           <section className={styles.sezioneSocial} aria-labelledby="titolo-social">
             <h2 id="titolo-social" className={styles.titoloSezione}>
               Ultimi post
             </h2>
-            {/* Page Plugin ufficiale di Facebook - iframe, nessun token/API
-                (lib/embed-facebook.ts). Stessi attributi già stabiliti per
-                l'unico altro iframe del progetto (PalestraRow.tsx, Story
-                9.6): loading lazy, title esplicito, referrerPolicy
-                "no-referrer". Nessun onError/fallback: un problema di
-                rendering lato Facebook resta contenuto nell'iframe stesso,
-                non si propaga al resto della pagina (AC #5). */}
-            <iframe
-              className={styles.iframeSocial}
-              src={costruisciLinkPaginaFacebookIncorporata(urlPaginaFacebook)}
-              title="Ultimi post dalla nostra Pagina Facebook"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
+            <PostFacebookCarosello post={postFacebook} />
           </section>
         )}
       </main>

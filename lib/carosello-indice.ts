@@ -4,6 +4,12 @@
 // totale`. Pure, nessuna dipendenza da React/DOM/timer - estratte per essere
 // testabili senza montare il componente client (stesso principio di
 // raggruppaSponsorPerTipo/risolviNomeVoucher, Story 16.2).
+//
+// Story 18.13: promossa da lib/sponsor/carosello-indice.ts a questa
+// posizione condivisa - secondo consumer reale (il carosello Post Facebook,
+// app/PostFacebookCarosello.tsx), stesso principio di estrazione gia'
+// applicato piu' volte in questo progetto (es. HeaderPubblico/FooterPubblico,
+// Story 18.8). Contenuto invariato.
 export function avanti(indice: number, totale: number): number {
   if (totale <= 1) return 0;
   return (indice + 1) % totale;

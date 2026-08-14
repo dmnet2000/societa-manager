@@ -22,8 +22,8 @@ export default async function ContattiPage() {
       return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
     }),
     // Story 18.5, gia' done - riuso invariato del campo esistente: qui
-    // serve solo come link diretto in uscita, non l'embed "ultimi post"
-    // della home (lib/embed-facebook.ts, dominio diverso).
+    // serve solo come link diretto in uscita, non il carosello "ultimi
+    // post" della home (lib/facebook-graph.ts, Story 18.13, dominio diverso).
     leggiUrlPaginaFacebook().catch((err) => {
       console.error(err);
       return null;

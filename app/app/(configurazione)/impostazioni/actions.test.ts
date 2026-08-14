@@ -4,6 +4,8 @@ const requireRuoloMock = vi.fn();
 const salvaEmailSegreteriaMock = vi.fn();
 const salvaUrlPaginaFacebookMock = vi.fn();
 const salvaContattiPubbliciMock = vi.fn();
+const salvaTokenFacebookMock = vi.fn();
+const leggiConfigurazioneSocialFacebookMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -16,6 +18,16 @@ vi.mock("@/lib/configurazione-applicazione", () => ({
   salvaContattiPubblici: salvaContattiPubbliciMock,
 }));
 
+const supabaseClientFinto = { client: "finto" };
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(() => Promise.resolve(supabaseClientFinto)),
+}));
+
+vi.mock("@/lib/db-rls/configurazione-social-facebook", () => ({
+  salvaTokenFacebook: salvaTokenFacebookMock,
+  leggiConfigurazioneSocialFacebook: leggiConfigurazioneSocialFacebookMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
@@ -24,6 +36,7 @@ const {
   salvaEmailSegreteriaAction,
   salvaUrlPaginaFacebookAction,
   salvaContattiPubbliciAction,
+  salvaTokenFacebookAction,
 } = await import("./actions");
 
 function buildFormData(valore: string) {
@@ -59,8 +72,27 @@ beforeEach(() => {
   salvaUrlPaginaFacebookMock.mockResolvedValue(undefined);
   salvaContattiPubbliciMock.mockReset();
   salvaContattiPubbliciMock.mockResolvedValue(undefined);
+  salvaTokenFacebookMock.mockReset();
+  salvaTokenFacebookMock.mockResolvedValue(undefined);
+  leggiConfigurazioneSocialFacebookMock.mockReset();
+  // Default: una configurazione esiste gia' - riflette lo scenario piu'
+  // comune testato sotto (Admin che aggiorna, lascia il token vuoto per
+  // non modificarlo). Il test dedicato "nessuna configurazione esistente"
+  // sovrascrive esplicitamente questo default a null.
+  leggiConfigurazioneSocialFacebookMock.mockResolvedValue({
+    id: "c1",
+    accessToken: "EAAG...esistente",
+    ultimaLetturaOk: true,
+    ultimoErrore: null,
+  });
   revalidatePathMock.mockReset();
 });
+
+function buildFormDataToken(valore: string) {
+  const formData = new FormData();
+  formData.append("accessToken", valore);
+  return formData;
+}
 
 // Story 9.31: mirror di salvaNomeSettoreAction (app/(configurazione)/logo/actions.test.ts).
 describe("salvaEmailSegreteriaAction (Server Action)", () => {
@@ -436,6 +468,105 @@ describe("salvaContattiPubbliciAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile salvare i Contatti pubblici. Riprova." },
+    });
+  });
+});
+
+// Story 18.13.
+describe("salvaTokenFacebookAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #6)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaTokenFacebookAction(
+      undefined,
+      buildFormDataToken("EAAG...nuovo")
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(salvaTokenFacebookMock).not.toHaveBeenCalled();
+  });
+
+  it("salva il valore fornito (trim applicato) e revalida /impostazioni (AC #6)", async () => {
+    const result = await salvaTokenFacebookAction(
+      undefined,
+      buildFormDataToken("  EAAG...nuovo  ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaTokenFacebookMock).toHaveBeenCalledWith(supabaseClientFinto, "EAAG...nuovo");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("valore vuoto = successo SENZA modificare il token esistente (a differenza di Pagina Facebook/Contatti, un segreto non va mai svuotato per errore)", async () => {
+    const result = await salvaTokenFacebookAction(undefined, buildFormDataToken("   "));
+
+    expect(result).toEqual({ success: true });
+    expect(salvaTokenFacebookMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION oltre i 512 caratteri", async () => {
+    const result = await salvaTokenFacebookAction(
+      undefined,
+      buildFormDataToken("x".repeat(513))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il token supera i 512 caratteri." },
+    });
+    expect(salvaTokenFacebookMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts un token di esattamente 512 caratteri (confine esatto)", async () => {
+    const result = await salvaTokenFacebookAction(
+      undefined,
+      buildFormDataToken("x".repeat(512))
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaTokenFacebookMock).toHaveBeenCalledWith(supabaseClientFinto, "x".repeat(512));
+  });
+
+  it("returns INTERNAL fail-closed quando salvaTokenFacebook lancia", async () => {
+    salvaTokenFacebookMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaTokenFacebookAction(
+      undefined,
+      buildFormDataToken("EAAG...nuovo")
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare il Token Facebook. Riprova." },
+    });
+  });
+
+  // Fix code review: prima un submit vuoto restituiva sempre successo,
+  // anche senza alcuna configurazione esistente da "non modificare" -
+  // bypassabile senza JS/con un POST diretto, ignorando l'attributo HTML
+  // required (che dipende dal client). Mirror del controllo gia' fatto da
+  // salvaConfigurazione (SMTP) prima di accettare una password vuota.
+  it("returns VALIDATION su submit vuoto quando nessun token e' mai stato configurato", async () => {
+    leggiConfigurazioneSocialFacebookMock.mockResolvedValue(null);
+
+    const result = await salvaTokenFacebookAction(undefined, buildFormDataToken("   "));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il token è obbligatorio al primo salvataggio." },
+    });
+    expect(salvaTokenFacebookMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed quando la verifica della configurazione esistente lancia (submit vuoto)", async () => {
+    leggiConfigurazioneSocialFacebookMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaTokenFacebookAction(undefined, buildFormDataToken(""));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare il Token Facebook. Riprova." },
     });
   });
 });

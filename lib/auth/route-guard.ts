@@ -195,7 +195,16 @@ export const PROTECTED_ROUTES: {
     navLabel: "Certificato medico",
   },
   { prefix: "/app/notifiche", ruoliAmmessi: ["ALLENATORE", "DIRIGENTE"], navLabel: "Notifiche" },
-  { prefix: "/app/impostazioni", ruoliAmmessi: ["ADMIN"], navLabel: "Impostazioni" },
+  // Fix code review (Story 18.13): era ADMIN-only, ma 3 delle 4 sezioni di
+  // questa pagina (Pagina Facebook Story 18.5, Contatti pubblici Story
+  // 18.11, Token Facebook Story 18.13) ammettono gia' DIRIGENTE a livello
+  // di Server Action (requireRuolo(["ADMIN","DIRIGENTE"])) - con la rotta
+  // ADMIN-only un Dirigente veniva reindirizzato prima di raggiungere
+  // quelle form, rendendo quel permesso di fatto irraggiungibile (gap
+  // presente dalla Story 18.5, mai corretto). Solo "Email Segreteria"
+  // resta ADMIN-only alla propria action (salvaEmailSegreteriaAction,
+  // invariata) - un Dirigente che la sottomette riceve comunque FORBIDDEN.
+  { prefix: "/app/impostazioni", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Impostazioni" },
   {
     prefix: "/app/smtp",
     ruoliAmmessi: ["ADMIN"],

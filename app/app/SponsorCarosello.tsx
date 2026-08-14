@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { avanti, indietro, indiceEntroLimiti } from "@/lib/sponsor/carosello-indice";
+import { avanti, indietro, indiceEntroLimiti } from "@/lib/carosello-indice";
 import styles from "./sponsor-carosello.module.css";
 
 type Banner = {

@@ -162,14 +162,26 @@ describe("getRouteDecision", () => {
     ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
-  it("allows only Admin on /impostazioni (Story 9.24)", async () => {
+  it("allows Admin on /impostazioni (Story 9.24)", async () => {
     expect(await getRouteDecision("/app/impostazioni", true, ["ADMIN"])).toEqual({
       action: "allow",
     });
   });
 
-  it("redirects to /non-autorizzato on /impostazioni for other roles (Story 9.24)", async () => {
+  // Fix code review (Story 18.13): era ADMIN-only, ma 3 delle 4 sezioni di
+  // questa pagina (Pagina Facebook, Contatti pubblici, Token Facebook)
+  // ammettono gia' DIRIGENTE a livello di Server Action - senza aprire
+  // anche la rotta, un Dirigente non raggiungeva mai quelle form (AC #6
+  // di Story 18.13 non soddisfatto). Solo Email Segreteria resta
+  // ADMIN-only alla propria action, invariata.
+  it("allows Dirigente on /impostazioni (fix code review Story 18.13)", async () => {
     expect(await getRouteDecision("/app/impostazioni", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /impostazioni for other roles", async () => {
+    expect(await getRouteDecision("/app/impostazioni", true, ["ALLENATORE"])).toEqual({
       action: "redirect",
       location: "/app/non-autorizzato",
     });

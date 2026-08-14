@@ -8,9 +8,12 @@ import {
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { createClient } from "@/lib/supabase/server";
+import { leggiConfigurazioneSocialFacebook, rimuoviToken } from "@/lib/db-rls/configurazione-social-facebook";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import { PaginaFacebookForm } from "./PaginaFacebookForm";
 import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
+import { TokenFacebookForm } from "./TokenFacebookForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -42,25 +45,43 @@ export default async function ImpostazioniPage() {
   // principio di ogni altro effetto collaterale non bloccante di questo
   // progetto (il .catch qui sostituisce il try/catch precedente per poter
   // stare dentro il Promise.all senza perdere il comportamento fail-soft).
-  const [ruoli, emailSegreteria, urlPaginaFacebook, contattiPubblici] = await Promise.all([
-    risolviRuoliPerAiutoContestuale(),
-    leggiEmailSegreteria().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-    // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
-    leggiUrlPaginaFacebook().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-    // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
-    // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
-    // con i 3 campi, mai un valore nullable a se stante.
-    leggiContattiPubblici().catch((err) => {
-      console.error(err);
-      return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
-    }),
-  ]);
+  const [ruoli, emailSegreteria, urlPaginaFacebook, contattiPubblici, configurazioneSocialFacebook] =
+    await Promise.all([
+      risolviRuoliPerAiutoContestuale(),
+      leggiEmailSegreteria().catch((err) => {
+        console.error(err);
+        return null;
+      }),
+      // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
+      leggiUrlPaginaFacebook().catch((err) => {
+        console.error(err);
+        return null;
+      }),
+      // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
+      // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
+      // con i 3 campi, mai un valore nullable a se stante.
+      leggiContattiPubblici().catch((err) => {
+        console.error(err);
+        return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
+      }),
+      // Story 18.13: client CON la sessione utente (questa e' la pagina
+      // Admin/Dirigente autenticata, la RLS del Task 1 la autorizza
+      // direttamente) - non createAdminClient(), quello e' riservato alla
+      // lettura dalla home pubblica anonima (lib/facebook-graph.ts).
+      createClient()
+        .then((supabase) => leggiConfigurazioneSocialFacebook(supabase))
+        .catch((err) => {
+          console.error(err);
+          return null;
+        }),
+    ]);
+  // AC #4: nessuna variabile di questo Server Component deve conservare
+  // accessToken oltre questo punto - rimuoviToken() lo scarta subito, anche
+  // se in questa pagina non verrebbe comunque mai passato a un Client
+  // Component (solo 2 booleani derivati lo sono, vedi sotto).
+  const tokenFacebook = configurazioneSocialFacebook
+    ? rimuoviToken(configurazioneSocialFacebook)
+    : null;
 
   return (
     <main className="pagina-form">
@@ -117,6 +138,25 @@ export default async function ImpostazioniPage() {
           indirizzoSedeAttuale={contattiPubblici.indirizzoSede}
           telefonoPubblicoAttuale={contattiPubblici.telefonoPubblico}
           emailPubblicaAttuale={contattiPubblici.emailPubblica}
+        />
+
+        <h2 className={styles.titoloSezione}>Token Facebook</h2>
+        {/* Story 18.13 (AC #6): avviso esplicito sia per token mai
+            configurato sia per un'ultima lettura fallita (token scaduto/non
+            piu' valido) - senza, un Admin non avrebbe modo di accorgersi che
+            il carosello e' sparito dalla home finche' un Visitatore non
+            glielo segnala. rimuoviToken() garantisce che accessToken non
+            raggiunga mai questo Server Component -> Client Component. */}
+        {(!tokenFacebook || !tokenFacebook.ultimaLetturaOk) && (
+          <p className={styles.avviso}>
+            {!tokenFacebook
+              ? 'Token Facebook non configurato: il carosello "Ultimi post" non comparirà sulla home pubblica finché non imposti un token qui sotto.'
+              : `Ultima lettura dei post Facebook fallita${tokenFacebook.ultimoErrore ? ` (${tokenFacebook.ultimoErrore})` : ""}: verifica che il token sia ancora valido.`}
+          </p>
+        )}
+        <TokenFacebookForm
+          configurato={Boolean(tokenFacebook)}
+          ultimaLetturaOk={tokenFacebook?.ultimaLetturaOk ?? true}
         />
       </div>
     </main>
