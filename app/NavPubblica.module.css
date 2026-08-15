@@ -11,18 +11,73 @@
   display: flex;
 }
 
-/* Elenco orizzontale con wrap (decisione utente 2026-08-13) - nessun
-   drawer/hamburger come la NavBar interna autenticata (Story 9.2), pensata
-   per un elenco piu' lungo e ruolo-dipendente: qui bastano 5 voci corte,
-   vanno semplicemente a capo su schermi stretti. INVARIATO da Story 18.12
-   (AC #3) - il mockup di riferimento del nuovo registro mostra un hamburger
-   solo a scopo illustrativo, non e' il pattern reale. */
+/* Story 18.18: hamburger/drawer su mobile - decisione dell'utente che
+   riapre deliberatamente la scelta precedente ("elenco orizzontale con
+   wrap, nessun drawer/hamburger", Story 18.7/18.12) dopo aver visto dal
+   vivo che il wrap produceva voci disordinate su due righe. Nascosto di
+   default (desktop) - visibile solo sotto il breakpoint mobile, vedi
+   media query sotto. Touch target esplicito 44x44 (a differenza di
+   .hamburger del portale interno, NavBar.module.css, che non lo dichiara
+   esplicitamente - qui va fatto bene, stessa rigidita' gia' applicata a
+   .voce/.accedi/.iconaSocial sul registro pubblico). */
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hamburger:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Elenco orizzontale con wrap su desktop (INVARIATO fuori dal breakpoint
+   sotto, AC #5) - fino a Story 18.12 questo era anche il comportamento
+   mobile, sostituito ora dal pannello dropdown della media query
+   sottostante. */
 .lista {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   list-style: none;
+}
+
+/* Story 18.18: pannello dropdown sotto l'header, ancorato a
+   HeaderPubblico.module.css .header (position:relative aggiunto li' per
+   questo). Stesso sfondo/bordo dell'header per continuita' visiva. */
+@media (max-width: 900px) {
+  .hamburger {
+    display: inline-flex;
+  }
+
+  .lista {
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    gap: 0;
+    padding: var(--space-4) var(--space-6);
+    /* {colors.blu-carbone} #0F2438 - stesso sfondo di .header. */
+    background: #0f2438;
+    /* {colors.azzurro} - stesso bordo inferiore di .header. */
+    border-bottom: 4px solid var(--color-primary);
+    z-index: 20;
+  }
+
+  .voce {
+    width: 100%;
+  }
 }
 
 /* Touch target 44px sul link stesso, non su un contenitore - lezione gia'

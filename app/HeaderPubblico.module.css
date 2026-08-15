@@ -12,6 +12,11 @@
    gia' verificati nella storia (azzurro/navy/magenta/bianco). */
 
 .header {
+  /* Story 18.18: contesto di posizionamento per il pannello dropdown
+     mobile di NavPubblica.module.css (.lista, position:absolute ancorato
+     ai bordi di questo header, non al solo spazio occupato da <nav> nel
+     flex layout). */
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

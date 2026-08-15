@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./NavPubblica.module.css";
@@ -25,6 +26,30 @@ const VOCI = [
   { href: "/contatti", label: "Contatti" },
 ] as const;
 
+// Story 18.18: hamburger/drawer su mobile (decisione presa con l'utente,
+// riapre deliberatamente la scelta "solo wrap" di Story 18.7/18.12). Stesso
+// pattern di rilevamento desktop/mobile gia' stabilito da
+// app/NavBarClient.tsx (Story 9.2, useSyncExternalStore+matchMedia) -
+// riusato in forma ridotta, non l'intera complessita' di quel componente
+// (nessun overlay/blocco scroll/reset su pathname: qui basta un pannello
+// dropdown con 5 link piatti, e NavPubblica viene gia' rimontato da zero ad
+// ogni pagina pubblica - nessun layout condiviso lo mantiene persistente,
+// verificato in app/layout.tsx). 901px, non 880px (portale interno): 900px
+// e' gia' il breakpoint mobile/desktop di tutto il registro pubblico
+// "Poster Sportivo" (home-pubblica/calendario/contatti/squadre/staff
+// .module.css).
+function sottoscriviMediaQuery(callback: () => void) {
+  const mq = window.matchMedia("(min-width: 901px)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+function leggiDesktop() {
+  return window.matchMedia("(min-width: 901px)").matches;
+}
+function leggiDesktopServer() {
+  return false;
+}
+
 // usePathname() (non un valore calcolato server-side): app/page.tsx e' un
 // Server Component (force-dynamic) e non puo' chiamarlo direttamente -
 // stesso principio gia' stabilito da app/NavBarClient.tsx (Story 9.10) per
@@ -35,25 +60,63 @@ const VOCI = [
 // annidata sotto un'altra.
 export function NavPubblica() {
   const pathname = usePathname();
+  const [aperto, setAperto] = useState(false);
+  const desktop = useSyncExternalStore(
+    sottoscriviMediaQuery,
+    leggiDesktop,
+    leggiDesktopServer
+  );
+
+  // Esc chiude il pannello - mirror esatto del pattern gia' in
+  // NavBarClient.tsx, ascoltatore attivo solo quando aperto.
+  useEffect(() => {
+    if (!aperto) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setAperto(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [aperto]);
 
   return (
-    <nav aria-label="Sezioni del sito" className={styles.nav}>
-      <ul className={styles.lista}>
-        {VOCI.map((voce) => {
-          const attiva = pathname === voce.href;
-          return (
-            <li key={voce.href}>
-              <Link
-                href={voce.href}
-                className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
-                aria-current={attiva ? "page" : undefined}
-              >
-                {voce.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <>
+      <button
+        type="button"
+        className={styles.hamburger}
+        aria-expanded={aperto}
+        aria-controls="nav-pubblica-lista"
+        aria-label={aperto ? "Chiudi il menu di navigazione" : "Apri il menu di navigazione"}
+        onClick={() => setAperto((v) => !v)}
+      >
+        ☰
+      </button>
+      <nav aria-label="Sezioni del sito" className={styles.nav}>
+        {/* Rendering condizionale (non inert/aria-hidden su un elemento
+            sempre montato): mirror dello stesso principio gia' usato per
+            .menuProfiloTendina in NavBarClient.tsx - "semplicemente non
+            esiste finche' non e' aperto". Piu' semplice dell'approccio
+            inert della sidebar principale, che serve solo a preservare una
+            transizione CSS di scorrimento assente qui. */}
+        {(desktop || aperto) && (
+          <ul id="nav-pubblica-lista" className={styles.lista}>
+            {VOCI.map((voce) => {
+              const attiva = pathname === voce.href;
+              return (
+                <li key={voce.href}>
+                  <Link
+                    href={voce.href}
+                    className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
+                    aria-current={attiva ? "page" : undefined}
+                    onClick={() => setAperto(false)}
+                  >
+                    {voce.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </nav>
+    </>
   );
 }
