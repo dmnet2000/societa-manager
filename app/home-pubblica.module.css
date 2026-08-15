@@ -13,24 +13,21 @@
    {colors.bianco}=var(--color-surface). */
 
 /* ===== HERO ===== */
-/* Story 18.19: titolo (.heroContenuto) e blocco Post Facebook (.heroBlocco)
-   sono due blocchi impilati distinti, il titolo non e' piu' in overlay
-   sulla foto - richiesta esplicita dell'utente dopo aver visto dal vivo
-   l'iterazione precedente (2026-08-14, dove il carosello Post Facebook
-   sostituiva il placeholder "FOTO AZIONE" come sfondo dell'INTERO hero con
-   titolo/CTA sovrapposti sopra). flex-direction:column + justify-content:flex-end
-   ancora il gruppo .heroContenuto+.heroBlocco in fondo all'hero, uno sopra
-   l'altro - .heroDiagonale (livello assolutamente posizionato, accento
-   decorativo) non partecipa al flex, invariato. .heroFoto/.heroFotoPost non
-   sono piu' figli diretti di .hero: vivono dentro .heroBlocco, che ne e'
-   ora il contesto di posizionamento (inset:0 relativo a quel blocco piu'
-   stretto, non piu' all'intero hero). */
+/* Story 18.19 (secondo giro): titolo e CTA rimossi del tutto (ridondanti
+   con nome-settore in header e voce "Squadre" nel menu, richiesta
+   dell'utente dopo verifica dal vivo) - .heroBlocco (foto/post Facebook)
+   resta l'unico contenuto dell'hero, centrato sia in orizzontale
+   (align-items:center) sia in verticale (justify-content:center, non piu'
+   flex-end: non c'e' piu' nulla da ancorare in fondo). .heroDiagonale
+   (livello assolutamente posizionato, accento decorativo) non partecipa al
+   flex, invariato. */
 .hero {
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
   min-height: 60vh;
   background: #0f2438;
   clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
@@ -70,35 +67,36 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Story 18.19: contenitore posizionato del blocco Post Facebook (o del suo
-   fallback), separato dal titolo (.heroContenuto sotto) su richiesta
-   dell'utente dopo aver visto dal vivo la Story 18.13 estesa in sessione
-   ("la scritta... la metterei fuori dal blocco facebook e non sopra,
-   ridurrei la larghezza del blocco facebook me lo allungherei ancora").
-   position:relative diventa il contesto di riferimento per
-   .heroFoto/.heroFotoPost sotto (inset:0 relativo a QUESTO blocco, non piu'
-   all'intero .hero) - quelle due regole restano testualmente invariate,
-   cambia solo il loro genitore nel markup (app/page.tsx). 480px/420px:
-   valori non richiesti letteralmente dall'utente ("piu' stretto"/"piu'
-   alto" senza misure - epics.md li lascia a giudizio di sviluppo), scelti
-   per essere chiaramente piu' stretti dei 720px di .heroContenuto e ben
-   oltre i 280px della prima versione boxed di Story 18.13 - .hero{min-height:60vh}
-   resta un minimo, non un massimo, nessun rischio di ritaglio se il
-   contenuto supera quella soglia. */
+/* Story 18.19 (secondo giro): contenitore posizionato del blocco Post
+   Facebook (o del suo fallback) - richiesta esplicita dell'utente dopo
+   verifica dal vivo: "centrato sullo schermo", "dimensione 600px di
+   larghezza, la lunghezza in proporzione per non rovinare le dimensioni
+   delle foto". position:relative resta il contesto di riferimento per
+   .heroFoto/.heroFotoPost sotto (inset:0 relativo a QUESTO blocco) -
+   quelle due regole restano testualmente invariate. width:100% (non un
+   valore fisso) + max-width:600px: il blocco occupa tutta la larghezza
+   disponibile fino al tetto di 600px, si restringe fluidamente su schermi
+   piu' stretti - risolve "ricordati dell'effetto su mobile" senza una
+   seconda dimensione hardcoded. aspect-ratio:4/3 (non piu' min-height fisso):
+   l'altezza scala in proporzione alla larghezza invece di essere un valore
+   assoluto indipendente - su schermi stretti il blocco resta comunque
+   proporzionato, le foto (background-size:cover sotto) non risultano mai
+   ritagliate in modo drastico. Centrato dal genitore (.hero
+   align-items:center/justify-content:center) - solo margine verticale qui,
+   nessun margine orizzontale asimmetrico. */
 .heroBlocco {
   position: relative;
   z-index: 2;
   overflow: hidden;
-  margin: var(--space-4) 48px 48px;
-  max-width: 480px;
-  min-height: 420px;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 4 / 3;
+  margin: var(--space-4) 48px;
 }
 
 @media (max-width: 900px) {
   .heroBlocco {
-    margin: var(--space-3) 20px 32px;
-    max-width: none;
-    min-height: 320px;
+    margin: var(--space-3) 20px;
   }
 }
 
@@ -149,74 +147,6 @@
   clip-path: polygon(30% 0, 100% 0, 100% 100%, 0% 100%);
 }
 
-.heroContenuto {
-  position: relative;
-  z-index: 2;
-  padding: 64px 48px 24px;
-  max-width: 720px;
-  color: #ffffff;
-}
-
-/* {typography.display-section} - stessa scala gia' in uso per i titoli di
-   sezione del resto del registro (.titoloSezione sotto), non piu'
-   {typography.display-hero} 68px: richiesta esplicita dell'utente
-   (2026-08-14, "non mi piace la scritta... lo metterei più in piccolo") -
-   ridotto anche il peso/il carattere da "Arial Black" 900 (molto pesante,
-   pensato per il placeholder piatto) a "Arial Narrow" 700, piu' leggero
-   ora che il titolo si sovrappone a una foto reale che cambia. Scelta di
-   giudizio, non specificata a parole dall'utente - verificare dal vivo e
-   aggiustare se non e' quello che aveva in mente. */
-.heroContenuto h1 {
-  font-family: "Arial Narrow", Arial, sans-serif;
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-  margin-bottom: var(--space-4);
-}
-
-/* CTA primario nuovo (AC #4, EXPERIENCE.md -> Pattern dei Componenti: "Un
-   solo CTA primario 'Scopri le squadre' -> /squadre"). Stessi token
-   button-primary di DESIGN.md, letterali (nessun custom property
-   equivalente). */
-.heroCta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  background: var(--color-primary);
-  color: #0f2438;
-  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
-  font-weight: 900;
-  font-size: 14px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-decoration: none;
-  padding: var(--space-4) var(--space-8);
-  border-radius: 0;
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease;
-}
-
-.heroCta:hover {
-  background: #ffffff;
-  transform: translateY(-2px);
-}
-
-.heroCta:focus-visible {
-  outline: 2px solid #ffffff;
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .heroCta {
-    transition: none;
-  }
-}
-
 /* ===== FASCIA POST FACEBOOK NELL'HERO =====
    Richiesta esplicita dell'utente (2026-08-14): sostituisce la vecchia
    sezione "Ultimi post" a fondo pagina (Story 18.13). Testo troncato a 3
@@ -227,13 +157,25 @@
    alto. Il link "Vedi su Facebook" resta sempre disponibile per leggere
    il post completo. */
 /* Story 18.19: padding ridotto da 48px a var(--space-4) - il genitore e'
-   ora .heroBlocco (480px), non piu' l'intero hero: 48px per lato
-   lascerebbe solo ~384px di contenuto utile, sproporzionato. max-width:720px
+   ora .heroBlocco (600px), non piu' l'intero hero: 48px per lato
+   lascerebbe poco contenuto utile, sproporzionato. max-width:720px
    rimosso - non ha piu' senso, il contenitore stesso e' gia' piu' stretto
-   di quel valore. */
+   di quel valore.
+   Review fix (secondo giro, richiesta esplicita dell'utente): position
+   passata da relative ad absolute, ancorata al fondo di .heroBlocco
+   (position:relative, overflow:hidden) - PRIMA di questo fix .infoPost era
+   l'unico figlio in flusso normale di .heroBlocco (.heroFotoPost e'
+   position:absolute, fuori flusso), quindi finiva ancorata in ALTO invece
+   che in basso: esattamente l'opposto del punto piu' scuro dello scrim
+   (.heroFotoPost::after, gradiente piu' scuro al 100% cioe' in basso) - la
+   didascalia risultava poco leggibile. Ora .infoPost e' fissata al bordo
+   inferiore del blocco, dove il testo e' garantito leggibile. */
 .infoPost {
-  position: relative;
+  position: absolute;
   z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 0 var(--space-4) var(--space-4);
   color: #ffffff;
 }
@@ -341,17 +283,6 @@
   .testoPost {
     font-size: 14px;
     -webkit-line-clamp: 2;
-  }
-}
-
-@media (max-width: 900px) {
-  .heroContenuto {
-    padding: 24px 20px;
-  }
-
-  .heroContenuto h1 {
-    font-size: 26px;
-    line-height: 1.1;
   }
 }
 

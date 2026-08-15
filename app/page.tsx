@@ -1,12 +1,8 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import {
-  leggiNomeSettore,
-  leggiUrlPaginaFacebook,
-} from "@/lib/configurazione-applicazione";
+import { leggiUrlPaginaFacebook } from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
 import {
@@ -106,7 +102,6 @@ export default async function HomePubblicaPage() {
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
   const [
-    nomeSettore,
     sponsorAttivi,
     partiteSettimanaRaw,
     gruppiStagione,
@@ -114,16 +109,6 @@ export default async function HomePubblicaPage() {
     urlPaginaFacebook,
     fotoHero,
   ] = await Promise.all([
-    // Story 18.8: leggiInfoLogo (usata per <img> del logo) spostata in
-    // HeaderPubblico.tsx, non piu' letta qui - questa pagina resta con la
-    // propria lettura di nomeSettore perche' la usa anche per il proprio
-    // <h1> (HeaderPubblico e FooterPubblico ora fanno la propria lettura
-    // indipendente per il proprio uso, stessa logica duplicata di proposito
-    // per restare componenti self-contained, vedi Dev Notes della storia).
-    leggiNomeSettore().catch((err) => {
-      console.error(err);
-      return null;
-    }),
     // Story 18.2 (AC #1/#2/#3): stessa query di app/app/(sponsor)/sponsor/page.tsx
     // (Sponsor non protetto da RLS, AD-9, Prisma diretto) - solo Sponsor
     // attivi. Review fix (Blind Hunter): "select" esplicito - il confine
@@ -222,8 +207,6 @@ export default async function HomePubblicaPage() {
       ? await leggiUltimiPostFacebook(urlPaginaFacebook)
       : [];
 
-  const nomeVisualizzato = nomeSettore ?? "Settore Volley";
-
   // Story 18.2: riuso diretto della stessa funzione pura gia' usata da
   // /app/sponsor (Story 16.2), nessuna duplicazione della logica di
   // raggruppamento.
@@ -264,31 +247,14 @@ export default async function HomePubblicaPage() {
       <main>
         <div className={styles.hero}>
           <div className={styles.heroDiagonale} aria-hidden="true" />
-          {/* Story 18.19: titolo/CTA come blocco a se', PRIMA nel markup
-              (AC #1, ordine di lettura "titolo sopra" scelto con l'utente)
-              - non piu' in overlay su alcuna foto, il blocco Post Facebook
-              sotto (.heroBlocco) e' ora un contenitore a se' stante, piu'
-              stretto dell'hero. */}
-          <div className={styles.heroContenuto}>
-            <h1>Benvenuti nel {nomeVisualizzato}</h1>
-            {/* Story 18.5: ultimo residuo del paragrafo "in arrivo" rimosso -
-                Sponsor/Partite/Foto squadra (Story 18.2/18.3/18.4) avevano già
-                tolto la propria clausola, "gli ultimi post dai nostri canali
-                social" era l'ultima rimasta. Nessun testo sensato restava dopo
-                averla tolta, quindi l'intero paragrafo è stato rimosso invece
-                di lasciarne uno vuoto o riscritto senza contenuto. */}
-            {/* Story 18.12 (AC #4): CTA primario nuovo, richiesto
-                letteralmente da EXPERIENCE.md -> Pattern dei Componenti
-                ("Hero: Un solo CTA primario 'Scopri le squadre' -> /squadre") -
-                nessun nuovo dato, solo un link verso una rotta già esistente. */}
-            <Link href="/squadre" className={styles.heroCta}>
-              Scopri le squadre
-            </Link>
-          </div>
-          {/* Story 18.19: blocco Post Facebook (o fallback), piu' stretto e
-              piu' alto dell'intero hero (AC #2/#3) - le 3 condizioni sotto
-              restano testualmente identiche a prima di questa storia (AC #4),
-              solo il contenitore che le avvolge cambia. */}
+          {/* Story 18.19 (secondo giro): titolo "Benvenuti nel [Settore]" e
+              CTA "Scopri le squadre" rimossi del tutto su richiesta
+              dell'utente dopo verifica dal vivo - il titolo era ridondante
+              col nome gia' mostrato nell'header (HeaderPubblico.tsx), il CTA
+              era ridondante con la voce "Squadre" gia' nel menu di
+              navigazione in alto (NavPubblica.tsx). L'hero ora mostra solo
+              il blocco Post Facebook (centrato, vedi .heroBlocco), nessun
+              altro contenuto. */}
           <div className={styles.heroBlocco}>
             {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
                 Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo

@@ -8,6 +8,20 @@ Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
+## Secondo giro (2026-08-15, stesso giorno, dopo verifica dal vivo tramite `npm run cf:preview`)
+
+L'utente ha visto dal vivo il primo giro (titolo sopra, blocco 480×420px) e ha dato 4 richieste dirette, tutte implementate:
+
+1. **Titolo "Benvenuti nel [Settore]" rimosso del tutto** — non solo spostato: ridondante col nome del Settore già mostrato nell'header (`HeaderPubblico.tsx`).
+2. **CTA "Scopri le squadre" rimosso del tutto** — ridondante con la voce "Squadre" già presente nel menu di navigazione in alto (`NavPubblica.tsx`).
+3. **Blocco Facebook centrato sullo schermo** (prima era allineato a sinistra, mirror del vecchio blocco titolo).
+4. **Blocco Facebook a 600px di larghezza**, altezza in **proporzione** (non un valore fisso indipendente) per non deformare/ritagliare eccessivamente le foto — implementato con `aspect-ratio: 4/3` invece di `min-height` fisso, così l'effetto resta coerente anche su mobile (richiesta esplicita dell'utente) senza bisogno di una seconda misura hardcoded.
+5. **Didascalia del post spostata in basso alla foto** — verificando il codice per implementare questo punto è emerso un **bug reale introdotto dal primo giro**: `.infoPost` (testo del post) era rimasta `position:relative` invece che ancorata al fondo del blocco. Poiché `.heroFotoPost` (la foto) è `position:absolute` (fuori dal flusso), `.infoPost` finiva per essere l'unico contenuto in flusso normale di `.heroBlocco` e si posizionava in **alto**, non in basso — esattamente il punto meno leggibile dello scrim (il gradiente `.heroFotoPost::after` è più scuro in **basso**). Risolto: `.infoPost` ora `position:absolute` ancorata a `bottom:0`.
+
+Poiché il titolo/CTA sono stati rimossi, anche `leggiNomeSettore()` (la lettura DB che alimentava solo quel testo) è stata rimossa da `app/page.tsx` — non serviva più a nient'altro in questo file (verificato).
+
+Le sezioni AC/Tasks/Dev Notes sotto restano come testimonianza del primo giro (già implementato e poi superato dalle richieste sopra) — vedi Completion Notes per il resoconto esatto del secondo giro.
+
 ## Decisione presa con l'utente prima di scrivere questa storia
 
 `epics.md` lasciava esplicitamente aperto un punto di dettaglio: il titolo va **sopra** o **sotto** il blocco Facebook una volta separati? **Chiesto all'utente**, che ha scelto: **titolo sopra** (ordine di lettura naturale) — non riaprire questa scelta durante lo sviluppo. Le altre due misure ("più stretto", "più alto") restano a giudizio di sviluppo come già indicato in `epics.md` ("da concordare in apertura sviluppo") — vedi Dev Notes per i valori scelti e la motivazione.
@@ -54,6 +68,27 @@ so that sia il titolo sia i post Facebook restino chiari e non si scontrino visi
 - [x] Task 6: Test e verifica finale (AC: tutti)
   - [x] Confermato: nessun test importa `app/page.tsx`/`HeroPostFacebook.tsx`.
   - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, warning preesistenti invariati), `npm run build` (riuscita, `/` presente nell'output).
+
+## Tasks / Subtasks — secondo giro (titolo/CTA rimossi, blocco centrato 600px proporzionale)
+
+- [x] Task 7: Rimuovere titolo e CTA dal markup e dalla lettura dati
+  - [x] `app/page.tsx`: rimosso `<div className={styles.heroContenuto}><h1>...</h1><Link ...>Scopri le squadre</Link></div>`.
+  - [x] Rimossa `leggiNomeSettore()` dal `Promise.all` e la variabile `nomeVisualizzato` — non più usate da nient'altro nel file (verificato con grep).
+  - [x] Rimossi gli import ormai inutilizzati: `leggiNomeSettore` (da `lib/configurazione-applicazione`) e `Link` (da `next/link`, nessun altro `<Link>` nel file).
+  - [x] `home-pubblica.module.css`: rimosse `.heroContenuto`, `.heroContenuto h1`, `.heroCta` (+ `:hover`/`:focus-visible`/`prefers-reduced-motion`), e la media query mobile `.heroContenuto`/`.heroContenuto h1`.
+
+- [x] Task 8: Blocco Facebook centrato, 600px, altezza proporzionale
+  - [x] `.hero`: `justify-content: flex-end` → `center`, aggiunto `align-items: center` (nessun altro contenuto da ancorare in fondo, il blocco va centrato in entrambi gli assi).
+  - [x] `.heroBlocco`: `max-width: 480px` → `600px`; `width: 100%` aggiunto (si restringe fluidamente su schermi stretti fino al tetto di 600px); `min-height: 420px` → `aspect-ratio: 4 / 3` (altezza proporzionale alla larghezza, non un valore assoluto — copre anche il caso mobile senza una seconda misura hardcoded); margine orizzontale asimmetrico (48px) rimosso, centratura delegata al genitore.
+  - [x] Rimossa la media query mobile che ridefiniva `max-width`/`min-height` di `.heroBlocco` — non più necessaria, `width:100%`+`aspect-ratio` si adattano già fluidamente.
+
+- [x] Task 9: Ancorare la didascalia del post in basso (bug del primo giro)
+  - [x] `.infoPost`: `position: relative` → `absolute`, aggiunto `left:0; right:0; bottom:0` — prima era l'unico contenuto in flusso normale di `.heroBlocco` (la foto è `position:absolute`, fuori flusso) e finiva ancorata in alto, il punto meno scuro dello scrim.
+
+- [x] Task 10: Verifica finale secondo giro
+  - [x] Confermato: le 3 condizioni di rendering del blocco (Facebook/foto caricata/placeholder) restano testualmente identiche.
+  - [x] Confermato: `HeroPostFacebook.tsx`, `HeaderPubblico.tsx`, `FooterPubblico.tsx`, `CookieBanner.tsx` non toccati.
+  - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, nessun `no-unused-vars` residuo dopo la rimozione di `nomeSettore`/`Link`), `npm run build` (riuscita, `/` presente nell'output).
 
 ## Dev Notes
 
@@ -104,7 +139,9 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato.
 - `app/page.tsx`: `.heroContenuto` (titolo+CTA) spostato prima nel markup, i 3 rami condizionali del blocco Facebook/foto/placeholder spostati dentro il nuovo `<div className={styles.heroBlocco}>` — condizioni testualmente identiche, solo il contenitore cambia.
 - Nessuna modifica a `HeroPostFacebook.tsx`, `HeaderPubblico.tsx`, `FooterPubblico.tsx`, `CookieBanner.tsx`.
 - 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita.
-- Verifica visiva dal vivo NON eseguibile in questo sandbox — demandata all'utente, con enfasi particolare data la nota nei Dev Notes: è la terza iterazione consecutiva della stessa area hero senza mai un giro di conferma visiva intermedia. Le misure 480px/420px sono una scelta di giudizio (nessun numero fornito dall'utente) — da aggiustare se non corrispondono a quanto aveva in mente.
+- Verifica visiva dal vivo del primo giro effettuata dall'utente con `npm run cf:preview` (bypassa il noto limite del motore Prisma WASM di `next dev` in locale) — prima volta in questo Epic con un giro di conferma visiva intermedia reale, non solo demandata a fine storia.
+
+**Secondo giro (stesso giorno)**: su feedback diretto dell'utente dopo la verifica col preview, titolo e CTA rimossi del tutto (non solo separati — ridondanti con header/menu), blocco Facebook centrato e portato a 600px con altezza proporzionale (`aspect-ratio:4/3` invece di `min-height` fisso, gestisce anche il caso mobile senza una seconda misura). Durante l'implementazione del punto "didascalia in basso" è emerso un bug reale introdotto dal primo giro: `.infoPost` non era ancorata al fondo del blocco (era l'unico contenuto in flusso normale essendo `.heroFotoPost` `position:absolute`), risultando in alto invece che in basso — proprio il punto meno scuro dello scrim. Risolto con `position:absolute;bottom:0`. `leggiNomeSettore()` rimossa da `app/page.tsx` (non più usata da nulla in questo file dopo la rimozione del titolo), insieme agli import ormai inutilizzati (`leggiNomeSettore`, `Link`). 1182/1182 test Vitest passati, 0 errori tsc/eslint (nessun `no-unused-vars` residuo), build produzione riuscita.
 
 ### File List
 
@@ -115,3 +152,4 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato.
 
 - 2026-08-15: File di story creato (create-story workflow) — punto aperto (titolo sopra/sotto) risolto con l'utente prima della scrittura: titolo sopra. Status: backlog → ready-for-dev.
 - 2026-08-15: Implementata Story 18.19 (dev-story workflow) — titolo hero separato dal blocco Post Facebook (ora più stretto e più alto, 480px/420px). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: ready-for-dev → review.
+- 2026-08-15: Secondo giro, stesso giorno, su feedback diretto dell'utente dopo verifica dal vivo con `npm run cf:preview` — titolo e CTA rimossi del tutto, blocco Facebook centrato a 600px con altezza proporzionale (`aspect-ratio`), corretto un bug reale del primo giro (didascalia del post ancorata in alto invece che in basso). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status resta review.
