@@ -4,7 +4,7 @@ baseline_commit: ba58ded4b2d9faa4a5e499b24b8dadd166f21c16
 
 # Story 18.17: Rendere meno invasivo il pulsante "Preferenze cookie" dopo una scelta registrata
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -76,6 +76,20 @@ so that l'interfaccia resti pulita, senza però perdere la possibilità di rived
   - [x] Confermato: nessun test esistente importa `CookieBanner.tsx`/`FooterPubblico.tsx`.
   - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, warning preesistenti invariati), `npm run build` (riuscita, tutte le rotte pubbliche presenti nell'output).
 
+### Review Findings
+
+- [x] [Review][Patch] **Critico**: il link non riapriva il banner se cliccato dalla home stessa — `apriPreferenze` era un prop letto una sola volta in un `useState` initializer (Task 6 originale); poiché `CookieBanner` resta montato quando si naviga verso "/?preferenze-cookie=1" dalla home (stessa rotta, nessun remount), l'initializer non si rieseguiva mai e il banner non si apriva [app/CookieBanner.tsx] — risolto: `apriPreferenze` ora letto in modo reattivo con `useSearchParams()` dentro `CookieBanner.tsx` (rimosso il prop e la lettura `searchParams` in `app/page.tsx`, Task 6 superato), pattern esplicitamente documentato nella guida Next.js di questo progetto (`node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`, "Dialog and initialization logic").
+- [x] [Review][Patch] Il cleanup URL via `router.replace("/", {scroll:false})` innescava una seconda richiesta RSC completa (incl. una seconda chiamata all'API Graph di Facebook) e cancellava qualunque altro query param futuro invece di rimuovere solo `preferenze-cookie` [app/CookieBanner.tsx] — risolto: sostituito con `window.history.replaceState` + rimozione mirata del solo param via `URLSearchParams`, nessuna nuova navigazione/fetch.
+- [x] [Review][Patch] Il link "Preferenze cookie" nel footer precaricava l'intera home (incl. chiamata Facebook Graph API) al solo scorrimento in vista, per via del prefetch di default di `next/link` — presente su ogni pagina pubblica [app/FooterPubblico.tsx] — risolto: `prefetch={false}`.
+- [x] [Review][Patch] Nessuna gestione del focus quando il banner si riapre da un'azione esplicita dell'utente (link) — gap di accessibilità su una funzionalità nata da un requisito di conformità Garante Privacy [app/CookieBanner.tsx] — risolto: `ref`+`tabIndex={-1}` sul banner, focus spostato quando si apre via `apriPreferenze`.
+- [x] [Review][Patch] Commenti obsoleti che descrivevano ancora il "pulsante fisso" rimosso in questo stesso giro [app/FooterPubblico.tsx, app/FooterPubblico.module.css] — risolto, aggiornati per descrivere il banner completo (l'unico elemento ancora `position:fixed`).
+- [x] [Review][Patch] Icona social e link "Preferenze cookie" nel footer rischiavano di finire sulla stessa riga (entrambi `inline-flex`, nessun elemento di blocco a separarli) [app/FooterPubblico.module.css] — risolto: `.footer` reso `display:flex; flex-direction:column`.
+- [x] [Review][Defer] Cliccare il link porta sempre alla home anche da un'altra pagina — deferred, tradeoff esplicito scelto dall'utente stesso [app/FooterPubblico.tsx]
+- [x] [Review][Defer] Scroll-jump in cima pagina al click iniziale — deferred, comportamento standard `next/link`, non un difetto
+- [x] [Review][Defer] `.footerConCookieBanner` riserva sempre lo stesso padding anche quando il banner non è aperto — deferred, richiederebbe coordinamento Server/Client sproporzionato al beneficio [app/FooterPubblico.module.css]
+- [x] [Review][Defer] Nessun test automatico sul nuovo percorso — deferred, coerente con `CookieBanner.tsx`/`FooterPubblico.tsx` mai testati
+- [x] [Review][Defer] Query param validato solo per presenza, non per valore — deferred, comportamento voluto, nessun rischio reale
+
 ## Dev Notes
 
 ### Perché questa storia non è una rimozione
@@ -146,3 +160,4 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato. Modifica CSS-o
 - 2026-08-15: File di story creato (create-story workflow) — punto di conformità cookie (rimuovere vs. rendere meno invasivo) risolto esplicitamente con l'utente prima della scrittura, scelta l'opzione (b). Status: backlog → ready-for-dev.
 - 2026-08-15: Implementata Story 18.17 (dev-story workflow) — alleggerito il trattamento visivo di `.preferenze` in `app/CookieBanner.module.css` (bordo/ombra leggeri, opacità 0.7→1 su hover/focus), nessuna modifica a logica/comportamento. 1167/1167 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: ready-for-dev → review.
 - 2026-08-15: Secondo giro, stesso giorno, su ulteriore feedback diretto dell'utente dopo verifica dal vivo del primo giro ("ancora troppo invasivo... non si può inserire un link sul footer?") — pulsante fisso permanente rimosso interamente, sostituito da link "Preferenze cookie" in `FooterPubblico.tsx` (ogni pagina pubblica) che riapre il banner sulla home tramite query param + `searchParams`. 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status resta review, in attesa di code review su entrambi i giri insieme.
+- 2026-08-15: Code review completata (bmad-code-review, Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) — 1 bug critico trovato dall'Acceptance Auditor (il link non riapriva il banner se cliccato dalla home stessa, per via di un `useState` initializer one-shot su un componente che resta montato attraverso la navigazione stessa rotta) e risolto sostituendo il prop `apriPreferenze` con una lettura reattiva `useSearchParams()` dentro `CookieBanner.tsx`. 6 patch totali applicati (bug critico, cleanup URL non innesca più un doppio fetch RSC/Facebook Graph, `prefetch={false}` sul link footer, gestione del focus alla riapertura, commenti obsoleti, footer riportato a stacking verticale). 10 defer (tradeoff già scelti con l'utente o coerenti con convenzioni preesistenti). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review → done.

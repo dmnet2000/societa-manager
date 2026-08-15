@@ -1,3 +1,4 @@
+# last_updated: 2026-08-15 (Code review completata su 3 story insieme (Story 18.14/18.17/18.18, bmad-code-review, Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo su ciascuna) - 10 patch totali applicati, 25 defer, 0 decision-needed. Finding piu' grave: Story 18.17, l'Acceptance Auditor ha scoperto che il link "Preferenze cookie" non riapriva il banner se cliccato dalla home stessa (apriPreferenze letto in un useState initializer one-shot su un componente che resta montato attraverso una navigazione stessa-rotta) - risolto con useSearchParams() reattivo, pattern documentato nella guida Next.js bundle di questo progetto. Secondo finding grave: Story 18.18, tutti e 3 i layer hanno indipendentemente trovato che il rendering condizionale del pannello toglieva l'intero menu dall'HTML server-renderizzato per ogni visitatore senza JS, anche su desktop - risolto tornando al pattern reale (sempre montato + inert/aria-hidden) di NavBarClient.tsx, gia' citato come riferimento ma frainteso nella prima implementazione. Altri fix: doppio fetch RSC/Facebook Graph al cleanup URL (Story 18.17, sostituito con history.replaceState), prefetch del link footer che scaricava l'intera home al solo scroll-in-view, gestione focus alla riapertura del banner, hamburger spostato dentro <nav> (Story 18.18), 2 test di qualita' (Story 18.14). 2 errori lint (react-hooks/set-state-in-effect) scoperti riverificando dopo i fix, corretti col pattern "adjusting state during render" gia' in uso nel progetto. Tutti e 25 i defer sono tradeoff gia' scelti con l'utente o coerenti con convenzioni preesistenti nel progetto (documentati in deferred-work.md). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Le 3 story passano a done.)
 # last_updated: 2026-08-15 (Story 18.18: implementata (dev-story workflow) - menu pubblico mobile con hamburger/drawer al posto del wrap orizzontale. app/NavPubblica.tsx: stato aperto + rilevamento desktop/mobile via useSyncExternalStore/matchMedia (mirror ridotto di NavBarClient.tsx Story 9.2, niente overlay/scroll-lock/reset-su-pathname, non necessari per un pannello dropdown rimontato da zero ad ogni pagina pubblica), rendering condizionale del pannello (mirror di .menuProfiloTendina) invece di inert. NavPubblica.module.css: nuova .hamburger (44x44, visibile sotto 900px), .lista ridefinita in colonna/dropdown assoluto sotto 900px, invariata sopra. HeaderPubblico.module.css: solo position:relative aggiunto a .header (ancoraggio dropdown). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Verifica visiva dal vivo (soprattutto su telefono reale) non eseguibile nel sandbox, demandata all'utente. Status: review, in attesa di code review.)
 # last_updated: 2026-08-15 (Story 18.18: file di story creato (create-story workflow), stato ready-for-dev. Direzione risolta esplicitamente con l'utente prima della scrittura (hamburger/drawer, mirror ridotto del pattern di NavBarClient.tsx Story 9.2 - riusato solo il rilevamento desktop/mobile via useSyncExternalStore+matchMedia, non l'intera complessita' della sidebar interna). Breakpoint 901px/900px scelto per coerenza con gli altri 5 file CSS del registro pubblico, non 880px del portale interno. Verificato in app/layout.tsx che NavPubblica non vive in un layout condiviso persistente - lo stato aperto/chiuso si azzera gia' da solo ad ogni navigazione, nessuna logica di reset su pathname necessaria a differenza del drawer interno. Solo la story scritta ora, nessuna implementazione.)
 # last_updated: 2026-08-15 (Correzione bookkeeping: Story 18.15 (revisione UX con Sally per rimuovere il nero dal registro visivo) segnata come backlog nonostante fosse gia' completata - la sessione UX e' stata fatta direttamente con bmad-ux, senza passare dal workflow create-story/dev-story, quindi il suo stato non era mai stato aggiornato in questo file. Verificato leggendo ux-designs/ux-societa-manager-2026-08-13/DESIGN.md: {colors.nero} non compare piu' come sfondo di alcun componente strutturale, sostituito da {colors.blu-carbone}/{colors.azzurro-partite} (AC #1/#2 della storia soddisfatti). La sua "fase 2" (Story 18.16, applicazione al codice reale) e' gia' done da prima. Status corretto: backlog -> done, nessun file di story dedicato esiste per 18.15 (mai creato, coerente con l'aver saltato il workflow standard).)
@@ -272,7 +273,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: 2026-08-15 (Story 18.18: implementata, menu mobile hamburger/drawer, status review)
+last_updated: 2026-08-15 (Code review completata su Story 18.14/18.17/18.18, 10 patch applicati (2 bug gravi risolti), tutte e 3 done)
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -808,11 +809,11 @@ development_status:
   18-11-pagina-contatti: done
   18-12-restyling-poster-sportivo: done
   18-13-carosello-facebook: done
-  18-14-foto-sfondo-hero: review
+  18-14-foto-sfondo-hero: done
   18-15-rimuovere-nero-design: done
   18-16-applicare-colore-partite: done
-  18-17-rimuovere-preferenze-cookie-persistenti: review
-  18-18-menu-navigazione-mobile-due-righe: review
+  18-17-rimuovere-preferenze-cookie-persistenti: done
+  18-18-menu-navigazione-mobile-due-righe: done
   18-19-titolo-hero-separato-blocco-facebook-stretto: backlog
   18-20-logo-polisportiva-footer: backlog
   18-21-favicon-titolo-tab-browser: backlog

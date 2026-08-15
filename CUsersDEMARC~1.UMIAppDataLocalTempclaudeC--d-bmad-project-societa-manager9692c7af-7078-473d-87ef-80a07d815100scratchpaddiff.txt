@@ -1,0 +1,866 @@
+diff --git a/app/app/(configurazione)/impostazioni/FotoHeroForm.tsx b/app/app/(configurazione)/impostazioni/FotoHeroForm.tsx
+new file mode 100644
+index 0000000..0c035bb
+--- /dev/null
++++ b/app/app/(configurazione)/impostazioni/FotoHeroForm.tsx
+@@ -0,0 +1,50 @@
++"use client";
++
++import { useActionState, useEffect, useRef } from "react";
++import { caricaFotoHeroAction } from "./actions";
++import styles from "./impostazioni.module.css";
++
++// Story 18.14: mirror esatto di LogoForm.tsx (app/(configurazione)/logo/) -
++// stessa struttura, cambia solo testo/action/stile (classi condivise di
++// questa pagina, non un modulo CSS dedicato come /app/logo).
++export function FotoHeroForm() {
++  const [state, formAction, pending] = useActionState(
++    caricaFotoHeroAction,
++    undefined
++  );
++  const formRef = useRef<HTMLFormElement>(null);
++
++  useEffect(() => {
++    if (state && "success" in state) {
++      formRef.current?.reset();
++    }
++  }, [state]);
++
++  return (
++    <form ref={formRef} action={formAction}>
++      <div className={styles.campo}>
++        <label htmlFor="foto-hero-file">Foto sfondo hero (PNG o JPG, max 2MB)</label>
++        <input
++          id="foto-hero-file"
++          name="file"
++          type="file"
++          accept=".png,.jpg,.jpeg"
++          required
++        />
++      </div>
++      {state && "error" in state && (
++        <p role="alert" className={styles.errore}>
++          {state.error.message}
++        </p>
++      )}
++      {state && "success" in state && (
++        <p role="status" className={styles.successo}>
++          Foto caricata.
++        </p>
++      )}
++      <button disabled={pending} type="submit" className={styles.bottone}>
++        Carica foto
++      </button>
++    </form>
++  );
++}
+diff --git a/app/app/(configurazione)/impostazioni/actions.test.ts b/app/app/(configurazione)/impostazioni/actions.test.ts
+index 0ea50f8..2dcbaf4 100644
+--- a/app/app/(configurazione)/impostazioni/actions.test.ts
++++ b/app/app/(configurazione)/impostazioni/actions.test.ts
+@@ -1,11 +1,17 @@
+ import { describe, expect, it, vi, beforeEach } from "vitest";
+ 
++// Story 18.14: actions.ts ora importa anche lib/storage/foto-hero.ts (ha
++// "server-only" in testa) - stesso mock gia' stabilito in
++// app/(configurazione)/logo/actions.test.ts.
++vi.mock("server-only", () => ({}));
++
+ const requireRuoloMock = vi.fn();
+ const salvaEmailSegreteriaMock = vi.fn();
+ const salvaUrlPaginaFacebookMock = vi.fn();
+ const salvaContattiPubbliciMock = vi.fn();
+ const salvaTokenFacebookMock = vi.fn();
+ const leggiConfigurazioneSocialFacebookMock = vi.fn();
++const caricaFotoHeroMock = vi.fn();
+ const revalidatePathMock = vi.fn();
+ 
+ vi.mock("@/lib/auth/require-ruolo", () => ({
+@@ -28,6 +34,10 @@ vi.mock("@/lib/db-rls/configurazione-social-facebook", () => ({
+   leggiConfigurazioneSocialFacebook: leggiConfigurazioneSocialFacebookMock,
+ }));
+ 
++vi.mock("@/lib/storage/foto-hero", () => ({
++  caricaFotoHero: caricaFotoHeroMock,
++}));
++
+ vi.mock("next/cache", () => ({
+   revalidatePath: revalidatePathMock,
+ }));
+@@ -37,8 +47,31 @@ const {
+   salvaUrlPaginaFacebookAction,
+   salvaContattiPubbliciAction,
+   salvaTokenFacebookAction,
++  caricaFotoHeroAction,
+ } = await import("./actions");
+ 
++const MAGIC_BYTES: Record<string, number[]> = {
++  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
++  "image/jpeg": [0xff, 0xd8, 0xff],
++};
++
++function fileFotoHeroValido(
++  nome = "foto-hero.png",
++  tipo = "image/png",
++  dimensione = 1024
++) {
++  const bytes = new Uint8Array(dimensione);
++  const magic = MAGIC_BYTES[tipo];
++  if (magic && dimensione >= magic.length) bytes.set(magic, 0);
++  return new File([bytes], nome, { type: tipo });
++}
++
++function buildFormDataFotoHero(file: File | null) {
++  const formData = new FormData();
++  if (file) formData.append("file", file);
++  return formData;
++}
++
+ function buildFormData(valore: string) {
+   const formData = new FormData();
+   formData.append("emailSegreteria", valore);
+@@ -85,6 +118,8 @@ beforeEach(() => {
+     ultimaLetturaOk: true,
+     ultimoErrore: null,
+   });
++  caricaFotoHeroMock.mockReset();
++  caricaFotoHeroMock.mockResolvedValue(undefined);
+   revalidatePathMock.mockReset();
+ });
+ 
+@@ -570,3 +605,114 @@ describe("salvaTokenFacebookAction (Server Action)", () => {
+     });
+   });
+ });
++
++// Story 18.14: mirror di caricaLogoAction (app/(configurazione)/logo/actions.test.ts)
++// - stessa sequenza di validazione, ma requireRuolo ammette anche DIRIGENTE
++// (AC #2).
++describe("caricaFotoHeroAction (Server Action)", () => {
++  it("returns FORBIDDEN se il chiamante non e' Admin ne' Dirigente (AC #2)", async () => {
++    requireRuoloMock.mockResolvedValue({
++      error: { code: "FORBIDDEN", message: "Non autorizzato." },
++    });
++
++    const result = await caricaFotoHeroAction(
++      undefined,
++      buildFormDataFotoHero(fileFotoHeroValido())
++    );
++
++    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
++    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
++    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
++  });
++
++  it("returns VALIDATION quando nessun file e' fornito", async () => {
++    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(null));
++
++    expect(result).toEqual({
++      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
++    });
++    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
++  });
++
++  it("returns VALIDATION per un file vuoto (size 0)", async () => {
++    const result = await caricaFotoHeroAction(
++      undefined,
++      buildFormDataFotoHero(fileFotoHeroValido("foto-hero.png", "image/png", 0))
++    );
++
++    expect(result).toEqual({
++      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
++    });
++  });
++
++  it("returns VALIDATION per un tipo MIME non ammesso", async () => {
++    const result = await caricaFotoHeroAction(
++      undefined,
++      buildFormDataFotoHero(fileFotoHeroValido("foto-hero.svg", "image/svg+xml"))
++    );
++
++    expect(result).toEqual({
++      error: { code: "VALIDATION", message: "Formato immagine non ammesso (solo PNG, JPG)." },
++    });
++    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
++  });
++
++  it("returns VALIDATION quando il file supera i 2MB", async () => {
++    const result = await caricaFotoHeroAction(
++      undefined,
++      buildFormDataFotoHero(
++        fileFotoHeroValido("foto-hero.png", "image/png", 2 * 1024 * 1024 + 1)
++      )
++    );
++
++    expect(result).toEqual({
++      error: { code: "VALIDATION", message: "Il file supera la dimensione massima di 2MB." },
++    });
++    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
++  });
++
++  it("returns VALIDATION quando le magic byte non corrispondono al MIME dichiarato (AC #1)", async () => {
++    const fileIngannevole = new File([new Uint8Array(1024)], "falso.png", {
++      type: "image/png",
++    });
++
++    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(fileIngannevole));
++
++    expect(result).toEqual({
++      error: {
++        code: "VALIDATION",
++        message: "Il contenuto del file non corrisponde al formato dichiarato.",
++      },
++    });
++    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
++  });
++
++  it("accetta ADMIN, chiama caricaFotoHero e revalida /app/impostazioni (AC #1)", async () => {
++    const png = fileFotoHeroValido("foto-hero.png", "image/png");
++    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(png));
++
++    expect(result).toEqual({ success: true });
++    expect(caricaFotoHeroMock).toHaveBeenCalledWith(supabaseClientFinto, png);
++    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
++  });
++
++  it("accetta DIRIGENTE (AC #2, non ADMIN-only come il logo)", async () => {
++    const jpeg = fileFotoHeroValido("foto-hero.jpg", "image/jpeg");
++    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(jpeg));
++
++    expect(result).toEqual({ success: true });
++  });
++
++  it("returns INTERNAL fail-closed quando caricaFotoHero lancia (incluso un rifiuto RLS)", async () => {
++    caricaFotoHeroMock.mockRejectedValue(new Error("RLS denial"));
++
++    const result = await caricaFotoHeroAction(
++      undefined,
++      buildFormDataFotoHero(fileFotoHeroValido())
++    );
++
++    expect(result).toEqual({
++      error: { code: "INTERNAL", message: "Impossibile caricare la foto. Riprova." },
++    });
++  });
++});
+diff --git a/app/app/(configurazione)/impostazioni/actions.ts b/app/app/(configurazione)/impostazioni/actions.ts
+index a933cfd..de1a918 100644
+--- a/app/app/(configurazione)/impostazioni/actions.ts
++++ b/app/app/(configurazione)/impostazioni/actions.ts
+@@ -12,6 +12,12 @@ import {
+   leggiConfigurazioneSocialFacebook,
+   salvaTokenFacebook,
+ } from "@/lib/db-rls/configurazione-social-facebook";
++import { caricaFotoHero } from "@/lib/storage/foto-hero";
++import {
++  MIME_AMMESSI_IMMAGINE,
++  DIMENSIONE_MASSIMA_IMMAGINE_BYTE,
++  contenutoCorrispondeAlMimeImmagine,
++} from "@/lib/storage/validazione-immagine";
+ 
+ // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
+ // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
+@@ -235,6 +241,72 @@ export async function salvaContattiPubbliciAction(
+   return { success: true };
+ }
+ 
++export type FotoHeroActionState =
++  | { error: { code: string; message: string } }
++  | { success: true }
++  | undefined;
++
++// Story 18.14 (AC #1/#2): mirror di caricaLogoAction (app/(configurazione)/logo/actions.ts)
++// - stessa sequenza di validazione (lib/storage/validazione-immagine.ts,
++// riuso diretto, nessuna nuova regola) - ma requireRuolo ammette anche
++// DIRIGENTE (non ADMIN-only come il logo del Settore): AC #2 di questa
++// storia e' esplicito su Admin/Dirigente, stesso perimetro delle altre
++// action di questo file (Pagina Facebook/Contatti pubblici/Token Facebook).
++// Nessun revalidatePath("/"): la home pubblica ha gia' dynamic =
++// "force-dynamic" (app/page.tsx), nessuna cache statica da invalidare.
++export async function caricaFotoHeroAction(
++  _prevState: FotoHeroActionState,
++  formData: FormData
++): Promise<FotoHeroActionState> {
++  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
++  if (forbidden) return forbidden;
++
++  const file = formData.get("file");
++
++  if (!(file instanceof File) || file.size === 0) {
++    return {
++      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
++    };
++  }
++  if (!MIME_AMMESSI_IMMAGINE.includes(file.type)) {
++    return {
++      error: {
++        code: "VALIDATION",
++        message: "Formato immagine non ammesso (solo PNG, JPG).",
++      },
++    };
++  }
++  if (file.size > DIMENSIONE_MASSIMA_IMMAGINE_BYTE) {
++    return {
++      error: {
++        code: "VALIDATION",
++        message: "Il file supera la dimensione massima di 2MB.",
++      },
++    };
++  }
++  if (!(await contenutoCorrispondeAlMimeImmagine(file))) {
++    return {
++      error: {
++        code: "VALIDATION",
++        message: "Il contenuto del file non corrisponde al formato dichiarato.",
++      },
++    };
++  }
++
++  try {
++    const supabase = await createClient();
++    await caricaFotoHero(supabase, file);
++  } catch (err) {
++    console.error(err);
++    return {
++      error: { code: "INTERNAL", message: "Impossibile caricare la foto. Riprova." },
++    };
++  }
++
++  revalidatePath("/app/impostazioni");
++  return { success: true };
++}
++
+ export type TokenFacebookActionState =
+   | { error: { code: string; message: string } }
+   | { success: true }
+diff --git a/app/app/(configurazione)/impostazioni/impostazioni.module.css b/app/app/(configurazione)/impostazioni/impostazioni.module.css
+index b4b9ec7..43be635 100644
+--- a/app/app/(configurazione)/impostazioni/impostazioni.module.css
++++ b/app/app/(configurazione)/impostazioni/impostazioni.module.css
+@@ -117,3 +117,23 @@
+   font-size: 13px;
+   color: var(--color-success);
+ }
++
++/* Story 18.14: mirror esatto di .anteprimaLogo/.messaggioVuoto in
++   app/(configurazione)/logo/logo.module.css - stessa anteprima <img>,
++   nessuna storia precedente in questa pagina aveva un'anteprima immagine. */
++.anteprimaFotoHero {
++  display: block;
++  max-width: 260px;
++  border: 1px solid var(--color-border);
++  border-radius: var(--radius-md);
++  padding: var(--space-3);
++  background: var(--color-surface);
++  margin-top: var(--space-4);
++}
++
++.messaggioVuoto {
++  margin-top: var(--space-3);
++  font-size: 13px;
++  color: var(--color-text-secondary);
++  font-style: italic;
++}
+diff --git a/app/app/(configurazione)/impostazioni/page.tsx b/app/app/(configurazione)/impostazioni/page.tsx
+index df9d8e8..c3b1183 100644
+--- a/app/app/(configurazione)/impostazioni/page.tsx
++++ b/app/app/(configurazione)/impostazioni/page.tsx
+@@ -10,10 +10,12 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
+ import { TitoloPagina } from "@/app/AiutoContestuale";
+ import { createClient } from "@/lib/supabase/server";
+ import { leggiConfigurazioneSocialFacebook, rimuoviToken } from "@/lib/db-rls/configurazione-social-facebook";
++import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
+ import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
+ import { PaginaFacebookForm } from "./PaginaFacebookForm";
+ import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
+ import { TokenFacebookForm } from "./TokenFacebookForm";
++import { FotoHeroForm } from "./FotoHeroForm";
+ import styles from "./impostazioni.module.css";
+ 
+ // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
+@@ -45,36 +47,52 @@ export default async function ImpostazioniPage() {
+   // principio di ogni altro effetto collaterale non bloccante di questo
+   // progetto (il .catch qui sostituisce il try/catch precedente per poter
+   // stare dentro il Promise.all senza perdere il comportamento fail-soft).
+-  const [ruoli, emailSegreteria, urlPaginaFacebook, contattiPubblici, configurazioneSocialFacebook] =
+-    await Promise.all([
+-      risolviRuoliPerAiutoContestuale(),
+-      leggiEmailSegreteria().catch((err) => {
+-        console.error(err);
+-        return null;
+-      }),
+-      // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
+-      leggiUrlPaginaFacebook().catch((err) => {
+-        console.error(err);
+-        return null;
+-      }),
+-      // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
+-      // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
+-      // con i 3 campi, mai un valore nullable a se stante.
+-      leggiContattiPubblici().catch((err) => {
+-        console.error(err);
+-        return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
+-      }),
+-      // Story 18.13: client CON la sessione utente (questa e' la pagina
+-      // Admin/Dirigente autenticata, la RLS del Task 1 la autorizza
+-      // direttamente) - non createAdminClient(), quello e' riservato alla
+-      // lettura dalla home pubblica anonima (lib/facebook-graph.ts).
+-      createClient()
+-        .then((supabase) => leggiConfigurazioneSocialFacebook(supabase))
+-        .catch((err) => {
+-          console.error(err);
+-          return null;
+-        }),
+-    ]);
++  // Story 18.14: supabase risolto qui (non piu' dentro un .then() isolato)
++  // perche' ora serve anche a leggiInfoFotoHero/urlPubblicoFotoHero, quest'ultima
++  // usata in modo sincrono nel JSX sotto - stesso principio "risolvi il
++  // client una volta, riusalo" gia' stabilito in app/page.tsx (home pubblica).
++  const [ruoli, supabase] = await Promise.all([
++    risolviRuoliPerAiutoContestuale(),
++    // Story 18.13: client CON la sessione utente (questa e' la pagina
++    // Admin/Dirigente autenticata, la RLS del Task 1 di quella storia la
++    // autorizza direttamente) - non createAdminClient(), quello e' riservato
++    // alla lettura dalla home pubblica anonima (lib/facebook-graph.ts).
++    createClient(),
++  ]);
++  const [
++    emailSegreteria,
++    urlPaginaFacebook,
++    contattiPubblici,
++    configurazioneSocialFacebook,
++    fotoHero,
++  ] = await Promise.all([
++    leggiEmailSegreteria().catch((err) => {
++      console.error(err);
++      return null;
++    }),
++    // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
++    leggiUrlPaginaFacebook().catch((err) => {
++      console.error(err);
++      return null;
++    }),
++    // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
++    // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
++    // con i 3 campi, mai un valore nullable a se stante.
++    leggiContattiPubblici().catch((err) => {
++      console.error(err);
++      return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
++    }),
++    leggiConfigurazioneSocialFacebook(supabase).catch((err) => {
++      console.error(err);
++      return null;
++    }),
++    // Story 18.14: stesso pattern fail-soft, fallback "nessuna foto"
++    // (mirror di InfoLogo/leggiInfoLogo).
++    leggiInfoFotoHero(supabase).catch((err) => {
++      console.error(err);
++      return { esiste: false, aggiornatoIl: null };
++    }),
++  ]);
+   // AC #4: nessuna variabile di questo Server Component deve conservare
+   // accessToken oltre questo punto - rimuoviToken() lo scarta subito, anche
+   // se in questa pagina non verrebbe comunque mai passato a un Client
+@@ -158,6 +176,23 @@ export default async function ImpostazioniPage() {
+           configurato={Boolean(tokenFacebook)}
+           ultimaLetturaOk={tokenFacebook?.ultimaLetturaOk ?? true}
+         />
++
++        <h2 className={styles.titoloSezione}>Foto sfondo hero</h2>
++        {/* Story 18.14: nessun avviso soft (a differenza di Email
++            Segreteria/Pagina Facebook/Token Facebook sopra) - l'assenza si
++            traduce nel fallback al placeholder grafico esistente in home,
++            non nella sparizione di una funzionalita', stesso trattamento
++            gia' dato a "Contatti pubblici". */}
++        {fotoHero.esiste ? (
++          <img
++            src={`${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")}`}
++            alt="Foto sfondo hero attuale"
++            className={styles.anteprimaFotoHero}
++          />
++        ) : (
++          <p className={styles.messaggioVuoto}>Nessuna foto sfondo hero impostata.</p>
++        )}
++        <FotoHeroForm />
+       </div>
+     </main>
+   );
+diff --git a/app/page.tsx b/app/page.tsx
+index 7bcc878..819addc 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -17,6 +17,7 @@ import {
+ } from "@/lib/raggruppa-per-settimana";
+ import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+ import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
++import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
+ import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
+ import {
+   NOME_COOKIE_CONSENSO,
+@@ -48,7 +49,23 @@ function formattaData(data: string): string {
+   return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
+ }
+ 
+-export default async function HomePubblicaPage() {
++export default async function HomePubblicaPage({
++  searchParams,
++}: {
++  // searchParams e' una Promise in questa versione di Next.js (16.2.10),
++  // stesso pattern gia' in uso altrove nel progetto (es.
++  // app/(certificati-medici)/certificato-medico/page.tsx).
++  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
++}) {
++  // Story 18.17 (secondo giro, link "Preferenze cookie" nel footer invece
++  // del pulsante fisso): il footer e' condiviso da tutte le pagine
++  // pubbliche, ma CookieBanner resta montato solo qui (decisione di Story
++  // 18.6, non riaperta) - il link nel footer naviga sempre verso "/" con
++  // questo query param, che forza il banner ad aprirsi indipendentemente
++  // dalla scelta gia' registrata.
++  const params = await searchParams;
++  const apriPreferenzeCookie = params["preferenze-cookie"] !== undefined;
++
+   // Nessuna sessione qui (pagina pubblica): createClient() funziona
+   // comunque (usa la sola anon key). Review fix (Blind Hunter, Story 18.1):
+   // le letture non dipendono l'una dall'altra - eseguite in Promise.all,
+@@ -111,6 +128,7 @@ export default async function HomePubblicaPage() {
+     gruppiStagione,
+     fotoPerGruppo,
+     urlPaginaFacebook,
++    fotoHero,
+   ] = await Promise.all([
+     // Story 18.8: leggiInfoLogo (usata per <img> del logo) spostata in
+     // HeaderPubblico.tsx, non piu' letta qui - questa pagina resta con la
+@@ -199,6 +217,13 @@ export default async function HomePubblicaPage() {
+       console.error(err);
+       return null;
+     }),
++    // Story 18.14 (AC #3): fallback quando non ci sono post Facebook da
++    // mostrare - fail-soft, stesso pattern delle altre query pubbliche
++    // (mirror di InfoLogo/leggiInfoLogo).
++    leggiInfoFotoHero(supabase).catch((err) => {
++      console.error(err);
++      return { esiste: false, aggiornatoIl: null };
++    }),
+   ]);
+ 
+   // Story 18.13 (AC #3/#5): non puo' stare nel Promise.all sopra - dipende
+@@ -257,13 +282,31 @@ export default async function HomePubblicaPage() {
+           {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
+               Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
+               dell'hero - foto reali della Pagina al posto del pattern
+-              statico, quando disponibili. Il placeholder resta come
+-              fallback quando non ci sono post da mostrare (nessun token/URL
+-              configurato, consenso cookie non dato, o nessun post con
+-              testo) - stesso principio fail-soft già stabilito. */}
+-          {postFacebook.length === 0 && (
++              statico, quando disponibili. Story 18.14: quando non ci sono
++              post Facebook, la foto sfondo hero caricata da Admin/Dirigente
++              (se presente) e' il secondo fallback, prima del placeholder
++              statico - priorita' Facebook > foto caricata > placeholder
++              (AC #3/#5 di quella storia, decisione presa esplicitamente con
++              l'utente: i post Facebook restano la fonte con priorita' piu'
++              alta, invariata). */}
++          {postFacebook.length === 0 && !fotoHero.esiste && (
+             <div className={styles.heroFoto} aria-hidden="true" />
+           )}
++          {/* Story 18.14: riuso deliberato di styles.heroFotoPost (stessa
++              classe usata da HeroPostFacebook.tsx per la foto del post
++              corrente) - stesso trattamento visivo (object-fit cover, scrim
++              per la leggibilita' del testo, AC #4), nessuna nuova regola CSS:
++              una foto vera come sfondo dell'hero e' lo stesso ruolo visivo
++              indipendentemente dalla sorgente (post Facebook o upload). */}
++          {postFacebook.length === 0 && fotoHero.esiste && (
++            <div
++              className={styles.heroFotoPost}
++              style={{
++                backgroundImage: `url(${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")})`,
++              }}
++              aria-hidden="true"
++            />
++          )}
+           <div className={styles.heroDiagonale} aria-hidden="true" />
+           <div className={styles.heroContenuto}>
+             <h1>Benvenuti nel {nomeVisualizzato}</h1>
+@@ -417,13 +460,17 @@ export default async function HomePubblicaPage() {
+       {/* Story 18.8: estratto in FooterPubblico.tsx - conSpazioCookieBanner
+           perche' questa e' l'unica pagina che monta ancora <CookieBanner>
+           (decisione gia' presa in Story 18.6, non riaperta), quindi ha
+-          bisogno del padding-bottom di sicurezza contro il pulsante fisso. */}
++          bisogno del padding-bottom di sicurezza contro il banner fisso
++          quando e' aperto. */}
+       <FooterPubblico conSpazioCookieBanner />
+-      {/* Story 18.6: sempre montato (non condizionato come
+-          mostraSponsor/mostraPartite sopra) - deve restare raggiungibile
+-          come pulsante "Preferenze cookie" anche dopo la scelta (AC #3),
+-          non solo alla prima visita. */}
+-      <CookieBanner valoreIniziale={valoreConsensoIniziale} />
++      {/* Story 18.6/18.17: CookieBanner resta montato solo qui. Da Story
++          18.17 (secondo giro) non c'e' piu' un pulsante fisso permanente -
++          la riapertura avviene solo tramite il link "Preferenze cookie" nel
++          footer (ogni pagina pubblica), che naviga qui con apriPreferenzeCookie. */}
++      <CookieBanner
++        valoreIniziale={valoreConsensoIniziale}
++        apriPreferenze={apriPreferenzeCookie}
++      />
+     </>
+   );
+ }
+diff --git a/lib/guida/contenuti.ts b/lib/guida/contenuti.ts
+index a95e8b2..b7266e3 100644
+--- a/lib/guida/contenuti.ts
++++ b/lib/guida/contenuti.ts
+@@ -186,6 +186,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
+       "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",
+       "Qui imposti anche l'URL della Pagina Facebook della società (mostra gli ultimi post sulla home pubblica) e i contatti pubblici - indirizzo, telefono ed email mostrati sulla pagina pubblica \"Contatti\": ogni campo è indipendente, un campo lasciato vuoto smette semplicemente di comparire sulla pagina pubblica.",
+       "Qui imposti anche il Token Facebook: serve al carosello \"Ultimi post\" della home pubblica per leggere i post reali della Pagina. Lascialo vuoto per non modificare il token già salvato. Un avviso ti segnala se manca o se l'ultima lettura dei post è fallita (es. token scaduto, da rigenerare periodicamente).",
++      "Qui carichi anche la foto di sfondo dell'hero della home pubblica (PNG o JPG, max 2MB): viene mostrata solo quando non ci sono post Facebook da mostrare - se sono presenti, il carosello dei post ha sempre la priorità. Senza nessuna delle due, resta visibile il placeholder grafico.",
+     ],
+   },
+   {
+diff --git a/lib/storage/foto-hero.test.ts b/lib/storage/foto-hero.test.ts
+new file mode 100644
+index 0000000..2eb4cb1
+--- /dev/null
++++ b/lib/storage/foto-hero.test.ts
+@@ -0,0 +1,114 @@
++import { describe, expect, it, vi, beforeEach } from "vitest";
++
++vi.mock("server-only", () => ({}));
++
++const uploadMock = vi.fn();
++const getPublicUrlMock = vi.fn();
++const listMock = vi.fn();
++const fromMock = vi.fn(() => ({
++  upload: uploadMock,
++  getPublicUrl: getPublicUrlMock,
++  list: listMock,
++}));
++
++const supabase = { storage: { from: fromMock } } as never;
++
++const { caricaFotoHero, urlPubblicoFotoHero, leggiInfoFotoHero } = await import(
++  "./foto-hero"
++);
++
++function fileFinto(tipo = "image/png") {
++  return { name: "foto-hero.png", type: tipo } as File;
++}
++
++describe("caricaFotoHero", () => {
++  beforeEach(() => {
++    fromMock.mockClear();
++    uploadMock.mockReset();
++  });
++
++  it("carica sul path fisso 'foto-hero' con upsert e contentType espliciti (AC #1)", async () => {
++    uploadMock.mockResolvedValue({ data: { path: "foto-hero" }, error: null });
++    const file = fileFinto("image/png");
++
++    await caricaFotoHero(supabase, file);
++
++    expect(fromMock).toHaveBeenCalledWith("foto-hero");
++    expect(uploadMock).toHaveBeenCalledWith("foto-hero", file, {
++      upsert: true,
++      contentType: "image/png",
++    });
++  });
++
++  it("throws when the upload fails (incluso un rifiuto RLS, AC #2)", async () => {
++    uploadMock.mockResolvedValue({
++      data: null,
++      error: { message: "new row violates row-level security policy" },
++    });
++
++    await expect(caricaFotoHero(supabase, fileFinto())).rejects.toThrow(
++      "row-level security"
++    );
++  });
++});
++
++describe("urlPubblicoFotoHero", () => {
++  beforeEach(() => {
++    fromMock.mockClear();
++    getPublicUrlMock.mockReset();
++  });
++
++  it("restituisce l'URL pubblico deterministico del path fisso 'foto-hero' (AC #3)", () => {
++    getPublicUrlMock.mockReturnValue({
++      data: { publicUrl: "https://esempio.local/storage/v1/object/public/foto-hero/foto-hero" },
++    });
++
++    const url = urlPubblicoFotoHero(supabase);
++
++    expect(fromMock).toHaveBeenCalledWith("foto-hero");
++    expect(getPublicUrlMock).toHaveBeenCalledWith("foto-hero");
++    expect(url).toBe(
++      "https://esempio.local/storage/v1/object/public/foto-hero/foto-hero"
++    );
++  });
++});
++
++describe("leggiInfoFotoHero", () => {
++  beforeEach(() => {
++    fromMock.mockClear();
++    listMock.mockReset();
++  });
++
++  it("restituisce esiste:true e la data di aggiornamento quando la foto esiste (AC #3)", async () => {
++    listMock.mockResolvedValue({
++      data: [{ name: "foto-hero", updated_at: "2026-08-15T12:00:00.000Z" }],
++      error: null,
++    });
++
++    const risultato = await leggiInfoFotoHero(supabase);
++
++    expect(fromMock).toHaveBeenCalledWith("foto-hero");
++    expect(listMock).toHaveBeenCalledWith("", { search: "foto-hero" });
++    expect(risultato).toEqual({
++      esiste: true,
++      aggiornatoIl: "2026-08-15T12:00:00.000Z",
++    });
++  });
++
++  it("restituisce esiste:false e aggiornatoIl:null quando nessuna foto e' mai stata caricata (AC #3)", async () => {
++    listMock.mockResolvedValue({ data: [], error: null });
++
++    const risultato = await leggiInfoFotoHero(supabase);
++
++    expect(risultato).toEqual({ esiste: false, aggiornatoIl: null });
++  });
++
++  it("throws when the listing fails", async () => {
++    listMock.mockResolvedValue({
++      data: null,
++      error: { message: "not found" },
++    });
++
++    await expect(leggiInfoFotoHero(supabase)).rejects.toThrow("not found");
++  });
++});
+diff --git a/lib/storage/foto-hero.ts b/lib/storage/foto-hero.ts
+new file mode 100644
+index 0000000..1a784aa
+--- /dev/null
++++ b/lib/storage/foto-hero.ts
+@@ -0,0 +1,62 @@
++import "server-only";
++import type { SupabaseClient } from "@supabase/supabase-js";
++
++const BUCKET = "foto-hero";
++const PATH = "foto-hero";
++
++// Story 18.14: mirror esatto di lib/storage/logo.ts - bucket Storage
++// pubblico, path fisso (singleton a livello di sito, nessun campo Prisma).
++// upsert: true sostituisce fisicamente il file precedente (AC #1: "sostituisce
++// quella precedente se già presente"). contentType esplicito necessario:
++// senza cartella/estensione nel path, il tipo servito dipende dal metadato
++// salvato al momento dell'upload, non dal nome del file.
++export async function caricaFotoHero(
++  supabase: SupabaseClient,
++  file: File
++): Promise<void> {
++  const { error } = await supabase.storage
++    .from(BUCKET)
++    .upload(PATH, file, { upsert: true, contentType: file.type });
++
++  if (error) {
++    throw new Error(error.message);
++  }
++}
++
++// Deterministico, nessuna chiamata di rete (getPublicUrl e' sincrona lato
++// client Storage) - il bucket pubblico bypassa RLS per la lettura diretta
++// dell'oggetto, nessun URL firmato/a scadenza.
++export function urlPubblicoFotoHero(supabase: SupabaseClient): string {
++  const { data } = supabase.storage.from(BUCKET).getPublicUrl(PATH);
++  return data.publicUrl;
++}
++
++export type InfoFotoHero = {
++  esiste: boolean;
++  aggiornatoIl: string | null;
++};
++
++// AC #3: mai mostrare un'immagine rotta se nessuna foto hero e' mai stata
++// caricata - il chiamante (app/page.tsx, /app/impostazioni) verifica prima
++// di costruire l'<img>/lo sfondo. aggiornatoIl (dai metadati dell'oggetto
++// Storage) serve da cache-buster: urlPubblicoFotoHero() e' deterministico
++// (sempre lo stesso URL per il path fisso "foto-hero"), quindi senza di
++// esso il browser potrebbe continuare a mostrare la versione precedente
++// dopo una sostituzione.
++export async function leggiInfoFotoHero(
++  supabase: SupabaseClient
++): Promise<InfoFotoHero> {
++  const { data, error } = await supabase.storage
++    .from(BUCKET)
++    .list("", { search: PATH });
++
++  if (error) {
++    throw new Error(error.message);
++  }
++
++  const oggetto = (data ?? []).find((o) => o.name === PATH);
++  return {
++    esiste: !!oggetto,
++    aggiornatoIl: oggetto?.updated_at ?? null,
++  };
++}
+diff --git a/prisma/migrations/20260815000000_add_foto_hero_bucket/migration.sql b/prisma/migrations/20260815000000_add_foto_hero_bucket/migration.sql
+new file mode 100644
+index 0000000..debaacd
+--- /dev/null
++++ b/prisma/migrations/20260815000000_add_foto_hero_bucket/migration.sql
+@@ -0,0 +1,53 @@
++-- Story 18.14: bucket Storage PUBBLICO per la foto di sfondo dell'hero -
++-- singleton a livello di sito (path fisso "foto-hero", nessuna colonna
++-- Prisma, esistenza via Storage list()), mirror esatto di
++-- "logo-applicazione" (Story 7.2) per la forma del path, ma con perimetro
++-- Ruoli ADMIN+DIRIGENTE (mirror "sponsor-banner", Story 16.1) invece di
++-- ADMIN-only.
++--
++-- A differenza del bucket logo (che ha impiegato TRE migrazioni per
++-- arrivare a uno stato corretto: bucket iniziale senza restrizione di path
++-- sulle policy INSERT/UPDATE - 20260718070000 -, poi fix path -
++-- 20260718090000 -, poi fix SELECT ADMIN-only che bloccava la lettura
++-- pubblica - 20260725020000), qui le tre policy (SELECT pubblica, INSERT,
++-- UPDATE) sono scritte correttamente fin da questa unica migrazione: la
++-- home pubblica anonima deve poter verificare l'esistenza della foto via
++-- list() (stesso motivo per cui "foto-squadra-gruppo", Story 18.4, ha gia'
++-- applicato la lezione), quindi la SELECT non puo' essere ADMIN-only.
++INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
++VALUES ('foto-hero', 'foto-hero', true, 2097152, ARRAY['image/png', 'image/jpeg'])
++ON CONFLICT (id) DO NOTHING;
++
++CREATE POLICY "pubblico_foto_hero_select" ON storage.objects
++  FOR SELECT
++  USING (
++    bucket_id = 'foto-hero'
++    AND name = 'foto-hero'
++  );
++
++CREATE POLICY "admin_dirigente_foto_hero_insert" ON storage.objects
++  FOR INSERT
++  WITH CHECK (
++    bucket_id = 'foto-hero'
++    AND name = 'foto-hero'
++    AND (auth.jwt() -> 'app_metadata' -> 'ruoli') ?| array['ADMIN', 'DIRIGENTE']
++  );
++
++CREATE POLICY "admin_dirigente_foto_hero_update" ON storage.objects
++  FOR UPDATE
++  USING (
++    bucket_id = 'foto-hero'
++    AND name = 'foto-hero'
++    AND (auth.jwt() -> 'app_metadata' -> 'ruoli') ?| array['ADMIN', 'DIRIGENTE']
++  )
++  WITH CHECK (
++    bucket_id = 'foto-hero'
++    AND name = 'foto-hero'
++    AND (auth.jwt() -> 'app_metadata' -> 'ruoli') ?| array['ADMIN', 'DIRIGENTE']
++  );
++
++-- Nessuna policy DELETE (nessun AC la richiede - sostituzione via
++-- upsert:true sullo stesso path fisso, mai una cancellazione esplicita,
++-- mirror logo/sponsor-banner/foto-squadra-gruppo). Nessun GRANT esplicito
++-- su storage.objects: l'estensione Storage di Supabase concede gia' le
++-- basi ad "authenticated", solo POLICY.

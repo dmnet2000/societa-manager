@@ -643,6 +643,7 @@ describe("caricaFotoHeroAction (Server Action)", () => {
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
     });
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
   });
 
   it("returns VALIDATION per un tipo MIME non ammesso", async () => {
@@ -701,6 +702,13 @@ describe("caricaFotoHeroAction (Server Action)", () => {
     const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(jpeg));
 
     expect(result).toEqual({ success: true });
+    // Review fix (code review, Acceptance Auditor): il test precedente
+    // verificava solo l'happy-path col mock di default "tutto permesso",
+    // senza provare nulla di diverso dal test ADMIN sopra - questa
+    // asserzione verifica che il perimetro di Ruoli richiesto sia
+    // esplicitamente ["ADMIN", "DIRIGENTE"] (AC #2), non solo che un mock
+    // permissivo lasci passare la richiesta.
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
   });
 
   it("returns INTERNAL fail-closed quando caricaFotoHero lancia (incluso un rifiuto RLS)", async () => {

@@ -4,7 +4,7 @@ baseline_commit: 51efe3165f9bef9615d514016b0c33391024fd12
 
 # Story 18.18: Rivedere il menu di navigazione pubblica su mobile — le voci vanno a capo su due righe
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -56,6 +56,21 @@ so that non veda le voci spezzate su due righe in modo disordinato.
 - [x] Task 5: Test e verifica finale (AC: tutti)
   - [x] Confermato: nessun test importa `NavPubblica.tsx`/`HeaderPubblico.tsx` (solo un commento in `route-decision.test.ts`, non un import).
   - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, warning preesistenti invariati), `npm run build` (riuscita, tutte le rotte pubbliche presenti nell'output).
+
+### Review Findings
+
+- [x] [Review][Patch] **Il menu spariva interamente per chi non ha JS (o durante l'idratazione), anche su desktop** — il rendering condizionale `{(desktop || aperto) && <ul>}` toglieva la lista dall'HTML server-renderizzato di default (`leggiDesktopServer()` è sempre `false`), regressione rispetto a prima della storia dove il `<ul>` era sempre nel markup [app/NavPubblica.tsx] — risolto: `<ul>` sempre montato, nascosto con `inert`/`aria-hidden` quando `navNascosto`, mirror corretto del pattern reale della sidebar in `NavBarClient.tsx` (non del `.menuProfiloTendina`, mutuato per errore). Risolve *anche* il finding successivo.
+- [x] [Review][Patch] `aria-controls="nav-pubblica-lista"` puntava a un id assente dal DOM quando il pannello era chiuso su mobile (rendering condizionale) — anti-pattern esplicitamente evitato altrove nello stesso file di riferimento (`NavBarClient.tsx`, commento sul `menuProfiloTrigger`) [app/NavPubblica.tsx] — risolto dallo stesso fix sopra (`<ul>` sempre presente nel DOM).
+- [x] [Review][Patch] Il pannello restava aperto se la finestra veniva ridimensionata oltre 900px e poi di nuovo sotto, senza alcun click dell'utente [app/NavPubblica.tsx] — risolto: reset di `aperto` su transizione di breakpoint (pattern "adjusting state during render", non un `useEffect` con `setState` diretto — bloccato dalla regola eslint `react-hooks/set-state-in-effect`, scoperta rieseguendo il lint dopo il fix).
+- [x] [Review][Patch] Nessuna chiusura al tocco fuori dal pannello — il gesto di dismissione più comune su mobile non faceva nulla [app/NavPubblica.tsx] — risolto: listener `mousedown` fuori dal `<nav>`, mirror dello stesso pattern già in uso per `.menuProfiloRef` in `NavBarClient.tsx`.
+- [x] [Review][Patch] Il glifo "☰" non aveva `aria-hidden="true"`, incoerente col trattamento già dato ai chevron in `NavBarClient.tsx` [app/NavPubblica.tsx] — risolto.
+- [x] [Review][Patch] Bottone hamburger come fratello separato di `<nav>` in un Fragment (4 figli flex di `.header` invece di 3) — dubbio reale sulla distribuzione dello spazio flex sollevato dal Blind Hunter [app/NavPubblica.tsx] — risolto: hamburger spostato dentro `<nav>`, di nuovo un solo figlio flex di `.header` come prima della storia.
+- [x] [Review][Defer] Nessun blocco scroll del `<body>` quando il pannello è aperto — deferred, tradeoff proporzionato per un dropdown compatto (non un drawer a piena altezza come `NavBarClient.tsx`) [app/NavPubblica.tsx]
+- [x] [Review][Defer] Possibile perdita di focus cliccando il link della pagina già attiva nel drawer mobile — deferred, stesso gap presente nel componente di riferimento interno, non risolto nemmeno lì [app/NavPubblica.tsx]
+- [x] [Review][Defer] Breakpoint 900/901px duplicato in due file, nessuna costante condivisa — deferred, stesso pattern già accettato per l'880px interno
+- [x] [Review][Defer] `matchMedia` ricreato ad ogni chiamata — deferred, copiato verbatim dal pattern esistente in `NavBarClient.tsx`
+- [x] [Review][Defer] Nessun test automatico per toggle/Esc/click-fuori — deferred, coerente con `NavBarClient.tsx`, mai testato nemmeno lui
+- [x] [Review][Defer] `.voceAttiva` diventa un divisore a piena larghezza in colonna su mobile — deferred, scelta visiva accettabile, nessun AC violato [app/NavPubblica.module.css]
 
 ## Dev Notes
 
@@ -120,3 +135,4 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato.
 
 - 2026-08-15: File di story creato (create-story workflow) — direzione (hamburger/drawer) risolta esplicitamente con l'utente prima della scrittura. Status: backlog → ready-for-dev.
 - 2026-08-15: Implementata Story 18.18 (dev-story workflow) — menu pubblico mobile con hamburger/drawer, mirror ridotto del pattern desktop/mobile di `NavBarClient.tsx`. 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: ready-for-dev → review.
+- 2026-08-15: Code review completata (bmad-code-review, Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) — 1 finding grave trovato indipendentemente da tutti e 3 i layer: il rendering condizionale del pannello toglieva il menu dall'HTML server-renderizzato per ogni visitatore senza JS, anche su desktop (regressione rispetto a prima della storia). Risolto tornando al pattern reale di `NavBarClient.tsx` (sempre montato + `inert`/`aria-hidden`), che risolve anche il dangling `aria-controls` segnalato dagli stessi 3 layer. 6 patch totali applicati (incl. hamburger spostato dentro `<nav>`, reset su resize, click-fuori per chiudere, `aria-hidden` sul glifo). 6 defer (tradeoff proporzionati o gap già presenti nel componente di riferimento interno). 2 errori lint (`react-hooks/set-state-in-effect`) scoperti riverificando dopo i fix, corretti col pattern "adjusting state during render" già in uso nel progetto. 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review → done.

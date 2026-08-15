@@ -49,23 +49,7 @@ function formattaData(data: string): string {
   return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
 }
 
-export default async function HomePubblicaPage({
-  searchParams,
-}: {
-  // searchParams e' una Promise in questa versione di Next.js (16.2.10),
-  // stesso pattern gia' in uso altrove nel progetto (es.
-  // app/(certificati-medici)/certificato-medico/page.tsx).
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  // Story 18.17 (secondo giro, link "Preferenze cookie" nel footer invece
-  // del pulsante fisso): il footer e' condiviso da tutte le pagine
-  // pubbliche, ma CookieBanner resta montato solo qui (decisione di Story
-  // 18.6, non riaperta) - il link nel footer naviga sempre verso "/" con
-  // questo query param, che forza il banner ad aprirsi indipendentemente
-  // dalla scelta gia' registrata.
-  const params = await searchParams;
-  const apriPreferenzeCookie = params["preferenze-cookie"] !== undefined;
-
+export default async function HomePubblicaPage() {
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
   // comunque (usa la sola anon key). Review fix (Blind Hunter, Story 18.1):
   // le letture non dipendono l'una dall'altra - eseguite in Promise.all,
@@ -466,11 +450,11 @@ export default async function HomePubblicaPage({
       {/* Story 18.6/18.17: CookieBanner resta montato solo qui. Da Story
           18.17 (secondo giro) non c'e' piu' un pulsante fisso permanente -
           la riapertura avviene solo tramite il link "Preferenze cookie" nel
-          footer (ogni pagina pubblica), che naviga qui con apriPreferenzeCookie. */}
-      <CookieBanner
-        valoreIniziale={valoreConsensoIniziale}
-        apriPreferenze={apriPreferenzeCookie}
-      />
+          footer (ogni pagina pubblica), che naviga qui con
+          "?preferenze-cookie=1"; CookieBanner legge il param da solo con
+          useSearchParams() (reattivo anche se questa pagina resta montata,
+          vedi commento nel componente). */}
+      <CookieBanner valoreIniziale={valoreConsensoIniziale} />
     </>
   );
 }

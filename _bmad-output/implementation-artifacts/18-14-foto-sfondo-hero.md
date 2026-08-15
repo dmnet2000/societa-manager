@@ -4,7 +4,7 @@ baseline_commit: b64d05e8f2e6109b5adcc5de02cf43619b9127df
 
 # Story 18.14: Caricamento della foto di sfondo dell'hero da Admin/Dirigente
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -75,6 +75,20 @@ Questo **sostituisce** l'AC #3 originale di `epics.md` ("la vede come sfondo del
 - [x] Task 8: Verifica finale (AC: tutti)
   - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, 12 warning preesistenti + 1 nuovo `<img>` atteso mirror di `/app/logo`), `npm run build` (riuscita, `/` e `/app/impostazioni` presenti nell'output).
   - [x] Verificato per lettura diretta del codice (nessuna verifica visiva dal vivo possibile nel sandbox): con `postFacebook.length > 0` nessuno dei due nuovi rami del fallback si attiva (entrambi condizionati su `postFacebook.length === 0`); con `fotoHero.esiste` e nessun post, il ramo `.heroFotoPost` con lo scrim esistente si attiva; senza nessuno dei due, resta `.heroFoto` invariato.
+
+### Review Findings
+
+- [x] [Review][Patch] Test "accetta DIRIGENTE" non verificava davvero il perimetro di Ruoli (si appoggiava al mock permissivo di default) [app/app/(configurazione)/impostazioni/actions.test.ts:699] — risolto: aggiunta `expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"])`.
+- [x] [Review][Patch] Test "file vuoto" mancava `expect(caricaFotoHeroMock).not.toHaveBeenCalled()`, presente in tutti gli altri casi di errore di validazione dello stesso file [app/app/(configurazione)/impostazioni/actions.test.ts:637] — risolto.
+- [x] [Review][Patch] Anteprima `<img>` dell'admin senza `max-height`/`object-fit` — una foto verticale ad alta risoluzione avrebbe rotto il layout di `/app/impostazioni` [app/app/(configurazione)/impostazioni/impostazioni.module.css] — risolto, aggiunti `max-height: 200px` e `object-fit: contain`.
+- [x] [Review][Defer] Nessuna funzione di rimozione della foto hero — deferred, nessun AC la richiede [lib/storage/foto-hero.ts]
+- [x] [Review][Defer] `cacheControl` non impostato esplicitamente su `upload()` — deferred, stesso pattern preesistente di logo.ts/sponsor.ts [lib/storage/foto-hero.ts]
+- [x] [Review][Defer] Verifica magic-byte JPEG limitata a 3 byte — deferred, pre-esistente in lib/storage/validazione-immagine.ts, non toccata qui
+- [x] [Review][Defer] Policy INSERT/UPDATE senza `TO authenticated` esplicito — deferred, stesso pattern di ogni altra migrazione Storage del progetto [prisma/migrations/20260815000000_add_foto_hero_bucket/migration.sql]
+- [x] [Review][Defer] Nessun test di integrazione RLS a livello DB — deferred, mai fatto per nessun bucket in questo progetto
+- [x] [Review][Defer] `fileFinto` nei test non è un vero `File` — deferred, mirror esatto di logo.test.ts [lib/storage/foto-hero.test.ts]
+- [x] [Review][Defer] `createClient()` non guardato da `.catch()` nel nuovo Promise.all — deferred, verificato: stesso pattern non protetto già in app/page.tsx stesso, non una regressione [app/app/(configurazione)/impostazioni/page.tsx]
+- [x] [Review][Defer] Cache-buster vuoto se `aggiornatoIl` è null — deferred, pattern preesistente di logo.ts [lib/storage/foto-hero.ts]
 
 ## Dev Notes
 
@@ -159,3 +173,4 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato.
 
 - 2026-08-15: File di story creato (create-story workflow) — discrepanza con `epics.md` scoperta e risolta con l'utente (foto hero come fallback su Facebook, non priorità), scelta di pagina risolta leggendo `route-guard.ts`. Status: backlog → ready-for-dev.
 - 2026-08-15: Implementata Story 18.14 (dev-story workflow) — nuovo bucket `foto-hero`, upload Admin/Dirigente in `/app/impostazioni`, fallback a 3 livelli nell'hero della home pubblica. 1182/1182 test Vitest passati (+15), 0 errori tsc/eslint, build produzione riuscita. Status: ready-for-dev → review.
+- 2026-08-15: Code review completata (bmad-code-review, Blind Hunter + Edge Case Hunter + Acceptance Auditor in parallelo) — 0 violazioni sugli AC (Acceptance Auditor pulito), 3 patch applicati (2 test di qualità, 1 vincolo CSS sull'anteprima), 10 defer (tutti pre-esistenti o coerenti con convenzioni già stabilite nel progetto, incluso un falso allarme su `createClient()` verificato contro il pattern identico già in uso in `app/page.tsx`). 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review → done.

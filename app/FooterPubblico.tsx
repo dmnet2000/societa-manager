@@ -14,9 +14,10 @@ export async function FooterPubblico({
 }: {
   // Story 18.6: il CookieBanner resta montato solo sulla home (decisione
   // gia' presa con l'utente in quella storia, non riaperta qui) - il
-  // padding-bottom di sicurezza per non far sovrapporre il pulsante fisso
-  // "Preferenze cookie" al copyright serve quindi solo li', non su ogni
-  // pagina che monta questo footer condiviso.
+  // padding-bottom di sicurezza serve a non far sovrapporre il banner
+  // fisso (CookieBanner.tsx, position:fixed in basso, visibile solo alla
+  // prima scelta o quando riaperto dal link sotto) al copyright, quindi
+  // serve solo li', non su ogni pagina che monta questo footer condiviso.
   conSpazioCookieBanner?: boolean;
 }) {
   // Story 18.12 (AC #4): riuso invariato di leggiUrlPaginaFacebook, gia'
@@ -67,8 +68,17 @@ export async function FooterPubblico({
           "/" perche' CookieBanner resta montato solo li' (decisione di
           Story 18.6, non riaperta). Il diritto di revoca del consenso in
           qualunque momento (Linee guida Garante Privacy) resta comunque
-          soddisfatto, solo il punto di accesso cambia. */}
-      <Link href="/?preferenze-cookie=1" className={styles.linkPreferenzeCookie}>
+          soddisfatto, solo il punto di accesso cambia.
+          Review fix (code review, Blind Hunter): prefetch={false} - il
+          link e' su ogni pagina pubblica, senza questo Next.js
+          precaricherebbe l'intera home (incluse le letture Supabase e la
+          chiamata all'API Graph di Facebook) al solo scorrimento del
+          footer in vista, senza alcuna intenzione dell'utente. */}
+      <Link
+        href="/?preferenze-cookie=1"
+        className={styles.linkPreferenzeCookie}
+        prefetch={false}
+      >
         Preferenze cookie
       </Link>
     </footer>

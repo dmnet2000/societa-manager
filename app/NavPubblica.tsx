@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./NavPubblica.module.css";
@@ -29,15 +29,10 @@ const VOCI = [
 // Story 18.18: hamburger/drawer su mobile (decisione presa con l'utente,
 // riapre deliberatamente la scelta "solo wrap" di Story 18.7/18.12). Stesso
 // pattern di rilevamento desktop/mobile gia' stabilito da
-// app/NavBarClient.tsx (Story 9.2, useSyncExternalStore+matchMedia) -
-// riusato in forma ridotta, non l'intera complessita' di quel componente
-// (nessun overlay/blocco scroll/reset su pathname: qui basta un pannello
-// dropdown con 5 link piatti, e NavPubblica viene gia' rimontato da zero ad
-// ogni pagina pubblica - nessun layout condiviso lo mantiene persistente,
-// verificato in app/layout.tsx). 901px, non 880px (portale interno): 900px
-// e' gia' il breakpoint mobile/desktop di tutto il registro pubblico
-// "Poster Sportivo" (home-pubblica/calendario/contatti/squadre/staff
-// .module.css).
+// app/NavBarClient.tsx (Story 9.2, useSyncExternalStore+matchMedia). 901px,
+// non 880px (portale interno): 900px e' gia' il breakpoint mobile/desktop
+// di tutto il registro pubblico "Poster Sportivo" (home-pubblica/
+// calendario/contatti/squadre/staff .module.css).
 function sottoscriviMediaQuery(callback: () => void) {
   const mq = window.matchMedia("(min-width: 901px)");
   mq.addEventListener("change", callback);
@@ -66,6 +61,20 @@ export function NavPubblica() {
     leggiDesktop,
     leggiDesktopServer
   );
+  const navRef = useRef<HTMLElement>(null);
+
+  // Review fix (code review, Edge Case Hunter): true solo su mobile con
+  // pannello chiuso - determina se il <ul> va nascosto/inert. Il <ul> resta
+  // SEMPRE montato nell'HTML (vedi sotto), non piu' condizionato su
+  // "desktop || aperto" - quella scorciatoia (mutuata da .menuProfiloTendina
+  // di NavBarClient.tsx) toglieva l'intero menu dall'HTML server-renderizzato
+  // per ogni visitatore fino all'idratazione client (leggiDesktopServer()
+  // e' sempre false), e per chi non ha JS lo toglieva del tutto - anche su
+  // desktop. Mirror corretto: la SIDEBAR di NavBarClient.tsx (non il menu
+  // profilo) resta sempre nel DOM e usa inert/aria-hidden proprio per
+  // questo motivo, non "per preservare una transizione CSS" (correzione
+  // rispetto al commento precedente, che citava male il proprio riferimento).
+  const navNascosto = !desktop && !aperto;
 
   // Esc chiude il pannello - mirror esatto del pattern gia' in
   // NavBarClient.tsx, ascoltatore attivo solo quando aperto.
@@ -78,8 +87,39 @@ export function NavPubblica() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [aperto]);
 
+  // Review fix (code review, Blind Hunter + Edge Case Hunter): tocco fuori
+  // dal pannello lo chiude - il gesto di dismissione piu' comune su mobile,
+  // mancava del tutto (solo Esc o un link chiudevano). Mirror dello stesso
+  // pattern gia' in uso per .menuProfiloRef in NavBarClient.tsx.
+  useEffect(() => {
+    if (!aperto) return;
+    function onPointerDown(e: MouseEvent) {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setAperto(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [aperto]);
+
+  // Review fix (code review, Edge Case Hunter): se la finestra viene
+  // ridimensionata oltre il breakpoint desktop mentre aperto=true (rimasto
+  // da un'interazione precedente su mobile) e poi di nuovo sotto, il
+  // pannello altrimenti riapparirebbe aperto senza alcun click dell'utente.
+  // "Adjusting state during render" (non un useEffect: react-hooks/set-state-in-effect
+  // lo vieta), stesso pattern gia' stabilito in NavBarClient.tsx.
+  const [desktopPrecedente, setDesktopPrecedente] = useState(desktop);
+  if (desktop !== desktopPrecedente) {
+    setDesktopPrecedente(desktop);
+    if (desktop) setAperto(false);
+  }
+
   return (
-    <>
+    // Story 18.18: hamburger dentro <nav> (non piu' un fratello separato in
+    // un Fragment) - resta un solo figlio flex di HeaderPubblico .header,
+    // invariato rispetto a prima di questa storia (nessun impatto sulla
+    // distribuzione flex tra .brand/.accedi).
+    <nav aria-label="Sezioni del sito" className={styles.nav} ref={navRef}>
       <button
         type="button"
         className={styles.hamburger}
@@ -88,35 +128,30 @@ export function NavPubblica() {
         aria-label={aperto ? "Chiudi il menu di navigazione" : "Apri il menu di navigazione"}
         onClick={() => setAperto((v) => !v)}
       >
-        ☰
+        <span aria-hidden="true">☰</span>
       </button>
-      <nav aria-label="Sezioni del sito" className={styles.nav}>
-        {/* Rendering condizionale (non inert/aria-hidden su un elemento
-            sempre montato): mirror dello stesso principio gia' usato per
-            .menuProfiloTendina in NavBarClient.tsx - "semplicemente non
-            esiste finche' non e' aperto". Piu' semplice dell'approccio
-            inert della sidebar principale, che serve solo a preservare una
-            transizione CSS di scorrimento assente qui. */}
-        {(desktop || aperto) && (
-          <ul id="nav-pubblica-lista" className={styles.lista}>
-            {VOCI.map((voce) => {
-              const attiva = pathname === voce.href;
-              return (
-                <li key={voce.href}>
-                  <Link
-                    href={voce.href}
-                    className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
-                    aria-current={attiva ? "page" : undefined}
-                    onClick={() => setAperto(false)}
-                  >
-                    {voce.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </nav>
-    </>
+      <ul
+        id="nav-pubblica-lista"
+        className={aperto ? `${styles.lista} ${styles.listaAperta}` : styles.lista}
+        inert={navNascosto}
+        aria-hidden={navNascosto}
+      >
+        {VOCI.map((voce) => {
+          const attiva = pathname === voce.href;
+          return (
+            <li key={voce.href}>
+              <Link
+                href={voce.href}
+                className={attiva ? `${styles.voce} ${styles.voceAttiva}` : styles.voce}
+                aria-current={attiva ? "page" : undefined}
+                onClick={() => setAperto(false)}
+              >
+                {voce.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

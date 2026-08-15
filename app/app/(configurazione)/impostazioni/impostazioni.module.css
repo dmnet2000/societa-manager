@@ -124,6 +124,13 @@
 .anteprimaFotoHero {
   display: block;
   max-width: 260px;
+  /* Review fix (code review, Blind Hunter): senza un vincolo di altezza,
+     una foto verticale ad alta risoluzione produrrebbe un'anteprima
+     altissima, rompendo il layout della sezione - .anteprimaLogo (mirror
+     originale) non aveva questo problema perche' i loghi sono tipicamente
+     quasi quadrati/orizzontali, una foto sfondo hero puo' non esserlo. */
+  max-height: 200px;
+  object-fit: contain;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3);

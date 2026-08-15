@@ -59,7 +59,15 @@
     display: inline-flex;
   }
 
+  /* Review fix (code review, Edge Case Hunter): il <ul> resta SEMPRE
+     montato nell'HTML (NavPubblica.tsx non lo condiziona piu' su
+     "desktop || aperto") - qui nascosto via display:none quando chiuso,
+     .listaAperta lo rimostra quando aperto=true. inert/aria-hidden
+     (impostati in NavPubblica.tsx) lo tolgono anche dall'albero di
+     accessibilita'/tab-order mentre e' nascosto, mirror esatto del
+     pattern gia' in uso per .sidebar/.sidebarAperta in NavBar.module.css. */
   .lista {
+    display: none;
     flex-direction: column;
     align-items: stretch;
     position: absolute;
@@ -73,6 +81,10 @@
     /* {colors.azzurro} - stesso bordo inferiore di .header. */
     border-bottom: 4px solid var(--color-primary);
     z-index: 20;
+  }
+
+  .listaAperta {
+    display: flex;
   }
 
   .voce {

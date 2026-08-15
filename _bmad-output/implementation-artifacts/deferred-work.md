@@ -768,3 +768,31 @@
 - Nessuna strategia di cache/revalidate sulla chiamata alle API Graph di Facebook, e una scrittura DB ad ogni visita pubblica con consenso cookie accettato (nessun guard "scrivi solo se lo stato è cambiato") — la home pubblica è già `export const dynamic = "force-dynamic"` (nessuna cache attesa per questa rotta), volume di scrittura coerente con la scala ridotta di questo progetto (NFR6 "soluzione più semplice"). [lib/facebook-graph.ts]
 - `aggiornaStatoLetturaFacebook` fa un upsert parziale (senza `accessToken`, colonna `NOT NULL`) che si affida a `onConflict: "id"` per aggiornare una riga già esistente — se la riga singleton venisse mai cancellata fuori banda tra una lettura e l'altra, l'upsert fallirebbe con una violazione NOT NULL, inghiottita silenziosamente dal try/catch fail-soft di `aggiornaStatoSicuro`. Probabilità trascurabile: nessun percorso applicativo di questo progetto cancella righe da tabelle di configurazione singleton. [lib/facebook-graph.ts, lib/db-rls/configurazione-social-facebook.ts]
 - Messaggi di errore poco dettagliati mostrati all'Admin per risposte Graph API non-JSON o per un timeout (solo lo status HTTP o il messaggio di parsing grezzo) — rifinitura minore, nessun AC richiede una diagnostica più precisa di quella già presente. [lib/facebook-graph.ts]
+
+## Deferred from: code review of 18-14-foto-sfondo-hero (2026-08-15)
+
+- Nessuna funzione di rimozione della foto hero una volta caricata (solo sostituzione via upload di un'altra immagine) — nessun AC la richiede esplicitamente, gap di prodotto reale ma fuori scope. [lib/storage/foto-hero.ts]
+- `cacheControl` non impostato esplicitamente su `upload()` — stesso pattern già presente in `lib/storage/logo.ts`/`lib/storage/sponsor.ts`, non introdotto da questa storia. [lib/storage/foto-hero.ts]
+- Verifica magic-byte del JPEG limitata ai primi 3 byte — logica preesistente in `lib/storage/validazione-immagine.ts`, non toccata da questa storia.
+- Policy INSERT/UPDATE del bucket `foto-hero` senza `TO authenticated` esplicito (si affidano solo alla condizione sul claim JWT `ruoli`) — stesso pattern già presente in ogni altra migrazione Storage di questo progetto (logo, sponsor-banner, foto-squadra-gruppo). [prisma/migrations/20260815000000_add_foto_hero_bucket/migration.sql]
+- Nessun test di integrazione che eserciti realmente le policy RLS della migrazione contro Postgres/Supabase — mai fatto per nessun bucket in questo progetto, tutta la copertura resta a livello di mock JS.
+- `fileFinto` nei test unitari è un cast `as File` di un plain object, non un vero `Blob` — mirror esatto della stessa convenzione già in `lib/storage/logo.test.ts`. [lib/storage/foto-hero.test.ts]
+- `createClient()` non guardato da `.catch()` nel nuovo `Promise.all` di `/app/impostazioni` — verificato: stesso pattern non protetto già in uso in `app/page.tsx` stesso (mai avvolto in try/catch in nessuna pagina del progetto), non una regressione introdotta da questa storia. [app/app/(configurazione)/impostazioni/page.tsx]
+- Cache-buster `?v=` vuoto se `aggiornatoIl` è `null` nonostante l'oggetto esista — stesso pattern preesistente di `lib/storage/logo.ts`/`leggiInfoLogo`, mai osservato in pratica (Supabase Storage imposta sempre `updated_at` su un oggetto esistente). [lib/storage/foto-hero.ts]
+
+## Deferred from: code review of 18-17-rimuovere-preferenze-cookie-persistenti (2026-08-15)
+
+- Cliccare il link "Preferenze cookie" porta sempre alla home, anche da un'altra pagina pubblica — tradeoff esplicito scelto dall'utente stesso ("non si può inserire un link sul footer?"), `CookieBanner` resta montato solo sulla home per decisione di Story 18.6, non riaperta qui. [app/FooterPubblico.tsx]
+- Scroll-jump in cima alla pagina al click iniziale sul link — comportamento standard di `next/link` per una navigazione reale (non un difetto introdotto da questa storia, ogni altra navigazione dell'app si comporta allo stesso modo).
+- `.footerConCookieBanner` riserva sempre lo stesso padding-bottom extra sulla home, anche nella maggior parte delle visite in cui il banner non è aperto — corretto richiederebbe coordinare lo stato "aperto" del Client Component con il padding del Server Component `FooterPubblico`, sproporzionato al beneficio (spazio bianco extra, non un'invasività funzionale). [app/FooterPubblico.module.css]
+- Nessun test automatico sul nuovo percorso di riapertura — coerente con `CookieBanner.tsx`/`FooterPubblico.tsx`, mai stati testati in nessuna storia precedente.
+- Il query param `preferenze-cookie` è validato solo per presenza, non per valore — comportamento voluto (nessun valore atteso), nessun rischio reale (riapre solo lo stesso banner già mostrato a ogni primo visitatore).
+
+## Deferred from: code review of 18-18-menu-navigazione-mobile-due-righe (2026-08-15)
+
+- Nessun blocco dello scroll del `<body>` quando il pannello mobile è aperto (a differenza del drawer interno, `NavBarClient.tsx`) — tradeoff proporzionato per un dropdown compatto sotto l'header, non un overlay a piena altezza; scorrendo il pannello esce dalla vista ma resta raggiungibile tornando su. [app/NavPubblica.tsx]
+- Possibile perdita di focus tastiera cliccando la voce della pagina già attiva nel drawer mobile (nessuna navigazione avviene, ma `onClick` chiude comunque il pannello, portando l'elemento con focus a diventare `inert`) — stesso gap presente nel componente di riferimento interno (`NavBarClient.tsx`), non risolto nemmeno lì. [app/NavPubblica.tsx]
+- Breakpoint 900px/901px duplicato manualmente tra `NavPubblica.module.css` e `NavPubblica.tsx`, nessuna costante condivisa — stesso pattern già accettato per la coppia 880px di `NavBar.module.css`/`NavBarClient.tsx`, non risolto nemmeno lì.
+- `window.matchMedia(...)` ricreato ad ogni chiamata di `sottoscriviMediaQuery`/`leggiDesktop` — copiato verbatim dal pattern già esistente in `NavBarClient.tsx`, non una nuova inefficienza introdotta qui.
+- Nessun test automatico per lo stato aperto/chiuso, Esc, click-fuori — coerente con `NavBarClient.tsx`, mai testato nemmeno lui.
+- `.voceAttiva` (sottolineatura 3px) diventa un divisore a piena larghezza nel layout a colonna del drawer mobile, riuso invariato della stessa regola del layout a riga desktop — scelta visiva accettabile, nessun AC violato. [app/NavPubblica.module.css]
