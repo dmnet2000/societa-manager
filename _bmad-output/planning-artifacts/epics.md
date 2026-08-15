@@ -2469,6 +2469,123 @@ Questa storia porta la home **alla pari** con calendario (stesso `gap`-based lay
 5. **And** nessuna regressione funzionale: le regole di visibilità condizionale, il wrap della nav, i target di tocco 44px e i contorni di focus restano invariati — questa storia cambia solo colori/layout interno delle match-card, non aggiunge/rimuove alcuna condizione già validata (18.2 AC#2, 18.3 AC#2, 18.4 AC#3, 18.9 AC#3)
 6. **And** ogni test esistente che verifica contenuto/comportamento resta valido; i test che verificano dettagli implementativi CSS/markup del testo piatto delle squadre in home vanno aggiornati per il nuovo markup con lo span "vs"
 
+### Story 18.17: Rimuovere il pulsante "Preferenze cookie" dopo una scelta registrata
+
+*(Aggiunta post-apertura epica — 2026-08-14, richiesta esplicita dell'utente: "dopo aver selezionato i cookies non voglio vedere nessun pulsante di preferenze modificabile".)*
+
+As a Visitatore che ha già scelto se accettare o rifiutare i cookie non essenziali,
+I want che il piccolo pulsante "Preferenze cookie" smetta di comparire una volta fatta la scelta,
+so that l'interfaccia resti pulita senza un controllo persistente che non intendo più usare.
+
+**⚠️ Punto di conformità aperto, non risolto qui — da confermare esplicitamente con l'utente prima di implementare**: il pulsante "Preferenze cookie" è stato introdotto **apposta** dalla Story 18.6 (AC #3: "un link/pulsante 'Preferenze cookie' permette di rivedere o cambiare la scelta in qualsiasi momento, anche dopo la prima visita") per rispettare le Linee guida cookie del Garante Privacy italiano, che richiedono la possibilità di revocare/modificare il consenso in ogni momento, non solo alla prima visita — vedi commento esplicito in `app/CookieBanner.tsx` ("serve restare raggiungibile per riaprire le preferenze in qualunque momento (AC #3), quindi non può sparire interamente dall'albero una volta dato il consenso"). Rimuovere del tutto il pulsante **riapre quella decisione di conformità**, non è una modifica puramente estetica. Prima di sviluppare questa storia, va chiarito con l'utente se:
+- (a) è comunque la scelta voluta nonostante il rischio di conformità (l'utente si assume la decisione), oppure
+- (b) l'obiettivo reale è solo "meno invasivo/meno visibile" (es. spostarlo, renderlo più piccolo/discreto, o mostrarlo solo su hover/scroll) mantenendo comunque un modo per revocare la scelta.
+
+**Nota tecnica preliminare** (se confermata l'opzione (a)): il pulsante persistente vive nel ramo `if (!visibile)` di `app/CookieBanner.tsx` (righe 43-53) — tolto quello, il componente renderebbe `null` dopo una scelta registrata, invece del pulsante. La sola scelta iniziale (cookie mai impostato, `valoreIniziale === undefined`) continuerebbe a mostrare il banner completo come oggi. Nessun impatto sulla logica di lettura/scrittura del cookie (`lib/cookie-consenso.ts`), invariata. Riguarda solo le pagine pubbliche (stesso perimetro di Story 18.6).
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore che ha già accettato o rifiutato i cookie non essenziali (cookie `consenso_cookie` già impostato) **When** visita una pagina pubblica **Then** non vede alcun banner né alcun pulsante "Preferenze cookie" persistente
+2. **And** un Visitatore che non ha ancora fatto alcuna scelta (prima visita, o dopo la scadenza del cookie a ~6 mesi) vede il banner completo come oggi, invariato
+3. **And** nessuna modifica al comportamento di accettazione/rifiuto stesso (scrittura del cookie, refresh della pagina, gating della sezione post Facebook nell'hero) — solo la visibilità del pulsante di riapertura dopo la scelta
+
+### Story 18.18: Rivedere il menu di navigazione pubblica su mobile — le voci vanno a capo su due righe
+
+*(Aggiunta post-apertura epica — 2026-08-14, richiesta esplicita dell'utente: "il sito statico da mobile si vede male con i pulsanti su due linee, va sistemato".)*
+
+As a Visitatore da smartphone,
+I want che il menu di navigazione dell'header (Home, Squadre, Calendario, Staff, Contatti, Accedi) resti leggibile e ordinato,
+so that non veda le voci spezzate su due righe in modo disordinato.
+
+**⚠️ Riapre una decisione già presa due volte con l'utente, non risolta qui — da confermare esplicitamente in apertura sviluppo**: `app/NavPubblica.module.css` (`.lista`) implementa oggi deliberatamente un "elenco orizzontale con wrap" su schermi stretti — **nessun drawer/hamburger** — decisione presa esplicitamente con l'utente in Story 18.7 ("più semplice e sufficiente per 5 voci corte") e riconfermata in Story 18.12 AC #3 ("il mockup di riferimento del nuovo registro mostra un hamburger solo a scopo illustrativo, non è il pattern reale"). Il sintomo segnalato ora ("pulsanti su due linee") è probabilmente proprio l'effetto atteso di quel wrap su schermi stretti reali — il feedback dal vivo indica che il compromesso non funziona come sperato. Prima di sviluppare, va chiarito con l'utente quale direzione preferisce, ad esempio:
+- **(a) Introdurre un hamburger/drawer su mobile** — stesso pattern già usato dalla NavBar interna autenticata (`app/NavBarClient.tsx`, Story 9.2), che questa storia aveva esplicitamente evitato di riusare qui; percorso più invasivo ma probabilmente il più solido.
+- **(b) Scroll orizzontale invece di andare a capo** — `overflow-x: auto` sulla lista invece di `flex-wrap: wrap`, le voci restano su una riga sola, scorrevole col dito.
+- **(c) Ridurre voci/spaziatura/dimensione testo** su schermi stretti così da restare su una riga più spesso (soluzione minima, potrebbe non bastare su schermi molto piccoli).
+- **(d) Altro**, da discutere.
+
+Nessuna decisione presa qui — la scelta va fatta con l'utente in apertura sviluppo, idealmente con un confronto visivo (mockup o verifica diretta su un telefono reale, non solo in sandbox).
+
+**Acceptance Criteria (da rifinire in base alla direzione scelta sopra):**
+
+1. **Given** un Visitatore su uno smartphone (larghezza schermo stretta, es. 360-390px) **When** visita qualunque pagina pubblica **Then** il menu di navigazione dell'header è leggibile e ordinato, senza voci spezzate in modo disordinato su più righe
+2. **And** ogni voce di menu mantiene un target di tocco minimo 44×44px (nessuna regressione rispetto a `.voce` esistente)
+3. **And** la voce della pagina corrente resta visivamente distinguibile dalle altre (stato attivo, invariato da Story 18.7 AC #3)
+4. **And** nessuna regressione sulle altre pagine pubbliche che montano lo stesso `NavPubblica.tsx` (`/`, `/squadre`, `/calendario`, `/staff`, `/contatti`)
+
+### Story 18.19: Separare il titolo hero dal blocco Post Facebook, blocco più stretto e più alto
+
+*(Aggiunta post-apertura epica — 2026-08-14/15, richiesta esplicita dell'utente dopo aver visto dal vivo la Story 18.13 estesa in sessione (non una story formale a sé: il carosello Post Facebook è stato spostato dentro l'hero, sovrapposto al titolo, su richiesta diretta dello stesso utente qualche scambio prima — vedi `app/HeroPostFacebook.tsx`, `app/home-pubblica.module.css` classi `.hero`/`.heroFotoPost`/`.heroContenuto`/`.infoPost`). Testo originale dell'utente: "la scritta 'benvenuti nel volley mogliano' la metterei fuori dal blocco facebook e non sopra, ridurrei la larghezza del blocco facebook me lo allungherei ancora".)*
+
+As a Visitatore che visita la home pubblica,
+I want che il titolo "Benvenuti nel [Settore]" sia un blocco separato e leggibile, non sovrapposto alle foto dei post Facebook, e che il blocco dei post Facebook sia più stretto e più alto di adesso,
+so that sia il titolo sia i post Facebook restino chiari e non si scontrino visivamente.
+
+**Cosa cambia rispetto all'implementazione attuale** (fatta in sessione su richiesta diretta, non ancora verificata dal vivo su un dispositivo reale — vedi Dev Notes della Story 18.13 e i messaggi immediatamente precedenti a questa storia):
+
+1. **Titolo fuori dal blocco, non sovrapposto**: oggi `.heroContenuto` (titolo `<h1>` + CTA "Scopri le squadre") è in overlay sopra `.heroFotoPost` (foto del post a piena larghezza/altezza dell'hero, con scrim scuro sotto per leggibilità) — stesso layer, stesso `z-index`, il titolo "sta sopra" la foto. L'utente chiede l'opposto: titolo come blocco a sé, **fuori** dall'area occupata dal blocco Facebook, non più in overlay su di essa. Punto di dettaglio da confermare in apertura sviluppo (non specificato a parole): il titolo va **sopra** il blocco Facebook (ordine di lettura naturale) o **sotto**? "non sopra" nel messaggio dell'utente si riferisce più plausibilmente a "non sovrapposto" (overlay) che a una posizione verticale — ma va verificato con l'utente prima di escludere l'altra lettura.
+2. **Blocco Facebook più stretto**: oggi `.heroFotoPost` è a piena larghezza dell'hero (`inset: 0`, come lo era il vecchio placeholder "FOTO AZIONE" che sostituisce). Va ridotto — dimensione esatta (es. stessa larghezza `max-width: 720px` già usata per `.heroContenuto`, o un'altra misura) da concordare in apertura sviluppo.
+3. **Blocco Facebook più alto**: nella stessa richiesta, l'utente chiede di allungarlo ulteriormente (non ridurlo anche in altezza) — probabile continuità con un feedback precedente sulle foto "tagliate" nel primo carosello boxed (Story 18.13 originale, `max-height: 280px`), poi risolto passando a uno sfondo a piena altezza (`object-fit: cover` su tutto l'hero); tornando a un blocco più stretto e delimitato, serve di nuovo un'altezza esplicita generosa perché le foto non risultino schiacciate.
+
+**Nota per chi sviluppa**: questa è la seconda iterazione della stessa area in poche ore (prima "sposta i post nell'hero, sovrapposti al titolo", ora "titolo fuori, blocco più stretto e alto") — verificare il markup/CSS **reale** di `app/HeroPostFacebook.tsx`/`app/home-pubblica.module.css` prima di scrivere il piano di implementazione, non assumere lo stato descritto qui sia ancora esatto se nel frattempo sono stati fatti altri aggiustamenti. Nessuna verifica visiva dal vivo è stata possibile finora (sandbox senza browser) — a differenza delle altre story di restyling di questo Epic, qui manca anche un giro di conferma visiva dell'utente sull'implementazione attuale prima di richiedere già una seconda modifica, il che rende ancora più importante controllare il risultato con l'utente durante lo sviluppo, non solo a fine storia.
+
+**Acceptance Criteria (indicativi, da rifinire con le misure esatte in apertura sviluppo):**
+
+1. **Given** un Visitatore **When** visita la home pubblica con post Facebook disponibili **Then** il titolo "Benvenuti nel [Settore]" e il CTA "Scopri le squadre" sono un blocco visivamente separato dal blocco che mostra i post Facebook, non sovrapposti alla foto del post
+2. **And** il blocco Post Facebook occupa una larghezza ridotta rispetto alla piena larghezza dell'hero attuale (misura esatta da concordare)
+3. **And** il blocco Post Facebook è più alto di quanto non fosse nella prima versione boxed (280px, Story 18.13 originale) — le foto dei post non appaiono eccessivamente schiacciate/ritagliate
+4. **And** nessuna regressione sulle altre regole già validate: fail-soft se non ci sono post (placeholder "FOTO AZIONE" torna a comparire), gating sul consenso cookie (Story 18.6), touch target 44px sui controlli del carosello, pausa/ripresa automatica (WCAG 2.2.2)
+
+### Story 18.20: Logo della Polisportiva nel footer pubblico, con link al sito e ai social
+
+*(Aggiunta post-apertura epica — 2026-08-15, richiesta esplicita dell'utente: "va aggiunto il logo della polisportiva con il link al sito e alle pagine social se presenti".)*
+
+As a Visitatore del sito pubblico,
+I want vedere il logo della Polisportiva (l'associazione madre a cui appartiene il Settore Volley) con un link al suo sito e ai suoi canali social,
+so that possa raggiungere facilmente anche la Polisportiva, non solo il Settore Volley.
+
+**Nota di contesto — entità nuova, non ancora modellata**: oggi l'app conosce solo il "Settore Volley" (il nome visualizzato in header/footer/login tramite `nomeSettore`, `ConfigurazioneApplicazione`, e il proprio logo caricato in `/app/logo`, Story 7.2 — **Admin-only**) e la sua Pagina Facebook diretta (`urlPaginaFacebook`, Story 18.5 — il link già usato anche nel nuovo carosello dell'hero, Story 18.13). La **Polisportiva** (l'associazione sportiva "madre" multi-settore a cui il Volley appartiene — vedi il sottotitolo di `docs/manuale-utente.md`, "Gestione Settore Volley · Polisportiva") non ha invece **alcuna presenza** oggi: nessun logo, nessun link. Questa storia introduce quella presenza per la prima volta.
+
+**Cosa serve, per analogia con pattern già stabiliti nel progetto:**
+- **Logo Polisportiva**: nuovo upload immagine, stesso mirror già usato 4 volte (logo Settore Story 7.2, sponsor banner Story 16.1, foto squadra Story 18.4, foto hero Story 18.14) — bucket Storage pubblico dedicato (es. `logo-polisportiva`), path fisso/singleton (nessuna colonna Prisma, esistenza verificata via `list()`), riuso diretto di `lib/storage/validazione-immagine.ts` (2MB, PNG/JPEG, magic-byte).
+- **Link al sito della Polisportiva** e **link ai social della Polisportiva**: nuovi campi opzionali, mirror di `urlPaginaFacebook` (`ConfigurazioneApplicazione`, singleton no-RLS, AD-9).
+
+**Punti aperti, non decisi qui — da chiarire con l'utente in apertura sviluppo:**
+1. **Quanti link social e quali piattaforme?** "le pagine social **se presenti**" suggerisce più di un canale possibile (non solo Facebook come per il Settore) — un solo campo generico "link social Polisportiva", o più campi per piattaforma (Facebook/Instagram/altro)? Nessuna icona/etichetta per piattaforma diversa da Facebook esiste oggi nel progetto.
+2. **Dove compare nel sito?** Il footer pubblico (`FooterPubblico.tsx`, mostrato su ogni pagina pubblica) è il posto più naturale per un logo/link istituzionale "esterno" al Settore — ma va confermato, non assunto (es. potrebbe invece stare nell'header accanto al logo del Settore).
+3. **Chi può caricarlo/modificarlo?** Il logo del Settore (Story 7.2) è **Admin-only**; il resto dei contenuti pubblici introdotti dall'Epic 18 (Sponsor, Contatti, Pagina Facebook, foto hero) è invece **Admin+Dirigente**. Da decidere se questo segue lo stesso perimetro degli altri contenuti pubblici (Admin+Dirigente, coerente con la maggioranza) o resta riservato all'Admin come il logo del Settore che accompagna concettualmente.
+4. **Il "sito" della Polisportiva è un dominio esterno diverso da questo?** Presumibilmente sì (la Polisportiva ha un proprio sito, distinto da questo gestionale) — va confermato che sia un semplice link `<a>` esterno, non una vera integrazione.
+
+**Acceptance Criteria (indicativi, da rifinire in base ai punti aperti sopra):**
+
+1. **Given** un Admin (o Dirigente, se confermato al punto 3) **When** carica un'immagine come logo della Polisportiva **Then** l'immagine viene salvata e sostituisce quella precedente se già presente (stessa validazione MIME/dimensione/magic-byte già in uso per logo/Sponsor/foto squadra/foto hero)
+2. **And** lo stesso Ruolo può impostare l'URL del sito della Polisportiva e l'URL/i delle sue pagine social (numero di campi da definire al punto 1)
+3. **Given** un Visitatore senza sessione **When** visita una pagina pubblica **Then** vede il logo della Polisportiva (se caricato) con un link cliccabile al suo sito, e link ai suoi canali social configurati (se presenti) — analogo trattamento fail-soft già in uso per Pagina Facebook/Sponsor: nessun elemento vuoto/rotto se non configurato
+4. **And** nessuna regressione sul logo/branding esistente del Settore Volley (header, footer, pagina di login) — la Polisportiva si aggiunge, non sostituisce nulla
+
+### Story 18.21: Favicon e titolo della scheda del browser dinamico dal nome del Settore
+
+*(Aggiunta post-apertura epica — 2026-08-15, richiesta esplicita dell'utente: "va aggiunta una favicon e modificato il testo che viene fuori sul tab del browser con il nome del settore (da prendere dalla conf di impostazioni)".)*
+
+As a Visitatore o Utente autenticato,
+I want vedere un'icona (favicon) nella scheda del browser e il nome reale del Settore nel titolo della scheda,
+so that riconosca subito il sito anche con più schede aperte, invece del testo generico "Società Manager".
+
+**Stato attuale, verificato nel codice**: `app/layout.tsx` (root layout, condiviso da sito pubblico `"/"` e area applicativa `"/app"`) espone `export const metadata: Metadata = { title: "Società Manager", ... }` — **statico**, mai letto da `ConfigurazioneApplicazione`. Nessuna favicon è configurata oggi: solo `icons.apple` (`/icons/icon-192.png`, per l'icona iOS/PWA, Story 14.1) — manca l'`icons.icon` standard che i browser desktop mostrano nella scheda. L'asset del logo reale del club **esiste già** nel repo in forma quadrata (`public/icons/icon-192.png`/`icon-512.png`, generati per il manifest PWA in Story 14.1) — riusabile direttamente come favicon senza caricare un nuovo file.
+
+**Nota tecnica da verificare in apertura sviluppo**: rendere `title` dinamico (dipendente da `leggiNomeSettore()`, `lib/configurazione-applicazione.ts`, già riusata in `HeaderPubblico.tsx`/`FooterPubblico.tsx`/`app/page.tsx`) richiede sostituire l'`export const metadata` statico con `export async function generateMetadata(): Promise<Metadata>` — verificare se questo costringe l'intero root layout (quindi anche le pagine oggi statiche come `/recupera-password`, `/registrati`, `/manifest.webmanifest`, marcate `○ (Static)` nell'output di build) a diventare dinamiche, o se Next.js gestisce `generateMetadata` in isolamento dal resto del rendering della pagina — non assumere, verificare col build reale prima di concludere la storia.
+
+**Punti aperti, non decisi qui:**
+1. **Fallback quando `nomeSettore` non è configurato**: stesso pattern già in uso in 3 punti del codice (`nomeVisualizzato = nomeSettore ?? "Settore Volley"`) — riusabile identico qui, o va scritto un fallback diverso per il titolo della scheda?
+2. **Il nome del manifest PWA (`app/manifest.ts`, oggi anch'esso statico "Società Manager"/"Soc. Manager") va reso dinamico allo stesso modo, o resta fuori scope qui** (l'utente ha parlato esplicitamente solo del "tab del browser", non dell'icona/nome mostrati quando il sito viene installato come app PWA)?
+3. **La favicon resta l'asset statico esistente, o deve invece riflettere il logo caricato dall'Admin** (`/app/logo`, Story 7.2, Storage dinamico)? Il messaggio dell'utente chiede solo "una favicon", non specifica se debba seguire il logo configurabile — la strada più semplice (asset statico già presente) è raccomandata come punto di partenza, ma va confermata.
+
+**Acceptance Criteria (indicativi, da rifinire in base ai punti aperti sopra):**
+
+1. **Given** un Visitatore o Utente autenticato **When** apre qualunque pagina del sito (pubblica o area applicativa) **Then** vede un'icona (favicon) nella scheda del browser, riconoscibile come il logo della società
+2. **And** il titolo della scheda del browser mostra il nome reale del Settore (letto da `ConfigurazioneApplicazione`), non più il testo statico "Società Manager"
+3. **And** se il nome del Settore non è configurato, la scheda mostra un fallback sensato invece di un titolo vuoto
+4. **And** nessuna regressione sulla generazione statica delle pagine che oggi non richiedono accesso al database (verificare l'output di build prima e dopo)
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
