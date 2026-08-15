@@ -100,20 +100,23 @@
   }
 }
 
-/* Sfondo fotografico reale (post Facebook) - stesso ruolo/posizionamento
-   di .heroFoto sopra, ma object-fit:cover a piena altezza del blocco
-   (Story 18.19: non piu' dell'intero hero, vedi .heroBlocco sopra - non
-   il piccolo riquadro 280px del vecchio carosello a fondo pagina): il
-   ritaglio ai bordi e' il trattamento standard e atteso di uno sfondo
-   hero (stesso principio gia' previsto per la futura foto reale, Story
-   18.14), non un difetto da correggere. Scrim scuro sopra la foto (::after)
-   per garantire leggibilita' del testo/controlli del post qualunque sia
-   la foto sottostante. */
+/* Sfondo fotografico reale (post Facebook). Story 18.19 (quinto giro):
+   background-size passato da cover a contain su richiesta esplicita
+   dell'utente ("ridurre lo zoom... visualizzare il post integralmente
+   senza tagliarlo") - "cover" ritagliava la foto per riempire il riquadro
+   700x700 (comportamento di default per uno sfondo hero a piena area, gia'
+   accettato nei giri precedenti), ma con un blocco ora piu' contenuto e
+   quadrato l'utente preferisce vedere la foto intera, anche a costo di
+   bande vuote ai lati/sopra-sotto quando le proporzioni non coincidono con
+   700x700. Nessun colore di sfondo aggiunto qui: le bande vuote mostrano
+   gia' correttamente lo sfondo scuro di .hero (#0F2438) dietro, essendo
+   .heroBlocco stesso privo di un proprio background. */
 .heroFotoPost {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-size: cover;
+  background-size: contain;
+  background-repeat: no-repeat;
   background-position: center;
 }
 
