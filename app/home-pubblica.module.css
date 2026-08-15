@@ -13,17 +13,18 @@
    {colors.bianco}=var(--color-surface). */
 
 /* ===== HERO ===== */
-/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post Facebook
-   sostituisce il placeholder "FOTO AZIONE" come sfondo dell'hero - il
-   titolo/CTA restano sovrapposti come prima, la fascia testo+controlli del
-   post si aggiunge sotto di loro. flex-direction:column + justify-content
-   (non piu' align-items:flex-end su riga singola) ancora il gruppo
-   .heroContenuto+.infoPost in fondo all'hero, uno sopra l'altro - i livelli
-   assolutamente posizionati (.heroFoto/.heroFotoPost/.heroDiagonale) non
-   partecipano al flex, invariati in questo. z-index esplicito su ogni
-   livello (non piu' affidato al solo ordine nel DOM) perche' ora .heroFoto/
-   .heroFotoPost possono comparire in punti diversi del markup a seconda
-   che ci siano post da mostrare. */
+/* Story 18.19: titolo (.heroContenuto) e blocco Post Facebook (.heroBlocco)
+   sono due blocchi impilati distinti, il titolo non e' piu' in overlay
+   sulla foto - richiesta esplicita dell'utente dopo aver visto dal vivo
+   l'iterazione precedente (2026-08-14, dove il carosello Post Facebook
+   sostituiva il placeholder "FOTO AZIONE" come sfondo dell'INTERO hero con
+   titolo/CTA sovrapposti sopra). flex-direction:column + justify-content:flex-end
+   ancora il gruppo .heroContenuto+.heroBlocco in fondo all'hero, uno sopra
+   l'altro - .heroDiagonale (livello assolutamente posizionato, accento
+   decorativo) non partecipa al flex, invariato. .heroFoto/.heroFotoPost non
+   sono piu' figli diretti di .hero: vivono dentro .heroBlocco, che ne e'
+   ora il contesto di posizionamento (inset:0 relativo a quel blocco piu'
+   stretto, non piu' all'intero hero). */
 .hero {
   position: relative;
   overflow: hidden;
@@ -69,14 +70,47 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* Story 18.19: contenitore posizionato del blocco Post Facebook (o del suo
+   fallback), separato dal titolo (.heroContenuto sotto) su richiesta
+   dell'utente dopo aver visto dal vivo la Story 18.13 estesa in sessione
+   ("la scritta... la metterei fuori dal blocco facebook e non sopra,
+   ridurrei la larghezza del blocco facebook me lo allungherei ancora").
+   position:relative diventa il contesto di riferimento per
+   .heroFoto/.heroFotoPost sotto (inset:0 relativo a QUESTO blocco, non piu'
+   all'intero .hero) - quelle due regole restano testualmente invariate,
+   cambia solo il loro genitore nel markup (app/page.tsx). 480px/420px:
+   valori non richiesti letteralmente dall'utente ("piu' stretto"/"piu'
+   alto" senza misure - epics.md li lascia a giudizio di sviluppo), scelti
+   per essere chiaramente piu' stretti dei 720px di .heroContenuto e ben
+   oltre i 280px della prima versione boxed di Story 18.13 - .hero{min-height:60vh}
+   resta un minimo, non un massimo, nessun rischio di ritaglio se il
+   contenuto supera quella soglia. */
+.heroBlocco {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  margin: var(--space-4) 48px 48px;
+  max-width: 480px;
+  min-height: 420px;
+}
+
+@media (max-width: 900px) {
+  .heroBlocco {
+    margin: var(--space-3) 20px 32px;
+    max-width: none;
+    min-height: 320px;
+  }
+}
+
 /* Sfondo fotografico reale (post Facebook) - stesso ruolo/posizionamento
-   di .heroFoto sopra, ma object-fit:cover a piena altezza dell'hero (non
+   di .heroFoto sopra, ma object-fit:cover a piena altezza del blocco
+   (Story 18.19: non piu' dell'intero hero, vedi .heroBlocco sopra - non
    il piccolo riquadro 280px del vecchio carosello a fondo pagina): il
    ritaglio ai bordi e' il trattamento standard e atteso di uno sfondo
    hero (stesso principio gia' previsto per la futura foto reale, Story
    18.14), non un difetto da correggere. Scrim scuro sopra la foto (::after)
-   per garantire leggibilita' del titolo/testo qualunque sia la foto
-   sottostante. */
+   per garantire leggibilita' del testo/controlli del post qualunque sia
+   la foto sottostante. */
 .heroFotoPost {
   position: absolute;
   inset: 0;
@@ -192,11 +226,15 @@
    col titolo, un post lungo per intero renderebbe l'hero eccessivamente
    alto. Il link "Vedi su Facebook" resta sempre disponibile per leggere
    il post completo. */
+/* Story 18.19: padding ridotto da 48px a var(--space-4) - il genitore e'
+   ora .heroBlocco (480px), non piu' l'intero hero: 48px per lato
+   lascerebbe solo ~384px di contenuto utile, sproporzionato. max-width:720px
+   rimosso - non ha piu' senso, il contenitore stesso e' gia' piu' stretto
+   di quel valore. */
 .infoPost {
   position: relative;
   z-index: 2;
-  padding: 0 48px 32px;
-  max-width: 720px;
+  padding: 0 var(--space-4) var(--space-4);
   color: #ffffff;
 }
 

@@ -263,35 +263,12 @@ export default async function HomePubblicaPage() {
       <HeaderPubblico />
       <main>
         <div className={styles.hero}>
-          {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
-              Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
-              dell'hero - foto reali della Pagina al posto del pattern
-              statico, quando disponibili. Story 18.14: quando non ci sono
-              post Facebook, la foto sfondo hero caricata da Admin/Dirigente
-              (se presente) e' il secondo fallback, prima del placeholder
-              statico - priorita' Facebook > foto caricata > placeholder
-              (AC #3/#5 di quella storia, decisione presa esplicitamente con
-              l'utente: i post Facebook restano la fonte con priorita' piu'
-              alta, invariata). */}
-          {postFacebook.length === 0 && !fotoHero.esiste && (
-            <div className={styles.heroFoto} aria-hidden="true" />
-          )}
-          {/* Story 18.14: riuso deliberato di styles.heroFotoPost (stessa
-              classe usata da HeroPostFacebook.tsx per la foto del post
-              corrente) - stesso trattamento visivo (object-fit cover, scrim
-              per la leggibilita' del testo, AC #4), nessuna nuova regola CSS:
-              una foto vera come sfondo dell'hero e' lo stesso ruolo visivo
-              indipendentemente dalla sorgente (post Facebook o upload). */}
-          {postFacebook.length === 0 && fotoHero.esiste && (
-            <div
-              className={styles.heroFotoPost}
-              style={{
-                backgroundImage: `url(${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")})`,
-              }}
-              aria-hidden="true"
-            />
-          )}
           <div className={styles.heroDiagonale} aria-hidden="true" />
+          {/* Story 18.19: titolo/CTA come blocco a se', PRIMA nel markup
+              (AC #1, ordine di lettura "titolo sopra" scelto con l'utente)
+              - non piu' in overlay su alcuna foto, il blocco Post Facebook
+              sotto (.heroBlocco) e' ora un contenitore a se' stante, piu'
+              stretto dell'hero. */}
           <div className={styles.heroContenuto}>
             <h1>Benvenuti nel {nomeVisualizzato}</h1>
             {/* Story 18.5: ultimo residuo del paragrafo "in arrivo" rimosso -
@@ -308,12 +285,46 @@ export default async function HomePubblicaPage() {
               Scopri le squadre
             </Link>
           </div>
-          {/* Radice <> con due elementi: lo sfondo fotografico (position:
-              absolute, inset:0) e la fascia informativa del post (testo +
-              controlli) sotto al titolo - stesso stato (indice/pausa)
-              condiviso tra i due, non due componenti indipendenti che
-              potrebbero desincronizzarsi. */}
-          {postFacebook.length > 0 && <HeroPostFacebook post={postFacebook} />}
+          {/* Story 18.19: blocco Post Facebook (o fallback), piu' stretto e
+              piu' alto dell'intero hero (AC #2/#3) - le 3 condizioni sotto
+              restano testualmente identiche a prima di questa storia (AC #4),
+              solo il contenitore che le avvolge cambia. */}
+          <div className={styles.heroBlocco}>
+            {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
+                Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
+                del blocco - foto reali della Pagina al posto del pattern
+                statico, quando disponibili. Story 18.14: quando non ci sono
+                post Facebook, la foto sfondo hero caricata da Admin/Dirigente
+                (se presente) e' il secondo fallback, prima del placeholder
+                statico - priorita' Facebook > foto caricata > placeholder
+                (AC #3/#5 di quella storia, decisione presa esplicitamente con
+                l'utente: i post Facebook restano la fonte con priorita' piu'
+                alta, invariata). */}
+            {postFacebook.length === 0 && !fotoHero.esiste && (
+              <div className={styles.heroFoto} aria-hidden="true" />
+            )}
+            {/* Story 18.14: riuso deliberato di styles.heroFotoPost (stessa
+                classe usata da HeroPostFacebook.tsx per la foto del post
+                corrente) - stesso trattamento visivo (object-fit cover, scrim
+                per la leggibilita' del testo, AC #4), nessuna nuova regola CSS:
+                una foto vera come sfondo del blocco e' lo stesso ruolo visivo
+                indipendentemente dalla sorgente (post Facebook o upload). */}
+            {postFacebook.length === 0 && fotoHero.esiste && (
+              <div
+                className={styles.heroFotoPost}
+                style={{
+                  backgroundImage: `url(${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")})`,
+                }}
+                aria-hidden="true"
+              />
+            )}
+            {/* Radice <> con due elementi: lo sfondo fotografico (position:
+                absolute, inset:0) e la fascia informativa del post (testo +
+                controlli) - stesso stato (indice/pausa) condiviso tra i due,
+                non due componenti indipendenti che potrebbero
+                desincronizzarsi. */}
+            {postFacebook.length > 0 && <HeroPostFacebook post={postFacebook} />}
+          </div>
         </div>
 
         {/* Story 18.2 (AC #2): nessuna sezione se non ci sono Sponsor attivi
