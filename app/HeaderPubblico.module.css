@@ -67,6 +67,31 @@
   color: #ffffff;
 }
 
+/* Story 18.20: logo Polisportiva, dimensione coerente con .logo (Settore)
+   sopra per continuita' visiva tra i due loghi nello stesso header. Nessun
+   trattamento hover/focus-visible aggiuntivo se non e' un link (quando
+   urlSitoPolisportiva manca) - solo l'<a> quando presente ne ha bisogno. */
+.logoPolisportiva {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Review fix (code review Story 18.20, Edge Case Hunter): .logoPolisportiva
+   e' applicata in due varianti in HeaderPubblico.tsx - sull'<a> che avvolge
+   un <img> nudo (link presente) oppure direttamente sull'<img> (nessun
+   link) - il selettore discendente ".logoPolisportiva img" da solo non
+   colpiva mai la seconda variante. */
+.logoPolisportiva img,
+img.logoPolisportiva {
+  max-height: 40px;
+  max-width: 120px;
+}
+
+.logoPolisportiva:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 /* .accedi NON e' il pulsante primario - e' il trattamento distinto
    header-nav.accedi-link-* di DESIGN.md: bordo sottile, testo smorzato,
    nessun riempimento pieno. min-height:44px/inline-flex invariati (AC #4,

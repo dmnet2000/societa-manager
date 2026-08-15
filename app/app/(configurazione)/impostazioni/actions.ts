@@ -7,12 +7,14 @@ import {
   salvaEmailSegreteria,
   salvaUrlPaginaFacebook,
   salvaContattiPubblici,
+  salvaUrlSitoPolisportiva,
 } from "@/lib/configurazione-applicazione";
 import {
   leggiConfigurazioneSocialFacebook,
   salvaTokenFacebook,
 } from "@/lib/db-rls/configurazione-social-facebook";
 import { caricaFotoHero } from "@/lib/storage/foto-hero";
+import { caricaLogoPolisportiva } from "@/lib/storage/logo-polisportiva";
 import {
   MIME_AMMESSI_IMMAGINE,
   DIMENSIONE_MASSIMA_IMMAGINE_BYTE,
@@ -90,8 +92,10 @@ const LUNGHEZZA_MASSIMA_LINK_ESTERNO = 500;
 // Story 10.8 review fix) - il valore e' usato come link diretto in /contatti
 // e come base per estrarre lo slug della Pagina (lib/facebook-graph.ts,
 // Story 18.13), un javascript:/data: non validato qui sarebbe un problema
-// anche in quei contesti.
-function urlPaginaFacebookValido(valore: string): boolean {
+// anche in quei contesti. Rinominata da "urlPaginaFacebookValido" (Story
+// 18.20): non specifica di un solo campo, riusata anche per
+// urlSitoPolisportiva sotto - stessa regola, nessun motivo per duplicarla.
+function urlEsternoValido(valore: string): boolean {
   if (valore.length > LUNGHEZZA_MASSIMA_LINK_ESTERNO) return false;
   try {
     const url = new URL(valore);
@@ -114,7 +118,7 @@ export async function salvaUrlPaginaFacebookAction(
 
   const valore = String(formData.get("urlPaginaFacebook") ?? "").trim();
 
-  if (valore && !urlPaginaFacebookValido(valore)) {
+  if (valore && !urlEsternoValido(valore)) {
     return {
       error: {
         code: "VALIDATION",
@@ -374,6 +378,110 @@ export async function salvaTokenFacebookAction(
       error: {
         code: "INTERNAL",
         message: "Impossibile salvare il Token Facebook. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type LogoPolisportivaActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+// Story 18.20 (AC #1/#3): mirror esatto di caricaFotoHeroAction sopra -
+// stessa sequenza di validazione, stesso perimetro Ruoli (ADMIN+DIRIGENTE,
+// non ADMIN-only come il logo del Settore, app/(configurazione)/logo/actions.ts).
+export async function caricaLogoPolisportivaAction(
+  _prevState: LogoPolisportivaActionState,
+  formData: FormData
+): Promise<LogoPolisportivaActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    };
+  }
+  if (!MIME_AMMESSI_IMMAGINE.includes(file.type)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Formato immagine non ammesso (solo PNG, JPG).",
+      },
+    };
+  }
+  if (file.size > DIMENSIONE_MASSIMA_IMMAGINE_BYTE) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il file supera la dimensione massima di 2MB.",
+      },
+    };
+  }
+  if (!(await contenutoCorrispondeAlMimeImmagine(file))) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    await caricaLogoPolisportiva(supabase, file);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile caricare il logo. Riprova." },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type SitoPolisportivaActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+// Story 18.20 (AC #2/#3): mirror esatto di salvaUrlPaginaFacebookAction
+// sopra - stesso perimetro Ruoli, stessa validazione (urlEsternoValido
+// riusata invariata), stringa vuota rimuove la configurazione.
+export async function salvaUrlSitoPolisportivaAction(
+  _prevState: SitoPolisportivaActionState,
+  formData: FormData
+): Promise<SitoPolisportivaActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const valore = String(formData.get("urlSitoPolisportiva") ?? "").trim();
+
+  if (valore && !urlEsternoValido(valore)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    };
+  }
+
+  try {
+    await salvaUrlSitoPolisportiva(valore || null);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare il sito della Polisportiva. Riprova.",
       },
     };
   }

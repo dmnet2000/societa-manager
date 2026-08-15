@@ -4,7 +4,7 @@ baseline_commit: eb5e1058ab8abdc0d033f0e7219638be361278d6
 
 # Story 18.19: Separare il titolo hero dal blocco Post Facebook, blocco più stretto e più alto
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -160,3 +160,12 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato.
 - 2026-08-15: Terzo giro, stesso giorno, su ulteriore feedback dopo nuova verifica con `npm run cf:preview` ("mi piace l'effetto, aumenterei a 700px") — larghezza `.heroBlocco` 600px → 700px, unico valore cambiato. 1182/1182 test Vitest passati, 0 errori tsc/eslint. Status resta review.
 - 2026-08-15: Quarto giro, stesso giorno ("l'altezza è ancora piccola, andrebbe allungata") — `aspect-ratio` di `.heroBlocco` da `4/3` a `1/1` (quadrato, 700×700px). 1182/1182 test Vitest passati, 0 errori tsc/eslint. Status resta review.
 - 2026-08-15: Quinto giro, stesso giorno ("ridurre lo zoom... visualizzare il post integralmente senza tagliarlo") — `.heroFotoPost` da `background-size: cover` a `contain` + `background-repeat: no-repeat`. 1182/1182 test Vitest passati, 0 errori tsc/eslint. Status resta review.
+- 2026-08-15: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, in parallelo con la review della Story 18.20) — 5 patch applicate, 0 difetti bloccanti rimasti aperti. 1208/1208 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: review → done.
+
+## Review Findings
+
+- [x] [Review][Patch] `<h1>` mancante nell'hero dopo la rimozione del titolo (secondo giro) — regressione di accessibilità/SEO: nessuna intestazione di primo livello nel document outline (`HeaderPubblico.tsx` mostra il nome del Settore in uno `<span>`, non un heading). Risolto con `<h1 className={styles.srOnly}>Benvenuti nel {nomeVisualizzato}</h1>` (nuova utility `.srOnly`, pattern clip standard) — struttura semantica ripristinata senza reintrodurre testo visibile, `leggiNomeSettore()`/`nomeVisualizzato` ripristinati in `app/page.tsx` solo per questo scopo.
+- [x] [Review][Patch] `.heroBlocco` senza sfondo proprio — le bande vuote lasciate da `background-size:contain` (quinto giro) potevano mostrare `.heroDiagonale` (accento decorativo, z-index:1) invece di uno sfondo scuro piatto su schermi larghi. Risolto aggiungendo `background: #0f2438` a `.heroBlocco` (stesso valore di `.hero`).
+- [x] [Review][Patch] `.heroBlocco` con `width:100%` + margine orizzontale non nullo — il margine si somma FUORI dal box, quindi il blocco eccedeva sempre la larghezza disponibile della quantità del margine (non solo in un range ristretto come inizialmente riportato dall'Edge Case Hunter, verificato con calcolo manuale), venendo tagliato dall'`overflow:hidden` di `.hero`. Risolto con `width: calc(100% - 96px)` (desktop) / `calc(100% - 40px)` (mobile), sottraendo esplicitamente il margine.
+- [x] [Review][Patch] Commento obsoleto in `app/page.tsx` che citava ancora "object-fit cover" per lo sfondo del blocco, mentre il quinto giro era già passato a `background-size:contain`. Aggiornato per riflettere lo stato attuale.
+- [x] [Review][Patch] Commento obsoleto in `app/HeroPostFacebook.tsx` (righe 10-21) che descriveva ancora il vecchio layout con "titolo/CTA sovrapposti sopra" e "in coda al gruppo titolo+CTA" — entrambi rimossi dal secondo giro. Aggiornato, nessuna modifica alla logica di rendering.

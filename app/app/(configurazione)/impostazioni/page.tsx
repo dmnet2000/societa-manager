@@ -4,6 +4,7 @@ import {
   leggiEmailSegreteria,
   leggiUrlPaginaFacebook,
   leggiContattiPubblici,
+  leggiUrlSitoPolisportiva,
 } from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -11,11 +12,14 @@ import { TitoloPagina } from "@/app/AiutoContestuale";
 import { createClient } from "@/lib/supabase/server";
 import { leggiConfigurazioneSocialFacebook, rimuoviToken } from "@/lib/db-rls/configurazione-social-facebook";
 import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
+import { leggiInfoLogoPolisportiva, urlPubblicoLogoPolisportiva } from "@/lib/storage/logo-polisportiva";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import { PaginaFacebookForm } from "./PaginaFacebookForm";
 import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
 import { TokenFacebookForm } from "./TokenFacebookForm";
 import { FotoHeroForm } from "./FotoHeroForm";
+import { LogoPolisportivaForm } from "./LogoPolisportivaForm";
+import { SitoPolisportivaForm } from "./SitoPolisportivaForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -65,6 +69,8 @@ export default async function ImpostazioniPage() {
     contattiPubblici,
     configurazioneSocialFacebook,
     fotoHero,
+    logoPolisportiva,
+    urlSitoPolisportiva,
   ] = await Promise.all([
     leggiEmailSegreteria().catch((err) => {
       console.error(err);
@@ -91,6 +97,15 @@ export default async function ImpostazioniPage() {
     leggiInfoFotoHero(supabase).catch((err) => {
       console.error(err);
       return { esiste: false, aggiornatoIl: null };
+    }),
+    // Story 18.20: stesso pattern fail-soft di fotoHero sopra.
+    leggiInfoLogoPolisportiva(supabase).catch((err) => {
+      console.error(err);
+      return { esiste: false, aggiornatoIl: null };
+    }),
+    leggiUrlSitoPolisportiva().catch((err) => {
+      console.error(err);
+      return null;
     }),
   ]);
   // AC #4: nessuna variabile di questo Server Component deve conservare
@@ -193,6 +208,23 @@ export default async function ImpostazioniPage() {
           <p className={styles.messaggioVuoto}>Nessuna foto sfondo hero impostata.</p>
         )}
         <FotoHeroForm />
+
+        <h2 className={styles.titoloSezione}>Polisportiva</h2>
+        {/* Story 18.20: nessun avviso soft (stesso trattamento di "Foto
+            sfondo hero"/"Contatti pubblici") - l'assenza si traduce solo
+            nella non comparsa del logo in header/footer, non nella
+            sparizione di una funzionalita' gia' attiva. */}
+        {logoPolisportiva.esiste ? (
+          <img
+            src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
+            alt="Logo Polisportiva attuale"
+            className={styles.anteprimaFotoHero}
+          />
+        ) : (
+          <p className={styles.messaggioVuoto}>Nessun logo Polisportiva impostato.</p>
+        )}
+        <LogoPolisportivaForm />
+        <SitoPolisportivaForm urlAttuale={urlSitoPolisportiva} />
       </div>
     </main>
   );

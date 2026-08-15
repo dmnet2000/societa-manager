@@ -187,6 +187,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui imposti anche l'URL della Pagina Facebook della società (mostra gli ultimi post sulla home pubblica) e i contatti pubblici - indirizzo, telefono ed email mostrati sulla pagina pubblica \"Contatti\": ogni campo è indipendente, un campo lasciato vuoto smette semplicemente di comparire sulla pagina pubblica.",
       "Qui imposti anche il Token Facebook: serve al carosello \"Ultimi post\" della home pubblica per leggere i post reali della Pagina. Lascialo vuoto per non modificare il token già salvato. Un avviso ti segnala se manca o se l'ultima lettura dei post è fallita (es. token scaduto, da rigenerare periodicamente).",
       "Qui carichi anche la foto di sfondo dell'hero della home pubblica (PNG o JPG, max 2MB): viene mostrata solo quando non ci sono post Facebook da mostrare - se sono presenti, il carosello dei post ha sempre la priorità. Senza nessuna delle due, resta visibile il placeholder grafico.",
+      "Qui carichi anche il logo della Polisportiva (PNG o JPG, max 2MB) e l'URL del suo sito: il logo compare sia nell'header sia nel footer di ogni pagina pubblica. Se anche l'URL è impostato, il logo è cliccabile e apre il sito in una nuova scheda; senza URL il logo compare comunque, ma non è cliccabile.",
     ],
   },
   {

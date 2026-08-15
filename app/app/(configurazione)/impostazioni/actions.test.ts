@@ -12,6 +12,8 @@ const salvaContattiPubbliciMock = vi.fn();
 const salvaTokenFacebookMock = vi.fn();
 const leggiConfigurazioneSocialFacebookMock = vi.fn();
 const caricaFotoHeroMock = vi.fn();
+const caricaLogoPolisportivaMock = vi.fn();
+const salvaUrlSitoPolisportivaMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -22,6 +24,7 @@ vi.mock("@/lib/configurazione-applicazione", () => ({
   salvaEmailSegreteria: salvaEmailSegreteriaMock,
   salvaUrlPaginaFacebook: salvaUrlPaginaFacebookMock,
   salvaContattiPubblici: salvaContattiPubbliciMock,
+  salvaUrlSitoPolisportiva: salvaUrlSitoPolisportivaMock,
 }));
 
 const supabaseClientFinto = { client: "finto" };
@@ -38,6 +41,10 @@ vi.mock("@/lib/storage/foto-hero", () => ({
   caricaFotoHero: caricaFotoHeroMock,
 }));
 
+vi.mock("@/lib/storage/logo-polisportiva", () => ({
+  caricaLogoPolisportiva: caricaLogoPolisportivaMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
@@ -48,6 +55,8 @@ const {
   salvaContattiPubbliciAction,
   salvaTokenFacebookAction,
   caricaFotoHeroAction,
+  caricaLogoPolisportivaAction,
+  salvaUrlSitoPolisportivaAction,
 } = await import("./actions");
 
 const MAGIC_BYTES: Record<string, number[]> = {
@@ -120,8 +129,18 @@ beforeEach(() => {
   });
   caricaFotoHeroMock.mockReset();
   caricaFotoHeroMock.mockResolvedValue(undefined);
+  caricaLogoPolisportivaMock.mockReset();
+  caricaLogoPolisportivaMock.mockResolvedValue(undefined);
+  salvaUrlSitoPolisportivaMock.mockReset();
+  salvaUrlSitoPolisportivaMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
+
+function buildFormDataSitoPolisportiva(valore: string) {
+  const formData = new FormData();
+  formData.append("urlSitoPolisportiva", valore);
+  return formData;
+}
 
 function buildFormDataToken(valore: string) {
   const formData = new FormData();
@@ -721,6 +740,209 @@ describe("caricaFotoHeroAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile caricare la foto. Riprova." },
+    });
+  });
+});
+
+// Story 18.20: mirror esatto di caricaFotoHeroAction sopra (Story 18.14).
+describe("caricaLogoPolisportivaAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin ne' Dirigente (AC #3)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido())
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando nessun file e' fornito", async () => {
+    const result = await caricaLogoPolisportivaAction(undefined, buildFormDataFotoHero(null));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    });
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un file vuoto (size 0)", async () => {
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido("logo-polisportiva.png", "image/png", 0))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    });
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un tipo MIME non ammesso", async () => {
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido("logo-polisportiva.svg", "image/svg+xml"))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Formato immagine non ammesso (solo PNG, JPG)." },
+    });
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando il file supera i 2MB", async () => {
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(
+        fileFotoHeroValido("logo-polisportiva.png", "image/png", 2 * 1024 * 1024 + 1)
+      )
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il file supera la dimensione massima di 2MB." },
+    });
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando le magic byte non corrispondono al MIME dichiarato (AC #1)", async () => {
+    const fileIngannevole = new File([new Uint8Array(1024)], "falso.png", {
+      type: "image/png",
+    });
+
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(fileIngannevole)
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    });
+    expect(caricaLogoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta ADMIN, chiama caricaLogoPolisportiva e revalida /app/impostazioni (AC #1)", async () => {
+    const png = fileFotoHeroValido("logo-polisportiva.png", "image/png");
+    const result = await caricaLogoPolisportivaAction(undefined, buildFormDataFotoHero(png));
+
+    expect(result).toEqual({ success: true });
+    expect(caricaLogoPolisportivaMock).toHaveBeenCalledWith(supabaseClientFinto, png);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("accetta DIRIGENTE (AC #3, non ADMIN-only come il logo del Settore)", async () => {
+    const jpeg = fileFotoHeroValido("logo-polisportiva.jpg", "image/jpeg");
+    const result = await caricaLogoPolisportivaAction(undefined, buildFormDataFotoHero(jpeg));
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+  });
+
+  it("returns INTERNAL fail-closed quando caricaLogoPolisportiva lancia (incluso un rifiuto RLS)", async () => {
+    caricaLogoPolisportivaMock.mockRejectedValue(new Error("RLS denial"));
+
+    const result = await caricaLogoPolisportivaAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile caricare il logo. Riprova." },
+    });
+  });
+});
+
+// Story 18.20: mirror esatto di salvaUrlPaginaFacebookAction (Story 18.5).
+describe("salvaUrlSitoPolisportivaAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #3)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("https://www.polisportiva-esempio.it")
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(salvaUrlSitoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("salva il valore fornito (trim applicato) e revalida /impostazioni (AC #2)", async () => {
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("  https://www.polisportiva-esempio.it  ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaUrlSitoPolisportivaMock).toHaveBeenCalledWith(
+      "https://www.polisportiva-esempio.it"
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("salva null quando il campo e' lasciato vuoto (rimuove la configurazione, AC #2)", async () => {
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("   ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaUrlSitoPolisportivaMock).toHaveBeenCalledWith(null);
+  });
+
+  it("returns VALIDATION per un URL senza protocollo http/https", async () => {
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("javascript:alert(1)")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlSitoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un URL non parsabile", async () => {
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("non-un-url")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlSitoPolisportivaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed quando salvaUrlSitoPolisportiva lancia", async () => {
+    salvaUrlSitoPolisportivaMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaUrlSitoPolisportivaAction(
+      undefined,
+      buildFormDataSitoPolisportiva("https://www.polisportiva-esempio.it")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare il sito della Polisportiva. Riprova.",
+      },
     });
   });
 });

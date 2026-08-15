@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import {
   leggiNomeSettore,
   leggiUrlPaginaFacebook,
+  leggiUrlSitoPolisportiva,
 } from "@/lib/configurazione-applicazione";
+import {
+  leggiInfoLogoPolisportiva,
+  urlPubblicoLogoPolisportiva,
+} from "@/lib/storage/logo-polisportiva";
 import styles from "./FooterPubblico.module.css";
 
 // Story 18.8: estratto da app/page.tsx, mirror del principio gia' spiegato
@@ -20,20 +26,37 @@ export async function FooterPubblico({
   // serve solo li', non su ogni pagina che monta questo footer condiviso.
   conSpazioCookieBanner?: boolean;
 }) {
+  // Story 18.20: prima lettura Storage in questo componente (finora solo
+  // Prisma diretto) - createClient() serve a leggiInfoLogoPolisportiva,
+  // mirror del pattern gia' stabilito in HeaderPubblico.tsx (che lo ha gia'
+  // per il logo del Settore). Risolto in parallelo, nessuna dipendenza
+  // reciproca con le altre letture.
+  const supabase = await createClient();
+
   // Story 18.12 (AC #4): riuso invariato di leggiUrlPaginaFacebook, gia'
   // esistente e gia' letta identica in app/page.tsx (Story 18.5) - nessuna
   // nuova Server Action/query, solo un secondo consumer della stessa
   // funzione per l'icona social del footer.
-  const [nomeSettore, urlPaginaFacebook] = await Promise.all([
-    leggiNomeSettore().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-    leggiUrlPaginaFacebook().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-  ]);
+  const [nomeSettore, urlPaginaFacebook, logoPolisportiva, urlSitoPolisportiva] =
+    await Promise.all([
+      leggiNomeSettore().catch((err) => {
+        console.error(err);
+        return null;
+      }),
+      leggiUrlPaginaFacebook().catch((err) => {
+        console.error(err);
+        return null;
+      }),
+      // Story 18.20: stesso pattern fail-soft delle altre letture qui sopra.
+      leggiInfoLogoPolisportiva(supabase).catch((err) => {
+        console.error(err);
+        return { esiste: false, aggiornatoIl: null as string | null };
+      }),
+      leggiUrlSitoPolisportiva().catch((err) => {
+        console.error(err);
+        return null;
+      }),
+    ]);
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
 
   return (
@@ -47,6 +70,30 @@ export async function FooterPubblico({
       <p>
         &copy; {new Date().getFullYear()} {nomeVisualizzato}
       </p>
+      {/* Story 18.20: logo Polisportiva, dopo il copyright e prima
+          dell'icona Facebook del Settore - stessa struttura condizionale
+          di HeaderPubblico.tsx (link se l'URL e' impostato, altrimenti
+          solo l'immagine). alt non vuoto, stesso motivo di HeaderPubblico.tsx. */}
+      {logoPolisportiva.esiste &&
+        (urlSitoPolisportiva ? (
+          <a
+            href={urlSitoPolisportiva}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.logoPolisportiva}
+          >
+            <img
+              src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
+              alt="Logo della Polisportiva"
+            />
+          </a>
+        ) : (
+          <img
+            className={styles.logoPolisportiva}
+            src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
+            alt="Logo della Polisportiva"
+          />
+        ))}
       {/* Se non configurato, nessuna icona compare - fail-soft, stesso
           principio di ogni altro elemento condizionale pubblico (non
           un'area vuota "rotta", semplicemente non c'e' nulla da mostrare). */}

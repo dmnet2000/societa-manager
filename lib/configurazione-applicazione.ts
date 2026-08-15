@@ -117,3 +117,23 @@ export function nessunContattoPubblicoConfigurato(contatti: {
     !contatti.urlPaginaFacebook
   );
 }
+
+// Story 18.20: mirror esatto di leggiUrlPaginaFacebook/salvaUrlPaginaFacebook
+// sopra - URL del sito della Polisportiva, mostrato sotto al suo logo
+// (bucket Storage "logo-polisportiva") sia nell'header sia nel footer
+// pubblici.
+export async function leggiUrlSitoPolisportiva(): Promise<string | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { urlSitoPolisportiva: true },
+  });
+  return configurazione?.urlSitoPolisportiva ?? null;
+}
+
+export async function salvaUrlSitoPolisportiva(url: string | null): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlSitoPolisportiva: url },
+    update: { urlSitoPolisportiva: url },
+  });
+}

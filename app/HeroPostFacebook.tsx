@@ -9,16 +9,21 @@ const INTERVALLO_MS = 10000;
 
 // Richiesta esplicita dell'utente (2026-08-14): il carosello Post Facebook
 // (Story 18.13, prima una sezione a se' a fondo pagina) diventa lo sfondo
-// fotografico dell'hero, con titolo/CTA sovrapposti sopra e testo/controlli
-// del post sotto di loro. Mirror del principio pausa/ripresa (WCAG 2.2.2)
+// fotografico dell'hero. Mirror del principio pausa/ripresa (WCAG 2.2.2)
 // e del clamp indiceEntroLimiti gia' stabiliti nel progetto (Story 16.3/18.13).
+//
+// Review fix (code review Story 18.19, Blind Hunter): commento aggiornato -
+// non descrive piu' "titolo/CTA sovrapposti sopra" ne' "in coda al gruppo
+// titolo+CTA" (entrambi rimossi dal secondo giro di Story 18.19). Il blocco
+// e' ora un contenitore a se' stante (.heroBlocco, home-pubblica.module.css),
+// nessun titolo/CTA nell'hero.
 //
 // Radice <> con due elementi (sfondo fotografico + fascia info) invece di
 // un singolo contenitore: devono comparire in due punti diversi del layout
-// dell'hero (il primo assoluto a tutta altezza, il secondo in coda al
-// gruppo titolo+CTA) ma condividere lo stesso indice/stato di pausa - un
-// solo componente stateful che emette entrambi i pezzi evita che
-// desincronizzino (es. sfondo che mostra un post diverso dal testo).
+// del blocco (il primo assoluto a tutta area, il secondo ancorato in fondo)
+// ma condividere lo stesso indice/stato di pausa - un solo componente
+// stateful che emette entrambi i pezzi evita che desincronizzino (es.
+// sfondo che mostra un post diverso dal testo).
 export function HeroPostFacebook({ post }: { post: PostFacebook[] }) {
   const [indice, setIndice] = useState(0);
   const [inPausa, setInPausa] = useState(false);

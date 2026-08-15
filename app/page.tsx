@@ -2,7 +2,10 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { leggiUrlPaginaFacebook } from "@/lib/configurazione-applicazione";
+import {
+  leggiNomeSettore,
+  leggiUrlPaginaFacebook,
+} from "@/lib/configurazione-applicazione";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
 import {
@@ -102,6 +105,7 @@ export default async function HomePubblicaPage() {
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
   const [
+    nomeSettore,
     sponsorAttivi,
     partiteSettimanaRaw,
     gruppiStagione,
@@ -109,6 +113,17 @@ export default async function HomePubblicaPage() {
     urlPaginaFacebook,
     fotoHero,
   ] = await Promise.all([
+    // Review fix (code review Story 18.19, Blind Hunter + Edge Case Hunter,
+    // indipendentemente): rimuovendo il titolo <h1> visibile (secondo giro)
+    // la pagina era rimasta senza alcuna intestazione di primo livello -
+    // regressione di accessibilita'/SEO (HeaderPubblico.tsx mostra il nome
+    // del Settore in uno <span>, non un heading). Ripristinata la sola
+    // lettura necessaria per un <h1> visivamente nascosto (vedi sotto),
+    // stesso fallback "Settore Volley" di prima.
+    leggiNomeSettore().catch((err) => {
+      console.error(err);
+      return null;
+    }),
     // Story 18.2 (AC #1/#2/#3): stessa query di app/app/(sponsor)/sponsor/page.tsx
     // (Sponsor non protetto da RLS, AD-9, Prisma diretto) - solo Sponsor
     // attivi. Review fix (Blind Hunter): "select" esplicito - il confine
@@ -207,6 +222,8 @@ export default async function HomePubblicaPage() {
       ? await leggiUltimiPostFacebook(urlPaginaFacebook)
       : [];
 
+  const nomeVisualizzato = nomeSettore ?? "Settore Volley";
+
   // Story 18.2: riuso diretto della stessa funzione pura gia' usata da
   // /app/sponsor (Story 16.2), nessuna duplicazione della logica di
   // raggruppamento.
@@ -254,7 +271,19 @@ export default async function HomePubblicaPage() {
               era ridondante con la voce "Squadre" gia' nel menu di
               navigazione in alto (NavPubblica.tsx). L'hero ora mostra solo
               il blocco Post Facebook (centrato, vedi .heroBlocco), nessun
-              altro contenuto. */}
+              altro contenuto visibile.
+              Review fix (code review, Blind Hunter + Edge Case Hunter,
+              indipendentemente): rimuovendo il titolo visibile la pagina
+              restava senza alcun <h1> (HeaderPubblico.tsx mostra il nome
+              del Settore in uno <span>, non un heading) - regressione di
+              accessibilita'/SEO (nessuna intestazione di primo livello nel
+              document outline). <h1> visivamente nascosto (nuova classe
+              utility .srOnly, pattern standard "clip"-based, nessun
+              precedente da riusare in questo progetto) ripristina la
+              struttura semantica senza reintrodurre testo visibile - non
+              contraddice la richiesta esplicita dell'utente (via testo,
+              non struttura). */}
+          <h1 className={styles.srOnly}>Benvenuti nel {nomeVisualizzato}</h1>
           <div className={styles.heroBlocco}>
             {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
                 Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
@@ -271,10 +300,11 @@ export default async function HomePubblicaPage() {
             )}
             {/* Story 18.14: riuso deliberato di styles.heroFotoPost (stessa
                 classe usata da HeroPostFacebook.tsx per la foto del post
-                corrente) - stesso trattamento visivo (object-fit cover, scrim
-                per la leggibilita' del testo, AC #4), nessuna nuova regola CSS:
-                una foto vera come sfondo del blocco e' lo stesso ruolo visivo
-                indipendentemente dalla sorgente (post Facebook o upload). */}
+                corrente) - stesso trattamento visivo (background-size:contain
+                dal quinto giro di Story 18.19, scrim per la leggibilita' del
+                testo, AC #4), nessuna nuova regola CSS: una foto vera come
+                sfondo del blocco e' lo stesso ruolo visivo indipendentemente
+                dalla sorgente (post Facebook o upload). */}
             {postFacebook.length === 0 && fotoHero.esiste && (
               <div
                 className={styles.heroFotoPost}

@@ -41,6 +41,30 @@
   padding-bottom: calc(44px + var(--space-4) * 2);
 }
 
+/* Story 18.20: logo Polisportiva - stessa dimensione di .logoPolisportiva
+   in HeaderPubblico.module.css per coerenza tra i due punti in cui compare. */
+.logoPolisportiva {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+}
+
+/* Review fix (code review Story 18.20, Edge Case Hunter): stesso problema
+   di selettore di HeaderPubblico.module.css - FooterPubblico.tsx applica
+   .logoPolisportiva sia sull'<a> (contiene un <img> nudo) sia direttamente
+   sull'<img> (nessun link). max-width unificato a 120px (era 160px) per
+   coerenza reale con l'header, non solo dichiarata nel commento sopra. */
+.logoPolisportiva img,
+img.logoPolisportiva {
+  max-height: 40px;
+  max-width: 120px;
+}
+
+.logoPolisportiva:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 /* Icona social (elemento nuovo, AC #4 - vedi Dev Notes "Elementi nuovi
    richiesti"). {rounded.full}, area cliccabile reale 44x44px anche con
    resa visiva 38px (hit-area via padding). Colori: sfondo

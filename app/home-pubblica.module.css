@@ -33,6 +33,23 @@
   clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
 }
 
+/* Review fix (code review Story 18.19, Blind Hunter + Edge Case Hunter):
+   pattern standard "clip" per contenuto presente nel DOM/annunciato dagli
+   screen reader ma non visibile - usato per l'<h1> dell'hero (nessun
+   precedente in questo progetto da riusare). display:none non basta
+   (toglierebbe l'elemento dall'albero di accessibilita'). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Foto placeholder (EXPERIENCE.md -> Fotografia Placeholder: "Hero -
    presumibilmente permanente") - fallback quando nessun post Facebook e'
    disponibile (vedi .heroFotoPost sotto per il caso con post). {colors.blu-carbone}
@@ -88,14 +105,31 @@
   position: relative;
   z-index: 2;
   overflow: hidden;
-  width: 100%;
+  /* Review fix (code review, Edge Case Hunter): "width:100%" ignora il
+     margine nel calcolo della larghezza (il margine si somma FUORI dal
+     box) - con un margine orizzontale non nullo il blocco eccedeva sempre
+     la larghezza disponibile della quantita' del margine (non solo in un
+     range ristretto), venendo tagliato dall'overflow:hidden di .hero.
+     calc() sottrae esplicitamente il margine dalla larghezza. */
+  width: calc(100% - 96px);
   max-width: 700px;
   aspect-ratio: 1 / 1;
   margin: var(--space-4) 48px;
+  /* Review fix (code review, Blind Hunter + Edge Case Hunter,
+     indipendentemente): senza uno sfondo proprio, le bande vuote lasciate
+     da background-size:contain (quinto giro) potrebbero mostrare
+     .heroDiagonale (z-index:1, accento decorativo che si estende sul lato
+     destro dell'hero) invece dello sfondo scuro piatto assunto dal
+     commento originale - il blocco centrato di 700px si sovrappone
+     effettivamente a quell'area su schermi larghi. {colors.blu-carbone}
+     #0F2438, stesso valore di .hero, garantisce bande sempre piatte a
+     prescindere da cosa sta dietro. */
+  background: #0f2438;
 }
 
 @media (max-width: 900px) {
   .heroBlocco {
+    width: calc(100% - 40px);
     margin: var(--space-3) 20px;
   }
 }

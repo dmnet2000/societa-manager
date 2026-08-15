@@ -24,6 +24,8 @@ const {
   leggiContattiPubblici,
   salvaContattiPubblici,
   nessunContattoPubblicoConfigurato,
+  leggiUrlSitoPolisportiva,
+  salvaUrlSitoPolisportiva,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -373,5 +375,71 @@ describe("nessunContattoPubblicoConfigurato", () => {
         urlPaginaFacebook: "https://www.facebook.com/miasocieta",
       })
     ).toBe(false);
+  });
+});
+
+// Story 18.20: mirror esatto dei describe sopra per leggiUrlPaginaFacebook/salvaUrlPaginaFacebook.
+describe("leggiUrlSitoPolisportiva", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored urlSitoPolisportiva", async () => {
+    findUniqueMock.mockResolvedValue({
+      urlSitoPolisportiva: "https://www.polisportiva-esempio.it",
+    });
+
+    const result = await leggiUrlSitoPolisportiva();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { urlSitoPolisportiva: true },
+    });
+    expect(result).toBe("https://www.polisportiva-esempio.it");
+  });
+
+  it("returns null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiUrlSitoPolisportiva();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ urlSitoPolisportiva: null });
+
+    const result = await leggiUrlSitoPolisportiva();
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("salvaUrlSitoPolisportiva", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
+    await salvaUrlSitoPolisportiva("https://www.polisportiva-esempio.it");
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: {
+        id: ID_CONFIGURAZIONE_APPLICAZIONE,
+        urlSitoPolisportiva: "https://www.polisportiva-esempio.it",
+      },
+      update: { urlSitoPolisportiva: "https://www.polisportiva-esempio.it" },
+    });
+  });
+
+  it("allows clearing the value back to null", async () => {
+    await salvaUrlSitoPolisportiva(null);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlSitoPolisportiva: null },
+      update: { urlSitoPolisportiva: null },
+    });
   });
 });

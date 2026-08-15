@@ -380,6 +380,12 @@ model ConfigurazioneApplicazione {
   indirizzoSede     String?
   telefonoPubblico  String?
   emailPubblica     String?
+  // Story 18.20: URL del sito della Polisportiva (l'associazione madre
+  // multi-settore) - link esterno mostrato sotto al suo logo (bucket
+  // Storage "logo-polisportiva") sia nell'header sia nel footer pubblici.
+  // Mirror di urlPaginaFacebook, nessun campo social (deciso con l'utente:
+  // solo il link al sito, niente icone multi-piattaforma).
+  urlSitoPolisportiva String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
