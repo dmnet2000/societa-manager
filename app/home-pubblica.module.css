@@ -67,31 +67,30 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Story 18.19 (terzo giro): contenitore posizionato del blocco Post
+/* Story 18.19 (quarto giro): contenitore posizionato del blocco Post
    Facebook (o del suo fallback) - richiesta esplicita dell'utente dopo
-   verifica dal vivo: "centrato sullo schermo", larghezza aumentata da
-   600px a 700px dopo aver visto il secondo giro ("mi piace l'effetto,
-   aumenterei a 700px"), altezza in proporzione per non rovinare le
-   dimensioni delle foto. position:relative resta il contesto di
-   riferimento per .heroFoto/.heroFotoPost sotto (inset:0 relativo a QUESTO
-   blocco) - quelle due regole restano testualmente invariate. width:100%
-   (non un valore fisso) + max-width:700px: il blocco occupa tutta la
-   larghezza disponibile fino al tetto di 700px, si restringe fluidamente
-   su schermi piu' stretti - risolve "ricordati dell'effetto su mobile"
-   senza una seconda dimensione hardcoded. aspect-ratio:4/3 (non piu'
-   min-height fisso): l'altezza scala in proporzione alla larghezza invece
-   di essere un valore assoluto indipendente - su schermi stretti il
-   blocco resta comunque proporzionato, le foto (background-size:cover
-   sotto) non risultano mai ritagliate in modo drastico. Centrato dal
-   genitore (.hero align-items:center/justify-content:center) - solo
-   margine verticale qui, nessun margine orizzontale asimmetrico. */
+   verifica dal vivo: "centrato sullo schermo", larghezza 700px (aumentata
+   da 600px nel terzo giro), altezza in proporzione ma "ancora piccola,
+   andrebbe allungata" - aspect-ratio portato da 4/3 (rapporto orizzontale,
+   700x525px) a 1/1 (quadrato, 700x700px), chiaramente piu' alto senza
+   introdurre una seconda misura assoluta indipendente dalla larghezza
+   (coerente col principio gia' scelto nel secondo giro: un solo numero da
+   regolare, non due). position:relative resta il contesto di riferimento
+   per .heroFoto/.heroFotoPost sotto (inset:0 relativo a QUESTO blocco) -
+   quelle due regole restano testualmente invariate. width:100% (non un
+   valore fisso) + max-width:700px: il blocco occupa tutta la larghezza
+   disponibile fino al tetto di 700px, si restringe fluidamente su schermi
+   piu' stretti - risolve "ricordati dell'effetto su mobile" senza una
+   seconda dimensione hardcoded. Centrato dal genitore (.hero
+   align-items:center/justify-content:center) - solo margine verticale qui,
+   nessun margine orizzontale asimmetrico. */
 .heroBlocco {
   position: relative;
   z-index: 2;
   overflow: hidden;
   width: 100%;
   max-width: 700px;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   margin: var(--space-4) 48px;
 }
 
