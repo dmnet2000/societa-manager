@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   leggiNomeSettore,
   leggiUrlPaginaFacebook,
@@ -59,6 +60,17 @@ export async function FooterPubblico({
           F
         </a>
       )}
+      {/* Story 18.17 (secondo giro): sostituisce il pulsante fisso
+          permanente di CookieBanner.tsx, rimosso su richiesta dell'utente
+          ("ancora troppo invasivo e visibile"). Presente su ogni pagina
+          pubblica (questo componente e' condiviso) - naviga sempre verso
+          "/" perche' CookieBanner resta montato solo li' (decisione di
+          Story 18.6, non riaperta). Il diritto di revoca del consenso in
+          qualunque momento (Linee guida Garante Privacy) resta comunque
+          soddisfatto, solo il punto di accesso cambia. */}
+      <Link href="/?preferenze-cookie=1" className={styles.linkPreferenzeCookie}>
+        Preferenze cookie
+      </Link>
     </footer>
   );
 }

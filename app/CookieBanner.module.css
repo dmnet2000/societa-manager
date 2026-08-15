@@ -93,10 +93,6 @@
   .bottone:hover {
     transform: none;
   }
-
-  .preferenze {
-    transition: none;
-  }
 }
 
 /* {typography.button-label-secondary} - non maiuscolo forzato come il
@@ -115,40 +111,7 @@
    diverso da Task 1/4/8 (dove il contesto e' scuro). Non var(--color-focus-ring)
    (falso amico, #006da6). */
 .bottone:focus-visible,
-.bottoneSecondario:focus-visible,
-.preferenze:focus-visible {
+.bottoneSecondario:focus-visible {
   outline: 2px solid #0072a3;
   outline-offset: 2px;
-}
-
-/* Trigger per riaprire il banner dopo la prima scelta (AC #3 di Story 18.6).
-   Story 18.17: reso meno invadente su richiesta dell'utente (che ha scelto
-   di mantenerlo per conformita' col diritto di revoca del consenso, invece
-   di rimuoverlo) - bordo sottile su tutti i lati + ombra leggera al posto
-   del border-top/box-shadow "a fascia" mutuati da .banner, opacita' di
-   riposo ridotta che sale a 1 su hover/focus (mai nascosto del tutto: deve
-   restare scopribile anche su touch, non solo hover). */
-.preferenze {
-  position: fixed;
-  left: var(--space-4);
-  bottom: var(--space-4);
-  z-index: 30;
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  background: var(--color-surface);
-  color: #5b6472;
-  border: 1px solid rgba(15, 36, 56, 0.15);
-  border-radius: 0;
-  box-shadow: 0 1px 4px rgba(15, 36, 56, 0.1);
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-  font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.preferenze:hover,
-.preferenze:focus-visible {
-  opacity: 1;
 }

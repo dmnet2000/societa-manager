@@ -10,10 +10,12 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { createClient } from "@/lib/supabase/server";
 import { leggiConfigurazioneSocialFacebook, rimuoviToken } from "@/lib/db-rls/configurazione-social-facebook";
+import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import { PaginaFacebookForm } from "./PaginaFacebookForm";
 import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
 import { TokenFacebookForm } from "./TokenFacebookForm";
+import { FotoHeroForm } from "./FotoHeroForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -45,36 +47,52 @@ export default async function ImpostazioniPage() {
   // principio di ogni altro effetto collaterale non bloccante di questo
   // progetto (il .catch qui sostituisce il try/catch precedente per poter
   // stare dentro il Promise.all senza perdere il comportamento fail-soft).
-  const [ruoli, emailSegreteria, urlPaginaFacebook, contattiPubblici, configurazioneSocialFacebook] =
-    await Promise.all([
-      risolviRuoliPerAiutoContestuale(),
-      leggiEmailSegreteria().catch((err) => {
-        console.error(err);
-        return null;
-      }),
-      // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
-      leggiUrlPaginaFacebook().catch((err) => {
-        console.error(err);
-        return null;
-      }),
-      // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
-      // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
-      // con i 3 campi, mai un valore nullable a se stante.
-      leggiContattiPubblici().catch((err) => {
-        console.error(err);
-        return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
-      }),
-      // Story 18.13: client CON la sessione utente (questa e' la pagina
-      // Admin/Dirigente autenticata, la RLS del Task 1 la autorizza
-      // direttamente) - non createAdminClient(), quello e' riservato alla
-      // lettura dalla home pubblica anonima (lib/facebook-graph.ts).
-      createClient()
-        .then((supabase) => leggiConfigurazioneSocialFacebook(supabase))
-        .catch((err) => {
-          console.error(err);
-          return null;
-        }),
-    ]);
+  // Story 18.14: supabase risolto qui (non piu' dentro un .then() isolato)
+  // perche' ora serve anche a leggiInfoFotoHero/urlPubblicoFotoHero, quest'ultima
+  // usata in modo sincrono nel JSX sotto - stesso principio "risolvi il
+  // client una volta, riusalo" gia' stabilito in app/page.tsx (home pubblica).
+  const [ruoli, supabase] = await Promise.all([
+    risolviRuoliPerAiutoContestuale(),
+    // Story 18.13: client CON la sessione utente (questa e' la pagina
+    // Admin/Dirigente autenticata, la RLS del Task 1 di quella storia la
+    // autorizza direttamente) - non createAdminClient(), quello e' riservato
+    // alla lettura dalla home pubblica anonima (lib/facebook-graph.ts).
+    createClient(),
+  ]);
+  const [
+    emailSegreteria,
+    urlPaginaFacebook,
+    contattiPubblici,
+    configurazioneSocialFacebook,
+    fotoHero,
+  ] = await Promise.all([
+    leggiEmailSegreteria().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.5: stesso pattern fail-soft di emailSegreteria sopra.
+    leggiUrlPaginaFacebook().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.11: stesso pattern fail-soft, fallback ai 3 campi null (non
+    // un solo null) - leggiContattiPubblici restituisce sempre l'oggetto
+    // con i 3 campi, mai un valore nullable a se stante.
+    leggiContattiPubblici().catch((err) => {
+      console.error(err);
+      return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
+    }),
+    leggiConfigurazioneSocialFacebook(supabase).catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.14: stesso pattern fail-soft, fallback "nessuna foto"
+    // (mirror di InfoLogo/leggiInfoLogo).
+    leggiInfoFotoHero(supabase).catch((err) => {
+      console.error(err);
+      return { esiste: false, aggiornatoIl: null };
+    }),
+  ]);
   // AC #4: nessuna variabile di questo Server Component deve conservare
   // accessToken oltre questo punto - rimuoviToken() lo scarta subito, anche
   // se in questa pagina non verrebbe comunque mai passato a un Client
@@ -158,6 +176,23 @@ export default async function ImpostazioniPage() {
           configurato={Boolean(tokenFacebook)}
           ultimaLetturaOk={tokenFacebook?.ultimaLetturaOk ?? true}
         />
+
+        <h2 className={styles.titoloSezione}>Foto sfondo hero</h2>
+        {/* Story 18.14: nessun avviso soft (a differenza di Email
+            Segreteria/Pagina Facebook/Token Facebook sopra) - l'assenza si
+            traduce nel fallback al placeholder grafico esistente in home,
+            non nella sparizione di una funzionalita', stesso trattamento
+            gia' dato a "Contatti pubblici". */}
+        {fotoHero.esiste ? (
+          <img
+            src={`${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")}`}
+            alt="Foto sfondo hero attuale"
+            className={styles.anteprimaFotoHero}
+          />
+        ) : (
+          <p className={styles.messaggioVuoto}>Nessuna foto sfondo hero impostata.</p>
+        )}
+        <FotoHeroForm />
       </div>
     </main>
   );

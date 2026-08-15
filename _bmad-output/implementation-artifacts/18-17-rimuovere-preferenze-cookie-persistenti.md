@@ -8,6 +8,14 @@ Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
+## Secondo giro (2026-08-15, stesso giorno, prima di qualunque code review)
+
+Dopo aver visto dal vivo il primo giro (pulsante fisso alleggerito, opacità 0.7→1), l'utente ha dato un secondo feedback diretto: **"il pulsante dei cookies è ancora troppo invasivo e visibile.. non si può inserire un link sul footer?"**. Non un'ulteriore rifinitura dello stesso pulsante fisso, ma un cambio di approccio: **il pulsante fisso permanente è stato rimosso del tutto**, sostituito da un link testuale "Preferenze cookie" nel footer condiviso (`FooterPubblico.tsx`, presente su tutte e 5 le pagine pubbliche). Il diritto di revoca del consenso in qualunque momento (Linee guida Garante Privacy, AC #3 originale di Story 18.6) resta soddisfatto — cambia solo il punto di accesso, da "overlay fisso sempre in vista" a "link discreto in fondo alla pagina", identico al pattern usato dalla maggior parte dei siti reali per questo tipo di link.
+
+**Punto architetturale**: `CookieBanner` resta montato **solo sulla home** (decisione di Story 18.6, non riaperta), ma il footer con il nuovo link è condiviso da tutte le pagine pubbliche. Il link naviga sempre verso `/?preferenze-cookie=1` — la home legge questo query param (nuovo `searchParams` sulla pagina, pattern già in uso altrove nel progetto) e lo passa come prop `apriPreferenze` a `CookieBanner`, che forza il banner ad aprirsi indipendentemente dalla scelta già registrata. Un `useEffect` pulisce il query param dall'URL subito dopo (via `router.replace`), per evitare che un refresh o un link condiviso riapra il banner all'infinito.
+
+Le sezioni AC/Tasks/Dev Notes sotto restano come testimonianza del primo giro (già implementato e poi superato) — vedi Completion Notes per il resoconto esatto del secondo giro.
+
 ## Story
 
 As a Visitatore che ha già scelto se accettare o rifiutare i cookie non essenziali,
@@ -50,6 +58,23 @@ so that l'interfaccia resti pulita, senza però perdere la possibilità di rived
   - [x] `npx vitest run` — nessun file `*.test.{ts,tsx}` importa `CookieBanner.tsx`, suite invariata.
   - [x] `npx tsc --noEmit`, `npm run lint` puliti.
   - [x] `npm run build` verificato (vedi Completion Notes per il noto limite Prisma WASM locale, non legato a questa storia).
+
+## Tasks / Subtasks — secondo giro (link nel footer)
+
+- [x] Task 5: Rimuovere il pulsante fisso permanente, sostituire con link nel footer
+  - [x] `app/CookieBanner.tsx`: ramo `if (!visibile)` cambiato da `<button>` fisso a `return null` — nessun overlay permanente quando il banner non è visibile.
+  - [x] `app/CookieBanner.module.css`: rimossa interamente la classe `.preferenze` (bordo/ombra/opacità del primo giro) e ogni riferimento (`:focus-visible` combinato, blocco `prefers-reduced-motion`).
+  - [x] `app/FooterPubblico.tsx`: nuovo `<Link href="/?preferenze-cookie=1">Preferenze cookie</Link>` dopo l'icona social — presente su tutte le pagine pubbliche che montano questo footer (`/`, `/squadre`, `/calendario`, `/staff`, `/contatti`).
+  - [x] `app/FooterPubblico.module.css`: nuova classe `.linkPreferenzeCookie` — testo muto (`#838e9e`, stesso colore del copyright), `min-height: 44px` per il target di tocco, hover verso `var(--color-primary)`, `:focus-visible` outline bianco (mirror `.iconaSocial`).
+
+- [x] Task 6: Collegare il link alla riapertura del banner sulla home
+  - [x] `app/page.tsx`: aggiunto prop `searchParams` (pattern `Promise<{...}>` già in uso altrove nel progetto), letto `preferenze-cookie`, passato come `apriPreferenze` a `<CookieBanner>`.
+  - [x] `app/CookieBanner.tsx`: nuovo prop opzionale `apriPreferenze` — `visibile` iniziale ora `valoreIniziale === undefined || apriPreferenze`.
+  - [x] `useEffect` che chiama `router.replace("/", { scroll: false })` quando `apriPreferenze` è vero, per rimuovere il query param dall'URL subito dopo l'apertura (evita che un refresh/link condiviso riapra il banner all'infinito) — non tocca lo stato `visibile` già impostato.
+
+- [x] Task 7: Verifica finale secondo giro
+  - [x] Confermato: nessun test esistente importa `CookieBanner.tsx`/`FooterPubblico.tsx`.
+  - [x] `npx vitest run` (1182/1182), `npx tsc --noEmit` (0 errori), `npm run lint` (0 errori, warning preesistenti invariati), `npm run build` (riuscita, tutte le rotte pubbliche presenti nell'output).
 
 ## Dev Notes
 
@@ -106,11 +131,18 @@ Nessuno - implementazione lineare, nessun blocco/HALT incontrato. Modifica CSS-o
 - Task 4: 1167/1167 test Vitest passati (nessun file di test importa `CookieBanner.tsx`, nessuna regressione), 0 errori `tsc`/`eslint` (solo gli 11 warning `<img>`/`no-unused-vars` preesistenti, non introdotti da questa storia), build produzione riuscita (`/`, `/squadre`, `/calendario`, `/staff`, `/contatti` presenti nell'output). L'errore Prisma WASM mostrato durante `next build` è il quirk noto e già documentato dell'ambiente locale, non causato da questa storia.
 - Verifica visiva dal vivo NON eseguibile in questo sandbox (stesso limite noto delle altre story dell'Epic 18) — demandata all'utente: confermare che il pulsante "Preferenze cookie" in basso a sinistra risulti visibilmente più leggero/discreto a riposo e torni pienamente visibile al passaggio del mouse o al focus da tastiera.
 
+**Secondo giro (stesso giorno)**: dopo verifica dal vivo, l'utente ha giudicato anche il pulsante alleggerito "ancora troppo invasivo e visibile" e ha chiesto esplicitamente un link nel footer al suo posto. Il pulsante fisso permanente (Task 1-4 sopra) è stato rimosso interamente, non ulteriormente rifinito — sostituito da `<Link>` in `FooterPubblico.tsx` (condiviso da tutte le pagine pubbliche) che naviga verso `/?preferenze-cookie=1`. Poiché `CookieBanner` resta montato solo sulla home (Story 18.6, non riaperta), la home ora legge `searchParams` e passa `apriPreferenze` al banner per forzarne l'apertura da qualunque pagina pubblica si parta. Un `router.replace` post-mount ripulisce l'URL. Tutti i file toccati dal primo giro (`.preferenze` in `CookieBanner.module.css`) sono stati rimossi in questo secondo giro, non lasciati come codice morto. 1182/1182 test Vitest passati (nessuna regressione, nessun test esistente importava i file toccati), 0 errori tsc/eslint, build produzione riuscita. Verifica visiva dal vivo ancora demandata all'utente: confermare che il link "Preferenze cookie" nel footer di ogni pagina pubblica porti alla home con il banner aperto, e che dopo la scelta l'URL torni pulito (`/`, senza query string).
+
 ### File List
 
+- `app/CookieBanner.tsx`
 - `app/CookieBanner.module.css`
+- `app/FooterPubblico.tsx`
+- `app/FooterPubblico.module.css`
+- `app/page.tsx`
 
 ### Change Log
 
 - 2026-08-15: File di story creato (create-story workflow) — punto di conformità cookie (rimuovere vs. rendere meno invasivo) risolto esplicitamente con l'utente prima della scrittura, scelta l'opzione (b). Status: backlog → ready-for-dev.
 - 2026-08-15: Implementata Story 18.17 (dev-story workflow) — alleggerito il trattamento visivo di `.preferenze` in `app/CookieBanner.module.css` (bordo/ombra leggeri, opacità 0.7→1 su hover/focus), nessuna modifica a logica/comportamento. 1167/1167 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status: ready-for-dev → review.
+- 2026-08-15: Secondo giro, stesso giorno, su ulteriore feedback diretto dell'utente dopo verifica dal vivo del primo giro ("ancora troppo invasivo... non si può inserire un link sul footer?") — pulsante fisso permanente rimosso interamente, sostituito da link "Preferenze cookie" in `FooterPubblico.tsx` (ogni pagina pubblica) che riapre il banner sulla home tramite query param + `searchParams`. 1182/1182 test Vitest passati, 0 errori tsc/eslint, build produzione riuscita. Status resta review, in attesa di code review su entrambi i giri insieme.

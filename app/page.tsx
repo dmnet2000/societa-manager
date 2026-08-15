@@ -17,6 +17,7 @@ import {
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
+import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
 import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
 import {
   NOME_COOKIE_CONSENSO,
@@ -48,7 +49,23 @@ function formattaData(data: string): string {
   return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
 }
 
-export default async function HomePubblicaPage() {
+export default async function HomePubblicaPage({
+  searchParams,
+}: {
+  // searchParams e' una Promise in questa versione di Next.js (16.2.10),
+  // stesso pattern gia' in uso altrove nel progetto (es.
+  // app/(certificati-medici)/certificato-medico/page.tsx).
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Story 18.17 (secondo giro, link "Preferenze cookie" nel footer invece
+  // del pulsante fisso): il footer e' condiviso da tutte le pagine
+  // pubbliche, ma CookieBanner resta montato solo qui (decisione di Story
+  // 18.6, non riaperta) - il link nel footer naviga sempre verso "/" con
+  // questo query param, che forza il banner ad aprirsi indipendentemente
+  // dalla scelta gia' registrata.
+  const params = await searchParams;
+  const apriPreferenzeCookie = params["preferenze-cookie"] !== undefined;
+
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
   // comunque (usa la sola anon key). Review fix (Blind Hunter, Story 18.1):
   // le letture non dipendono l'una dall'altra - eseguite in Promise.all,
@@ -111,6 +128,7 @@ export default async function HomePubblicaPage() {
     gruppiStagione,
     fotoPerGruppo,
     urlPaginaFacebook,
+    fotoHero,
   ] = await Promise.all([
     // Story 18.8: leggiInfoLogo (usata per <img> del logo) spostata in
     // HeaderPubblico.tsx, non piu' letta qui - questa pagina resta con la
@@ -199,6 +217,13 @@ export default async function HomePubblicaPage() {
       console.error(err);
       return null;
     }),
+    // Story 18.14 (AC #3): fallback quando non ci sono post Facebook da
+    // mostrare - fail-soft, stesso pattern delle altre query pubbliche
+    // (mirror di InfoLogo/leggiInfoLogo).
+    leggiInfoFotoHero(supabase).catch((err) => {
+      console.error(err);
+      return { esiste: false, aggiornatoIl: null };
+    }),
   ]);
 
   // Story 18.13 (AC #3/#5): non puo' stare nel Promise.all sopra - dipende
@@ -257,12 +282,30 @@ export default async function HomePubblicaPage() {
           {/* Richiesta esplicita dell'utente (2026-08-14): il carosello Post
               Facebook sostituisce il placeholder "FOTO AZIONE" come sfondo
               dell'hero - foto reali della Pagina al posto del pattern
-              statico, quando disponibili. Il placeholder resta come
-              fallback quando non ci sono post da mostrare (nessun token/URL
-              configurato, consenso cookie non dato, o nessun post con
-              testo) - stesso principio fail-soft già stabilito. */}
-          {postFacebook.length === 0 && (
+              statico, quando disponibili. Story 18.14: quando non ci sono
+              post Facebook, la foto sfondo hero caricata da Admin/Dirigente
+              (se presente) e' il secondo fallback, prima del placeholder
+              statico - priorita' Facebook > foto caricata > placeholder
+              (AC #3/#5 di quella storia, decisione presa esplicitamente con
+              l'utente: i post Facebook restano la fonte con priorita' piu'
+              alta, invariata). */}
+          {postFacebook.length === 0 && !fotoHero.esiste && (
             <div className={styles.heroFoto} aria-hidden="true" />
+          )}
+          {/* Story 18.14: riuso deliberato di styles.heroFotoPost (stessa
+              classe usata da HeroPostFacebook.tsx per la foto del post
+              corrente) - stesso trattamento visivo (object-fit cover, scrim
+              per la leggibilita' del testo, AC #4), nessuna nuova regola CSS:
+              una foto vera come sfondo dell'hero e' lo stesso ruolo visivo
+              indipendentemente dalla sorgente (post Facebook o upload). */}
+          {postFacebook.length === 0 && fotoHero.esiste && (
+            <div
+              className={styles.heroFotoPost}
+              style={{
+                backgroundImage: `url(${urlPubblicoFotoHero(supabase)}?v=${encodeURIComponent(fotoHero.aggiornatoIl ?? "")})`,
+              }}
+              aria-hidden="true"
+            />
           )}
           <div className={styles.heroDiagonale} aria-hidden="true" />
           <div className={styles.heroContenuto}>
@@ -417,13 +460,17 @@ export default async function HomePubblicaPage() {
       {/* Story 18.8: estratto in FooterPubblico.tsx - conSpazioCookieBanner
           perche' questa e' l'unica pagina che monta ancora <CookieBanner>
           (decisione gia' presa in Story 18.6, non riaperta), quindi ha
-          bisogno del padding-bottom di sicurezza contro il pulsante fisso. */}
+          bisogno del padding-bottom di sicurezza contro il banner fisso
+          quando e' aperto. */}
       <FooterPubblico conSpazioCookieBanner />
-      {/* Story 18.6: sempre montato (non condizionato come
-          mostraSponsor/mostraPartite sopra) - deve restare raggiungibile
-          come pulsante "Preferenze cookie" anche dopo la scelta (AC #3),
-          non solo alla prima visita. */}
-      <CookieBanner valoreIniziale={valoreConsensoIniziale} />
+      {/* Story 18.6/18.17: CookieBanner resta montato solo qui. Da Story
+          18.17 (secondo giro) non c'e' piu' un pulsante fisso permanente -
+          la riapertura avviene solo tramite il link "Preferenze cookie" nel
+          footer (ogni pagina pubblica), che naviga qui con apriPreferenzeCookie. */}
+      <CookieBanner
+        valoreIniziale={valoreConsensoIniziale}
+        apriPreferenze={apriPreferenzeCookie}
+      />
     </>
   );
 }

@@ -117,3 +117,23 @@
   font-size: 13px;
   color: var(--color-success);
 }
+
+/* Story 18.14: mirror esatto di .anteprimaLogo/.messaggioVuoto in
+   app/(configurazione)/logo/logo.module.css - stessa anteprima <img>,
+   nessuna storia precedente in questa pagina aveva un'anteprima immagine. */
+.anteprimaFotoHero {
+  display: block;
+  max-width: 260px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  margin-top: var(--space-4);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

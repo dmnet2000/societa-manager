@@ -69,3 +69,29 @@
   outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
+
+/* Story 18.17 (secondo giro): link discreto, stesso trattamento testuale
+   muto del copyright ({colors.testo-scuro-muto} #838E9E) - non deve
+   competere visivamente con l'icona social sopra. display:inline-flex +
+   min-height:44px per il target di tocco (mirror del principio gia'
+   documentato nel progetto: min-height va sull'elemento cliccabile stesso,
+   non affidato al genitore). */
+.linkPreferenzeCookie {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  color: #838e9e;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.linkPreferenzeCookie:hover {
+  color: var(--color-primary);
+}
+
+.linkPreferenzeCookie:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}

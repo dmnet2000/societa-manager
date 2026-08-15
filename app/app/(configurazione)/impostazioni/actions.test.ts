@@ -1,11 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+// Story 18.14: actions.ts ora importa anche lib/storage/foto-hero.ts (ha
+// "server-only" in testa) - stesso mock gia' stabilito in
+// app/(configurazione)/logo/actions.test.ts.
+vi.mock("server-only", () => ({}));
+
 const requireRuoloMock = vi.fn();
 const salvaEmailSegreteriaMock = vi.fn();
 const salvaUrlPaginaFacebookMock = vi.fn();
 const salvaContattiPubbliciMock = vi.fn();
 const salvaTokenFacebookMock = vi.fn();
 const leggiConfigurazioneSocialFacebookMock = vi.fn();
+const caricaFotoHeroMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -28,6 +34,10 @@ vi.mock("@/lib/db-rls/configurazione-social-facebook", () => ({
   leggiConfigurazioneSocialFacebook: leggiConfigurazioneSocialFacebookMock,
 }));
 
+vi.mock("@/lib/storage/foto-hero", () => ({
+  caricaFotoHero: caricaFotoHeroMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
@@ -37,7 +47,30 @@ const {
   salvaUrlPaginaFacebookAction,
   salvaContattiPubbliciAction,
   salvaTokenFacebookAction,
+  caricaFotoHeroAction,
 } = await import("./actions");
+
+const MAGIC_BYTES: Record<string, number[]> = {
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+};
+
+function fileFotoHeroValido(
+  nome = "foto-hero.png",
+  tipo = "image/png",
+  dimensione = 1024
+) {
+  const bytes = new Uint8Array(dimensione);
+  const magic = MAGIC_BYTES[tipo];
+  if (magic && dimensione >= magic.length) bytes.set(magic, 0);
+  return new File([bytes], nome, { type: tipo });
+}
+
+function buildFormDataFotoHero(file: File | null) {
+  const formData = new FormData();
+  if (file) formData.append("file", file);
+  return formData;
+}
 
 function buildFormData(valore: string) {
   const formData = new FormData();
@@ -85,6 +118,8 @@ beforeEach(() => {
     ultimaLetturaOk: true,
     ultimoErrore: null,
   });
+  caricaFotoHeroMock.mockReset();
+  caricaFotoHeroMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
 
@@ -567,6 +602,117 @@ describe("salvaTokenFacebookAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile salvare il Token Facebook. Riprova." },
+    });
+  });
+});
+
+// Story 18.14: mirror di caricaLogoAction (app/(configurazione)/logo/actions.test.ts)
+// - stessa sequenza di validazione, ma requireRuolo ammette anche DIRIGENTE
+// (AC #2).
+describe("caricaFotoHeroAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin ne' Dirigente (AC #2)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await caricaFotoHeroAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido())
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando nessun file e' fornito", async () => {
+    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(null));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    });
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un file vuoto (size 0)", async () => {
+    const result = await caricaFotoHeroAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido("foto-hero.png", "image/png", 0))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    });
+  });
+
+  it("returns VALIDATION per un tipo MIME non ammesso", async () => {
+    const result = await caricaFotoHeroAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido("foto-hero.svg", "image/svg+xml"))
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Formato immagine non ammesso (solo PNG, JPG)." },
+    });
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando il file supera i 2MB", async () => {
+    const result = await caricaFotoHeroAction(
+      undefined,
+      buildFormDataFotoHero(
+        fileFotoHeroValido("foto-hero.png", "image/png", 2 * 1024 * 1024 + 1)
+      )
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il file supera la dimensione massima di 2MB." },
+    });
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION quando le magic byte non corrispondono al MIME dichiarato (AC #1)", async () => {
+    const fileIngannevole = new File([new Uint8Array(1024)], "falso.png", {
+      type: "image/png",
+    });
+
+    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(fileIngannevole));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    });
+    expect(caricaFotoHeroMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta ADMIN, chiama caricaFotoHero e revalida /app/impostazioni (AC #1)", async () => {
+    const png = fileFotoHeroValido("foto-hero.png", "image/png");
+    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(png));
+
+    expect(result).toEqual({ success: true });
+    expect(caricaFotoHeroMock).toHaveBeenCalledWith(supabaseClientFinto, png);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("accetta DIRIGENTE (AC #2, non ADMIN-only come il logo)", async () => {
+    const jpeg = fileFotoHeroValido("foto-hero.jpg", "image/jpeg");
+    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(jpeg));
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns INTERNAL fail-closed quando caricaFotoHero lancia (incluso un rifiuto RLS)", async () => {
+    caricaFotoHeroMock.mockRejectedValue(new Error("RLS denial"));
+
+    const result = await caricaFotoHeroAction(
+      undefined,
+      buildFormDataFotoHero(fileFotoHeroValido())
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto. Riprova." },
     });
   });
 });

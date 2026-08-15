@@ -12,6 +12,12 @@ import {
   leggiConfigurazioneSocialFacebook,
   salvaTokenFacebook,
 } from "@/lib/db-rls/configurazione-social-facebook";
+import { caricaFotoHero } from "@/lib/storage/foto-hero";
+import {
+  MIME_AMMESSI_IMMAGINE,
+  DIMENSIONE_MASSIMA_IMMAGINE_BYTE,
+  contenutoCorrispondeAlMimeImmagine,
+} from "@/lib/storage/validazione-immagine";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -228,6 +234,72 @@ export async function salvaContattiPubbliciAction(
         code: "INTERNAL",
         message: "Impossibile salvare i Contatti pubblici. Riprova.",
       },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type FotoHeroActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+// Story 18.14 (AC #1/#2): mirror di caricaLogoAction (app/(configurazione)/logo/actions.ts)
+// - stessa sequenza di validazione (lib/storage/validazione-immagine.ts,
+// riuso diretto, nessuna nuova regola) - ma requireRuolo ammette anche
+// DIRIGENTE (non ADMIN-only come il logo del Settore): AC #2 di questa
+// storia e' esplicito su Admin/Dirigente, stesso perimetro delle altre
+// action di questo file (Pagina Facebook/Contatti pubblici/Token Facebook).
+// Nessun revalidatePath("/"): la home pubblica ha gia' dynamic =
+// "force-dynamic" (app/page.tsx), nessuna cache statica da invalidare.
+export async function caricaFotoHeroAction(
+  _prevState: FotoHeroActionState,
+  formData: FormData
+): Promise<FotoHeroActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    };
+  }
+  if (!MIME_AMMESSI_IMMAGINE.includes(file.type)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Formato immagine non ammesso (solo PNG, JPG).",
+      },
+    };
+  }
+  if (file.size > DIMENSIONE_MASSIMA_IMMAGINE_BYTE) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il file supera la dimensione massima di 2MB.",
+      },
+    };
+  }
+  if (!(await contenutoCorrispondeAlMimeImmagine(file))) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    await caricaFotoHero(supabase, file);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile caricare la foto. Riprova." },
     };
   }
 
