@@ -1,23 +1,22 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const signUpMock = vi.fn();
+const generateLinkMock = vi.fn();
+const inviaEmailMock = vi.fn();
+const headersMock = vi.fn();
 const utenteCreateMock = vi.fn();
 const sincronizzaRuoliMock = vi.fn();
 const trovaAllenatorePerCodiceFiscaleMock = vi.fn();
 const allenatoreUpdateMock = vi.fn();
 const trovaPerCodiceFiscaleMock = vi.fn();
 const genitoreAtletaCreateMock = vi.fn();
-const createAdminClientMock = vi.fn(() => ({}));
-const redirectMock = vi.fn(() => {
-  throw new Error("REDIRECT");
-});
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: { signUp: signUpMock },
-  }),
+const createAdminClientMock = vi.fn(() => ({
+  auth: { admin: { generateLink: generateLinkMock } },
 }));
 
+// Story 11.4: signUp() (client di sessione) sostituito da generateLink
+// (Admin API, service-role) - stesso mock scaffold di
+// recupera-password/actions.test.ts (richiediRecuperoPassword usa gia'
+// esattamente questo pattern). inviaEmail/headers mockati allo stesso modo.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     utente: { create: utenteCreateMock },
@@ -34,6 +33,14 @@ vi.mock("@/lib/auth-admin/client", () => ({
   createAdminClient: createAdminClientMock,
 }));
 
+vi.mock("@/lib/email/invia-email", () => ({
+  inviaEmail: inviaEmailMock,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: headersMock,
+}));
+
 vi.mock("@/lib/matching-codice-fiscale", async () => {
   const { isCodiceFiscaleValido } = await vi.importActual<
     typeof import("@/lib/matching-codice-fiscale/valida-codice-fiscale")
@@ -45,11 +52,10 @@ vi.mock("@/lib/matching-codice-fiscale", async () => {
   };
 });
 
-vi.mock("next/navigation", () => ({
-  redirect: redirectMock,
-}));
-
 const { registrati } = await import("./actions");
+
+const MESSAGGIO_SUCCESSO =
+  "Registrazione quasi completata: controlla la tua email e apri il link per accedere.";
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData();
@@ -63,9 +69,32 @@ function buildFormData(fields: Record<string, string | string[]>) {
   return formData;
 }
 
+function buildHeaders(entries: Record<string, string>) {
+  return new Map(Object.entries(entries));
+}
+
+// Shape di successo di generateLink({type:"signup",...}) - properties.hashed_token
+// e' l'unico campo letto dal codice (link di conferma), mirror del pattern
+// gia' verificato in recupera-password/actions.test.ts.
+function generateLinkSuccess(id: string, hashedToken = `token-${id}`) {
+  return {
+    data: {
+      user: { id, identities: [{ id: "id1" }] },
+      properties: { hashed_token: hashedToken },
+    },
+    error: null,
+  };
+}
+
 describe("registrati", () => {
   beforeEach(() => {
-    signUpMock.mockReset();
+    generateLinkMock.mockReset();
+    inviaEmailMock.mockReset();
+    inviaEmailMock.mockResolvedValue(undefined);
+    headersMock.mockReset();
+    headersMock.mockResolvedValue(
+      buildHeaders({ host: "app.esempio.it", "x-forwarded-proto": "https" })
+    );
     utenteCreateMock.mockReset();
     sincronizzaRuoliMock.mockReset();
     trovaAllenatorePerCodiceFiscaleMock.mockReset();
@@ -73,7 +102,6 @@ describe("registrati", () => {
     trovaPerCodiceFiscaleMock.mockReset();
     genitoreAtletaCreateMock.mockReset();
     createAdminClientMock.mockClear();
-    redirectMock.mockClear();
   });
 
   it("returns an error when no ruolo is selected", async () => {
@@ -84,12 +112,15 @@ describe("registrati", () => {
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
-  it("returns 'email già registrata' when signUp returns empty identities (AC #4)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u1", identities: [] } },
+  it("returns 'email già registrata' when generateLink returns empty identities (AC #4)", async () => {
+    generateLinkMock.mockResolvedValue({
+      data: {
+        user: { id: "u1", identities: [] },
+        properties: { hashed_token: "token-u1" },
+      },
       error: null,
     });
 
@@ -108,8 +139,8 @@ describe("registrati", () => {
     expect(utenteCreateMock).not.toHaveBeenCalled();
   });
 
-  it("returns 'email già registrata' when signUp returns a user_already_exists error (AC #4)", async () => {
-    signUpMock.mockResolvedValue({
+  it("returns 'email già registrata' when generateLink returns a user_already_exists error (AC #4)", async () => {
+    generateLinkMock.mockResolvedValue({
       data: { user: null },
       error: { code: "user_already_exists", message: "User already registered" },
     });
@@ -129,8 +160,8 @@ describe("registrati", () => {
     expect(utenteCreateMock).not.toHaveBeenCalled();
   });
 
-  it("returns a friendly error when signUp throws unexpectedly, no crash", async () => {
-    signUpMock.mockRejectedValue(new Error("network down"));
+  it("returns a friendly error when generateLink throws unexpectedly, no crash", async () => {
+    generateLinkMock.mockRejectedValue(new Error("network down"));
 
     const result = await registrati(
       undefined,
@@ -150,24 +181,20 @@ describe("registrati", () => {
   });
 
   it("dedupes duplicate ruolo values before creating the Utente", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u3", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u3"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u3" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "dup-ruolo@example.com",
-          password: "pw123456",
-          ruoli: ["DIRIGENTE", "DIRIGENTE"],
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "dup-ruolo@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE", "DIRIGENTE"],
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(utenteCreateMock).toHaveBeenCalledWith({
       data: {
         supabaseAuthId: "u3",
@@ -179,10 +206,7 @@ describe("registrati", () => {
   });
 
   it("returns a friendly error, no crash, when the post-signup sync fails (decided: no automatic rollback)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u4", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u4"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u4" });
     sincronizzaRuoliMock.mockRejectedValue(new Error("app_metadata sync failed"));
 
@@ -201,27 +225,22 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(redirectMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
-  it("creates the Utente + Ruoli, syncs app_metadata, and redirects on success (AC #1)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u2", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+  it("creates the Utente + Ruoli, syncs app_metadata, and returns success without redirect (AC #1)", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u2"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u2" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "new@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE", "DIRIGENTE"],
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "new@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE", "DIRIGENTE"],
+      })
+    );
 
     expect(utenteCreateMock).toHaveBeenCalledWith({
       data: {
@@ -236,14 +255,61 @@ describe("registrati", () => {
       "ALLENATORE",
       "DIRIGENTE",
     ]);
-    expect(redirectMock).toHaveBeenCalledWith("/app");
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+  });
+
+  it("sends the confirmation email with a token_hash link built from the request headers (AC #1)", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u17", "hash-abc"));
+    utenteCreateMock.mockResolvedValue({ id: "utente-u17" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+    await registrati(
+      undefined,
+      buildFormData({
+        email: "conferma@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinatario: "conferma@example.com",
+        testo: expect.stringContaining(
+          "https://app.esempio.it/conferma-registrazione?token_hash=hash-abc"
+        ),
+      })
+    );
+  });
+
+  it("returns EMAIL_NON_INVIATA (AC #5) when the confirmation email fails to send, no rollback attempted", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u18"));
+    utenteCreateMock.mockResolvedValue({ id: "utente-u18" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+    inviaEmailMock.mockRejectedValue(new Error("CONFIGURAZIONE_SMTP_MANCANTE: ..."));
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "smtp-rotto@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "EMAIL_NON_INVIATA",
+        message:
+          "Registrazione creata ma impossibile inviare l'email di conferma. Contatta la segreteria.",
+      },
+    });
+    // AC #5: nessun rollback - l'Utente e' comunque stato creato prima del fallimento email.
+    expect(utenteCreateMock).toHaveBeenCalled();
   });
 
   it("hooks up the new Utente to a preloaded Allenatore matching the Codice Fiscale (AC #3)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u5", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u5"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u5" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     trovaAllenatorePerCodiceFiscaleMock.mockResolvedValue({
@@ -253,18 +319,17 @@ describe("registrati", () => {
     });
     allenatoreUpdateMock.mockResolvedValue({});
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "allenatore@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE"],
-          codiceFiscaleAllenatore: "abc123",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "allenatore@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE"],
+        codiceFiscaleAllenatore: "abc123",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(trovaAllenatorePerCodiceFiscaleMock).toHaveBeenCalledWith("ABC123");
     expect(allenatoreUpdateMock).toHaveBeenCalledWith({
       where: { id: "allenatore-1" },
@@ -273,79 +338,64 @@ describe("registrati", () => {
   });
 
   it("does not look up any Allenatore when no Codice Fiscale is provided (AC #4)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u6", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u6"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u6" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "senza-cf@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE"],
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "senza-cf@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE"],
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(trovaAllenatorePerCodiceFiscaleMock).not.toHaveBeenCalled();
   });
 
   it("does not look up any Allenatore when the Ruolo Allenatore is not selected, even with a Codice Fiscale", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u7", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u7"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u7" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "dirigente@example.com",
-          password: "pw123456",
-          ruoli: ["DIRIGENTE"],
-          codiceFiscaleAllenatore: "ABC123",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "dirigente@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+        codiceFiscaleAllenatore: "ABC123",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(trovaAllenatorePerCodiceFiscaleMock).not.toHaveBeenCalled();
   });
 
   it("registers successfully without hooking up when the Codice Fiscale matches no preloaded Allenatore (AC #4)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u8", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u8"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u8" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     trovaAllenatorePerCodiceFiscaleMock.mockResolvedValue(null);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "nessun-precaricamento@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE"],
-          codiceFiscaleAllenatore: "SCONOSCIUTO",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "nessun-precaricamento@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE"],
+        codiceFiscaleAllenatore: "SCONOSCIUTO",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(allenatoreUpdateMock).not.toHaveBeenCalled();
   });
 
   it("does not hook up (and does not crash) when the matching Allenatore is already linked to another account", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u9", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u9"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u9" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     trovaAllenatorePerCodiceFiscaleMock.mockResolvedValue({
@@ -354,26 +404,22 @@ describe("registrati", () => {
       utenteId: "gia-agganciato",
     });
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "gia-agganciato@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE"],
-          codiceFiscaleAllenatore: "ABC123",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "gia-agganciato@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE"],
+        codiceFiscaleAllenatore: "ABC123",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(allenatoreUpdateMock).not.toHaveBeenCalled();
   });
 
   it("returns a friendly error, no crash, when the Allenatore hookup fails (decided: no automatic rollback)", async () => {
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u10", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u10"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u10" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     trovaAllenatorePerCodiceFiscaleMock.mockResolvedValue({
@@ -399,7 +445,7 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(redirectMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when Ruolo Genitore is selected without a Codice Fiscale figlio (AC #2)", async () => {
@@ -418,7 +464,7 @@ describe("registrati", () => {
         message: "Il Codice Fiscale della figlia/o è obbligatorio per il Ruolo Genitore.",
       },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
     expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
   });
 
@@ -441,7 +487,7 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when the Codice Fiscale figlio has an invalid format", async () => {
@@ -463,7 +509,7 @@ describe("registrati", () => {
       },
     });
     expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error and creates no account when the Codice Fiscale figlio matches no Atleta (AC #3)", async () => {
@@ -491,7 +537,7 @@ describe("registrati", () => {
       expect.anything(),
       "SCONOSCIUTO1234X"
     );
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
     expect(utenteCreateMock).not.toHaveBeenCalled();
   });
 
@@ -515,7 +561,7 @@ describe("registrati", () => {
           "Nessuna Atleta trovata con questo Codice Fiscale. Verifica di aver inserito il codice corretto.",
       },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
     expect(utenteCreateMock).not.toHaveBeenCalled();
   });
 
@@ -524,26 +570,22 @@ describe("registrati", () => {
       id: "atleta-1",
       codiceFiscale: "RSSMRA10A41H501Z",
     });
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u11", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u11"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u11" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockResolvedValue({});
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "genitore-match@example.com",
-          password: "pw123456",
-          ruoli: ["GENITORE"],
-          codiceFiscaleFiglio: "rssmra10a41h501z",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "genitore-match@example.com",
+        password: "pw123456",
+        ruoli: ["GENITORE"],
+        codiceFiscaleFiglio: "rssmra10a41h501z",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(trovaPerCodiceFiscaleMock).toHaveBeenCalledWith(
       expect.anything(),
       "RSSMRA10A41H501Z"
@@ -558,10 +600,7 @@ describe("registrati", () => {
       id: "atleta-1",
       codiceFiscale: "RSSMRA10A41H501Z",
     });
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u13", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u13"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u13" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockRejectedValue(new Error("db down"));
@@ -582,7 +621,7 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(redirectMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
   it("links a second Genitore to the same Atleta without any duplicate error (AC #4)", async () => {
@@ -593,39 +632,31 @@ describe("registrati", () => {
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockResolvedValue({});
 
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "genitore-a", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("genitore-a"));
     utenteCreateMock.mockResolvedValue({ id: "utente-genitore-a" });
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "primo-genitore@example.com",
-          password: "pw123456",
-          ruoli: ["GENITORE"],
-          codiceFiscaleFiglio: "RSSMRA10A41H501Z",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const primoRisultato = await registrati(
+      undefined,
+      buildFormData({
+        email: "primo-genitore@example.com",
+        password: "pw123456",
+        ruoli: ["GENITORE"],
+        codiceFiscaleFiglio: "RSSMRA10A41H501Z",
+      })
+    );
+    expect(primoRisultato).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
 
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "genitore-b", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("genitore-b"));
     utenteCreateMock.mockResolvedValue({ id: "utente-genitore-b" });
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "secondo-genitore@example.com",
-          password: "pw123456",
-          ruoli: ["GENITORE"],
-          codiceFiscaleFiglio: "RSSMRA10A41H501Z",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const secondoRisultato = await registrati(
+      undefined,
+      buildFormData({
+        email: "secondo-genitore@example.com",
+        password: "pw123456",
+        ruoli: ["GENITORE"],
+        codiceFiscaleFiglio: "RSSMRA10A41H501Z",
+      })
+    );
+    expect(secondoRisultato).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
 
     expect(genitoreAtletaCreateMock).toHaveBeenNthCalledWith(1, {
       data: { utenteId: "utente-genitore-a", atletaId: "atleta-condivisa" },
@@ -651,7 +682,7 @@ describe("registrati", () => {
         message: "Il tuo Codice Fiscale è obbligatorio per il Ruolo Atleta.",
       },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
     expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
   });
 
@@ -673,7 +704,7 @@ describe("registrati", () => {
       },
     });
     expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
   it("returns a friendly error, no crash, when the Atleta lookup throws (fail-closed)", async () => {
@@ -695,7 +726,7 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error and creates no account when the Codice Fiscale for Ruolo Atleta matches no Atleta (Story 2.7 AC #2)", async () => {
@@ -723,7 +754,7 @@ describe("registrati", () => {
       expect.anything(),
       "SCONOSCIUTO1234X"
     );
-    expect(signUpMock).not.toHaveBeenCalled();
+    expect(generateLinkMock).not.toHaveBeenCalled();
     expect(utenteCreateMock).not.toHaveBeenCalled();
   });
 
@@ -732,26 +763,22 @@ describe("registrati", () => {
       id: "atleta-propria",
       codiceFiscale: "RSSMRA10A41H501Z",
     });
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u14", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u14"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u14" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockResolvedValue({});
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "atleta-match@example.com",
-          password: "pw123456",
-          ruoli: ["ATLETA"],
-          codiceFiscaleAtleta: "rssmra10a41h501z",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-match@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+        codiceFiscaleAtleta: "rssmra10a41h501z",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(trovaPerCodiceFiscaleMock).toHaveBeenCalledWith(
       expect.anything(),
       "RSSMRA10A41H501Z"
@@ -770,10 +797,7 @@ describe("registrati", () => {
       id: "atleta-propria",
       codiceFiscale: "RSSMRA10A41H501Z",
     });
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u15", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u15"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u15" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockRejectedValue(new Error("db down"));
@@ -794,7 +818,7 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(redirectMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 
   it("hooks up both Atleta (self) and Genitore (child) independently when both ruoli are selected", async () => {
@@ -807,27 +831,23 @@ describe("registrati", () => {
       }
       return null;
     });
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u16", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u16"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u16" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
     genitoreAtletaCreateMock.mockResolvedValue({});
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "atleta-e-genitore@example.com",
-          password: "pw123456",
-          ruoli: ["ATLETA", "GENITORE"],
-          codiceFiscaleAtleta: "selfcf0000000001",
-          codiceFiscaleFiglio: "figliocf00000002",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "atleta-e-genitore@example.com",
+        password: "pw123456",
+        ruoli: ["ATLETA", "GENITORE"],
+        codiceFiscaleAtleta: "selfcf0000000001",
+        codiceFiscaleFiglio: "figliocf00000002",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
       data: {
         utenteId: "utente-u16",
@@ -857,26 +877,22 @@ describe("registrati", () => {
       codiceFiscale: "RSSMRA10A41H501Z",
     });
     genitoreAtletaCreateMock.mockResolvedValue({});
-    signUpMock.mockResolvedValue({
-      data: { user: { id: "u12", identities: [{ id: "id1" }] } },
-      error: null,
-    });
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u12"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u12" });
     sincronizzaRuoliMock.mockResolvedValue(undefined);
 
-    await expect(
-      registrati(
-        undefined,
-        buildFormData({
-          email: "doppio-ruolo@example.com",
-          password: "pw123456",
-          ruoli: ["ALLENATORE", "GENITORE"],
-          codiceFiscaleAllenatore: "ABC1234567890123",
-          codiceFiscaleFiglio: "RSSMRA10A41H501Z",
-        })
-      )
-    ).rejects.toThrow("REDIRECT");
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "doppio-ruolo@example.com",
+        password: "pw123456",
+        ruoli: ["ALLENATORE", "GENITORE"],
+        codiceFiscaleAllenatore: "ABC1234567890123",
+        codiceFiscaleFiglio: "RSSMRA10A41H501Z",
+      })
+    );
 
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(allenatoreUpdateMock).toHaveBeenCalledWith({
       where: { id: "allenatore-multi" },
       data: { utenteId: "utente-u12" },

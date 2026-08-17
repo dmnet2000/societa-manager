@@ -45,6 +45,12 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows /conferma-registrazione even when not authenticated (Story 11.4)", async () => {
+    expect(await getRouteDecision("/conferma-registrazione", false, [])).toEqual({
+      action: "allow",
+    });
+  });
+
   it("redirects to login when not authenticated on a non-public route", async () => {
     expect(await getRouteDecision("/app", false, [])).toEqual({
       action: "redirect",

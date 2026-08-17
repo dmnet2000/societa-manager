@@ -74,6 +74,13 @@
   color: var(--color-danger);
 }
 
+/* Story 11.4 (AC #1) - mirror di .successo in permessi-accesso.module.css. */
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
 .bottone {
   margin-top: var(--space-5);
   align-self: flex-start;

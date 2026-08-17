@@ -41,6 +41,10 @@ export const PUBLIC_ROUTES = [
   "/",
   "/accedi",
   "/registrati",
+  // Story 11.4: stesso motivo di /recupera-password e /reimposta-password
+  // sopra - raggiunta da un Utente senza sessione, il Proxy la
+  // rediregerebbe altrimenti a /accedi prima di mostrare il form.
+  "/conferma-registrazione",
   "/recupera-password",
   "/reimposta-password",
   "/squadre",

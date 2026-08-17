@@ -1,8 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Ruolo } from "@prisma/client";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";
 import { RUOLI_VALIDI } from "@/lib/ruoli";
@@ -12,13 +11,18 @@ import {
   trovaPerCodiceFiscale,
 } from "@/lib/matching-codice-fiscale";
 import { createAdminClient } from "@/lib/auth-admin/client";
+import { inviaEmail } from "@/lib/email/invia-email";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
 // autorizzazione (non usato qui: login/registrazione non fanno controlli
-// di autorizzazione, solo autenticazione/validazione).
+// di autorizzazione, solo autenticazione/validazione). Story 11.4: mirror
+// esatto di RecuperaPasswordState (recupera-password/actions.ts) - il
+// successo non fa piu' redirect diretto (conferma email richiesta, vedi
+// Dev Notes della storia), mostra invece un messaggio.
 export type RegistrazioneState =
-  | { error: { code: string; message: string } }
+  | { successo: true; messaggio: string; error?: undefined }
+  | { successo?: undefined; messaggio?: undefined; error: { code: string; message: string } }
   | undefined;
 
 export async function registrati(
@@ -175,11 +179,24 @@ export async function registrati(
     atletaPropriaDaAgganciare = atletaPropria;
   }
 
-  const supabase = await createClient();
+  // Story 11.4: generateLink (Admin API, service-role) invece di
+  // supabase.auth.signUp() col client di sessione - crea comunque l'utente
+  // Supabase Auth (non confermato) ma SENZA inviare l'email nativa di
+  // Supabase (mai usata in questo progetto, stesso motivo di
+  // richiediRecuperoPassword in recupera-password/actions.ts). L'email di
+  // conferma viene inviata piu' sotto, dopo la creazione dei record Prisma,
+  // con l'SMTP applicativo e un link/token_hash proprio (non soggetto al
+  // flusso PKCE di Supabase - vedi Dev Notes della storia per il motivo
+  // preciso per cui questo risolve il sintomo Safari/iOS).
+  const admin = createAdminClient();
 
   let data, error;
   try {
-    ({ data, error } = await supabase.auth.signUp({ email, password }));
+    ({ data, error } = await admin.auth.admin.generateLink({
+      type: "signup",
+      email,
+      password,
+    }));
   } catch {
     return {
       error: {
@@ -193,6 +210,10 @@ export async function registrati(
   // duplicata può arrivare come errore esplicito (`user_already_exists`) o,
   // per non permettere l'enumerazione delle email, in modo silenzioso
   // (nessun errore, ma `identities` vuoto) - vanno gestiti entrambi i casi.
+  // Non verificato empiricamente con generateLink (Admin API) invece di
+  // signUp() - mantenuto lo stesso controllo per prudenza (vedi Dev Notes
+  // della storia, Task 1: nessun ambiente disponibile in questa sessione
+  // per verificarlo senza toccare la produzione).
   if (error) {
     if (error.code === "user_already_exists") {
       return {
@@ -292,5 +313,38 @@ export async function registrati(
     };
   }
 
-  redirect("/app");
+  // Story 11.4 (AC #1): link proprio con token_hash (mai action_link, non
+  // gestito dall'adapter cookie di questa app) - mirror esatto di
+  // richiediRecuperoPassword (recupera-password/actions.ts).
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const proto = headersList.get("x-forwarded-proto") ?? "https";
+  const link = `${proto}://${host}/conferma-registrazione?token_hash=${encodeURIComponent(data.properties.hashed_token)}`;
+
+  // Story 11.4 (AC #5): try/catch separato da quello sopra - a questo punto
+  // l'utente Supabase Auth e i record Prisma sono gia' stati creati, un
+  // fallimento qui (SMTP applicativo non configurato/irraggiungibile) non
+  // deve mostrare un falso successo, ma nemmeno tentare un rollback (nessun
+  // meccanismo esiste in questo codice, stessa politica di sopra).
+  try {
+    await inviaEmail({
+      destinatario: email,
+      oggetto: "Conferma la tua registrazione",
+      testo: `Per completare la registrazione, apri questo link: ${link}\n\nSe non hai richiesto tu questa registrazione, ignora questa email.`,
+    });
+  } catch (err) {
+    console.error("[registrati] invio email di conferma fallito", err);
+    return {
+      error: {
+        code: "EMAIL_NON_INVIATA",
+        message:
+          "Registrazione creata ma impossibile inviare l'email di conferma. Contatta la segreteria.",
+      },
+    };
+  }
+
+  return {
+    successo: true,
+    messaggio: "Registrazione quasi completata: controlla la tua email e apri il link per accedere.",
+  };
 }
