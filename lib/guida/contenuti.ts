@@ -206,6 +206,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui carichi il logo della società, mostrato nell'intestazione dell'app, e imposti il nome del settore sportivo (es. \"Volley\", \"Basket\") mostrato accanto ad esso.",
       "Un nuovo logo caricato sostituisce quello attuale per tutti gli utenti - non è possibile avere più logo attivi contemporaneamente.",
+      "Il logo caricato qui diventa anche l'icona (favicon) mostrata nella scheda del browser, e il nome del settore diventa il titolo della scheda: se non carichi un logo, la scheda mostra un'icona generica al suo posto.",
     ],
   },
   // Amministrazione/Profilo.

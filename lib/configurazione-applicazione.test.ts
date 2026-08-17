@@ -26,6 +26,7 @@ const {
   nessunContattoPubblicoConfigurato,
   leggiUrlSitoPolisportiva,
   salvaUrlSitoPolisportiva,
+  nomeSettoreAbbreviato,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -375,6 +376,23 @@ describe("nessunContattoPubblicoConfigurato", () => {
         urlPaginaFacebook: "https://www.facebook.com/miasocieta",
       })
     ).toBe(false);
+  });
+});
+
+// Story 18.21: usata da app/manifest.ts per short_name (app/manifest.test.ts
+// verifica l'integrazione, qui la funzione pura in isolamento).
+describe("nomeSettoreAbbreviato", () => {
+  it("returns the name unchanged when 12 characters or fewer", () => {
+    expect(nomeSettoreAbbreviato("Volley")).toBe("Volley");
+    expect(nomeSettoreAbbreviato("Volley Mogli")).toBe("Volley Mogli");
+  });
+
+  it("truncates to 12 characters when longer", () => {
+    expect(nomeSettoreAbbreviato("Volley Mogliano Veneto")).toBe("Volley Mogli");
+  });
+
+  it("returns an empty string unchanged", () => {
+    expect(nomeSettoreAbbreviato("")).toBe("");
   });
 });
 

@@ -17,6 +17,20 @@ export async function leggiNomeSettore(): Promise<string | null> {
   return configurazione?.nomeSettore ?? null;
 }
 
+// Story 18.21: usata da app/manifest.ts per `short_name` - il nome del
+// Settore e' testo libero configurato da Admin, senza vincolo di lunghezza,
+// mentre `short_name` del Web App Manifest e' convenzionalmente breve
+// (~12 caratteri, mostrato sotto l'icona nella home screen). Funzione pura
+// (nessun accesso DB), stesso principio di `nessunContattoPubblicoConfigurato`
+// sotto - troncamento semplice, nessuna libreria introdotta.
+const LUNGHEZZA_MASSIMA_SHORT_NAME = 12;
+
+export function nomeSettoreAbbreviato(nomeSettore: string): string {
+  return nomeSettore.length > LUNGHEZZA_MASSIMA_SHORT_NAME
+    ? nomeSettore.slice(0, LUNGHEZZA_MASSIMA_SHORT_NAME)
+    : nomeSettore;
+}
+
 export async function salvaNomeSettore(nomeSettore: string | null): Promise<void> {
   await prisma.configurazioneApplicazione.upsert({
     where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
