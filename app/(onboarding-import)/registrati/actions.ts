@@ -243,74 +243,96 @@ export async function registrati(
     };
   }
 
-  try {
-    // AC #1: crea il record Utente + Ruoli via Prisma (Utente non e' protetto
-    // da RLS, AD-9 - gestibile via Prisma diretto).
-    const utente = await prisma.utente.create({
-      data: {
-        supabaseAuthId: data.user.id,
-        email,
-        ruoli: { create: ruoli.map((ruolo) => ({ ruolo })) },
-      },
-    });
+  // Review fix (code review Story 11.4, decision-needed risolto con
+  // l'utente): se un Utente Prisma per questo supabaseAuthId esiste gia',
+  // questo NON e' un nuovo tentativo di registrazione ma un REINVIO del
+  // link di conferma per un account creato in un tentativo precedente
+  // rimasto non confermato (email di conferma fallita, o link scaduto
+  // prima che l'Utente lo aprisse - il sintomo Safari/iOS di questa
+  // storia rende quest'ultimo caso probabile). generateLink su un Utente
+  // Supabase esistente ma NON confermato ha gia' restituito successo sopra
+  // (non un errore "user_already_exists", riservato agli account gia'
+  // confermati) con un hashed_token fresco - saltare prisma.utente.create
+  // (che urterebbe il vincolo unique su supabaseAuthId, il vicolo cieco
+  // segnalato in review) ed andare direttamente al reinvio dell'email e'
+  // la correzione. Ruoli/aggancio del primo tentativo restano quelli gia'
+  // salvati - un reinvio non modifica la registrazione in corso, solo il
+  // link di conferma.
+  const utenteEsistente = await prisma.utente
+    .findUnique({ where: { supabaseAuthId: data.user.id } })
+    .catch(() => null);
 
-    // AD-11: specchia i Ruoli su app_metadata per le letture edge-safe nel Proxy.
-    await sincronizzaRuoliAppMetadata(data.user.id, ruoli);
-
-    // Story 1.4 AC #3/#4: aggancio a un Allenatore precaricato - solo se il
-    // Ruolo Allenatore e' selezionato e viene fornito un Codice Fiscale. Se
-    // non corrisponde a nessun precaricamento (o e' gia' agganciato a un
-    // altro Utente), la registrazione procede comunque normalmente, nessun
-    // record viene creato qui (fuori scope, vedi Dev Notes).
-    if (ruoli.includes("ALLENATORE") && codiceFiscaleAllenatore) {
-      const allenatore = await trovaAllenatorePerCodiceFiscale(
-        codiceFiscaleAllenatore
-      );
-      if (allenatore && !allenatore.utenteId) {
-        await prisma.allenatore.update({
-          where: { id: allenatore.id },
-          data: { utenteId: utente.id },
-        });
-      }
-    }
-
-    // Story 1.5 AC #1/#4: l'Atleta e' gia' stata risolta e validata prima
-    // del signUp - qui si crea solo il record di collegamento (relazione
-    // molti-a-molti, nessun vincolo che impedisca a un secondo Genitore di
-    // agganciarsi alla stessa Atleta).
-    if (atletaDaAgganciare) {
-      await prisma.genitoreAtleta.create({
-        data: { utenteId: utente.id, atletaId: atletaDaAgganciare.id },
-      });
-    }
-
-    // Story 2.7: aggancio dell'Atleta a se stessa, indipendente dal blocco
-    // GENITORE sopra. autoAggancio: true (Story 3.2 review fix) - distingue
-    // questo aggancio da quello Genitore<->figlia sopra: la policy RLS
-    // "atleta_propria_select" su "presenze" (Story 3.2) verifica questo
-    // flag per concedere lettura SOLO per la propria Atleta, mai per una
-    // figlia, anche quando lo stesso Utente ha entrambi i Ruoli.
-    if (atletaPropriaDaAgganciare) {
-      await prisma.genitoreAtleta.create({
+  if (!utenteEsistente) {
+    try {
+      // AC #1: crea il record Utente + Ruoli via Prisma (Utente non e' protetto
+      // da RLS, AD-9 - gestibile via Prisma diretto).
+      const utente = await prisma.utente.create({
         data: {
-          utenteId: utente.id,
-          atletaId: atletaPropriaDaAgganciare.id,
-          autoAggancio: true,
+          supabaseAuthId: data.user.id,
+          email,
+          ruoli: { create: ruoli.map((ruolo) => ({ ruolo })) },
         },
       });
+
+      // AD-11: specchia i Ruoli su app_metadata per le letture edge-safe nel Proxy.
+      await sincronizzaRuoliAppMetadata(data.user.id, ruoli);
+
+      // Story 1.4 AC #3/#4: aggancio a un Allenatore precaricato - solo se il
+      // Ruolo Allenatore e' selezionato e viene fornito un Codice Fiscale. Se
+      // non corrisponde a nessun precaricamento (o e' gia' agganciato a un
+      // altro Utente), la registrazione procede comunque normalmente, nessun
+      // record viene creato qui (fuori scope, vedi Dev Notes).
+      if (ruoli.includes("ALLENATORE") && codiceFiscaleAllenatore) {
+        const allenatore = await trovaAllenatorePerCodiceFiscale(
+          codiceFiscaleAllenatore
+        );
+        if (allenatore && !allenatore.utenteId) {
+          await prisma.allenatore.update({
+            where: { id: allenatore.id },
+            data: { utenteId: utente.id },
+          });
+        }
+      }
+
+      // Story 1.5 AC #1/#4: l'Atleta e' gia' stata risolta e validata prima
+      // del signUp - qui si crea solo il record di collegamento (relazione
+      // molti-a-molti, nessun vincolo che impedisca a un secondo Genitore di
+      // agganciarsi alla stessa Atleta).
+      if (atletaDaAgganciare) {
+        await prisma.genitoreAtleta.create({
+          data: { utenteId: utente.id, atletaId: atletaDaAgganciare.id },
+        });
+      }
+
+      // Story 2.7: aggancio dell'Atleta a se stessa, indipendente dal blocco
+      // GENITORE sopra. autoAggancio: true (Story 3.2 review fix) - distingue
+      // questo aggancio da quello Genitore<->figlia sopra: la policy RLS
+      // "atleta_propria_select" su "presenze" (Story 3.2) verifica questo
+      // flag per concedere lettura SOLO per la propria Atleta, mai per una
+      // figlia, anche quando lo stesso Utente ha entrambi i Ruoli.
+      if (atletaPropriaDaAgganciare) {
+        await prisma.genitoreAtleta.create({
+          data: {
+            utenteId: utente.id,
+            atletaId: atletaPropriaDaAgganciare.id,
+            autoAggancio: true,
+          },
+        });
+      }
+    } catch {
+      // Decisione: nessun rollback automatico. L'utente Supabase Auth puo'
+      // restare senza un Utente/Ruoli completo (registrazione a meta') - un
+      // ritentativo con la stessa email trova ora l'Utente assente e riprova
+      // la creazione da capo (stesso ramo `if (!utenteEsistente)`), non piu'
+      // un vicolo cieco. Accettato per questa storia: vedi Review Findings
+      // nella story 1.1.
+      return {
+        error: {
+          code: "INTERNAL",
+          message: "Impossibile completare la registrazione. Riprova.",
+        },
+      };
     }
-  } catch {
-    // Decisione: nessun rollback automatico. L'utente Supabase Auth puo'
-    // restare senza un Utente/Ruoli completo (registrazione a meta') - un
-    // ritentativo con la stessa email urtera' contro "Email gia' registrata"
-    // finche' non viene ripulito manualmente. Accettato per questa storia:
-    // vedi Review Findings nella story 1.1.
-    return {
-      error: {
-        code: "INTERNAL",
-        message: "Impossibile completare la registrazione. Riprova.",
-      },
-    };
   }
 
   // Story 11.4 (AC #1): link proprio con token_hash (mai action_link, non
@@ -333,12 +355,20 @@ export async function registrati(
       testo: `Per completare la registrazione, apri questo link: ${link}\n\nSe non hai richiesto tu questa registrazione, ignora questa email.`,
     });
   } catch (err) {
-    console.error("[registrati] invio email di conferma fallito", err);
+    // Review fix: identificativo (email) aggiunto al log - senza, lo staff
+    // non aveva modo di rintracciare la registrazione bloccata da questo
+    // fallimento (AC #5, "Contatta la segreteria" presupponeva che fosse
+    // possibile trovarla).
+    console.error(`[registrati] invio email di conferma fallito per ${email}`, err);
+    // Review fix: messaggio ora onesto (AC #5, "invita l'Utente a
+    // riprovare") - un nuovo tentativo con la stessa email ora reinvia
+    // davvero l'email (vedi il ramo utenteEsistente sopra), non e' piu' un
+    // vicolo cieco come prima di questo fix.
     return {
       error: {
         code: "EMAIL_NON_INVIATA",
         message:
-          "Registrazione creata ma impossibile inviare l'email di conferma. Contatta la segreteria.",
+          "Registrazione creata ma impossibile inviare l'email di conferma. Riprova tra qualche minuto o contatta la segreteria.",
       },
     };
   }

@@ -4,6 +4,7 @@ const generateLinkMock = vi.fn();
 const inviaEmailMock = vi.fn();
 const headersMock = vi.fn();
 const utenteCreateMock = vi.fn();
+const utenteFindUniqueMock = vi.fn();
 const sincronizzaRuoliMock = vi.fn();
 const trovaAllenatorePerCodiceFiscaleMock = vi.fn();
 const allenatoreUpdateMock = vi.fn();
@@ -19,7 +20,7 @@ const createAdminClientMock = vi.fn(() => ({
 // esattamente questo pattern). inviaEmail/headers mockati allo stesso modo.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    utente: { create: utenteCreateMock },
+    utente: { create: utenteCreateMock, findUnique: utenteFindUniqueMock },
     allenatore: { update: allenatoreUpdateMock },
     genitoreAtleta: { create: genitoreAtletaCreateMock },
   },
@@ -96,6 +97,8 @@ describe("registrati", () => {
       buildHeaders({ host: "app.esempio.it", "x-forwarded-proto": "https" })
     );
     utenteCreateMock.mockReset();
+    utenteFindUniqueMock.mockReset();
+    utenteFindUniqueMock.mockResolvedValue(null);
     sincronizzaRuoliMock.mockReset();
     trovaAllenatorePerCodiceFiscaleMock.mockReset();
     allenatoreUpdateMock.mockReset();
@@ -301,10 +304,88 @@ describe("registrati", () => {
       error: {
         code: "EMAIL_NON_INVIATA",
         message:
-          "Registrazione creata ma impossibile inviare l'email di conferma. Contatta la segreteria.",
+          "Registrazione creata ma impossibile inviare l'email di conferma. Riprova tra qualche minuto o contatta la segreteria.",
       },
     });
     // AC #5: nessun rollback - l'Utente e' comunque stato creato prima del fallimento email.
+    expect(utenteCreateMock).toHaveBeenCalled();
+  });
+
+  // Review fix (code review Story 11.4, decision-needed risolto con l'utente:
+  // aggiungere ora un reinvio, invece di limitarsi a correggere i testi):
+  // quando generateLink restituisce successo su un Utente Supabase GIA'
+  // esistente ma non confermato (email fallita al primo tentativo, o link
+  // scaduto), prisma.utente.findUnique lo trova gia' - niente ricreazione,
+  // solo un reinvio dell'email con un nuovo token.
+  it("resends the confirmation email without recreating Prisma records when the Utente already exists (review fix: no more dead end after a failed/expired first attempt)", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u-esistente", "nuovo-hash"));
+    utenteFindUniqueMock.mockResolvedValue({ id: "utente-gia-creato" });
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "riprovo@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+    expect(utenteFindUniqueMock).toHaveBeenCalledWith({
+      where: { supabaseAuthId: "u-esistente" },
+    });
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+    expect(sincronizzaRuoliMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinatario: "riprovo@example.com",
+        testo: expect.stringContaining(
+          "https://app.esempio.it/conferma-registrazione?token_hash=nuovo-hash"
+        ),
+      })
+    );
+  });
+
+  it("resend path also returns EMAIL_NON_INVIATA if the resend itself fails to send (AC #5)", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u-esistente-2"));
+    utenteFindUniqueMock.mockResolvedValue({ id: "utente-gia-creato-2" });
+    inviaEmailMock.mockRejectedValue(new Error("CONFIGURAZIONE_SMTP_MANCANTE: ..."));
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "riprovo-fallito@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "EMAIL_NON_INVIATA",
+        message:
+          "Registrazione creata ma impossibile inviare l'email di conferma. Riprova tra qualche minuto o contatta la segreteria.",
+      },
+    });
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to attempting Utente creation when the existence check itself fails (fail-soft)", async () => {
+    generateLinkMock.mockResolvedValue(generateLinkSuccess("u-check-fallito"));
+    utenteFindUniqueMock.mockRejectedValue(new Error("db down"));
+    utenteCreateMock.mockResolvedValue({ id: "utente-u-check-fallito" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "check-fallito@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
     expect(utenteCreateMock).toHaveBeenCalled();
   });
 

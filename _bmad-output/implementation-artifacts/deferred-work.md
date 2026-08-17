@@ -1,3 +1,11 @@
+## Deferred from: code review of 11-4-registrazione-safari-ios (2026-08-17)
+
+- Link di conferma costruito dagli header `host`/`x-forwarded-proto` senza validazione (incluso `host` assente → link `https://null/...`) — stesso pattern non validato già in produzione in `recupera-password/actions.ts`, riprodotto fedelmente qui; posta in gioco più alta (accesso pieno a un account appena creato, non solo un reset password), ma non una regressione di questa storia. [app/(onboarding-import)/registrati/actions.ts:319-322]
+- `/conferma-registrazione`, come ogni altra rotta pubblica di autenticazione (`/accedi`, `/recupera-password`, `/reimposta-password`, `/registrati`), resta raggiungibile e utilizzabile da un Utente già autenticato — `verifyOtp` sovrascriverebbe silenziosamente la sessione corrente. Comportamento uniforme su tutta la famiglia di rotte auth, mai guardato da nessuna di esse.
+- Nessun throttling/CAPTCHA su `/registrati`, che ora aziona l'SMTP applicativo reale a ogni invio — stesso principio di design già accettato per `/recupera-password`.
+- `EMAIL_ALREADY_REGISTERED`/"Email già registrata" rivela l'esistenza dell'account, incoerente con l'anti-enumerazione deliberata di `recupera-password` — ramo/messaggio preesistente dalla Story 1.1, invariato da questa storia.
+- `token_hash` come parametro di query ripetuto potrebbe arrivare come array nonostante il tipo dichiari `string` — stesso pattern non guardato già presente in `reimposta-password/page.tsx`; conseguenza qui innocua (errore generico gestito, `verifyOtp` è dentro un try/catch).
+
 ## Deferred from: code review of 1-1-registrazione-e-login-per-ruolo (2026-07-15)
 
 - ~~`Utente.attivo` non viene mai controllato al login~~ — **risolto in Story 1.2** (con un bug residuo poi corretto in code review, vedi sotto).
