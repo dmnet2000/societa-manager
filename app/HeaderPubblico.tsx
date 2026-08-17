@@ -50,47 +50,57 @@ export async function HeaderPubblico() {
 
   return (
     <header className={styles.header}>
-      <div className={styles.brand}>
-        {info.esiste && (
-          <img
-            className={styles.logo}
-            src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
-            alt=""
-          />
-        )}
-        <span className={styles.nomeSettore}>{nomeVisualizzato}</span>
-      </div>
-      {/* Story 18.7 (AC #1): menu tra brand e Accedi - Accedi resta un
-          elemento separato (Story 18.1 AC #7), non una sesta voce. */}
-      <NavPubblica />
-      {/* Story 18.20: logo Polisportiva dopo il menu, prima di "Accedi" -
-          posizione letterale richiesta dall'utente. alt non vuoto (a
-          differenza del logo Settore sopra, alt="", decorativo perche' il
-          nome e' gia' scritto in testo accanto): qui non c'e' un'etichetta
-          testuale equivalente, l'immagine stessa veicola l'informazione. */}
-      {logoPolisportiva.esiste &&
-        (urlSitoPolisportiva ? (
-          <a
-            href={urlSitoPolisportiva}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.logoPolisportiva}
-          >
+      {/* Menu allineato a sinistra, a fianco di logo+nome settore (richiesta
+          esplicita dell'utente) - brand e nav condividono lo stesso gruppo
+          flex, distinto da .headerRight (logo Polisportiva + Accedi) che
+          resta spinto a destra da justify-content:space-between su
+          .header. */}
+      <div className={styles.headerLeft}>
+        {/* Link a "/" (richiesta esplicita dell'utente): logo+nome settore
+            cliccabile riporta alla home, stesso pattern d'uso comune di un
+            sito con header fisso. */}
+        <Link href="/" className={styles.brand}>
+          {info.esiste && (
             <img
+              className={styles.logo}
+              src={`${urlPubblicoLogo(supabase)}?v=${encodeURIComponent(info.aggiornatoIl ?? "")}`}
+              alt=""
+            />
+          )}
+          <span className={styles.nomeSettore}>{nomeVisualizzato}</span>
+        </Link>
+        <NavPubblica />
+      </div>
+      <div className={styles.headerRight}>
+        {/* Story 18.20: logo Polisportiva prima di "Accedi" - posizione
+            letterale richiesta dall'utente. alt non vuoto (a differenza del
+            logo Settore sopra, alt="", decorativo perche' il nome e' gia'
+            scritto in testo accanto): qui non c'e' un'etichetta testuale
+            equivalente, l'immagine stessa veicola l'informazione. */}
+        {logoPolisportiva.esiste &&
+          (urlSitoPolisportiva ? (
+            <a
+              href={urlSitoPolisportiva}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.logoPolisportiva}
+            >
+              <img
+                src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
+                alt="Logo della Polisportiva"
+              />
+            </a>
+          ) : (
+            <img
+              className={styles.logoPolisportiva}
               src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
               alt="Logo della Polisportiva"
             />
-          </a>
-        ) : (
-          <img
-            className={styles.logoPolisportiva}
-            src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
-            alt="Logo della Polisportiva"
-          />
-        ))}
-      <Link href="/accedi" className={styles.accedi}>
-        Accedi
-      </Link>
+          ))}
+        <Link href="/accedi" className={styles.accedi}>
+          Accedi
+        </Link>
+      </div>
     </header>
   );
 }

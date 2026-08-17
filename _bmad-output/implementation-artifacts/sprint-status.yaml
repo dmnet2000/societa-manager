@@ -441,6 +441,16 @@ development_status:
   12-2-helper-lettura-permessi-con-cache: done
   12-3-integrazione-route-guard: done
   12-4-poc-precaricamento-allenatori: done
+  # 2026-08-16: utente ha confermato di voler ultimare il collegamento reale
+  # dei permessi configurabili - oggi solo /precaricamento-allenatori ha
+  # permessiConfigurabili:true (Story 12.4), le altre 25 rotte protette in
+  # lib/auth/route-guard.ts restano sul controllo statico hardcoded, e
+  # l'avviso "configurazione non ancora applicata" in
+  # app/(amministrazione)/permessi-accesso/PermessiAccessoForm.tsx resta
+  # quindi corretto per quelle. Backlog aperto (elenco gia' previsto in
+  # epics.md#Epic 12): story di estensione una rotta alla volta, da creare
+  # con bmad-create-story quando l'utente sceglie la prossima rotta da
+  # migrare - nessuna story concreta ancora creata.
 
   # Epic 13 (Conferma Tesseramento) inserito il 2026-08-02 su richiesta
   # esplicita dell'utente - ribalta un Non-Obiettivo esplicito del PRD (mai

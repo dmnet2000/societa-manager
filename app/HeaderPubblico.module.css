@@ -43,10 +43,37 @@
    Story 18.12 (solo colori/tipografia cambiano, mai il meccanismo di layout
    - vedi Dev Notes della storia). */
 
+/* .headerLeft/.headerRight: due gruppi flex, uno per lato - .header resta
+   justify-content:space-between (sopra) ma con solo questi due figli diretti,
+   cosi' il menu resta sempre a fianco di logo+nome invece di essere spinto
+   al centro dallo spazio libero tra brand e Accedi. */
+.headerLeft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  text-decoration: none;
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - stesso trattamento di .accedi/
+   .logoPolisportiva sotto, ora necessario perche' .brand e' un <Link>
+   cliccabile (richiesta esplicita dell'utente: logo+nome riportano alla
+   home) e non piu' un <div> statico. */
+.brand:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .logo {
