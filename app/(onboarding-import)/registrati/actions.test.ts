@@ -5,11 +5,13 @@ const inviaEmailMock = vi.fn();
 const headersMock = vi.fn();
 const utenteCreateMock = vi.fn();
 const utenteFindUniqueMock = vi.fn();
+const utenteCountMock = vi.fn();
 const sincronizzaRuoliMock = vi.fn();
 const trovaAllenatorePerCodiceFiscaleMock = vi.fn();
 const allenatoreUpdateMock = vi.fn();
 const trovaPerCodiceFiscaleMock = vi.fn();
 const genitoreAtletaCreateMock = vi.fn();
+const elencaEmailPerRuoloMock = vi.fn();
 const createAdminClientMock = vi.fn(() => ({
   auth: { admin: { generateLink: generateLinkMock } },
 }));
@@ -18,9 +20,15 @@ const createAdminClientMock = vi.fn(() => ({
 // (Admin API, service-role) - stesso mock scaffold di
 // recupera-password/actions.test.ts (richiediRecuperoPassword usa gia'
 // esattamente questo pattern). inviaEmail/headers mockati allo stesso modo.
+// Spec "Gate di conferma Admin": utente.count e elencaEmailPerRuolo aggiunti
+// per il gate/notifica sui Ruoli sensibili.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    utente: { create: utenteCreateMock, findUnique: utenteFindUniqueMock },
+    utente: {
+      create: utenteCreateMock,
+      findUnique: utenteFindUniqueMock,
+      count: utenteCountMock,
+    },
     allenatore: { update: allenatoreUpdateMock },
     genitoreAtleta: { create: genitoreAtletaCreateMock },
   },
@@ -36,6 +44,10 @@ vi.mock("@/lib/auth-admin/client", () => ({
 
 vi.mock("@/lib/email/invia-email", () => ({
   inviaEmail: inviaEmailMock,
+}));
+
+vi.mock("@/lib/utenti/email-per-ruolo", () => ({
+  elencaEmailPerRuolo: elencaEmailPerRuoloMock,
 }));
 
 vi.mock("next/headers", () => ({
@@ -99,11 +111,18 @@ describe("registrati", () => {
     utenteCreateMock.mockReset();
     utenteFindUniqueMock.mockReset();
     utenteFindUniqueMock.mockResolvedValue(null);
+    // Default: un Admin attivo gia' esiste - la maggior parte dei test non
+    // riguarda il bootstrap, questo evita di dover mockare il conteggio in
+    // ogni test che seleziona un Ruolo sensibile.
+    utenteCountMock.mockReset();
+    utenteCountMock.mockResolvedValue(1);
     sincronizzaRuoliMock.mockReset();
     trovaAllenatorePerCodiceFiscaleMock.mockReset();
     allenatoreUpdateMock.mockReset();
     trovaPerCodiceFiscaleMock.mockReset();
     genitoreAtletaCreateMock.mockReset();
+    elencaEmailPerRuoloMock.mockReset();
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@example.com"]);
     createAdminClientMock.mockClear();
   });
 
@@ -202,6 +221,7 @@ describe("registrati", () => {
       data: {
         supabaseAuthId: "u3",
         email: "dup-ruolo@example.com",
+        attivo: false,
         ruoli: { create: [{ ruolo: "DIRIGENTE" }] },
       },
     });
@@ -228,7 +248,16 @@ describe("registrati", () => {
         message: "Impossibile completare la registrazione. Riprova.",
       },
     });
-    expect(inviaEmailMock).not.toHaveBeenCalled();
+    // Review fix (Blind Hunter): la notifica agli Admin ora corre PRIMA di
+    // sincronizzaRuoliAppMetadata (vedi gate di conferma sotto) - un
+    // fallimento successivo non deve piu' inghiottirla in silenzio. Qui
+    // scatta comunque (Dirigente e' un Ruolo sensibile, un Admin attivo
+    // esiste per default nel beforeEach): solo la mail di conferma sotto
+    // (che richiede di superare sincronizzaRuoliAppMetadata) non parte.
+    expect(inviaEmailMock).toHaveBeenCalledTimes(1);
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ oggetto: "Nuova registrazione da confermare" })
+    );
   });
 
   it("creates the Utente + Ruoli, syncs app_metadata, and returns success without redirect (AC #1)", async () => {
@@ -249,6 +278,7 @@ describe("registrati", () => {
       data: {
         supabaseAuthId: "u2",
         email: "new@example.com",
+        attivo: false,
         ruoli: {
           create: [{ ruolo: "ALLENATORE" }, { ruolo: "DIRIGENTE" }],
         },
@@ -298,7 +328,11 @@ describe("registrati", () => {
       buildFormData({
         email: "risposta-malformata@example.com",
         password: "pw123456",
-        ruoli: ["DIRIGENTE"],
+        // Non un Ruolo sensibile: irrilevante per questo test (hashed_token
+        // mancante), ma un Ruolo sensibile avrebbe fatto scattare la
+        // notifica Admin (indipendente dal fallimento di costruzione del
+        // link testato qui) e reso fuorviante l'asserzione sotto.
+        ruoli: ["ALLENATORE"],
       })
     );
 
@@ -1006,6 +1040,209 @@ describe("registrati", () => {
     });
     expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
       data: { utenteId: "utente-u12", atletaId: "atleta-multi" },
+    });
+  });
+
+  // Spec "Gate di conferma Admin per l'auto-registrazione di Ruoli
+  // sensibili": DIRIGENTE/SEGRETERIA/ADMIN/SITE_MANAGER non hanno alcun
+  // aggancio a un record preesistente via Codice Fiscale - registrati()
+  // deve crearli con attivo:false e notificare gli Admin attivi, tranne nel
+  // caso di bootstrap (nessun Admin attivo nel sistema).
+  describe("gate di conferma per Ruoli sensibili", () => {
+    it("keeps attivo:true and sends no Admin notification when only Ruoli with a Codice Fiscale hookup are selected", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-1"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-1" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "solo-allenatore@example.com",
+          password: "pw123456",
+          ruoli: ["ALLENATORE"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: true }) })
+      );
+      expect(elencaEmailPerRuoloMock).not.toHaveBeenCalled();
+      expect(inviaEmailMock).toHaveBeenCalledTimes(1); // solo l'email di conferma
+    });
+
+    it("creates the Utente as attivo:false and notifies active Admins when a Ruolo sensibile is selected and active Admins already exist", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-2"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-2" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+      elencaEmailPerRuoloMock.mockResolvedValue(["admin1@example.com", "admin2@example.com"]);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "nuova-segreteria@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+      expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("ADMIN");
+      expect(inviaEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destinatario: ["admin1@example.com", "admin2@example.com"],
+        })
+      );
+    });
+
+    it("gates a self-registered ADMIN exactly like any other Ruolo sensibile when an active Admin already exists (no exception)", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-3"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-3" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "nuovo-admin@example.com",
+          password: "pw123456",
+          ruoli: ["ADMIN"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+      expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("ADMIN");
+    });
+
+    it("bootstraps the first ADMIN as attivo:true immediately, with no notification, when zero active Admins exist in the system", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-4"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-4" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(0);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "primo-admin@example.com",
+          password: "pw123456",
+          ruoli: ["ADMIN"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: true }) })
+      );
+      expect(elencaEmailPerRuoloMock).not.toHaveBeenCalled();
+      expect(inviaEmailMock).toHaveBeenCalledTimes(1); // solo l'email di conferma, nessuna notifica
+    });
+
+    it("gates registration (attivo:false) when just one of several selected Ruoli is sensibile", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-5"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-5" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "misto@example.com",
+          password: "pw123456",
+          ruoli: ["ALLENATORE", "DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+    });
+
+    it("completes the registration successfully even when the Admin notification email fails to send (fail-soft, no rollback)", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-6"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-6" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+      // La notifica Admin (oggetto distinto) fallisce, l'email di conferma
+      // (chiamata successiva, oggetto diverso) va invece a buon fine - il
+      // fail-soft riguarda solo la notifica, non l'intera registrazione.
+      inviaEmailMock.mockImplementation(async ({ oggetto }: { oggetto: string }) => {
+        if (oggetto === "Nuova registrazione da confermare") {
+          throw new Error("SMTP down");
+        }
+      });
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "notifica-fallita@example.com",
+          password: "pw123456",
+          ruoli: ["DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalled();
+      expect(inviaEmailMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not re-run the gate/notification on the resend path (utenteEsistente already present)", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-7"));
+      utenteFindUniqueMock.mockResolvedValue({ id: "utente-gia-creato-gate" });
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "reinvio-dirigente@example.com",
+          password: "pw123456",
+          ruoli: ["DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+      expect(utenteCountMock).not.toHaveBeenCalled();
+      expect(elencaEmailPerRuoloMock).not.toHaveBeenCalled();
+      expect(inviaEmailMock).toHaveBeenCalledTimes(1); // solo il reinvio della conferma
+    });
+
+    // Review fix (Blind Hunter + Edge Case Hunter): limite noto e accettato,
+    // non risolto - documenta il comportamento attuale invece di lasciarlo
+    // non testato. Una registrazione con un Ruolo sensibile diverso da Admin,
+    // mentre zero Admin sono attivi, resta attivo:false senza alcuna
+    // notifica possibile (elencaEmailPerRuolo restituisce un elenco vuoto,
+    // inviaEmail non viene nemmeno provata). Vedi deferred-work.md.
+    it("leaves a non-Admin Ruolo sensibile gated with no notification when zero active Admins exist (documented limitation)", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-8"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-8" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(0);
+      elencaEmailPerRuoloMock.mockResolvedValue([]);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "segreteria-senza-admin@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+      expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("ADMIN");
+      expect(inviaEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({ destinatario: [] })
+      );
     });
   });
 });

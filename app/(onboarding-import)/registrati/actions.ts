@@ -12,6 +12,32 @@ import {
 } from "@/lib/matching-codice-fiscale";
 import { createAdminClient } from "@/lib/auth-admin/client";
 import { inviaEmail } from "@/lib/email/invia-email";
+import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
+
+// Spec "Gate di conferma Admin per l'auto-registrazione di Ruoli sensibili":
+// derivato per differenza (fail-safe) invece di elencare i 4 Ruoli sensibili
+// a mano (fail-open, review fix Blind Hunter) - un futuro ottavo Ruolo senza
+// aggancio CF finisce automaticamente sotto il gate anche se nessuno
+// aggiorna questa lista, invece di bypassarlo silenziosamente. Riusa il
+// meccanismo Utente.attivo gia' esistente (default true, controllato
+// fail-closed al login, toggle Attiva/Disattiva gia' in /app/admin) invece
+// di introdurre un nuovo campo/stato.
+const RUOLI_CON_AGGANCIO_CF: Ruolo[] = ["ALLENATORE", "ATLETA", "GENITORE"];
+
+// Review fix (Blind Hunter): etichette italiane per la mail di notifica agli
+// Admin - prima mostrava i valori grezzi dell'enum (es. "DIRIGENTE"),
+// incoerente con il resto del prodotto (stesse etichette gia' in uso nelle
+// checkbox di NuovoUtenteForm.tsx/UtenteRow.tsx, non importabili qui perche'
+// Client Component).
+const ETICHETTA_RUOLO: Record<Ruolo, string> = {
+  ALLENATORE: "Allenatore",
+  ATLETA: "Atleta",
+  GENITORE: "Genitore",
+  SEGRETERIA: "Segreteria",
+  DIRIGENTE: "Dirigente",
+  ADMIN: "Admin",
+  SITE_MANAGER: "Site manager",
+};
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -264,15 +290,64 @@ export async function registrati(
 
   if (!utenteEsistente) {
     try {
+      // Spec "Gate di conferma Admin": conteggio degli Admin ATTIVI (non
+      // "tutti gli Admin mai creati") - serve sia per decidere se il gate
+      // scatta sia per l'eccezione di bootstrap sotto. Pattern di
+      // riferimento: contaAltriAdminAttivi in
+      // app/app/(amministrazione)/admin/actions.ts (qui pero' senza
+      // esclusione, l'Utente non esiste ancora).
+      const numeroAdminAttivi = await prisma.utente.count({
+        where: { attivo: true, ruoli: { some: { ruolo: "ADMIN" } } },
+      });
+      const ruoloSensibile = ruoli.some((r) => !RUOLI_CON_AGGANCIO_CF.includes(r));
+      // Eccezione bootstrap: se non esiste alcun Admin attivo (nessuno mai
+      // registrato, o l'unico esistente e' stato disattivato), il nuovo
+      // Admin parte attivo - altrimenti nessuno potrebbe mai confermare
+      // nessuno, incluso se stesso. Limite noto e accettato (review fix,
+      // Blind Hunter + Edge Case Hunter, deciso con l'utente): l'eccezione
+      // copre solo ADMIN - una registrazione con SOLO un altro Ruolo
+      // sensibile (Dirigente/Segreteria/Site Manager) mentre zero Admin sono
+      // attivi resterebbe attivo:false senza alcun Admin a cui notificare.
+      // Rischio ritenuto vicino al teorico in questo progetto (richiede che
+      // TUTTI gli Admin vengano disattivati), non risolto qui - vedi
+      // deferred-work.md. Recupero in quel caso: intervento diretto sul
+      // database, come per la perdita dell'ultimo Admin di qualunque sistema.
+      const bootstrap = ruoli.includes("ADMIN") && numeroAdminAttivi === 0;
+
       // AC #1: crea il record Utente + Ruoli via Prisma (Utente non e' protetto
       // da RLS, AD-9 - gestibile via Prisma diretto).
       const utente = await prisma.utente.create({
         data: {
           supabaseAuthId: data.user.id,
           email,
+          attivo: !ruoloSensibile || bootstrap,
           ruoli: { create: ruoli.map((ruolo) => ({ ruolo })) },
         },
       });
+
+      // Review fix (Blind Hunter): spostata subito dopo la create, prima
+      // degli altri effetti collaterali sotto (sincronizzaRuoliAppMetadata,
+      // aggancio Allenatore/Genitore/Atleta) - se uno di quelli lancia, il
+      // ramo catch esterno la saltava comunque, ma un ritentativo con la
+      // stessa email prende il ramo `utenteEsistente` (sopra), che non la
+      // riesegue mai: la notifica sarebbe andata persa per sempre nonostante
+      // l'Utente attivo:false fosse gia' stato creato. Qui il rischio di
+      // salto e' minimo (nessun await tra la create e questo blocco).
+      if (ruoloSensibile && !bootstrap) {
+        try {
+          const emailAdmin = await elencaEmailPerRuolo("ADMIN");
+          await inviaEmail({
+            destinatario: emailAdmin,
+            oggetto: "Nuova registrazione da confermare",
+            testo: `${email} si e' registrato/a con un Ruolo che richiede conferma (${ruoli.map((r) => ETICHETTA_RUOLO[r]).join(", ")}). Accedi a /app/admin per attivarlo/a.`,
+          });
+        } catch (err) {
+          console.error(
+            `[registrati] notifica agli Admin del gate di conferma fallita per ${email}`,
+            err
+          );
+        }
+      }
 
       // AD-11: specchia i Ruoli su app_metadata per le letture edge-safe nel Proxy.
       await sincronizzaRuoliAppMetadata(data.user.id, ruoli);

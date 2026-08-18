@@ -186,6 +186,12 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows Site Manager on /impostazioni (Story 19.1)", async () => {
+    expect(await getRouteDecision("/app/impostazioni", true, ["SITE_MANAGER"])).toEqual({
+      action: "allow",
+    });
+  });
+
   it("redirects to /non-autorizzato on /impostazioni for other roles", async () => {
     expect(await getRouteDecision("/app/impostazioni", true, ["ALLENATORE"])).toEqual({
       action: "redirect",

@@ -180,7 +180,9 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     // Fix code review (Story 18.13): rotta allargata a ADMIN+DIRIGENTE in
     // route-guard.ts - mirror qui obbligatorio, il test di coerenza
     // CONTENUTI_GUIDA/PROTECTED_ROUTES lo verifica.
-    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    // Story 19.1: SITE_MANAGER aggiunto allo stesso modo - mirror di
+    // route-guard.ts, stesso motivo.
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SITE_MANAGER"],
     corpo: [
       "Questa è la pagina hub della configurazione: da qui raggiungi Configurazione SMTP e Configurazione logo.",
       "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",

@@ -7,6 +7,7 @@ export const RUOLI_VALIDI: Ruolo[] = [
   "SEGRETERIA",
   "DIRIGENTE",
   "ADMIN",
+  "SITE_MANAGER",
 ];
 
 const RUOLI_VALIDI_SET = new Set<string>(RUOLI_VALIDI);

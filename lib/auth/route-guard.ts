@@ -208,7 +208,16 @@ export const PROTECTED_ROUTES: {
   // presente dalla Story 18.5, mai corretto). Solo "Email Segreteria"
   // resta ADMIN-only alla propria action (salvaEmailSegreteriaAction,
   // invariata) - un Dirigente che la sottomette riceve comunque FORBIDDEN.
-  { prefix: "/app/impostazioni", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Impostazioni" },
+  // Story 19.1: SITE_MANAGER aggiunto - settimo Ruolo del sistema, delega la
+  // gestione del sito pubblico senza accesso Admin completo. Additivo: ADMIN
+  // e DIRIGENTE restano invariati. In questa storia e' stata estesa solo
+  // salvaContattiPubbliciAction - le altre action di questo file (vedi
+  // impostazioni/actions.ts) restano ["ADMIN","DIRIGENTE"].
+  {
+    prefix: "/app/impostazioni",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SITE_MANAGER"],
+    navLabel: "Impostazioni",
+  },
   {
     prefix: "/app/smtp",
     ruoliAmmessi: ["ADMIN"],

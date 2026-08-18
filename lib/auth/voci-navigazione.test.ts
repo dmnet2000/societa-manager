@@ -56,6 +56,12 @@ describe("filtraVociNavigazione", () => {
     expect(new Set(href).size).toBe(href.length);
   });
 
+  it("un Site Manager vede /app/impostazioni (Story 19.1)", () => {
+    const href = hrefVoci(filtraVociNavigazione(["SITE_MANAGER"]));
+    expect(href).toContain("/app/impostazioni");
+    expect(href).not.toContain("/app/admin");
+  });
+
   it("un Admin vede tutte le voci Admin-ammesse", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(

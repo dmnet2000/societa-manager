@@ -169,11 +169,15 @@ const LUNGHEZZA_MASSIMA_EMAIL_PUBBLICA = 254;
 // validato indipendentemente, ma un errore su uno solo blocca l'intero
 // submit (nessun salvataggio parziale) - stesso principio fail-closed gia'
 // in uso nelle action esistenti.
+// Story 19.1 (Epic 19): unica action di questo file estesa a SITE_MANAGER -
+// tutte le altre requireRuolo qui sopra/sotto restano ["ADMIN","DIRIGENTE"]
+// (o ADMIN-only per salvaEmailSegreteriaAction), fuori scope di questa
+// storia.
 export async function salvaContattiPubbliciAction(
   _prevState: ContattiPubbliciActionState,
   formData: FormData
 ): Promise<ContattiPubbliciActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const indirizzoSede = String(formData.get("indirizzoSede") ?? "").trim();

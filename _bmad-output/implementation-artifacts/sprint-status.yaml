@@ -1,3 +1,4 @@
+# last_updated: 2026-08-18 (Epic 19: scomposta in 8 story (bmad-create-epics-and-stories, poi party mode con Mary/John/Sally/Winston/Amelia che ha corretto 3 punti - 19.4 ridotta da accesso completo a /app/gruppi a una vista scoped solo-foto, 19.8 da fallback silenzioso su menu hard-coded a errore esplicito se la tabella e' vuota, 19.5 aggiunto avviso quando URL e Token Facebook si disallineano). readiness-gate PASS. Le 8 story aggiunte a development_status come backlog (chiavi brevi coerenti con lo stile gia' in uso, es. 18-4-foto-squadra-gruppo) - sprint_plan.py generate scartato: deriverebbe chiavi dal titolo completo di ogni story in epics.md, in conflitto con le chiavi brevi curate a mano gia' in uso per ~75 story esistenti (avrebbe le trattate come nuovi orfani backlog). Corretto anche un bug preesistente non collegato: last_updated (riga sotto, valore letterale, non i commenti in cima) non era quotato e conteneva ':' - YAML non valido, impediva a sprint_plan.py di leggere il file.)
 # last_updated: 2026-08-18 (Story 18.21: code review eseguita (bmad-code-review, Blind Hunter + Edge Case Hunter + Verification Gap + Acceptance Auditor in parallelo) - 0 decision-needed, 6 patch, 2 defer, 4 dismessi come rumore dopo verifica diretta del codice/dei docs Next.js locali del progetto (inclusa una tesi dell'Acceptance Auditor smentita leggendo node_modules/next/dist/docs, per AGENTS.md). Tutti e 6 i patch applicati su scelta dell'utente: nuovo app/layout.test.ts (9 casi, generateMetadata prima interamente non testata), createAdminClient() avvolto in try/catch dedicato con fallback sicuro, leggiNomeSettore() deduplicata con React.cache() (verificato empiricamente innocuo nei test Vitest, dedup reale solo nel runtime RSC di Next), nomeSettoreAbbreviato corretta per non spezzare coppie surrogate, guida in-app estesa (nome PWA), costante condivisa NOME_SETTORE_FALLBACK. leggiInfoLogo resta non deduplicabile tra generateMetadata/HeaderPubblico/NavBar (client Supabase diversi per design) - documentato come deferred. Verifica finale: 1235/1235 test Vitest passati (+9), tsc --noEmit pulito, eslint 0 errori, build produzione con output di generazione statica/dinamica identico alla baseline (nessuna regressione su AC #6). Status: review -> done.)
 # last_updated: 2026-08-17 (Story 11.4: ripresa dopo l'interruzione precedente - applicati i 2 finding "patch" rimasti della code review (guardia con try/catch dedicato su data.properties.hashed_token, identificativo email aggiunto al log di errore sull'invio fallito). Verifica finale completa eseguita: 1226/1226 test Vitest passati (+4, nuovi test per il percorso di reinvio e per la guardia hashed_token), tsc --noEmit pulito, eslint 0 errori, build produzione con output di generazione statica/dinamica identico alla baseline (nessuna regressione). Code review chiusa: 1 decision-needed risolto, 2 patch applicati, 5 defer documentati, 2 dismessi, nessun finding bloccante residuo. Status: review -> done.)
 # last_updated: 2026-08-17 (Story 11.5: creata e chiusa nella stessa sessione (create-story workflow) - causa sospettata in epics.md (errore in console dal widget/iframe Facebook Page Plugin, lib/embed-facebook.ts) verificata come gia' rimossa per intero da Story 18.13: lib/embed-facebook.ts non esiste piu' nel repository, app/page.tsx monta oggi HeroPostFacebook (rendering server-side via Graph API, nessun iframe), nessuna occorrenza residua di iframe/Page Plugin Facebook trovata in app/. Nessuna modifica di codice necessaria - chiusa direttamente come "nessun difetto di codice applicativo", primo ramo dell'AC originale di epics.md. Nessun passaggio da dev-story. Status: backlog -> done.)
@@ -289,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: 2026-08-15 (Story 18.20: implementata, logo Polisportiva header+footer, status review)
+last_updated: "08-18-2026 13:00"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -845,8 +846,25 @@ development_status:
   18-21-favicon-titolo-tab-browser: done
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
-  # 2026-08-14 su richiesta esplicita dell'utente - solo l'epica scritta ora
-  # (vedi epics.md#Epic 19), nessuna story creata, nessuna analisi di
-  # apertura completata. Requisito grezzo: nuovo Ruolo dedicato alla
-  # gestione di sezioni/menu/foto/contenuti del sito pubblico (Epic 18).
-  epic-19: backlog
+  # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
+  # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi
+  # epics.md#Epic 19). Story 19.1 implementata (spec-19-1-ruolo-site-manager-
+  # contatti-pubblici.md): settimo Ruolo SITE_MANAGER, assegnabile da /app/admin,
+  # esteso a /app/impostazioni (route-guard) e a salvaContattiPubbliciAction -
+  # unico scope di questa story, le altre 19.2-19.8 restano da avviare. In
+  # review adversariale completata (bmad-build step-04): 0 intent_gap/bad_spec,
+  # 5 patch applicati (route-decision.test.ts + voci-navigazione.test.ts +
+  # ruoli.test.ts estesi, 2 commenti corretti), 4 defer registrati in
+  # deferred-work.md - tra cui uno di severita' alta e pre-esistente
+  # (/registrati permette l'auto-registrazione come ADMIN senza alcun
+  # controllo di autorizzazione, ora esteso anche a SITE_MANAGER tramite lo
+  # stesso RUOLI_VALIDI condiviso). 1240/1240 test Vitest, tsc pulito.
+  epic-19: in-progress
+  19-1-ruolo-site-manager-contatti-pubblici: review
+  19-2-site-manager-logo-nome-settore: backlog
+  19-3-site-manager-sponsor: backlog
+  19-4-site-manager-foto-squadra: backlog
+  19-5-site-manager-url-facebook: backlog
+  19-6-modello-dati-menu-pubblico: backlog
+  19-7-ui-gestione-menu-pubblico: backlog
+  19-8-menu-pubblico-dinamico: backlog

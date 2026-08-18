@@ -22,7 +22,7 @@ type CachePermessi = { scadeIl: number; abilitati: Set<string> };
 
 let cache: CachePermessi | null = null;
 
-// Delimitatore "|" sicuro qui: `ruolo` e' l'enum Prisma `Ruolo` (6 valori
+// Delimitatore "|" sicuro qui: `ruolo` e' l'enum Prisma `Ruolo` (7 valori
 // chiusi, mai testo libero), a differenza del bug reale trovato in code
 // review di Story 12.1 dove il valore lato ADMIN/rotta manomesso poteva
 // contenere "|" extra in un `FormData` non tipizzato. `rotta` e' sempre uno

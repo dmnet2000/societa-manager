@@ -16,6 +16,7 @@ const RUOLI = [
   { value: "SEGRETERIA", label: "Segreteria" },
   { value: "DIRIGENTE", label: "Dirigente" },
   { value: "ADMIN", label: "Admin" },
+  { value: "SITE_MANAGER", label: "Site manager" },
 ];
 
 type Utente = {

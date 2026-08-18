@@ -30,6 +30,7 @@ enum Ruolo {
   SEGRETERIA
   DIRIGENTE
   ADMIN
+  SITE_MANAGER
 }
 
 // Non protetto da RLS (AD-9): gestibile via Prisma con connessione diretta.

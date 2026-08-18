@@ -375,7 +375,7 @@ describe("salvaUrlPaginaFacebookAction (Server Action)", () => {
 
 // Story 18.11.
 describe("salvaContattiPubbliciAction (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #1)", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site manager (AC #1, Story 19.1)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -386,8 +386,29 @@ describe("salvaContattiPubbliciAction (Server Action)", () => {
     );
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(salvaContattiPubbliciMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.1: SITE_MANAGER e' l'unico Ruolo aggiunto a questa action -
+  // requireRuolo e' mockato, quindi questo test verifica solo che l'action
+  // chiami requireRuolo con l'array esteso e proceda al salvataggio quando
+  // il mock lascia passare (comportamento identico ad ADMIN/DIRIGENTE).
+  it("salva i contatti quando il chiamante ha solo SITE_MANAGER", async () => {
+    requireRuoloMock.mockResolvedValue(null);
+
+    const result = await salvaContattiPubbliciAction(
+      undefined,
+      buildFormDataContatti({ indirizzoSede: "Via dello Sport 1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(salvaContattiPubbliciMock).toHaveBeenCalledWith({
+      indirizzoSede: "Via dello Sport 1",
+      telefonoPubblico: null,
+      emailPubblica: null,
+    });
   });
 
   it("salva i 3 valori forniti (trim applicato) e revalida /impostazioni (AC #1)", async () => {

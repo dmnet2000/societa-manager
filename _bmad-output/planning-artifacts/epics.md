@@ -2597,3 +2597,142 @@ so that riconosca subito il sito anche con più schede aperte, invece del testo 
 - Il menu del sito pubblico (`app/NavPubblica.tsx`) è oggi **hard-coded** (5 voci fisse in un array nel componente), non pilotato da alcun modello dati né UI di gestione — "aggiunta/modifica di sezioni/menu" è probabilmente la parte di maggiore impatto architetturale di questa epica, richiederebbe con ogni probabilità un nuovo modello dati per le voci di menu/sezioni pubbliche, oggi inesistente.
 - La gestione di foto e contenuti pubblici esiste già oggi in forma sparsa, ciascuna con un proprio perimetro di Ruoli diverso: foto di squadra per Gruppo (Story 18.4, apribile da Admin/Dirigente/Allenatore assegnato al Gruppo), contatti pubblici (Story 18.11, Admin/Dirigente), Sponsor (Admin/Dirigente), logo/nome settore (Admin), post social (Admin/Dirigente). Da chiarire in apertura se il nuovo Ruolo Site Manager **sostituisce** questi permessi sparsi con un unico Ruolo dedicato, li **affianca** (accesso aggiuntivo, non esclusivo), o copre solo una parte di essi.
 - Nessuna decisione presa su: nome esatto del Ruolo (l'utente ha usato "Site Manager", in inglese, diverso dalla convenzione italiana degli altri 6 Ruoli — da confermare o tradurre in apertura), se il Ruolo è cumulabile con altri Ruoli esistenti su uno stesso Utente, se serve una nuova interfaccia di gestione dedicata o basta estendere quelle esistenti (`/app/impostazioni`, `/app/sponsor`, `/app/gruppi`).
+
+**Decisioni prese con l'utente in apertura di analisi (2026-08-18):**
+
+1. **Nome del Ruolo**: `SITE_MANAGER` (inglese, come nella richiesta originale) — rottura deliberata della convenzione italiana degli altri 6 Ruoli, scelta esplicita dell'utente.
+2. **Cumulabilità**: sì — `SITE_MANAGER` è assegnabile in aggiunta a qualsiasi altro Ruolo sullo stesso Utente, stesso principio già in uso per gli altri 6.
+3. **Rispetto ai permessi sparsi esistenti** (foto squadra, contatti pubblici, Sponsor, logo/nome settore, post social): **affianca** — `SITE_MANAGER` ottiene accesso aggiuntivo, nessun permesso viene tolto ad Admin/Dirigente/Allenatore che li gestiscono oggi.
+4. **Menu/sezioni pubbliche**: ampiezza piena — costruire un vero modello dati per le voci di menu pubblico + UI di gestione (non solo aprire le funzionalità già esistenti al nuovo Ruolo), riconosciuta come la parte di maggior impatto architetturale dell'epica.
+5. **Story 19.4 (foto squadra)**: **rivisto dopo party mode (2026-08-18)** — `SITE_MANAGER` ottiene una vista **scoped** dedicata alla sola foto squadra, non l'intera pagina `/app/gruppi`. Motivazione emersa in review: "gestione del sito pubblico" (richiesta originale) non implica amministrazione sportiva interna (creazione Gruppi, assegnazione Allenatori/Atlete) — concedere l'intera pagina sarebbe un salto di autorità sproporzionato rispetto allo scopo del Ruolo. `/app/gruppi` resta invariato per Admin/Dirigente.
+6. **Token Facebook** (credenziale API, `salvaTokenFacebookAction`) **esplicitamente escluso** dall'accesso di `SITE_MANAGER` in questa epica — resta Admin/Dirigente, per non delegare una credenziale API a un Ruolo pensato per contenuti pubblici. Riapribile come story separata se necessario in futuro.
+7. **Fallback menu vuoto (19.8)**: **rivisto dopo party mode (2026-08-18)** — tabella vuota è un errore esplicito e loggato, non un fallback silenzioso sulle 5 voci hard-coded. Motivazione: un fallback permanente creerebbe due fonti di verità del menu da tenere sincronizzate per sempre (rischio di drift silenzioso); la 19.6 garantisce già, tramite seed, che la tabella non sia mai vuota dopo un deploy corretto.
+8. **Avviso Token/URL disallineati (19.5)**: **aggiunto dopo party mode (2026-08-18)** — quando l'URL della Pagina Facebook cambia, l'interfaccia avvisa esplicitamente che il Token Facebook potrebbe non corrispondere più, per evitare un carosello silenziosamente legato alla pagina precedente (Site Manager non ha accesso al Token, quindi non può risolverlo da solo — deve sapere di dover contattare un Admin).
+
+## Epic 19 — Story Breakdown
+
+### Story 19.1: Ruolo Site Manager e accesso ai contatti pubblici
+
+As an Admin,
+I want poter assegnare il nuovo Ruolo `SITE_MANAGER` a un Utente,
+So that possa delegare la gestione del sito pubblico senza concedere accesso Admin completo.
+
+**Acceptance Criteria:**
+
+**Given** lo schema Prisma (`enum Ruolo`) e `lib/ruoli.ts` (`RUOLI_VALIDI`)
+**When** viene aggiunto il valore `SITE_MANAGER`
+**Then** è assegnabile da `/app/admin` esattamente come gli altri 6 Ruoli, e cumulabile con qualsiasi altro Ruolo sullo stesso Utente (nessuna nuova regola di esclusività)
+
+**And** `/app/impostazioni` (route-guard.ts) e `salvaContattiPubbliciAction` (requireRuolo) includono `SITE_MANAGER` in aggiunta ad Admin/Dirigente — un Utente con solo `SITE_MANAGER` può salvare i contatti pubblici (indirizzo sede, telefono, email pubblica)
+
+**And** un Utente senza alcun Ruolo tra quelli ammessi resta bloccato come oggi — nessuna regressione sui permessi esistenti di Admin/Dirigente
+
+### Story 19.2: Accesso Site Manager a logo e nome Settore
+
+As a Site Manager,
+I want poter caricare il logo della società e impostare il nome del Settore,
+So that possa curare l'identità visiva del sito pubblico senza bisogno di un Admin.
+
+**Acceptance Criteria:**
+
+**Given** la rotta `/app/logo` (oggi `ADMIN`-only, sia a livello di route-guard sia di Server Action `caricaLogoAction`/`salvaNomeSettoreAction`)
+**When** un Utente con Ruolo `SITE_MANAGER` la raggiunge
+**Then** può caricare un logo e salvare il nome del Settore, stesso comportamento oggi riservato ad Admin
+
+**And** un Utente senza `ADMIN` né `SITE_MANAGER` resta bloccato come oggi
+
+### Story 19.3: Accesso Site Manager a Sponsor
+
+As a Site Manager,
+I want poter creare, modificare e disattivare Sponsor/Convenzioni,
+So that possa mantenere aggiornata la vetrina sponsor del sito pubblico.
+
+**Acceptance Criteria:**
+
+**Given** `/app/sponsor` (oggi visibile a tutti e 6 i Ruoli, ma le azioni di creazione/modifica riservate ad Admin/Dirigente)
+**When** viene aggiunto `SITE_MANAGER` sia all'elenco `ruoliAmmessi` della rotta sia a `requireRuolo(["ADMIN","DIRIGENTE"])` nelle 3 Server Action di gestione
+**Then** un Site Manager può creare/modificare/disattivare Sponsor, stesso comportamento di Dirigente
+
+**And** la vetrina pubblica (lettura) e la generazione voucher per gli altri Ruoli restano invariate
+
+### Story 19.4: Accesso Site Manager alla foto squadra (vista dedicata)
+
+As a Site Manager,
+I want una pagina dedicata che elenchi i Gruppi con la sola possibilità di caricare/sostituire la foto squadra,
+So that possa gestire le foto del sito pubblico senza avere accesso a creazione Gruppi, assegnazione Allenatori o Atlete.
+
+**Acceptance Criteria:**
+
+**Given** una nuova rotta scoped (es. `/app/foto-squadre`, `ruoliAmmessi: ["SITE_MANAGER"]` in route-guard.ts — `/app/gruppi` resta invariato, nessun accesso Site Manager lì, nessuna modifica per Admin/Dirigente)
+**When** un Site Manager la apre
+**Then** vede l'elenco dei Gruppi con solo il controllo di caricamento foto per ciascuno — riusa `caricaFotoSquadraAction` (`lib/storage/foto-squadra.ts`), estesa con `SITE_MANAGER` nel proprio `requireRuolo` accanto ad Admin/Dirigente/Allenatore
+
+**And** dalla nuova pagina non è raggiungibile nessun'altra azione di `/app/gruppi` (creazione Gruppi, assegnazione/rimozione Allenatori o Atlete)
+
+**And** l'accesso di Allenatore a `/app/i-miei-gruppi` (inclusa la propria foto squadra) resta invariato
+
+**And** un Utente senza `SITE_MANAGER` (né Admin/Dirigente su `/app/gruppi`) resta bloccato come oggi sulla nuova rotta
+
+### Story 19.5: Accesso Site Manager all'URL della Pagina Facebook
+
+As a Site Manager,
+I want poter impostare l'URL della Pagina Facebook della società,
+So that possa collegare/aggiornare la fonte del carosello "Ultimi post" in home senza un Admin.
+
+**Acceptance Criteria:**
+
+**Given** `salvaUrlPaginaFacebookAction` (oggi `requireRuolo(["ADMIN","DIRIGENTE"])`), raggiungibile da `/app/impostazioni`
+**When** viene aggiunto `SITE_MANAGER`
+**Then** un Site Manager può salvare/modificare l'URL della Pagina Facebook
+
+**And** la configurazione del Token Facebook (credenziale API, `salvaTokenFacebookAction`) **non** viene estesa a Site Manager in questa story — resta Admin/Dirigente (vedi decisione 6 sopra)
+
+**And** al salvataggio di un nuovo URL, l'interfaccia mostra un avviso esplicito ("il Token Facebook potrebbe non corrispondere più alla nuova Pagina — contatta un Admin per aggiornarlo") — Site Manager non ha accesso al Token, quindi non può risolvere da solo un eventuale disallineamento; senza l'avviso il carosello "Ultimi post" potrebbe restare silenziosamente legato alla Pagina precedente
+
+### Story 19.6: Modello dati per le voci di menu pubblico
+
+As an Admin,
+I want che esista una tabella dedicata alle voci del menu pubblico (etichetta, URL/rotta, ordine, visibile/nascosto),
+So that le story successive possano costruirci sopra un'interfaccia di gestione, senza toccare ancora `NavPubblica.tsx`.
+
+**Acceptance Criteria:**
+
+**Given** oggi il menu pubblico è un array hard-coded in `app/NavPubblica.tsx` (5 voci fisse), nessun modello dati
+**When** viene introdotta una nuova tabella (es. `VoceMenuPubblico`: `id`, `etichetta`, `url`, `ordine`, `visibile`, timestamp) via migrazione Prisma, protetta da RLS/REVOKE espliciti come ogni altra tabella strutturale del progetto
+**Then** esistono funzioni di lettura/scrittura (`lib/db-rls/...` o equivalente) per elencare/creare/modificare/riordinare/nascondere le voci
+
+**And** nessuna UI è ancora collegata — `NavPubblica.tsx` continua a usare l'array hard-coded esistente (nessuna regressione visiva)
+
+**And** un seed/migrazione dati inserisce le 5 voci attuali come righe iniziali, cosicché la story 19.8 possa attivare la lettura da DB senza un menu vuoto al primo deploy
+
+### Story 19.7: UI di gestione del menu pubblico
+
+As a Site Manager (o Admin),
+I want un'interfaccia per aggiungere, modificare, riordinare e nascondere le voci del menu pubblico,
+So that possa cambiare la struttura di navigazione del sito senza intervento tecnico.
+
+**Acceptance Criteria:**
+
+**Given** la tabella e le funzioni di 19.6
+**When** un Site Manager o Admin apre la nuova pagina di gestione (es. `/app/menu-pubblico`, `requireRuolo(["ADMIN","SITE_MANAGER"])`, aggiunta a route-guard)
+**Then** può creare una nuova voce (etichetta + URL), modificarne una esistente, riordinarle, nasconderle/mostrarle — ogni operazione scrive sulla tabella di 19.6
+
+**And** un Utente senza quei Ruoli non raggiunge la pagina (redirect, stesso pattern di ogni altra rotta protetta)
+
+**And** la nuova voce di navigazione verso questa pagina è visibile solo a chi ha accesso (Admin/Site Manager)
+
+### Story 19.8: Menu pubblico dinamico
+
+As a Visitatore del sito pubblico,
+I want che il menu di navigazione rifletta le voci configurate dal Site Manager,
+So that veda sempre la struttura del sito aggiornata, senza aspettare un deploy.
+
+**Acceptance Criteria:**
+
+**Given** `app/NavPubblica.tsx` oggi legge l'array hard-coded
+**When** viene modificato per leggere le voci (visibili, in ordine) dalla tabella di 19.6 tramite le funzioni di 19.7
+**Then** il menu pubblico mostra esattamente le voci configurate, nell'ordine impostato, escludendo quelle nascoste
+
+**And** se la tabella è vuota (caso limite, es. errore di migrazione) il rendering fallisce in modo esplicito e loggato — non un fallback silenzioso sulle 5 voci hard-coded: un fallback permanente creerebbe due fonti di verità del menu da tenere sincronizzate per sempre, con rischio di drift silenzioso se le voci statiche cambiassero e il codice del fallback non venisse aggiornato di conseguenza. La 19.6 garantisce, tramite seed, che la tabella non sia mai vuota dopo un deploy corretto
+
+**And** nessuna regressione sulle pagine collegate dalle 5 voci attuali (Home, Squadre, Calendario, Staff, Contatti)
