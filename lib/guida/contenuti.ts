@@ -18,17 +18,27 @@ export type ContenutoGuida = {
 // derivarlo senza importare route-guard.ts e complicare l'accoppiamento).
 //
 // Pilota su due rotte reali per validare entrambi gli scoping:
-// - "/app/sponsor": tutti e sei i Ruoli (Story 16.2).
+// - "/app/sponsor": tutti i Ruoli (Story 16.2; Story 19.3 aggiunge SITE_MANAGER, settimo Ruolo).
 // - "/app/palestre": solo ADMIN/DIRIGENTE (Story 2.1).
 export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     rotta: "/app/sponsor",
     titolo: "Sponsor",
-    ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
+    // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto -
+    // mirror di ruoliAmmessi per /app/sponsor in route-guard.ts.
+    ruoliAmmessi: [
+      "ALLENATORE",
+      "ATLETA",
+      "GENITORE",
+      "SEGRETERIA",
+      "DIRIGENTE",
+      "ADMIN",
+      "SITE_MANAGER",
+    ],
     corpo: [
       "In questa sezione trovi i Banner pubblicitari e le Convenzioni attive della società, con immagine e descrizione.",
       "Per le Convenzioni puoi generare un voucher con il tuo Nome e Cognome, che certifica che fai parte della società e hai diritto alla scontistica indicata - il voucher viene mostrato a schermo, non salvato.",
-      "Se sei Admin o Dirigente, in fondo alla pagina trovi anche il pannello di gestione per creare, modificare, attivare o disattivare gli Sponsor.",
+      "Se sei Admin, Dirigente o Site manager, in fondo alla pagina trovi anche il pannello di gestione per creare, modificare, attivare o disattivare gli Sponsor.",
     ],
   },
   {

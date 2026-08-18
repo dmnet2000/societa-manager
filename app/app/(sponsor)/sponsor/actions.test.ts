@@ -98,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("creaSponsor (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #5)", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site Manager (AC #5, Story 19.3)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -111,8 +111,19 @@ describe("creaSponsor (Server Action)", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(sponsorCreateMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto a
+  // requireRuolo - additivo, ADMIN/DIRIGENTE restano invariati.
+  it("crea lo Sponsor quando il chiamante e' Site Manager (Story 19.3)", async () => {
+    const file = fileValido();
+    const result = await creaSponsor(undefined, buildFormData(campiValidi(), file));
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(sponsorCreateMock).toHaveBeenCalled();
   });
 
   it("returns VALIDATION quando il nome manca", async () => {
@@ -326,7 +337,7 @@ describe("aggiornaSponsor (Server Action)", () => {
     return buildFormData({ id: "sponsor-1", ...campiValidi(), ...fields }, file);
   }
 
-  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site Manager (Story 19.3)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -336,7 +347,18 @@ describe("aggiornaSponsor (Server Action)", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(sponsorUpdateMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto a
+  // requireRuolo - additivo, ADMIN/DIRIGENTE restano invariati.
+  it("aggiorna lo Sponsor quando il chiamante e' Site Manager (Story 19.3)", async () => {
+    const result = await aggiornaSponsor(undefined, buildFormDataAggiorna());
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(sponsorUpdateMock).toHaveBeenCalled();
   });
 
   it("aggiorna nome/tipo/descrizione/link SENZA immagine (AC #2: sostituita solo se ne viene caricata una nuova)", async () => {
@@ -406,7 +428,7 @@ describe("aggiornaSponsor (Server Action)", () => {
 });
 
 describe("impostaAttivaSponsor (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site Manager (Story 19.3)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -419,7 +441,21 @@ describe("impostaAttivaSponsor (Server Action)", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(sponsorUpdateMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto a
+  // requireRuolo - additivo, ADMIN/DIRIGENTE restano invariati.
+  it("imposta lo stato attivo/disattivo quando il chiamante e' Site Manager (Story 19.3)", async () => {
+    const result = await impostaAttivaSponsor(
+      undefined,
+      buildFormData({ id: "sponsor-1", attiva: "false" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(sponsorUpdateMock).toHaveBeenCalled();
   });
 
   // Review fix (Edge Case Hunter + Blind Hunter, trovato indipendentemente

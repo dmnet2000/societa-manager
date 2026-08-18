@@ -273,20 +273,43 @@ export const PROTECTED_ROUTES: {
     // condizionale per Ruolo in page.tsx, non una rotta distinta - decisione
     // presa in apertura della Story 16.2, stesso principio gia' in uso per
     // /campionati) - prima rotta autenticata del progetto visibile a tutti
-    // e sei i Ruoli. Nessun "gruppo": voce diretta, non fa parte di
+    // i Ruoli. Nessun "gruppo": voce diretta, non fa parte di
     // "Accounting" (nessuna decisione di analisi la colloca li').
+    // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto -
+    // vede la vetrina come gli altri Ruoli e in piu' il pannello di
+    // gestione (terzo gate distinto in page.tsx, non qui).
     prefix: "/app/sponsor",
-    ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
+    ruoliAmmessi: [
+      "ALLENATORE",
+      "ATLETA",
+      "GENITORE",
+      "SEGRETERIA",
+      "DIRIGENTE",
+      "ADMIN",
+      "SITE_MANAGER",
+    ],
     navLabel: "Sponsor",
   },
   {
     // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta
-    // del progetto visibile a tutti e sei i Ruoli (mirror di /sponsor,
+    // del progetto visibile a tutti i Ruoli (mirror di /sponsor,
     // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per
     // Ruolo (lib/guida/contenuti.ts), qui serve solo poter raggiungere la
     // pagina stessa.
+    // Story 19.3 (review fix, Blind Hunter): SITE_MANAGER aggiunto - senza
+    // questo, dopo 19.1/19.2/19.3 avrebbe accesso a 3 pagine di gestione ma
+    // non alla Guida stessa (ne' alla voce di nav, derivata dallo stesso
+    // ruoliAmmessi) - solo l'aiuto contestuale "?" su ogni pagina funzionava.
     prefix: "/app/guida",
-    ruoliAmmessi: ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"],
+    ruoliAmmessi: [
+      "ALLENATORE",
+      "ATLETA",
+      "GENITORE",
+      "SEGRETERIA",
+      "DIRIGENTE",
+      "ADMIN",
+      "SITE_MANAGER",
+    ],
     navLabel: "Guida",
   },
   {

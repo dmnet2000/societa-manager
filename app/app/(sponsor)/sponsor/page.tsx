@@ -28,7 +28,11 @@ export default async function SponsorPage() {
   // principio di /campionati (contenuto condizionale per Ruolo sulla stessa
   // pagina, non una rotta distinta).
   const ruoli = parseRuoli(user?.app_metadata?.ruoli);
-  const eGestionale = ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE");
+  // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER vede anche il
+  // pannello di gestione - terzo gate distinto, separato dalla rotta
+  // (route-guard.ts) e dalle Server Action (actions.ts).
+  const eGestionale =
+    ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE") || ruoli.includes("SITE_MANAGER");
 
   // Vetrina (AC #1): visibile a TUTTI i Ruoli, solo Sponsor attivi. Sponsor
   // non e' protetto da RLS (AD-9) - Prisma diretto, come Palestra.

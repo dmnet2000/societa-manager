@@ -722,10 +722,13 @@ describe("getRouteDecision", () => {
   });
 
   // Story 16.2: /sponsor e' diventata la prima rotta autenticata del
-  // progetto visibile a TUTTI e sei i Ruoli (vetrina pubblica, contenuto
+  // progetto visibile a TUTTI i Ruoli (vetrina pubblica, contenuto
   // condizionale in page.tsx per i controlli di gestione Admin/Dirigente).
-  it.each(["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN"] as const)(
-    "allows %s on /sponsor (Story 16.1/16.2)",
+  // Story 19.3: SITE_MANAGER aggiunto alla lista, settimo Ruolo.
+  it.each(
+    ["ALLENATORE", "ATLETA", "GENITORE", "SEGRETERIA", "DIRIGENTE", "ADMIN", "SITE_MANAGER"] as const
+  )(
+    "allows %s on /sponsor (Story 16.1/16.2/19.3)",
     async (ruolo) => {
       expect(await getRouteDecision("/app/sponsor", true, [ruolo])).toEqual({
         action: "allow",

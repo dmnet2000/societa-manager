@@ -130,7 +130,8 @@ export async function creaSponsor(
   _prevState: SponsorActionState,
   formData: FormData
 ): Promise<SponsorActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  // Story 19.3: SITE_MANAGER aggiunto - additivo, ADMIN/DIRIGENTE invariati.
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const campi = leggiCampiComuni(formData);
@@ -183,7 +184,8 @@ export async function aggiornaSponsor(
   _prevState: SponsorActionState,
   formData: FormData
 ): Promise<SponsorActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  // Story 19.3: SITE_MANAGER aggiunto - additivo, ADMIN/DIRIGENTE invariati.
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");
@@ -240,7 +242,8 @@ export async function impostaAttivaSponsor(
   _prevState: SponsorActionState,
   formData: FormData
 ): Promise<SponsorActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  // Story 19.3: SITE_MANAGER aggiunto - additivo, ADMIN/DIRIGENTE invariati.
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const id = String(formData.get("id") ?? "");

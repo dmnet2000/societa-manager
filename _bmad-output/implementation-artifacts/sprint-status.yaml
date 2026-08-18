@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-18-2026 14:50"
+last_updated: "08-18-2026 15:20"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -862,7 +862,7 @@ development_status:
   epic-19: in-progress
   19-1-ruolo-site-manager-contatti-pubblici: review
   19-2-site-manager-logo-nome-settore: review
-  19-3-site-manager-sponsor: backlog
+  19-3-site-manager-sponsor: review
   19-4-site-manager-foto-squadra: backlog
   19-5-site-manager-url-facebook: backlog
   19-6-modello-dati-menu-pubblico: backlog
