@@ -214,9 +214,16 @@ export const PROTECTED_ROUTES: {
   // salvaContattiPubbliciAction - le altre action di questo file (vedi
   // impostazioni/actions.ts) restano ["ADMIN","DIRIGENTE"].
   {
+    // Story 19.4 (Epic 19): "gruppo" aggiunto - Impostazioni diventa la
+    // prima figlia (nell'ordine di dichiarazione dell'array) del nuovo
+    // sotto-menu "Gestione sito", insieme a Sponsor e alla nuova
+    // /app/foto-squadre (dichiarata piu' sotto, dopo /app/sponsor).
+    // Nessuna modifica a ruoliAmmessi/prefix: stessa identica autorizzazione
+    // di prima, solo la posizione in nav cambia (AC #4).
     prefix: "/app/impostazioni",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SITE_MANAGER"],
     navLabel: "Impostazioni",
+    gruppo: "Gestione sito",
   },
   {
     prefix: "/app/smtp",
@@ -273,8 +280,8 @@ export const PROTECTED_ROUTES: {
     // condizionale per Ruolo in page.tsx, non una rotta distinta - decisione
     // presa in apertura della Story 16.2, stesso principio gia' in uso per
     // /campionati) - prima rotta autenticata del progetto visibile a tutti
-    // i Ruoli. Nessun "gruppo": voce diretta, non fa parte di
-    // "Accounting" (nessuna decisione di analisi la colloca li').
+    // i Ruoli. Non fa parte di "Accounting" (nessuna decisione di analisi
+    // la colloca li').
     // Story 19.3 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto -
     // vede la vetrina come gli altri Ruoli e in piu' il pannello di
     // gestione (terzo gate distinto in page.tsx, non qui).
@@ -289,6 +296,23 @@ export const PROTECTED_ROUTES: {
       "SITE_MANAGER",
     ],
     navLabel: "Sponsor",
+    // Story 19.4: seconda figlia del gruppo "Gestione sito" (vedi
+    // /app/impostazioni sopra) - stessa autorizzazione invariata, solo la
+    // posizione in nav cambia.
+    gruppo: "Gestione sito",
+  },
+  {
+    // Story 19.4 (Epic 19, Ruolo Site Manager): nuova pagina SITE_MANAGER-only,
+    // vista scoped di /app/gruppi con solo il controllo foto squadra (nessuna
+    // creazione Gruppi/assegnazione Allenatori/Atlete) - decisione presa in
+    // party mode, /app/gruppi resta invariato e Admin/Dirigente/Allenatore non
+    // hanno accesso a questa rotta specifica. Terza (e ultima, per posizione
+    // nell'array) figlia del gruppo "Gestione sito" - non nascostaDallaNav,
+    // deve comparire in barra per essere raggiungibile da un Site Manager.
+    prefix: "/app/foto-squadre",
+    ruoliAmmessi: ["SITE_MANAGER"],
+    navLabel: "Foto squadre",
+    gruppo: "Gestione sito",
   },
   {
     // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta

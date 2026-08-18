@@ -1195,7 +1195,9 @@ describe("creaEAssegnaAtleta", () => {
 });
 
 describe("caricaFotoSquadraAction", () => {
-  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente/Allenatore", async () => {
+  // Story 19.4 (Epic 19): SITE_MANAGER aggiunto alla lista Ruoli ammessi -
+  // additivo, ADMIN/DIRIGENTE/ALLENATORE restano invariati.
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente/Allenatore/SiteManager", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -1208,7 +1210,12 @@ describe("caricaFotoSquadraAction", () => {
     expect(result).toEqual({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith([
+      "ADMIN",
+      "DIRIGENTE",
+      "ALLENATORE",
+      "SITE_MANAGER",
+    ]);
     expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
   });
 
@@ -1346,7 +1353,7 @@ describe("caricaFotoSquadraAction", () => {
     expect(caricaFotoSquadraMock).not.toHaveBeenCalled();
   });
 
-  it("uploads and revalidates both pages on success for Admin/Dirigente (AC #1)", async () => {
+  it("uploads and revalidates all three pages on success for Admin/Dirigente (AC #1)", async () => {
     gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
 
     const file = fileValido();
@@ -1359,6 +1366,9 @@ describe("caricaFotoSquadraAction", () => {
     expect(caricaFotoSquadraMock).toHaveBeenCalledWith(expect.anything(), "g1", file);
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+    // Story 19.4: terza revalidatePath - /app/foto-squadre mostra lo stesso
+    // stato foto per Site Manager.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/foto-squadre");
   });
 
   it("uploads on success for an ALLENATORE who owns the Gruppo (AC #1, #2)", async () => {
@@ -1377,6 +1387,34 @@ describe("caricaFotoSquadraAction", () => {
 
     expect(result).toEqual({ success: true });
     expect(caricaFotoSquadraMock).toHaveBeenCalled();
+  });
+
+  // Story 19.4 (Epic 19, Ruolo Site Manager): un Site Manager tipicamente non
+  // ha nessuna riga Allenatore propria (allenatoreFindFirstMock non
+  // configurato qui - resta undefined/non chiamato per costruzione, dato che
+  // risolviPossessoGruppo si ferma al ramo SITE_MANAGER prima di interrogare
+  // Allenatore) - l'upload deve comunque riuscire su un Gruppo qualunque,
+  // nessun controllo di ownership (come Admin), a differenza del ramo
+  // ALLENATORE sopra.
+  it("uploads on success for a SITE_MANAGER with no Allenatore row of their own, on any Gruppo (AC #1)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-sm-1", app_metadata: { ruoli: ["SITE_MANAGER"] } } },
+      error: null,
+    });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const file = fileValido();
+    const result = await caricaFotoSquadraAction(
+      undefined,
+      buildFormData({ gruppoId: "g1" }, file)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(caricaFotoSquadraMock).toHaveBeenCalledWith(expect.anything(), "g1", file);
+    expect(allenatoreFindFirstMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/foto-squadre");
   });
 
   it("returns INTERNAL when the upload fails", async () => {

@@ -57,7 +57,14 @@ async function risolviPossessoGruppo(
     }
 
     const ruoli = parseRuoli(user?.app_metadata?.ruoli);
-    if (ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE")) {
+    // Story 19.4 (Epic 19): SITE_MANAGER aggiunto qui - secondo gate distinto
+    // da requireRuolo (sotto, in caricaFotoSquadraAction). Senza questo, un
+    // Site Manager (che tipicamente non ha nessuna riga Allenatore propria)
+    // cadrebbe nel ramo di ownership sotto e otterrebbe sempre FORBIDDEN,
+    // anche se requireRuolo lo ammette gia'. Accesso ampio come Admin/
+    // Dirigente: /app/foto-squadre mostra tutti i Gruppi della stagione
+    // corrente, non solo quelli propri.
+    if (ruoli.includes("ADMIN") || ruoli.includes("DIRIGENTE") || ruoli.includes("SITE_MANAGER")) {
       return { ok: true };
     }
 
@@ -619,7 +626,11 @@ export async function caricaFotoSquadraAction(
   _prevState: GruppoActionState,
   formData: FormData
 ): Promise<GruppoActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+  // Story 19.4: SITE_MANAGER aggiunto - additivo, ADMIN/DIRIGENTE/ALLENATORE
+  // restano invariati. Vedi anche risolviPossessoGruppo sopra (secondo gate
+  // distinto, altrimenti un Site Manager senza riga Allenatore propria
+  // otterrebbe comunque FORBIDDEN li').
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const gruppoId = String(formData.get("gruppoId") ?? "");
@@ -673,7 +684,10 @@ export async function caricaFotoSquadraAction(
   // Gruppi - stessa coppia di revalidatePath gia' usata da assegnaAtleta/
   // rimuoviAtleta/rimuoviAllenatore. La home pubblica "/" e' gia'
   // force-dynamic (Story 18.1), nessun revalidatePath necessario li'.
+  // Story 19.4: terza revalidatePath - /app/foto-squadre mostra lo stesso
+  // stato foto per Site Manager.
   revalidatePath("/app/gruppi");
   revalidatePath("/app/i-miei-gruppi");
+  revalidatePath("/app/foto-squadre");
   return { success: true };
 }

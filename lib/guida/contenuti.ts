@@ -125,6 +125,20 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
+    // Story 19.4 (review fix, inline - sub-agent di review non disponibili
+    // per limite di spesa mensile): mancava, unica pagina toccata dall'Epic
+    // 19 senza voce guida - contenutoPerRotta torna null in modo sicuro
+    // (nessun placeholder rotto), ma resta un gap di completezza contro la
+    // convenzione del progetto.
+    rotta: "/app/foto-squadre",
+    titolo: "Foto squadre",
+    ruoliAmmessi: ["SITE_MANAGER"],
+    corpo: [
+      "Qui carichi o sostituisci la foto di squadra di ogni Gruppo della stagione corrente, mostrata sul sito pubblico.",
+      "Questa vista mostra solo il controllo foto - per creare Gruppi o assegnare Allenatori/Atlete serve il Ruolo Admin o Dirigente su /app/gruppi.",
+    ],
+  },
+  {
     rotta: "/app/i-miei-gruppi",
     titolo: "I miei Gruppi",
     ruoliAmmessi: ["ALLENATORE"],

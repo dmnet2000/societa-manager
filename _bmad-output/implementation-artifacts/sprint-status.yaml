@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-18-2026 15:20"
+last_updated: "08-18-2026 16:50"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -863,7 +863,18 @@ development_status:
   19-1-ruolo-site-manager-contatti-pubblici: review
   19-2-site-manager-logo-nome-settore: review
   19-3-site-manager-sponsor: review
-  19-4-site-manager-foto-squadra: backlog
+  # Story 19.4 implementata (spec-19-4-site-manager-foto-squadra.md): nuova
+  # pagina scoped /app/foto-squadre (SITE_MANAGER-only, gruppo "Gestione
+  # sito"), caricaFotoSquadraAction/risolviPossessoGruppo estesi con
+  # SITE_MANAGER (due gate distinti), /app/impostazioni e /app/sponsor
+  # raggruppate sotto "Gestione sito" insieme alla nuova rotta (Admin/
+  # Dirigente: stesso accesso, nuova posizione in nav). Review adversariale:
+  # i 3 sub-agent (Blind Hunter/Edge Case Hunter/Verification Gap) hanno
+  # fallito per limite di spesa mensile - review eseguita inline dal
+  # coordinatore stesso (fallback previsto dalla skill). 1 finding reale
+  # (voce guida mancante per /app/foto-squadre, unica dell'Epic 19 priva),
+  # patchato. 1258/1258 test Vitest, tsc pulito, lint 0 errori.
+  19-4-site-manager-foto-squadra: review
   19-5-site-manager-url-facebook: backlog
   19-6-modello-dati-menu-pubblico: backlog
   19-7-ui-gestione-menu-pubblico: backlog
