@@ -224,9 +224,13 @@ export const PROTECTED_ROUTES: {
     navLabel: "Configurazione SMTP",
     nascostaDallaNav: true,
   },
+  // Story 19.2: SITE_MANAGER aggiunto - additivo, ADMIN resta invariato.
+  // Entrambe le Server Action di questa rotta (caricaLogoAction,
+  // salvaNomeSettoreAction) sono state estese in coppia con questa rotta -
+  // vedi app/app/(configurazione)/logo/actions.ts.
   {
     prefix: "/app/logo",
-    ruoliAmmessi: ["ADMIN"],
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
     navLabel: "Configurazione logo",
     nascostaDallaNav: true,
   },

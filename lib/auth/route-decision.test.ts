@@ -106,6 +106,23 @@ describe("getRouteDecision", () => {
     });
   });
 
+  // Story 19.2 (review fix, Blind Hunter): l'AC della spec dichiara
+  // esplicitamente che SITE_MANAGER resta bloccato da /app/admin - questo
+  // era asserito solo nel testo della spec, senza un test dedicato.
+  it("redirects Site Manager away from /app/admin (Story 19.2, resta admin-only)", async () => {
+    expect(await getRouteDecision("/app/admin", true, ["SITE_MANAGER"])).toEqual({
+      action: "redirect",
+      location: "/app/non-autorizzato",
+    });
+  });
+
+  it("redirects Site Manager away from /app/gruppi (Story 19.2, resta ADMIN/DIRIGENTE-only)", async () => {
+    expect(await getRouteDecision("/app/gruppi", true, ["SITE_MANAGER"])).toEqual({
+      action: "redirect",
+      location: "/app/non-autorizzato",
+    });
+  });
+
   it("matches nested paths under a protected prefix", async () => {
     expect(await getRouteDecision("/app/admin/utenti", true, [])).toEqual({
       action: "redirect",
@@ -425,8 +442,11 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("allows only Admin on /logo (Story 7.2, FR-32)", async () => {
+  it("allows Admin and Site Manager on /logo (Story 7.2, FR-32; SITE_MANAGER aggiunto in Story 19.2)", async () => {
     expect(await getRouteDecision("/app/logo", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(await getRouteDecision("/app/logo", true, ["SITE_MANAGER"])).toEqual({
       action: "allow",
     });
   });

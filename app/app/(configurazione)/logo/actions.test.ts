@@ -76,7 +76,7 @@ function buildFormDataNomeSettore(valore: string) {
 }
 
 describe("caricaLogoAction (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin (AC #3)", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin ne' Site Manager (AC #3, Story 19.2)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -84,7 +84,7 @@ describe("caricaLogoAction (Server Action)", () => {
     const result = await caricaLogoAction(undefined, buildFormData(fileValido()));
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(requireRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SITE_MANAGER"]);
     expect(caricaLogoMock).not.toHaveBeenCalled();
   });
 
@@ -186,7 +186,16 @@ describe("caricaLogoAction (Server Action)", () => {
     expect(risultatoJpeg).toEqual({ success: true });
   });
 
-  it("returns INTERNAL fail-closed quando caricaLogo lancia (incluso un rifiuto RLS per un Ruolo non Admin, AC #3)", async () => {
+  it("consente l'upload anche a un Site Manager (Story 19.2, additivo rispetto ad Admin)", async () => {
+    const png = fileValido("logo.png", "image/png");
+    const result = await caricaLogoAction(undefined, buildFormData(png));
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SITE_MANAGER"]);
+    expect(caricaLogoMock).toHaveBeenCalledWith(supabaseFinto, png);
+  });
+
+  it("returns INTERNAL fail-closed quando caricaLogo lancia (incluso un rifiuto RLS per un Ruolo non Admin/Site Manager, AC #3)", async () => {
     caricaLogoMock.mockRejectedValue(new Error("RLS denial"));
 
     const result = await caricaLogoAction(undefined, buildFormData(fileValido()));
@@ -198,7 +207,7 @@ describe("caricaLogoAction (Server Action)", () => {
 });
 
 describe("salvaNomeSettoreAction (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin ne' Site Manager (Story 19.2)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -209,7 +218,7 @@ describe("salvaNomeSettoreAction (Server Action)", () => {
     );
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(requireRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SITE_MANAGER"]);
     expect(salvaNomeSettoreMock).not.toHaveBeenCalled();
   });
 
@@ -222,6 +231,17 @@ describe("salvaNomeSettoreAction (Server Action)", () => {
     expect(result).toEqual({ success: true });
     expect(salvaNomeSettoreMock).toHaveBeenCalledWith("Volley");
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/logo");
+  });
+
+  it("consente il salvataggio anche a un Site Manager (Story 19.2, additivo rispetto ad Admin)", async () => {
+    const result = await salvaNomeSettoreAction(
+      undefined,
+      buildFormDataNomeSettore("Volley")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SITE_MANAGER"]);
+    expect(salvaNomeSettoreMock).toHaveBeenCalledWith("Volley");
   });
 
   it("salva null quando il campo e' lasciato vuoto (rimuove il nome del settore)", async () => {

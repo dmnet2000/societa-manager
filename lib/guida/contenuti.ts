@@ -204,7 +204,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     rotta: "/app/logo",
     titolo: "Configurazione logo",
-    ruoliAmmessi: ["ADMIN"],
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
     corpo: [
       "Qui carichi il logo della società, mostrato nell'intestazione dell'app, e imposti il nome del settore sportivo (es. \"Volley\", \"Basket\") mostrato accanto ad esso.",
       "Un nuovo logo caricato sostituisce quello attuale per tutti gli utenti - non è possibile avere più logo attivi contemporaneamente.",

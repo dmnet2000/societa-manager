@@ -22,16 +22,19 @@ export type LogoActionState =
 // AC #1/#3: a differenza di "certificati" (Story 3.1/4.1, dove RLS decide
 // l'APPARTENENZA di un atletaId e requireRuolo(Ruolo) e' un controllo
 // distinto e complementare), qui l'unico asse di accesso e' il Ruolo - non
-// c'e' una dimensione di appartenenza da delegare a RLS. requireRuolo("ADMIN")
-// sotto e la policy RLS ADMIN-only (migrazione Story 7.2) verificano
-// deliberatamente la STESSA cosa, in profondita' (difesa in profondita',
-// non uno strato "duplicato per errore"): se uno dei due venisse rimosso
-// per sbaglio, l'altro resta comunque a proteggere l'upload.
+// c'e' una dimensione di appartenenza da delegare a RLS. requireRuolo(...)
+// sotto e la policy RLS ADMIN/SITE_MANAGER (migrazione Story 7.2, estesa in
+// Story 19.2) verificano deliberatamente la STESSA cosa, in profondita'
+// (difesa in profondita', non uno strato "duplicato per errore"): se uno dei
+// due venisse rimosso per sbaglio, l'altro resta comunque a proteggere
+// l'upload. Story 19.2: SITE_MANAGER aggiunto ad entrambe le difese insieme -
+// mai una sola, altrimenti l'upload fallirebbe silenziosamente per un Site
+// Manager che ha superato requireRuolo ma viene rifiutato dalla RLS.
 export async function caricaLogoAction(
   _prevState: LogoActionState,
   formData: FormData
 ): Promise<LogoActionState> {
-  const forbidden = await requireRuolo("ADMIN");
+  const forbidden = await requireRuolo(["ADMIN", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const file = formData.get("file");
@@ -89,16 +92,17 @@ export type NomeSettoreActionState =
   | undefined;
 
 // Nessuna dimensione di appartenenza da delegare a RLS (stesso principio del
-// commento su caricaLogoAction) - requireRuolo("ADMIN") e' l'unico controllo
+// commento su caricaLogoAction) - requireRuolo(...) e' l'unico controllo
 // qui, dato che "configurazione_applicazione" non e' protetta da RLS (vedi
 // prisma/schema.prisma): a differenza del logo, qui non c'e' una seconda
 // difesa in profondita' a livello database, requireRuolo resta l'unico
-// cancello.
+// cancello. Story 19.2: SITE_MANAGER aggiunto, additivo - nessuna RLS
+// coinvolta qui.
 export async function salvaNomeSettoreAction(
   _prevState: NomeSettoreActionState,
   formData: FormData
 ): Promise<NomeSettoreActionState> {
-  const forbidden = await requireRuolo("ADMIN");
+  const forbidden = await requireRuolo(["ADMIN", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const valore = String(formData.get("nomeSettore") ?? "").trim();
@@ -113,8 +117,9 @@ export async function salvaNomeSettoreAction(
   }
 
   try {
-    // Stringa vuota = l'Admin vuole rimuovere il nome del settore (torna a
-    // non mostrare nulla in NavBar/login), non un valore letterale vuoto.
+    // Stringa vuota = chi chiama (Admin o Site Manager) vuole rimuovere il
+    // nome del settore (torna a non mostrare nulla in NavBar/login), non un
+    // valore letterale vuoto.
     await salvaNomeSettore(valore || null);
   } catch (err) {
     console.error(err);
