@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 // Riga singola su id fisso (stesso principio di ID_CONFIGURAZIONE_SMTP,
@@ -9,13 +10,18 @@ import { prisma } from "@/lib/prisma";
 export const ID_CONFIGURAZIONE_APPLICAZIONE =
   "00000000-0000-0000-0000-000000000001";
 
-export async function leggiNomeSettore(): Promise<string | null> {
+export const leggiNomeSettore = cache(async (): Promise<string | null> => {
   const configurazione = await prisma.configurazioneApplicazione.findUnique({
     where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
     select: { nomeSettore: true },
   });
   return configurazione?.nomeSettore ?? null;
-}
+});
+
+// Story 18.21 (Review fix): unica sorgente del fallback, prima duplicato
+// come stringa letterale in app/layout.tsx e app/manifest.ts - libero di
+// disallinearsi a una futura modifica.
+export const NOME_SETTORE_FALLBACK = "Settore Volley";
 
 // Story 18.21: usata da app/manifest.ts per `short_name` - il nome del
 // Settore e' testo libero configurato da Admin, senza vincolo di lunghezza,
@@ -25,9 +31,13 @@ export async function leggiNomeSettore(): Promise<string | null> {
 // sotto - troncamento semplice, nessuna libreria introdotta.
 const LUNGHEZZA_MASSIMA_SHORT_NAME = 12;
 
+// Review fix: troncamento tramite Array.from (code point, non unita' UTF-16)
+// - un .slice(0,12) diretto puo' spezzare una coppia surrogata (es. un'emoji
+// nel nome del Settore), producendo uno short_name malformato.
 export function nomeSettoreAbbreviato(nomeSettore: string): string {
-  return nomeSettore.length > LUNGHEZZA_MASSIMA_SHORT_NAME
-    ? nomeSettore.slice(0, LUNGHEZZA_MASSIMA_SHORT_NAME)
+  const codePoints = Array.from(nomeSettore);
+  return codePoints.length > LUNGHEZZA_MASSIMA_SHORT_NAME
+    ? codePoints.slice(0, LUNGHEZZA_MASSIMA_SHORT_NAME).join("")
     : nomeSettore;
 }
 

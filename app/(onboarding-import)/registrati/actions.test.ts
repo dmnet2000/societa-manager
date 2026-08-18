@@ -285,6 +285,32 @@ describe("registrati", () => {
     );
   });
 
+  it("returns a friendly INTERNAL error, no crash, when generateLink's response is missing hashed_token (review fix)", async () => {
+    generateLinkMock.mockResolvedValue({
+      data: { user: { id: "u19", identities: [{ id: "id1" }] }, properties: {} },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({ id: "utente-u19" });
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "risposta-malformata@example.com",
+        password: "pw123456",
+        ruoli: ["DIRIGENTE"],
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile completare la registrazione. Riprova.",
+      },
+    });
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
   it("returns EMAIL_NON_INVIATA (AC #5) when the confirmation email fails to send, no rollback attempted", async () => {
     generateLinkMock.mockResolvedValue(generateLinkSuccess("u18"));
     utenteCreateMock.mockResolvedValue({ id: "utente-u18" });

@@ -338,10 +338,32 @@ export async function registrati(
   // Story 11.4 (AC #1): link proprio con token_hash (mai action_link, non
   // gestito dall'adapter cookie di questa app) - mirror esatto di
   // richiediRecuperoPassword (recupera-password/actions.ts).
-  const headersList = await headers();
-  const host = headersList.get("host");
-  const proto = headersList.get("x-forwarded-proto") ?? "https";
-  const link = `${proto}://${host}/conferma-registrazione?token_hash=${encodeURIComponent(data.properties.hashed_token)}`;
+  // Review fix: costruzione del link avvolta in un try/catch - a questo
+  // punto l'Utente Supabase Auth e i record Prisma sono gia' stati creati
+  // (o gia' esistenti, ramo reinvio sopra); se la forma della risposta di
+  // generateLink si discostasse da quella assunta (data.properties assente/
+  // malformato - non verificato empiricamente, vedi sopra) o headers()
+  // lanciasse, la Server Action lanciava non gestita invece di restituire
+  // lo stesso {error: {...}} amichevole garantito ovunque nel resto della
+  // funzione.
+  let link: string;
+  try {
+    const headersList = await headers();
+    const host = headersList.get("host");
+    const proto = headersList.get("x-forwarded-proto") ?? "https";
+    if (!data.properties?.hashed_token) {
+      throw new Error("generateLink: hashed_token mancante nella risposta");
+    }
+    link = `${proto}://${host}/conferma-registrazione?token_hash=${encodeURIComponent(data.properties.hashed_token)}`;
+  } catch (err) {
+    console.error(`[registrati] costruzione del link di conferma fallita per ${email}`, err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile completare la registrazione. Riprova.",
+      },
+    };
+  }
 
   // Story 11.4 (AC #5): try/catch separato da quello sopra - a questo punto
   // l'utente Supabase Auth e i record Prisma sono gia' stati creati, un

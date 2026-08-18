@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import {
   leggiNomeSettore,
+  NOME_SETTORE_FALLBACK,
   nomeSettoreAbbreviato,
 } from "@/lib/configurazione-applicazione";
 
@@ -32,7 +33,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     console.error(err);
     return null;
   });
-  const nomeVisualizzato = nomeSettore ?? "Settore Volley";
+  const nomeVisualizzato = nomeSettore ?? NOME_SETTORE_FALLBACK;
 
   return {
     name: nomeVisualizzato,
