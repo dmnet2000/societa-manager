@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-18-2026 16:50"
+last_updated: "08-18-2026 23:05"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -875,7 +875,19 @@ development_status:
   # (voce guida mancante per /app/foto-squadre, unica dell'Epic 19 priva),
   # patchato. 1258/1258 test Vitest, tsc pulito, lint 0 errori.
   19-4-site-manager-foto-squadra: review
-  19-5-site-manager-url-facebook: backlog
+  # Story 19.5 implementata (spec-19-5-site-manager-url-facebook.md):
+  # salvaUrlPaginaFacebookAction estesa a SITE_MANAGER (route-guard invariato,
+  # /app/impostazioni gia' raggiungibile da Story 19.1 - solo la Server
+  # Action era il cancello mancante). salvaTokenFacebookAction NON estesa
+  # (credenziale API, decisione esplicita Epic 19). Aggiunto avviso in
+  # PaginaFacebookForm.tsx dopo un salvataggio con URL non vuoto (Token
+  # potrebbe non corrispondere piu' alla nuova Pagina) - campo reso
+  # controlled per evitare la lettura di un ref durante il render
+  # (react-hooks/refs, trovato da npm run lint). Guida in-app aggiornata.
+  # 670/671 test Vitest (1 fallimento preesistente non correlato,
+  # manifest.test.ts icone PWA), tsc pulito, lint 0 errori.
+  19-5-site-manager-url-facebook: review
+  19-6-modello-dati-menu-pubblico: backlog
   19-6-modello-dati-menu-pubblico: backlog
   19-7-ui-gestione-menu-pubblico: backlog
   19-8-menu-pubblico-dinamico: backlog

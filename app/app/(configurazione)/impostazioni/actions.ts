@@ -109,11 +109,16 @@ function urlEsternoValido(valore: string): boolean {
 // (ADMIN-only), qui requireRuolo ammette anche DIRIGENTE - stesso array a
 // due Ruoli gia' usato altrove nel progetto (es.
 // wizard-nuova-stagione/actions.ts).
+// Story 19.5 (Epic 19): SITE_MANAGER aggiunto - la rotta /app/impostazioni
+// era gia' raggiungibile da Story 19.1, ma questa action restava
+// ADMIN/DIRIGENTE-only, rendendo il form visibile ma inutilizzabile
+// (FORBIDDEN al submit). salvaTokenFacebookAction sotto NON viene estesa
+// (credenziale API, decisione esplicita dell'Epic 19).
 export async function salvaUrlPaginaFacebookAction(
   _prevState: PaginaFacebookActionState,
   formData: FormData
 ): Promise<PaginaFacebookActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const valore = String(formData.get("urlPaginaFacebook") ?? "").trim();

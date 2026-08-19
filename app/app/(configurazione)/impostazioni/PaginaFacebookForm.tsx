@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { salvaUrlPaginaFacebookAction } from "./actions";
 import styles from "./impostazioni.module.css";
 
@@ -10,6 +10,11 @@ export function PaginaFacebookForm({ urlAttuale }: { urlAttuale: string | null }
     salvaUrlPaginaFacebookAction,
     undefined
   );
+  // Story 19.5 (AC #3): serve solo a sapere se l'ultimo submit portava un
+  // valore non vuoto, per condizionare l'avviso sotto - un ref letto
+  // durante il render violerebbe react-hooks/refs (verificato da `npm run
+  // lint`), quindi il campo diventa controlled solo per questo.
+  const [valore, setValore] = useState(urlAttuale ?? "");
 
   return (
     <form action={formAction}>
@@ -20,7 +25,8 @@ export function PaginaFacebookForm({ urlAttuale }: { urlAttuale: string | null }
           name="urlPaginaFacebook"
           type="url"
           maxLength={500}
-          defaultValue={urlAttuale ?? ""}
+          value={valore}
+          onChange={(e) => setValore(e.target.value)}
           placeholder="es. https://www.facebook.com/miasocieta"
         />
       </div>
@@ -30,9 +36,23 @@ export function PaginaFacebookForm({ urlAttuale }: { urlAttuale: string | null }
         </p>
       )}
       {state && "success" in state && (
-        <p role="status" className={styles.successo}>
-          Pagina Facebook salvata.
-        </p>
+        <>
+          <p role="status" className={styles.successo}>
+            Pagina Facebook salvata.
+          </p>
+          {/* Story 19.5 (AC #3): avviso mostrato solo se e' stato salvato un
+              URL non vuoto - svuotare il campo rimuove la configurazione
+              (nessuna nuova Pagina a cui il Token potrebbe non
+              corrispondere piu'). Site Manager non ha accesso al Token
+              (salvaTokenFacebookAction resta Admin/Dirigente-only), quindi
+              non puo' risolvere da solo un eventuale disallineamento. */}
+          {valore.trim() && (
+            <p className={styles.avviso}>
+              Il Token Facebook potrebbe non corrispondere più alla nuova
+              Pagina: contatta un Admin per aggiornarlo se necessario.
+            </p>
+          )}
+        </>
       )}
       <button disabled={pending} type="submit" className={styles.bottone}>
         Salva

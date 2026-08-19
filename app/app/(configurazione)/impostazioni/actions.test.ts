@@ -228,7 +228,7 @@ describe("salvaEmailSegreteriaAction (Server Action)", () => {
 
 // Story 18.5.
 describe("salvaUrlPaginaFacebookAction (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente (AC #1)", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site Manager (AC #1, Story 19.5)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -240,14 +240,33 @@ describe("salvaUrlPaginaFacebookAction (Server Action)", () => {
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
     // Review fix: questo toHaveBeenCalledWith e' l'unica verifica reale
-    // dell'array a due Ruoli (a differenza di salvaEmailSegreteriaAction,
+    // dell'array di Ruoli (a differenza di salvaEmailSegreteriaAction,
     // ADMIN-only) - requireRuolo e' mockato per intero, quindi nessun test
     // di questo file puo' simulare la logica di risoluzione Ruolo reale
     // (gia' testata a parte in require-ruolo.test.ts); un test separato
     // "allows DIRIGENTE" con la mock di default (autorizza sempre) sarebbe
     // stato fuorviante - rimosso.
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(salvaUrlPaginaFacebookMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.5 (AC #1): la rotta /app/impostazioni era gia' raggiungibile da
+  // Site Manager (Story 19.1), ma questa action restava ADMIN/DIRIGENTE-only
+  // - il test sopra copre solo il rifiuto generico via requireRuolo mockato,
+  // questo verifica esplicitamente che l'array a 3 Ruoli include davvero
+  // SITE_MANAGER lato chiamata (requireRuolo resta comunque mockato per
+  // autorizzare sempre di default, come ogni altro test di successo qui).
+  it("salva il valore fornito da un Site Manager (AC #1, Story 19.5)", async () => {
+    const result = await salvaUrlPaginaFacebookAction(
+      undefined,
+      buildFormDataFacebook("https://www.facebook.com/miasocieta")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(salvaUrlPaginaFacebookMock).toHaveBeenCalledWith(
+      "https://www.facebook.com/miasocieta"
+    );
   });
 
   it("salva il valore fornito (trim applicato) e revalida /impostazioni (AC #1)", async () => {
