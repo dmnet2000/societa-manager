@@ -146,9 +146,9 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     titolo: "Menu pubblico",
     ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
     corpo: [
-      "Qui prepari le voci del menu di navigazione del sito pubblico: etichetta, URL (una pagina del sito come \"/squadre\", oppure un link esterno completo di http:// o https://), ordine e visibilità.",
+      "Qui gestisci le voci del menu di navigazione del sito pubblico: etichetta, URL (una pagina del sito come \"/squadre\", oppure un link esterno completo di http:// o https://), ordine e visibilità.",
       "Puoi aggiungere una nuova voce, modificarne una esistente, spostarla su o giù nell'ordine, oppure nasconderla senza cancellarla.",
-      "Le modifiche fatte qui non sono ancora collegate al menu che vedono i Visitatori del sito pubblico - per ora servono a preparare in anticipo la struttura.",
+      "Le modifiche sono visibili sul menu del sito pubblico non appena le salvi - deve restare sempre almeno una voce visibile, un tentativo di nascondere l'ultima rimasta viene rifiutato.",
     ],
   },
   {

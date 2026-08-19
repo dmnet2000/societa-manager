@@ -68,6 +68,10 @@ baseline_commit: '333ab4a'
 
 ## Spec Change Log
 
+- 2026-08-19 (code review Epic 19, post-hoc): `impostaVisibileVoceMenuPubblicoAction` non impediva di nascondere l'ultima voce visibile rimasta - dopo la Story 19.8, questo avrebbe fatto fallire il rendering dell'intero sito pubblico (nessuna voce visibile = errore bloccante per design). Fix: guard che rifiuta con `VALIDATION` un tentativo di nascondere l'unica voce visibile rimasta.
+- 2026-08-19 (code review Epic 19, post-hoc): `urlVoceMenuValido` accettava un URL protocol-relative (`//host-esterno`) come "rotta interna" solo perché inizia con `/` - il browser lo risolve come navigazione assoluta esterna. Fix: rifiutato esplicitamente (`!valore.startsWith("//")`).
+- 2026-08-19 (code review Epic 19, post-hoc): il banner di `page.tsx` e la voce guida dicevano ancora "non collegato al sito pubblico" dopo che la Story 19.8 aveva effettivamente collegato `NavPubblica.tsx` - testo diventato falso/fuorviante, aggiornato per riflettere lo stato reale (modifiche live) e il nuovo vincolo "almeno una voce visibile".
+
 ## Verification
 
 **Commands:**

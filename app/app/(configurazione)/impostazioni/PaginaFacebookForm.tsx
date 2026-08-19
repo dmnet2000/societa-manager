@@ -15,9 +15,19 @@ export function PaginaFacebookForm({ urlAttuale }: { urlAttuale: string | null }
   // durante il render violerebbe react-hooks/refs (verificato da `npm run
   // lint`), quindi il campo diventa controlled solo per questo.
   const [valore, setValore] = useState(urlAttuale ?? "");
+  // Review fix: l'avviso leggeva "valore" (lo stato live del campo, che
+  // cambia a ogni tasto) invece del valore DAVVERO inviato nell'ultimo
+  // submit riuscito - un Utente poteva salvare con successo, vedere
+  // l'avviso, poi modificare/svuotare il campo senza reinviare e vedere
+  // l'avviso sparire pur restando il valore precedente (con Token
+  // potenzialmente disallineato) quello davvero salvato sul server.
+  // "valoreSalvato" si aggiorna solo al submit (onSubmit, non durante il
+  // render), quindi resta legato al risultato mostrato in "state" finche'
+  // non arriva un nuovo esito.
+  const [valoreSalvato, setValoreSalvato] = useState<string | null>(null);
 
   return (
-    <form action={formAction}>
+    <form action={formAction} onSubmit={() => setValoreSalvato(valore)}>
       <div className={styles.campo}>
         <label htmlFor="url-pagina-facebook">URL Pagina Facebook</label>
         <input
@@ -46,7 +56,7 @@ export function PaginaFacebookForm({ urlAttuale }: { urlAttuale: string | null }
               corrispondere piu'). Site Manager non ha accesso al Token
               (salvaTokenFacebookAction resta Admin/Dirigente-only), quindi
               non puo' risolvere da solo un eventuale disallineamento. */}
-          {valore.trim() && (
+          {valoreSalvato?.trim() && (
             <p className={styles.avviso}>
               Il Token Facebook potrebbe non corrispondere più alla nuova
               Pagina: contatta un Admin per aggiornarlo se necessario.

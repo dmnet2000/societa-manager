@@ -2,7 +2,12 @@
 .claude
 
 # dependencies
-/node_modules
+# Review fix (Epic 19): "/node_modules" e' ancorato alla radice del repo,
+# non copre node_modules annidati altrove (es. app/node_modules) - un
+# node_modules nidificato era finito tracciato per errore in un commit di
+# Story 19-4 (file di cache Vitest sotto app/node_modules/.vite/...).
+# "**/node_modules" copre qualunque profondita'.
+**/node_modules
 /.pnp
 .pnp.*
 .yarn/*

@@ -58,6 +58,8 @@ baseline_commit: '2d905848ecf8077efe7c9acc64d41f613492d77'
 
 ## Spec Change Log
 
+- 2026-08-19 (code review Epic 19, post-hoc): `PaginaFacebookForm.tsx` leggeva `valore` (stato live del campo) invece del valore davvero inviato nell'ultimo submit riuscito per condizionare l'avviso Token - un Utente poteva salvare, vedere l'avviso, poi modificare/svuotare il campo senza reinviare e vedere l'avviso sparire pur restando il valore precedente quello davvero salvato. Fix: nuovo state `valoreSalvato`, aggiornato solo `onSubmit`.
+
 ## Verification
 
 **Commands:**

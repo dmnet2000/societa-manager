@@ -5,6 +5,7 @@ import type { Ruolo } from "@prisma/client";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import {
   elencaVociMenuPubblico,
+  elencaVociMenuPubblicoVisibili,
   creaVoceMenuPubblico,
   aggiornaVoceMenuPubblico,
   impostaVisibileVoceMenuPubblico,
@@ -35,9 +36,14 @@ const LUNGHEZZA_MASSIMA_URL = 200;
 // del sito ("/squadre", stesso formato di app/NavPubblica.tsx) - un
 // input type="url" browser rifiuterebbe un valore relativo, per questo il
 // campo lato UI resta type="text" e questa e' l'unica validazione reale.
+// Review fix: "/" da solo non basta - "//host.esterno" e' un URL
+// protocol-relative (il browser/Next Link lo risolve come navigazione
+// assoluta verso un altro dominio, non una rotta interna), rifiutato
+// esplicitamente qui invece di essere accettato per errore come "rotta
+// interna" solo perche' inizia con "/".
 function urlVoceMenuValido(valore: string): boolean {
   if (!valore || valore.length > LUNGHEZZA_MASSIMA_URL) return false;
-  if (valore.startsWith("/")) return true;
+  if (valore.startsWith("/") && !valore.startsWith("//")) return true;
   try {
     const url = new URL(valore);
     return url.protocol === "http:" || url.protocol === "https:";
@@ -144,6 +150,28 @@ export async function impostaVisibileVoceMenuPubblicoAction(
   const visibile = visibileGrezzo === "true";
 
   try {
+    // Review fix: senza questo controllo, nascondere l'ultima voce visibile
+    // rimasta svuota elencaVociMenuPubblicoVisibili() - app/NavPubblica.tsx
+    // (Story 19.8) tratta una tabella senza voci visibili come un errore
+    // esplicito e bloccante (decisione dell'epica, nessun fallback
+    // silenzioso), quindi l'intero sito pubblico smetterebbe di renderizzare
+    // (ogni pagina pubblica monta HeaderPubblico -> NavPubblica) fino a
+    // quando qualcuno non rimostra una voce. Controllato solo quando si sta
+    // nascondendo (mostrare una voce non puo' mai azzerare il conteggio).
+    if (!visibile) {
+      const vociVisibili = await elencaVociMenuPubblicoVisibili();
+      const restanoVisibili = vociVisibili.some((v) => v.id !== id);
+      if (!restanoVisibili) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message:
+              "Non puoi nascondere l'ultima voce visibile: il menu del sito pubblico deve avere sempre almeno una voce.",
+          },
+        };
+      }
+    }
+
     await impostaVisibileVoceMenuPubblico(id, visibile);
   } catch (err) {
     console.error(err);

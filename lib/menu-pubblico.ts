@@ -3,17 +3,27 @@ import { prisma } from "@/lib/prisma";
 
 // Story 19.6 (Epic 19, Ruolo Site Manager): funzioni di lettura/scrittura
 // per VoceMenuPubblico (prisma/schema.prisma) - tabella strutturale (AD-9),
-// nessuna RLS/policy, accesso solo via Prisma diretto. Nessuna UI collegata
-// ancora (Story 19.7 costruira' il Server Action che chiama queste
-// funzioni), nessuna lettura da app/NavPubblica.tsx ancora (Story 19.8) -
-// mirror del principio "fondazione senza consumer reale" gia' seguito in
-// Story 12.1/15.1. Nessuna validazione qui (lunghezza etichetta, formato
-// URL): stessa separazione dei livelli gia' stabilita da
-// lib/configurazione-applicazione.ts, la validazione vive nel Server
-// Action che chiamera' queste funzioni (Story 19.7).
+// nessuna RLS/policy, accesso solo via Prisma diretto. Nessuna validazione
+// qui (lunghezza etichetta, formato URL): stessa separazione dei livelli
+// gia' stabilita da lib/configurazione-applicazione.ts, la validazione vive
+// nel Server Action che chiama queste funzioni (app/app/(configurazione)/
+// menu-pubblico/actions.ts, Story 19.7).
 
+// Story 19.7: elenco completo (incluse le voci nascoste) per la pagina di
+// gestione /app/menu-pubblico.
 export async function elencaVociMenuPubblico() {
   return prisma.voceMenuPubblico.findMany({ orderBy: { ordine: "asc" } });
+}
+
+// Story 19.8: solo le voci visibili, stessa query di elencaVociMenuPubblico
+// sopra ma filtrata - usata da app/NavPubblica.tsx (menu del sito
+// pubblico), a differenza della gestione sopra che deve vedere anche le
+// voci nascoste per poterle rimostrare.
+export async function elencaVociMenuPubblicoVisibili() {
+  return prisma.voceMenuPubblico.findMany({
+    where: { visibile: true },
+    orderBy: { ordine: "asc" },
+  });
 }
 
 export async function creaVoceMenuPubblico(dati: {

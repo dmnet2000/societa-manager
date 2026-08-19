@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-19-2026 08:22"
+last_updated: "08-19-2026 10:30"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -918,4 +918,39 @@ development_status:
   # in UI. 1291/1291 test Vitest (root del repo), tsc pulito, lint 0 errori,
   # npm run build verificato (/app/menu-pubblico compare come rotta dynamic).
   19-7-ui-gestione-menu-pubblico: review
-  19-8-menu-pubblico-dinamico: backlog
+  # Story 19.8 implementata (spec-19-8-menu-pubblico-dinamico.md), ultima
+  # dell'Epic 19: app/NavPubblica.tsx da array hard-coded a Server Component
+  # asincrono che legge VoceMenuPubblico (elencaVociMenuPubblicoVisibili,
+  # nuova funzione lib/menu-pubblico.ts). Interattivita' (hamburger/drawer/
+  # Esc/tocco fuori) estratta invariata in nuovo app/NavPubblicaClient.tsx
+  # ("use client", riceve voci come prop) - necessario perche'
+  # VoceMenuPubblico non ha RLS/policy (AD-9), irraggiungibile da client.
+  # Tabella vuota = throw esplicito loggato (propaga a app/error.tsx
+  # esistente), NON fallback silenzioso sulle 5 voci hard-coded - decisione
+  # esplicita gia' presa in party mode (epic-19-context.md decisione 7).
+  # HeaderPubblico.tsx (unico punto di montaggio) invariato. Primo
+  # componente/pagina del progetto con un test diretto (app/NavPubblica.test.ts) -
+  # possibile perche' ora contiene logica (mapping+throw), chiamata come
+  # funzione async pura, nessuna libreria di rendering introdotta. 1294/1294
+  # test Vitest (root del repo), tsc pulito, lint 0 errori, npm run build
+  # verificato (le 5 rotte pubbliche restano dynamic, stesso shape).
+  19-8-menu-pubblico-dinamico: review
+  # Code review dell'intero Epic 19 (diff aa24bb6..HEAD + working tree),
+  # 2026-08-19: 6 finding, 5 confermati e patchati, 1 (duplicazione di
+  # urlEsternoValido/linkEsternoValido/urlVoceMenuValido su 3 file) segnalato
+  # all'utente ma non applicato (refactor cross-file, fuori scope minimo).
+  # Fix applicati: (1) impostaVisibileVoceMenuPubblicoAction non impediva di
+  # nascondere l'ultima voce visibile - dopo la 19.8 questo mandava in
+  # errore l'intero sito pubblico (nessuna voce visibile = fail-closed per
+  # design), ora rifiutato con VALIDATION; (2) banner/guida di
+  # /app/menu-pubblico dicevano ancora "non collegato al sito pubblico" dopo
+  # che la 19.8 lo aveva davvero collegato, testo aggiornato; (3)
+  # urlVoceMenuValido accettava "//host-esterno" (protocol-relative) come
+  # rotta interna solo perche' inizia con "/", ora rifiutato esplicitamente;
+  # (4) PaginaFacebookForm.tsx (Story 19.5) leggeva lo stato live del campo
+  # invece del valore davvero salvato per l'avviso Token, poteva sparire pur
+  # restando il disallineamento; (5) app/node_modules e un secondo path
+  # analogo (piu' vecchio, non di questa epica) erano tracciati per errore
+  # (.gitignore "/node_modules" non copriva nested dirs) - untracked +
+  # .gitignore corretto a "**/node_modules". 1297/1297 test Vitest, tsc
+  # pulito, lint 0 errori dopo i fix.

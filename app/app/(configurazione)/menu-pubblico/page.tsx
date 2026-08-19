@@ -14,10 +14,12 @@ export const dynamic = "force-dynamic";
 // dalla Story 19.6 (VoceMenuPubblico) - route-guard.ts limita l'accesso ad
 // ADMIN/SITE_MANAGER, nessun controllo di Ruolo ripetuto qui (stesso
 // pattern di ogni altra pagina single-purpose del progetto, es.
-// foto-squadre/page.tsx). Story 19.8 (non ancora esistente) collegera'
-// queste voci al menu pubblico reale (app/NavPubblica.tsx) - fino ad
-// allora le modifiche qui non hanno alcun effetto visibile sul sito
-// pubblico, da cui l'avviso esplicito sotto.
+// foto-squadre/page.tsx).
+// Story 19.8: app/NavPubblica.tsx legge ora da questa stessa tabella - le
+// modifiche fatte qui sono immediatamente visibili sul sito pubblico
+// (l'avviso sotto e' stato aggiornato di conseguenza, review fix: prima
+// diceva ancora "non collegato", diventato falso e fuorviante non appena
+// la 19.8 e' stata completata).
 export default async function MenuPubblicoPage() {
   const [ruoli, voci] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
@@ -31,9 +33,10 @@ export default async function MenuPubblicoPage() {
         contenuto={contenutoPerRotta("/app/menu-pubblico", ruoli)}
       />
       <p className={styles.avviso}>
-        Le modifiche qui non sono ancora collegate al menu del sito pubblico
-        (arriverà con una prossima funzionalità) — per ora servono a
-        preparare in anticipo etichette, URL e ordine delle voci.
+        Le modifiche a queste voci sono visibili sul menu del sito pubblico
+        non appena salvate. Deve restare sempre almeno una voce visibile: se
+        provi a nascondere l&apos;ultima rimasta, il salvataggio viene
+        rifiutato.
       </p>
 
       <section className={styles.sezione}>

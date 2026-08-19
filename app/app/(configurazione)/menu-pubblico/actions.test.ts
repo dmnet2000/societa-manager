@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const requireRuoloMock = vi.fn();
 const elencaVociMenuPubblicoMock = vi.fn();
+const elencaVociMenuPubblicoVisibiliMock = vi.fn();
 const creaVoceMenuPubblicoMock = vi.fn();
 const aggiornaVoceMenuPubblicoMock = vi.fn();
 const impostaVisibileVoceMenuPubblicoMock = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("@/lib/auth/require-ruolo", () => ({
 
 vi.mock("@/lib/menu-pubblico", () => ({
   elencaVociMenuPubblico: elencaVociMenuPubblicoMock,
+  elencaVociMenuPubblicoVisibili: elencaVociMenuPubblicoVisibiliMock,
   creaVoceMenuPubblico: creaVoceMenuPubblicoMock,
   aggiornaVoceMenuPubblico: aggiornaVoceMenuPubblicoMock,
   impostaVisibileVoceMenuPubblico: impostaVisibileVoceMenuPubblicoMock,
@@ -52,6 +54,8 @@ beforeEach(() => {
   requireRuoloMock.mockResolvedValue(null);
   elencaVociMenuPubblicoMock.mockReset();
   elencaVociMenuPubblicoMock.mockResolvedValue(vociFinte());
+  elencaVociMenuPubblicoVisibiliMock.mockReset();
+  elencaVociMenuPubblicoVisibiliMock.mockResolvedValue(vociFinte());
   creaVoceMenuPubblicoMock.mockReset();
   creaVoceMenuPubblicoMock.mockResolvedValue(undefined);
   aggiornaVoceMenuPubblicoMock.mockReset();
@@ -134,6 +138,25 @@ describe("creaVoceMenuPubblicoAction", () => {
     const result = await creaVoceMenuPubblicoAction(
       undefined,
       buildFormData({ etichetta: "Foo", url: "javascript:alert(1)" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix: "//host.esterno" inizia con "/" ma e' un URL
+  // protocol-relative - il browser/Next Link lo risolve come navigazione
+  // assoluta verso un altro dominio, non una rotta interna del sito.
+  it('returns VALIDATION per un URL protocol-relative ("//...")', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Foo", url: "//esempio-esterno.it" })
     );
 
     expect(result).toEqual({
@@ -246,7 +269,7 @@ describe("impostaVisibileVoceMenuPubblicoAction", () => {
     expect(impostaVisibileVoceMenuPubblicoMock).not.toHaveBeenCalled();
   });
 
-  it("nasconde una voce visibile", async () => {
+  it("nasconde una voce visibile quando ne restano altre visibili", async () => {
     const result = await impostaVisibileVoceMenuPubblicoAction(
       undefined,
       buildFormData({ id: "a", visibile: "false" })
@@ -255,6 +278,40 @@ describe("impostaVisibileVoceMenuPubblicoAction", () => {
     expect(result).toEqual({ success: true });
     expect(impostaVisibileVoceMenuPubblicoMock).toHaveBeenCalledWith("a", false);
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/menu-pubblico");
+  });
+
+  // Review fix: senza questo guard, nascondere l'ultima voce visibile
+  // svuota elencaVociMenuPubblicoVisibili() - NavPubblica.tsx (Story 19.8)
+  // tratta questo come un errore bloccante (nessun fallback silenzioso),
+  // quindi l'intero sito pubblico smetterebbe di renderizzare.
+  it("returns VALIDATION se si tenta di nascondere l'unica voce visibile rimasta", async () => {
+    elencaVociMenuPubblicoVisibiliMock.mockResolvedValue([
+      { id: "a", etichetta: "Home", url: "/", ordine: 0, visibile: true },
+    ]);
+
+    const result = await impostaVisibileVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ id: "a", visibile: "false" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Non puoi nascondere l'ultima voce visibile: il menu del sito pubblico deve avere sempre almeno una voce.",
+      },
+    });
+    expect(impostaVisibileVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  it("non chiama la verifica delle voci visibili quando si sta mostrando (non nascondendo)", async () => {
+    const result = await impostaVisibileVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ id: "a", visibile: "true" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(elencaVociMenuPubblicoVisibiliMock).not.toHaveBeenCalled();
   });
 
   it("mostra una voce nascosta", async () => {

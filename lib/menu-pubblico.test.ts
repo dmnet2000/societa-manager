@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
 
 const {
   elencaVociMenuPubblico,
+  elencaVociMenuPubblicoVisibili,
   creaVoceMenuPubblico,
   aggiornaVoceMenuPubblico,
   impostaVisibileVoceMenuPubblico,
@@ -44,6 +45,21 @@ describe("elencaVociMenuPubblico", () => {
     const result = await elencaVociMenuPubblico();
 
     expect(findManyMock).toHaveBeenCalledWith({ orderBy: { ordine: "asc" } });
+    expect(result).toBe(righe);
+  });
+});
+
+describe("elencaVociMenuPubblicoVisibili", () => {
+  it("returns only visibile rows ordered by ordine ascending", async () => {
+    const righe = [{ id: "1", ordine: 0, visibile: true }];
+    findManyMock.mockResolvedValue(righe);
+
+    const result = await elencaVociMenuPubblicoVisibili();
+
+    expect(findManyMock).toHaveBeenCalledWith({
+      where: { visibile: true },
+      orderBy: { ordine: "asc" },
+    });
     expect(result).toBe(righe);
   });
 });
