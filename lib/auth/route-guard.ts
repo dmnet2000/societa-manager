@@ -315,6 +315,25 @@ export const PROTECTED_ROUTES: {
     gruppo: "Gestione sito",
   },
   {
+    // Story 19.7 (Epic 19, Ruolo Site Manager): gestione delle voci di menu
+    // pubblico introdotte dalla Story 19.6 - a differenza delle altre 3
+    // rotte del gruppo "Gestione sito" sopra (Impostazioni/Sponsor/Foto
+    // squadre, dove Site Manager si aggiunge a un permesso Admin/Dirigente
+    // gia' esistente), qui DIRIGENTE resta escluso: l'AC della story limita
+    // esplicitamente l'accesso ad ADMIN e SITE_MANAGER, nessun permesso
+    // preesistente da affiancare (funzionalita' del tutto nuova). Quarta
+    // (e ultima, per posizione nell'array) figlia del gruppo - assunzione
+    // non esplicitamente richiesta dall'AC ma coerente con le altre 3 rotte
+    // di gestione del sito pubblico dello stesso gruppo (Story 19.4): un
+    // Dirigente senza accesso a questa rotta specifica non la vede comunque
+    // tra le figlie (il filtro per Ruolo avviene prima del raggruppamento,
+    // raggruppaVociNavigazione).
+    prefix: "/app/menu-pubblico",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    navLabel: "Menu pubblico",
+    gruppo: "Gestione sito",
+  },
+  {
     // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta
     // del progetto visibile a tutti i Ruoli (mirror di /sponsor,
     // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per

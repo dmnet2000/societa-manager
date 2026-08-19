@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-18-2026 23:05"
+last_updated: "08-19-2026 08:22"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -887,7 +887,35 @@ development_status:
   # 670/671 test Vitest (1 fallimento preesistente non correlato,
   # manifest.test.ts icone PWA), tsc pulito, lint 0 errori.
   19-5-site-manager-url-facebook: review
-  19-6-modello-dati-menu-pubblico: backlog
-  19-6-modello-dati-menu-pubblico: backlog
-  19-7-ui-gestione-menu-pubblico: backlog
+  # Story 19.6 implementata (spec-19-6-modello-dati-menu-pubblico.md): nuovo
+  # model Prisma VoceMenuPubblico (id/etichetta/url/ordine/visibile),
+  # migrazione a mano (prisma/migrations/20260819000000_add_voce_menu_pubblico)
+  # con RLS+REVOKE espliciti (stesso trattamento AD-9 di Sponsor/
+  # PermessoRotta) e seed delle 5 voci attuali di NavPubblica.tsx (non
+  # toccato da questa storia). Migrazione NON eseguita contro un DB reale da
+  # questa sessione (solo migration.sql scritto a mano + `prisma generate`,
+  # nessuna connessione) - l'applicazione resta al deploy/all'utente, stesso
+  # pattern delle migrazioni precedenti dell'Epic 19. Nuovo lib/menu-pubblico.ts
+  # (5 funzioni: elenca/crea/aggiorna/imposta-visibile/riordina), nessuna
+  # Server Action/UI ancora (Story 19.7). 1266/1266 test Vitest (dalla root
+  # del repo - da app/ manifest.test.ts da' un falso negativo su un path
+  # relativo a process.cwd(), non legato a questa o alle storie precedenti),
+  # tsc pulito, lint 0 errori.
+  19-6-modello-dati-menu-pubblico: review
+  # Story 19.7 implementata (spec-19-7-ui-gestione-menu-pubblico.md): nuova
+  # pagina /app/menu-pubblico (route-guard: ADMIN+SITE_MANAGER, non
+  # Dirigente - AC esplicito, funzionalita' nuova senza permesso preesistente
+  # da affiancare) con 4 Server Action (crea/aggiorna/imposta-visibile/
+  # sposta) su lib/menu-pubblico.ts (19.6). Riordino con due bottoni Su/Giu
+  # (nessuna libreria drag-and-drop nel progetto), spostaVoceMenuPubblicoAction
+  # rilegge l'elenco fresco da DB invece di fidarsi di un indice client-side.
+  # Validazione URL: "/"-prefissato (rotta interna) oppure http/https (mai
+  # javascript:/data:). ASSUNZIONE non esplicita nell'AC: la rotta entra nel
+  # gruppo nav "Gestione sito" (coerenza con Impostazioni/Sponsor/Foto
+  # squadre, Story 19.4) - verificato che il filtro per Ruolo avviene prima
+  # del raggruppamento, nessuna voce inaccessibile trapela a un Dirigente.
+  # Pagina scollegata da NavPubblica.tsx (arriva con 19.8) - avviso esplicito
+  # in UI. 1291/1291 test Vitest (root del repo), tsc pulito, lint 0 errori,
+  # npm run build verificato (/app/menu-pubblico compare come rotta dynamic).
+  19-7-ui-gestione-menu-pubblico: review
   19-8-menu-pubblico-dinamico: backlog

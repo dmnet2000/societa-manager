@@ -716,3 +716,29 @@ model Sponsor {
 
   @@map("sponsor")
 }
+
+// Story 19.6 (Epic 19, Ruolo Site Manager): voci del menu di navigazione
+// pubblico - sostituira' l'array hard-coded VOCI di app/NavPubblica.tsx
+// (Story 19.8, non ancora collegata da questa storia). Entita' strutturale
+// (AD-9), stesso trattamento RLS di Sponsor/PermessoRotta sopra: RLS
+// abilitata senza alcuna policy (deny-all di default) + REVOKE esplicito da
+// "anon"/"authenticated" - accesso solo via Prisma diretto (connessione
+// privilegiata), mai tramite PostgREST/client Supabase autenticato.
+// "ordine" e' un intero libero (nessun vincolo di unicita' a livello DB) -
+// riordinaVociMenuPubblico (lib/menu-pubblico.ts) riscrive sempre l'intero
+// set in una transazione, un valore duplicato transitorio durante il
+// riordino non e' un problema che il DB debba impedire. "visibile" e' il
+// solo modo per nascondere una voce dal menu pubblico senza cancellarla -
+// stesso principio di "attiva" su Sponsor sopra (mai un hard-delete lato
+// Utente in questa storia, la cancellazione non e' un requisito degli AC).
+model VoceMenuPubblico {
+  id        String   @id @default(uuid())
+  etichetta String
+  url       String
+  ordine    Int
+  visibile  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("voci_menu_pubblico")
+}

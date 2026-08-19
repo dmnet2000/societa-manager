@@ -139,6 +139,19 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
+    // Story 19.7 (Epic 19, Ruolo Site Manager): a differenza delle altre
+    // rotte di "Gestione sito" sopra, qui DIRIGENTE non e' ammesso - mirror
+    // di ruoliAmmessi per /app/menu-pubblico in route-guard.ts.
+    rotta: "/app/menu-pubblico",
+    titolo: "Menu pubblico",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    corpo: [
+      "Qui prepari le voci del menu di navigazione del sito pubblico: etichetta, URL (una pagina del sito come \"/squadre\", oppure un link esterno completo di http:// o https://), ordine e visibilità.",
+      "Puoi aggiungere una nuova voce, modificarne una esistente, spostarla su o giù nell'ordine, oppure nasconderla senza cancellarla.",
+      "Le modifiche fatte qui non sono ancora collegate al menu che vedono i Visitatori del sito pubblico - per ora servono a preparare in anticipo la struttura.",
+    ],
+  },
+  {
     rotta: "/app/i-miei-gruppi",
     titolo: "I miei Gruppi",
     ruoliAmmessi: ["ALLENATORE"],

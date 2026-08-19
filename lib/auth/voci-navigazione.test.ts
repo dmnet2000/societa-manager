@@ -58,16 +58,18 @@ describe("filtraVociNavigazione", () => {
 
   // Story 19.4: /app/impostazioni e' ora figlia del gruppo "Gestione sito"
   // (non piu' voce diretta) - stesso principio dei gruppi "Atleti"/"Orari-
-  // Palestre"/"Accounting". Un Site Manager vede tutte e tre le figlie
-  // (Impostazioni/Sponsor/Foto squadre, uniche rotte SITE_MANAGER-ammesse di
-  // questo gruppo), in ordine di dichiarazione.
-  it("un Site Manager vede il gruppo Gestione sito con Impostazioni/Sponsor/Foto squadre (Story 19.1, 19.4)", () => {
+  // Palestre"/"Accounting". Un Site Manager vede tutte e quattro le figlie
+  // (Impostazioni/Sponsor/Foto squadre/Menu pubblico, tutte le rotte
+  // SITE_MANAGER-ammesse di questo gruppo), in ordine di dichiarazione.
+  // Story 19.7: quarta figlia, /app/menu-pubblico.
+  it("un Site Manager vede il gruppo Gestione sito con Impostazioni/Sponsor/Foto squadre/Menu pubblico (Story 19.1, 19.4, 19.7)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SITE_MANAGER"]), "Gestione sito");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
       { href: "/app/impostazioni", label: "Impostazioni" },
       { href: "/app/sponsor", label: "Sponsor" },
       { href: "/app/foto-squadre", label: "Foto squadre" },
+      { href: "/app/menu-pubblico", label: "Menu pubblico" },
     ]);
     const href = hrefVoci(filtraVociNavigazione(["SITE_MANAGER"]));
     expect(href).not.toContain("/app/admin");
@@ -195,7 +197,7 @@ describe("filtraVociNavigazione", () => {
     const atleti = routeConGruppo.filter((r) => r.gruppo === "Atleti");
     const accounting = routeConGruppo.filter((r) => r.gruppo === "Accounting");
     // Story 19.4: quarto gruppo - /app/impostazioni, /app/sponsor,
-    // /app/foto-squadre.
+    // /app/foto-squadre. Story 19.7: quarta rotta del gruppo, /app/menu-pubblico.
     const gestioneSito = routeConGruppo.filter((r) => r.gruppo === "Gestione sito");
 
     // Post-15.5: /slot e' entrata nel gruppo "Orari/Palestre" su richiesta
@@ -227,10 +229,16 @@ describe("filtraVociNavigazione", () => {
     expect(accounting).toHaveLength(4);
 
     // Story 19.4: gruppo "Gestione sito" - Impostazioni/Sponsor/Foto squadre.
+    // Story 19.7: quarta rotta, Menu pubblico.
     expect(gestioneSito.map((r) => r.prefix)).toEqual(
-      expect.arrayContaining(["/app/impostazioni", "/app/sponsor", "/app/foto-squadre"])
+      expect.arrayContaining([
+        "/app/impostazioni",
+        "/app/sponsor",
+        "/app/foto-squadre",
+        "/app/menu-pubblico",
+      ])
     );
-    expect(gestioneSito).toHaveLength(3);
+    expect(gestioneSito).toHaveLength(4);
 
     // Nessuna rotta ha un "gruppo" al di fuori dei quattro valori attesi -
     // una futura story che aggiungesse un quinto gruppo dovra' estendere
@@ -475,6 +483,9 @@ describe("filtraVociNavigazione", () => {
   // scalano semplicemente di una posizione, /app/sponsor sparisce dalla sua
   // vecchia posizione diretta ed entra come seconda figlia dello stesso
   // nodo gruppo.
+  // Story 19.7 (Epic 19): terza figlia per Admin, /app/menu-pubblico
+  // (ADMIN+SITE_MANAGER - a differenza di /app/foto-squadre,
+  // SITE_MANAGER-only, che resta invisibile qui per Admin).
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -503,6 +514,7 @@ describe("filtraVociNavigazione", () => {
         figlie: [
           { href: "/app/impostazioni", label: "Impostazioni" },
           { href: "/app/sponsor", label: "Sponsor" },
+          { href: "/app/menu-pubblico", label: "Menu pubblico" },
         ],
       },
       { tipo: "voce", href: "/app/wizard-nuova-stagione", label: "Wizard nuova stagione" },
@@ -523,15 +535,16 @@ describe("filtraVociNavigazione", () => {
   });
 
   // Story 19.4: isolato con trovaGruppo, mirror del test gemello per
-  // "Accounting" sotto - Admin vede Impostazioni e Sponsor (non Foto
-  // squadre, SITE_MANAGER-only), a differenza di Site Manager che vede
-  // tutte e tre (vedi test dedicato sopra).
-  it("Admin vede il gruppo Gestione sito con Impostazioni e Sponsor, non Foto squadre (Story 19.4)", () => {
+  // "Accounting" sotto - Admin vede Impostazioni, Sponsor e (Story 19.7)
+  // Menu pubblico, non Foto squadre (SITE_MANAGER-only), a differenza di
+  // Site Manager che vede tutte e quattro (vedi test dedicato sopra).
+  it("Admin vede il gruppo Gestione sito con Impostazioni/Sponsor/Menu pubblico, non Foto squadre (Story 19.4, 19.7)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN"]), "Gestione sito");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
       { href: "/app/impostazioni", label: "Impostazioni" },
       { href: "/app/sponsor", label: "Sponsor" },
+      { href: "/app/menu-pubblico", label: "Menu pubblico" },
     ]);
   });
 
