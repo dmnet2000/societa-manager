@@ -44,8 +44,13 @@
 }
 
 /* Righe separate da bordo sottile, non card (DESIGN.md.components.staff-list
-   .row-border-bottom, {colors.bordo-chiaro} #E5E9EE). */
+   .row-border-bottom, {colors.bordo-chiaro} #E5E9EE).
+   Story 18.22: display:flex aggiunto - la riga ospita ora anche la foto
+   dell'Allenatore (opzionale) accanto a nome/Gruppi. */
 .rigaAllenatore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   padding: var(--space-4) 0;
   border-bottom: 1px solid #e5e9ee;
 }
@@ -56,6 +61,50 @@
 
 .rigaAllenatore:last-child {
   border-bottom: none;
+}
+
+/* Story 18.22: foto profilo riusata (Story 9.12) - stesso bordo di
+   .rigaAllenatore, cerchio (nessun token DESIGN.md dedicato per questo
+   elemento, non esisteva prima di questa storia). flex-shrink:0 evita che
+   si comprima quando l'elenco Gruppi accanto e' lungo. */
+.fotoAllenatore {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e9ee;
+}
+
+/* Review fix (party mode UI, post-18.22): placeholder per chi non ha una
+   foto caricata - stessa dimensione/forma di .fotoAllenatore cosi' la riga
+   non "salta" tra le due varianti. {colors.blu-carbone} #0F2438 (lo stesso
+   blu dell'header, DESIGN.md.components.header.background) invece di un
+   grigio neutro a caso - stessa palette del resto della pagina pubblica,
+   non un nuovo colore. Tipografia identica a .nomeAllenatore (stessa
+   famiglia/peso), solo piu' piccola e bianca per il contrasto sullo sfondo
+   scuro. */
+.inizialiAllenatore {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #0f2438;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+
+/* Story 18.22: wrapper per nome+Gruppi, necessario perche' .rigaAllenatore
+   e' diventato un contenitore flex con la foto (o le iniziali) come primo
+   figlio. */
+.infoAllenatore {
+  min-width: 0;
 }
 
 /* {typography.display-card} + {colors.blu-carbone} #0F2438

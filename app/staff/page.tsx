@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { createAdminClient } from "@/lib/auth-admin/client";
+import {
+  BUCKET_FOTO_ALLENATORE,
+  esisteFotoProfilo,
+  generaUrlFirmatoFotoProfilo,
+} from "@/lib/storage/foto-profilo";
+import { inizialiNome } from "@/lib/iniziali-nome";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import styles from "./staff.module.css";
@@ -54,6 +61,44 @@ export default async function StaffPage() {
         })
     : [];
 
+  // Story 18.22: foto profilo dell'Allenatore (Story 9.12, bucket
+  // "foto-profilo-allenatori") - PRIVATO per scelta deliberata (AD-6), la
+  // sua policy RLS richiede un Ruolo tra ALLENATORE/ADMIN/DIRIGENTE/
+  // SEGRETERIA nel JWT. Un Visitatore anonimo di questa pagina non ne ha
+  // nessuno, quindi createClient() (sessione anonima) fallirebbe la RLS -
+  // createAdminClient() (service-role, bypassa RLS) e' l'unico modo per
+  // leggerla da qui, stesso client gia' usato da app/layout.tsx per letture
+  // privilegiate su pagine pubbliche. Decisione presa esplicitamente con
+  // l'utente in apertura di questa storia: riuso diretto, nessun nuovo
+  // consenso/opt-in, il bucket stesso resta privato (nessuna policy
+  // toccata) - solo questa lettura server-side lo bypassa.
+  const supabaseAdmin = createAdminClient();
+  const allenatoriConFoto = await Promise.all(
+    allenatori.map(async (allenatore) => {
+      // Mirror del blocco fail-soft di il-mio-profilo/page.tsx
+      // (SezioneFoto): un errore Storage per UN Allenatore non deve far
+      // sparire l'intera lista, ne' propagare fino a rompere la pagina.
+      let fotoUrl: string | null = null;
+      try {
+        const info = await esisteFotoProfilo(
+          supabaseAdmin,
+          BUCKET_FOTO_ALLENATORE,
+          allenatore.id
+        );
+        if (info.esiste) {
+          fotoUrl = await generaUrlFirmatoFotoProfilo(
+            supabaseAdmin,
+            BUCKET_FOTO_ALLENATORE,
+            allenatore.id
+          );
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      return { ...allenatore, fotoUrl };
+    })
+  );
+
   return (
     <>
       <HeaderPubblico />
@@ -63,28 +108,49 @@ export default async function StaffPage() {
             nessun Allenatore risulta assegnato a un Gruppo nella stagione
             corrente - qui l'intera pagina esiste solo per questo
             contenuto (a differenza delle sezioni opzionali della home). */}
-        {allenatori.length === 0 ? (
+        {allenatoriConFoto.length === 0 ? (
           <p className={styles.messaggioVuoto}>
             Nessun Allenatore assegnato a un Gruppo per la stagione in corso.
           </p>
         ) : (
           <div className={styles.listaStaff}>
-            {allenatori.map((allenatore) => (
+            {allenatoriConFoto.map((allenatore) => (
               <div className={styles.rigaAllenatore} key={allenatore.id}>
-                <div className={styles.nomeAllenatore}>
-                  {allenatore.nome} {allenatore.cognome}
+                {/* Review fix (party mode UI, post-18.22): un placeholder a
+                    iniziali sostituisce il "niente" iniziale per chi non ha
+                    una foto caricata - stessi token di DESIGN.md
+                    (blu-carbone, stessa tipografia del nome), invece di una
+                    lista con dei buchi a sinistra su meta' delle righe. */}
+                {allenatore.fotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL firmato a breve scadenza, non ottimizzabile da next/image (mirror il-mio-profilo/page.tsx)
+                  <img
+                    className={styles.fotoAllenatore}
+                    src={allenatore.fotoUrl}
+                    alt=""
+                    width={64}
+                    height={64}
+                  />
+                ) : (
+                  <div className={styles.inizialiAllenatore} aria-hidden="true">
+                    {inizialiNome(allenatore.nome, allenatore.cognome)}
+                  </div>
+                )}
+                <div className={styles.infoAllenatore}>
+                  <div className={styles.nomeAllenatore}>
+                    {allenatore.nome} {allenatore.cognome}
+                  </div>
+                  {/* Task 1 garantisce gruppi.length >= 1 per costruzione -
+                      nessun elenco vuoto possibile qui. <ul>/<li> (non una
+                      stringa unita da virgole) - stesso pattern gia'
+                      stabilito per l'elenco Allenatori annidato in
+                      /squadre (listaAllenatori), un elemento discreto per
+                      Gruppo invece di un'unica riga di testo. */}
+                  <ul className={styles.listaGruppi}>
+                    {allenatore.gruppi.map(({ gruppo }) => (
+                      <li key={gruppo.id}>{gruppo.nome}</li>
+                    ))}
+                  </ul>
                 </div>
-                {/* Task 1 garantisce gruppi.length >= 1 per costruzione -
-                    nessun elenco vuoto possibile qui. <ul>/<li> (non una
-                    stringa unita da virgole) - stesso pattern gia'
-                    stabilito per l'elenco Allenatori annidato in
-                    /squadre (listaAllenatori), un elemento discreto per
-                    Gruppo invece di un'unica riga di testo. */}
-                <ul className={styles.listaGruppi}>
-                  {allenatore.gruppi.map(({ gruppo }) => (
-                    <li key={gruppo.id}>{gruppo.nome}</li>
-                  ))}
-                </ul>
               </div>
             ))}
           </div>

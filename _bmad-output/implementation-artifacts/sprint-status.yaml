@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-19-2026 10:30"
+last_updated: "08-19-2026 15:15"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -844,6 +844,36 @@ development_status:
   18-19-titolo-hero-separato-blocco-facebook-stretto: done
   18-20-logo-polisportiva-footer: done
   18-21-favicon-titolo-tab-browser: done
+  # Story 18.22 aggiunta e implementata il 2026-08-19 su richiesta esplicita
+  # dell'utente ("metterei la foto dell'allenatore nella sezione staff, hai
+  # la foto profilo da utilizzare"). Punto di privacy chiarito con l'utente
+  # prima di scrivere la story (AskUserQuestion): il bucket
+  # "foto-profilo-allenatori" e' privato per scelta deliberata (AD-6, stessa
+  # cautela dei certificati medici) - mostrarlo su /staff (pubblica) e'
+  # un'inversione di quella scelta. Scelta dell'utente: riuso diretto
+  # (opzione consigliata), nessun opt-in/upload separato. Implementato:
+  # staff/page.tsx usa createAdminClient() (service-role, bypassa RLS -
+  # necessario perche' un Visitatore anonimo non ha alcun Ruolo nel JWT,
+  # mentre la policy RLS del bucket richiede ALLENATORE/ADMIN/DIRIGENTE/
+  # SEGRETERIA) per generare un URL firmato a breve scadenza per Allenatore,
+  # in parallelo (Promise.all) e fail-soft per-Allenatore (mirror del
+  # pattern gia' in uso in il-mio-profilo/page.tsx) - nessuna policy RLS
+  # toccata, il bucket resta tecnicamente privato. Nessun placeholder per
+  # chi non ha una foto caricata (nessuna regressione). 1297/1297 test
+  # Vitest, tsc pulito, lint 0 errori, npm run build verificato (/staff
+  # resta dynamic, stesso shape).
+  # Aggiornamento 2026-08-19: party mode UI (Mary/John/Sally/Winston/Amelia,
+  # i 5 agenti installati, mode "session") sul layout della 18.22 -
+  # rinegoziato il vincolo originale "nessun placeholder" (creava righe con
+  # "buchi" a sinistra per chi non ha foto). Implementato subito dopo:
+  # nuovo lib/iniziali-nome.ts (funzione pura, testata) + placeholder a
+  # iniziali in staff.module.css (.inizialiAllenatore, sfondo
+  # {colors.blu-carbone}, stessa tipografia di .nomeAllenatore - nessun
+  # nuovo colore/font nel sistema). epics.md AC #2 e spec-18-22 (Spec
+  # Change Log) aggiornati di conseguenza. 1302/1302 test Vitest, tsc
+  # pulito, lint 0 errori, npm run build verificato (/staff invariata,
+  # dynamic).
+  18-22-foto-allenatore-staff: review
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story

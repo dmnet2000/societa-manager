@@ -2586,6 +2586,25 @@ so that riconosca subito il sito anche con più schede aperte, invece del testo 
 3. **And** se il nome del Settore non è configurato, la scheda mostra un fallback sensato invece di un titolo vuoto
 4. **And** nessuna regressione sulla generazione statica delle pagine che oggi non richiedono accesso al database (verificare l'output di build prima e dopo)
 
+### Story 18.22: Foto dell'Allenatore nella sezione Staff
+
+*(Aggiunta post-apertura epica — 2026-08-19, richiesta esplicita dell'utente: "metterei la foto dell'allenatore nella sezione staff", riusando la foto profilo già caricata da ogni Allenatore.)*
+
+As a Visitatore del sito pubblico,
+I want vedere la foto di ogni Allenatore nella sezione Staff (`/staff`),
+so that riconosca visivamente lo Staff della società, non solo per nome.
+
+**Stato attuale, verificato nel codice**: `app/staff/page.tsx` mostra solo nome/cognome + elenco Gruppi per ogni Allenatore, nessuna foto. La foto profilo esiste già (Story 9.12, `lib/storage/foto-profilo.ts`, bucket `foto-profilo-allenatori`) ma è **privata per scelta deliberata** (stessa cautela di AD-6/certificati medici) — leggibile solo da un Utente autenticato con Ruolo `ALLENATORE`/`ADMIN`/`DIRIGENTE`/`SEGRETERIA` (policy RLS su `storage.objects`, `20260728000000_add_foto_profilo/migration.sql`), mai da un Visitatore anonimo. `/staff` è invece una pagina pubblica, nessuna sessione.
+
+**Decisione presa con l'utente (2026-08-19, in apertura di questa story)**: riusare direttamente la foto profilo esistente, senza un nuovo consenso/opt-in esplicito e senza un upload separato dedicato. Il server genera un URL firmato a breve scadenza (mirror di `generaUrlFirmatoFotoProfilo`, già in uso da `il-mio-profilo/page.tsx`) usando un client privilegiato (`createAdminClient()`, bypassa la RLS - stesso client già usato da `app/layout.tsx` per letture privilegiate su pagine pubbliche) - il bucket resta tecnicamente privato/protetto da RLS, ma la foto di ogni Allenatore elencato in Staff diventa di fatto visibile a chiunque visiti quella pagina pubblica. Nessuna nuova azione richiesta ad Allenatore/Admin.
+
+**Acceptance Criteria:**
+
+1. **Given** un Allenatore con una foto profilo già caricata (Story 9.12), **when** un Visitatore apre `/staff`, **then** vede la sua foto accanto al nome
+2. **And** per un Allenatore senza foto caricata, vede un placeholder a iniziali (cerchio `{colors.blu-carbone}`, stessa tipografia del nome) - mai un'immagine rotta *(rinegoziato in party mode UI, 2026-08-19: la versione originale "riga invariata, nessun placeholder" creava un'incoerenza visiva tra righe con e senza foto - vedi spec-18-22, Spec Change Log)*
+3. **And** nessuna modifica alla privacy del bucket stesso (RLS/policy invariate) - la foto è recuperata lato server con un client privilegiato, non resa pubblicamente leggibile via URL diretto/permanente
+4. **And** nessuna regressione sul resto della pagina (elenco Gruppi, messaggio "nessun Allenatore assegnato")
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
