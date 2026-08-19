@@ -2755,3 +2755,59 @@ So that veda sempre la struttura del sito aggiornata, senza aspettare un deploy.
 **And** se la tabella è vuota (caso limite, es. errore di migrazione) il rendering fallisce in modo esplicito e loggato — non un fallback silenzioso sulle 5 voci hard-coded: un fallback permanente creerebbe due fonti di verità del menu da tenere sincronizzate per sempre, con rischio di drift silenzioso se le voci statiche cambiassero e il codice del fallback non venisse aggiornato di conseguenza. La 19.6 garantisce, tramite seed, che la tabella non sia mai vuota dopo un deploy corretto
 
 **And** nessuna regressione sulle pagine collegate dalle 5 voci attuali (Home, Squadre, Calendario, Staff, Contatti)
+
+### Story 19.9: Modello dati e rendering pubblico delle Pagine personalizzate
+
+*(Aggiunta post-apertura epica — 2026-08-19, segnalazione diretta dell'utente: "ho aggiunto un nuovo path al menu ma andando sul sopra da errore... manca la parte di creazione delle nuove pagine sul sito per gestire i contenuti sulle url nuove". Ampiezza e forma decise in una sessione di party mode dedicata (Mary/John/Sally/Winston/Amelia) lo stesso giorno - vedi Story 19.10 per l'editor. Rotta in due story sullo stesso pattern già seguito per il menu pubblico (19.6 dati, 19.7 UI).)*
+
+As a Visitatore del sito pubblico,
+I want che un URL configurato dal Site Manager in `/app/menu-pubblico` mostri il contenuto reale della pagina, non un errore,
+so that il sito non abbia mai un link rotto nel proprio menu.
+
+**Gap scoperto in uso reale**: le Story 19.6-19.8 gestiscono solo le **voci di menu** (etichetta/URL/ordine/visibilità) - non l'esistenza di una pagina dietro un URL nuovo. Le 5 pagine pubbliche di oggi (Home/Squadre/Calendario/Staff/Contatti) sono rotte Next.js scritte a mano - nessun meccanismo genera una pagina reale da un URL configurato.
+
+**Decisioni prese in party mode (2026-08-19):** ampiezza "dépliant digitale" (poche pagine statiche, confermato dall'utente) - **nessuno stato bozza/pubblicato**, una pagina esiste ed è visibile appena salvata, stesso modello di `VoceMenuPubblico`. Contenuto: HTML prodotto da un editor rich-text (Story 19.10), sanitizzato **sia al salvataggio sia ad ogni render** (difesa in profondità - prima volta che questo progetto usa `dangerouslySetInnerHTML`, punto di rischio esplicito). Un elenco di prefissi di rotta riservati (derivato da `PUBLIC_ROUTES`/`PROTECTED_ROUTES` già esistenti, unica fonte di verità) blocca la creazione di una pagina il cui URL collida con una rotta reale del sito - stesso controllo esteso anche al form esistente di `/app/menu-pubblico` (Story 19.7), dove oggi un Site Manager può digitare un URL riservato senza alcun avviso.
+
+**Acceptance Criteria:**
+
+1. **Given** un URL configurato per una nuova voce di menu, **when** esiste una Pagina con quello slug, **then** un Visitatore che la apre vede titolo+contenuto, non un errore
+2. **And** se nessuna Pagina corrisponde all'URL, il comportamento resta il 404 di oggi - nessuna regressione
+3. **And** il contenuto salvato viene sanitizzato prima di essere scritto su database, e sanitizzato di nuovo al momento del render (mai fidarsi di un solo passaggio)
+4. **And** un tentativo di creare/aggiornare una Pagina (o una voce di menu, Story 19.7) con uno slug/URL che collide con una rotta riservata del sito (`/app/*`, `/api/*`, le 5 pagine pubbliche esistenti, le rotte di autenticazione) viene rifiutato con un errore esplicito
+5. **And** nessuna regressione sulle 5 pagine pubbliche esistenti, che restano rotte scritte a mano (non migrate in questo sistema)
+
+### Story 19.10: Editor di creazione e modifica delle Pagine personalizzate
+
+*(Aggiunta insieme alla 19.9, stessa sessione di party mode - dipende dal modello dati/rendering della 19.9.)*
+
+As a Site Manager (o Admin),
+I want un editor per scrivere/modificare il contenuto di una Pagina con formattazione base e immagini,
+so that possa gestire i contenuti del sito senza intervento tecnico, come un CMS.
+
+**Decisioni prese in party mode (2026-08-19):** editor **Tiptap** ([tiptap.dev](https://tiptap.dev/product/editor), MIT, gratuito, self-hosted - coerente con NFR6, nessun piano a pagamento richiesto per l'editing di base). Toolbar minimale per l'ampiezza "dépliant": titoli (H2/H3), grassetto/corsivo, elenchi puntati, link, immagini - niente tabelle/embed/colonne. Immagini caricate in un nuovo bucket Storage pubblico per-entità (mirror di `sponsor-banner`, Story 16.1), riuso diretto di `lib/storage/validazione-immagine.ts` (stessa allowlist PNG/JPEG, 2MB). Perimetro Ruoli: `ADMIN`+`SITE_MANAGER`, stesso di `/app/menu-pubblico` (Story 19.7) - funzionalità nuova, nessun permesso preesistente da affiancare.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Site Manager su `/app/pagine-pubbliche`, **when** crea una nuova Pagina (titolo + URL + contenuto), **then** la pagina è immediatamente visibile pubblicamente all'URL scelto
+2. **And** può modificare titolo/contenuto di una Pagina esistente, con lo stesso editor pre-compilato
+3. **And** può inserire immagini nel contenuto tramite l'editor (upload diretto, stessa validazione MIME/dimensione già in uso altrove nel progetto)
+4. **And** un URL che collide con una rotta riservata (Story 19.9, AC #4) viene rifiutato con un errore esplicito, sia in creazione sia in modifica
+5. **And** un Utente senza quei Ruoli non raggiunge `/app/pagine-pubbliche` (redirect, stesso pattern di ogni altra rotta protetta)
+
+## Epic 20: Torneo Memorial
+
+*(Aggiunta il 2026-08-19, richiesta esplicita dell'utente. Solo l'epica scritta ora - nessuna story creata, nessuna analisi di apertura completata, nessun modello dati progettato. L'utente ha detto esplicitamente di NON mandare ancora nessuna story in sviluppo: il regolamento punteggi è da stabilire e verrà comunicato in seguito - questo blocca qualunque Acceptance Criteria sui risultati/classifiche finché non arriva.)*
+
+**Requisito originale (testo dell'utente, 2026-08-19):** "ogni anno viene fatto un torneo dalla società nella sezione memorial vorrei gestire il torneo, il torneo si sviluppa in genere su due week con due categoria a week. al massimo 8 squadre. vorrei avere la gestione di inserimento/modifica categorie + inserimento/modifica squadre partecipanti con gestione risultati e calcolo classifiche. un'immagine di sfondo da precaricare (rappresenta il volantino del torneo) per i risultati si prevede 2 set su 3, da stabilire ancora il regolamento punteggi te lo dico prima mandare in dev la story."
+
+**Letto come:** un torneo annuale ("Memorial") organizzato dalla società, articolato in genere su 2 turni/weekend ("week"), 2 categorie per turno (quindi tipicamente 4 categorie a edizione), fino a 8 squadre per categoria. Gestionale richiesto: CRUD Categorie, CRUD Squadre partecipanti, inserimento risultati, calcolo classifiche automatico, un'immagine di sfondo/volantino caricabile per l'edizione. Formato partita: al meglio dei 3 set (2 su 3) - il regolamento di punteggio (punti per set, eventuale differenza punti, criteri di classifica a parità) resta esplicitamente **da definire**, comunicato dall'utente prima di procedere.
+
+**Contesto tecnico rilevante da verificare in fase di analisi (non ancora approfondito, solo osservazioni preliminari):**
+- **"Due week"**: da confermare se significa due *weekend* (interpretazione più probabile, uso colloquiale) o due *settimane* di calendario - cambia come viene modellata la programmazione delle partite.
+- **Squadre partecipanti probabilmente NON sono i `Gruppo` interni della società**: il torneo verosimilmente ospita anche squadre esterne (altri club), che in questo sistema non hanno alcuna riga `Gruppo`/`Atleta`/`Allenatore` - servirebbe un'entità "Squadra torneo" leggera (nome, categoria, forse un referente/contatto), non un riuso diretto del modello Gruppo esistente. Da confermare con l'utente.
+- **Precedente architetturale nel codice, verosimilmente non riusabile direttamente**: l'Epic 10 (Gestione Partite e Campionati) ha già `Campionato`/`Partita` con risultato/parziali per un Gruppo interno importato da Excel federale - stesso dominio concettuale (partite, risultati, classifiche) ma con presupposti diversi (squadra = Gruppo interno esistente, dati importati da file, nessun concetto di "categoria"/"edizione annuale"/"torneo con squadre esterne"). Da valutare in apertura se vale come riferimento di pattern (struttura risultato/parziali, calcolo classifica) o se serve un modello completamente nuovo.
+- **Multi-edizione**: "ogni anno viene fatto" implica verosimilmente la necessità di distinguere edizioni diverse nel tempo (mirror del pattern `AnnoAgonistico` già in uso altrove) - da confermare se serve archiviare/consultare edizioni passate o se conta solo l'edizione corrente.
+- **Sito pubblico o solo gestionale interno?** "Sezione memorial" + "volantino" suggeriscono una componente pubblica (i Visitatori vedono il torneo/classifiche/volantino sul sito), non solo un pannello di gestione interno - da confermare quale parte è pubblica e quale è riservata a chi gestisce (Admin/Dirigente? Coinvolge Site Manager, visto il taglio "contenuto pubblico" simile all'Epic 19?).
+- **Regolamento punteggi**: **bloccante esplicito** per qualunque Acceptance Criteria su inserimento risultati/calcolo classifiche - l'utente ha detto che lo comunicherà. Nessuna assunzione da fare qui (es. punti per set, tie-break, criteri di spareggio a parità in classifica).
+
+**Nessuna story ancora scritta.** Prossimo passo naturale: una sessione di analisi/party mode dedicata (stesso pattern già seguito per l'Epic 19) una volta che l'utente fornisce il regolamento punteggi mancante.

@@ -290,7 +290,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-19-2026 15:15"
+last_updated: "08-19-2026 17:20"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -984,3 +984,35 @@ development_status:
   # (.gitignore "/node_modules" non copriva nested dirs) - untracked +
   # .gitignore corretto a "**/node_modules". 1297/1297 test Vitest, tsc
   # pulito, lint 0 errori dopo i fix.
+  # Story 19.9 aggiunta il 2026-08-19 su segnalazione diretta dell'utente:
+  # aggiunta una voce di menu con un URL nuovo da /app/menu-pubblico ->
+  # errore aprendo quella pagina. Gap reale: 19.6-19.8 gestiscono solo le
+  # VOCI di menu, non l'esistenza di una pagina dietro un URL nuovo. Party
+  # mode (Mary/John/Sally/Winston/Amelia, mode "session") il 2026-08-19 ha
+  # deciso ampiezza e forma: "deplant digitale" (poche pagine statiche,
+  # nessuno stato bozza/pubblicato), editor Tiptap (MIT, gratuito, coerente
+  # con NFR6), sanitizzazione HTML sia al salvataggio sia al render (prima
+  # volta dangerouslySetInnerHTML in questo progetto), blocco degli URL
+  # riservati riusando PUBLIC_ROUTES/PROTECTED_ROUTES esistenti (esteso
+  # anche al form voci di menu gia' shippato, Story 19.7). Rotta in due
+  # story sul pattern gia' seguito per 19.6/19.7 (dati+rendering, poi UI):
+  # spec-19-9-pagine-pubbliche-modello-dati.md e
+  # spec-19-10-editor-pagine-pubbliche.md scritte, epics.md aggiornato con
+  # gli AC decisi. NESSUNA IMPLEMENTAZIONE ANCORA - l'utente ha chiesto
+  # esplicitamente solo la spec in questo giro, non "procedi".
+  19-9-pagine-pubbliche-modello-dati: backlog
+  19-10-editor-pagine-pubbliche: backlog
+
+  # Epic 20 (Torneo Memorial) aggiunta il 2026-08-19 su richiesta esplicita
+  # dell'utente - solo l'epica scritta in epics.md, nessuna story creata,
+  # nessuna analisi di apertura. BLOCCANTE ESPLICITO: il regolamento
+  # punteggi (criteri di classifica, punti per set) e' da stabilire, l'utente
+  # lo comunichera' prima di procedere - "te lo dico prima mandare in dev la
+  # story". Non avviare sviluppo su questa epica finche' non arriva quel
+  # dettaglio. Diversi punti tecnici aperti (vedi epics.md): interpretazione
+  # di "due week" (weekend o settimane), se le squadre partecipanti sono
+  # entita' leggere nuove o riuso di Gruppo esistente (probabile la prima,
+  # il torneo verosimilmente ospita club esterni), se Campionato/Partita
+  # (Epic 10) e' un riferimento di pattern riusabile, multi-edizione annuale
+  # (mirror AnnoAgonistico), perimetro pubblico vs solo gestionale interno.
+  epic-20: backlog
