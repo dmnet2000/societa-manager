@@ -19,6 +19,7 @@ Introdurre un settimo Ruolo, `SITE_MANAGER`, che permetta di delegare la gestion
 - Story 19.9: Modello dati e rendering pubblico delle Pagine personalizzate
 - Story 19.10: Editor di creazione e modifica delle Pagine personalizzate
 - Story 19.11: Accesso Site Manager alla foto sfondo hero
+- Story 19.12: Descrizione e ruoli aggiuntivi dello Staff (gestione Site Manager) - punti aperti non ancora risolti, vedi epics.md
 
 ## Requirements & Constraints
 

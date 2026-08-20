@@ -1,3 +1,4 @@
+# last_updated: 2026-08-20 (Story 19.12 aggiunta: descrizione + ruoli aggiuntivi per lo Staff, gestione Site Manager - 4 punti aperti non risolti (perimetro Ruoli, forma "ruoli aggiuntivi", lunghezza descrizione, posizione in /staff), nessuna implementazione su richiesta esplicita dell'utente. Nella stessa sessione, .infoPost del blocco Facebook in home ripristinato con padding orizzontale + overflow-wrap:break-word dopo che l'utente ha segnalato in produzione (volleymogliano.it) che il testo usciva dal blocco col padding a zero del giro precedente; poi ridotto ulteriormente di 200px totali di larghezza su richiesta diretta (due giri da 100px, inset 100px per lato) - tutte modifiche dirette di codice, non passate da story/spec.)
 # last_updated: 2026-08-20 (Story 19.11 aggiunta: Site Manager esteso alla foto sfondo hero (Story 18.14) - stesso gap gia' risolto per 19.2/19.4/19.5, caricaFotoHeroAction resta l'unica Server Action di /app/impostazioni non ancora aperta a SITE_MANAGER. spec-19-11-site-manager-foto-hero.md scritta, epics.md ed epic-19-context.md aggiornati (elenco Stories completato anche con 19.9/19.10, mancanti da un aggiornamento precedente). Nessuna implementazione, solo la story. Nella stessa sessione: .heroBlocco (blocco Post Facebook della home) ridotto di 50px in larghezza/100px in altezza su richiesta diretta dell'utente, .infoPost senza piu' padding orizzontale cosi' il testo del post ha la stessa larghezza del blocco - modifica di codice diretta, non passata da story/spec.)
 # last_updated: 2026-08-18 (Epic 19: scomposta in 8 story (bmad-create-epics-and-stories, poi party mode con Mary/John/Sally/Winston/Amelia che ha corretto 3 punti - 19.4 ridotta da accesso completo a /app/gruppi a una vista scoped solo-foto, 19.8 da fallback silenzioso su menu hard-coded a errore esplicito se la tabella e' vuota, 19.5 aggiunto avviso quando URL e Token Facebook si disallineano). readiness-gate PASS. Le 8 story aggiunte a development_status come backlog (chiavi brevi coerenti con lo stile gia' in uso, es. 18-4-foto-squadra-gruppo) - sprint_plan.py generate scartato: deriverebbe chiavi dal titolo completo di ogni story in epics.md, in conflitto con le chiavi brevi curate a mano gia' in uso per ~75 story esistenti (avrebbe le trattate come nuovi orfani backlog). Corretto anche un bug preesistente non collegato: last_updated (riga sotto, valore letterale, non i commenti in cima) non era quotato e conteneva ':' - YAML non valido, impediva a sprint_plan.py di leggere il file.)
 # last_updated: 2026-08-18 (Story 18.21: code review eseguita (bmad-code-review, Blind Hunter + Edge Case Hunter + Verification Gap + Acceptance Auditor in parallelo) - 0 decision-needed, 6 patch, 2 defer, 4 dismessi come rumore dopo verifica diretta del codice/dei docs Next.js locali del progetto (inclusa una tesi dell'Acceptance Auditor smentita leggendo node_modules/next/dist/docs, per AGENTS.md). Tutti e 6 i patch applicati su scelta dell'utente: nuovo app/layout.test.ts (9 casi, generateMetadata prima interamente non testata), createAdminClient() avvolto in try/catch dedicato con fallback sicuro, leggiNomeSettore() deduplicata con React.cache() (verificato empiricamente innocuo nei test Vitest, dedup reale solo nel runtime RSC di Next), nomeSettoreAbbreviato corretta per non spezzare coppie surrogate, guida in-app estesa (nome PWA), costante condivisa NOME_SETTORE_FALLBACK. leggiInfoLogo resta non deduplicabile tra generateMetadata/HeaderPubblico/NavBar (client Supabase diversi per design) - documentato come deferred. Verifica finale: 1235/1235 test Vitest passati (+9), tsc --noEmit pulito, eslint 0 errori, build produzione con output di generazione statica/dinamica identico alla baseline (nessuna regressione su AC #6). Status: review -> done.)
@@ -1014,6 +1015,20 @@ development_status:
   # scritta, epics.md/epic-19-context.md aggiornati. NESSUNA IMPLEMENTAZIONE
   # ANCORA - solo la story in questo giro.
   19-11-site-manager-foto-hero: backlog
+
+  # Story 19.12 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
+  # "possibilita' di avere per ogni membro dello staff eventuale descrizione
+  # personale, con ruoli aggiuntivi da aggiungere... lato site manager serve
+  # la possibilita' di avere una funzione per integrare questi dati". Nuova
+  # funzionalita' (nessun dato/pagina di gestione esistente per Allenatore
+  # oltre precaricamento-allenatori), mirror del pattern 19.4 (rotta scoped
+  # SITE_MANAGER-only). 4 PUNTI APERTI non risolti con l'utente (perimetro
+  # Ruoli, forma dei "ruoli aggiuntivi" - array vs testo libero, lunghezza
+  # descrizione, posizione in /staff) - vedi epics.md, da risolvere in
+  # apertura sviluppo (create-story). NESSUNA IMPLEMENTAZIONE - l'utente ha
+  # chiesto esplicitamente solo la story in questo giro ("fai solo la
+  # stories poi ti diro' quando iniziare con lo sviluppo").
+  19-12-staff-descrizione-ruoli-aggiuntivi: backlog
 
   # Epic 20 (Torneo Memorial) aggiunta il 2026-08-19 su richiesta esplicita
   # dell'utente - solo l'epica scritta in epics.md, nessuna story creata,
