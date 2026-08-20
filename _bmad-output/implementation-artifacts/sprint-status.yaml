@@ -1,3 +1,6 @@
+# last_updated: 2026-08-20 (Story 19.10: implementazione completata (ripresa dopo un'interruzione per limite di spesa dell'account, non un errore di codice - tutti i file del Code Map risultavano gia' scritti) e code review (bmad-build, 3 layer paralleli) - 0 intent_gap/bad_spec, 6 patch applicati (invalidaCachePaginePubbliche mai chiamata dopo un salvataggio, controllo contenuto vuoto che non intercettava il markup Tiptap "<p></p>", nessun limite lunghezza contenutoHtml, errore DB mascherato da VALIDATION invece di INTERNAL nel lookup slug, rottaRiservata() case-sensitive bypassabile con "/App", link non trimmato), 9 defer, 1 reject. In fase di ripresa trovati e corretti anche 3 gap di copertura test pre-esistenti (voci-navigazione.test.ts non aggiornato per la nuova voce nav, funzioni CRUD di lib/pagine-pubbliche.ts senza test diretti, lib/storage/pagine-pubbliche.ts senza alcun test). 1392/1392 test Vitest, tsc/lint puliti, build riuscita. Status: in-progress -> done (spec), 19-10 in-progress -> review (sprint-status).)
+# last_updated: 2026-08-20 (Story 19.10: sviluppo avviato via bmad-build - spec-19-10-editor-pagine-pubbliche.md gia' completa (status locale 'planned' equiparato a ready-for-dev), baseline_commit catturato (674c3555d5dcd489d0b627628737783bc45a2b95, dopo la promozione bulk 19.1-19.9), status spec -> in-progress, sprint-status 19-10 backlog -> in-progress.)
+# last_updated: 2026-08-20 (Bookkeeping su richiesta esplicita dell'utente: 19-1..19-9 promosse review -> done. Tutte e 9 erano gia' implementate e revisionate (code review d'epica del 2026-08-19 su 19.1-19.8 + code review dedicata del 2026-08-20 su 19.9, entrambe con i fix applicati e verifica finale verde), ferme a "review" solo per convenzione di bookkeeping mai chiusa esplicitamente - a differenza dell'Epic 18 dove ogni story passava a "done" subito dopo la propria review. epic-19 resta in-progress: 19.10/19.11/19.12 restano backlog.)
 # last_updated: 2026-08-20 (Story 9.34 aggiunta: data di scadenza del certificato accanto al badge esistente in /i-miei-gruppi, /gruppi, e nel drill-down di /vista-dirigente/vista-allenatore - continuazione diretta di 9.19, dataFineValidita gia' disponibile nel codice. 2 punti aperti non risolti (sempre visibile o solo col badge; estendere anche GruppoCard.tsx). Nessuna implementazione, solo la story.)
 # last_updated: 2026-08-20 (Story 19.9: implementazione completata e code review (bmad-build, 3 layer paralleli - Blind Hunter, Edge Case Hunter, Verification Gap) - 1 intent_gap risolto con l'utente (rottaRiservata() riusa isPublicRoute(), che copre anche le 5 pagine pubbliche esistenti - risalvare una voce di menu col suo stesso url invariato veniva rifiutato come "riservato"; fix: urlAttuale esenta l'url invariato dal controllo), 5 patch applicati (typo commento schema, rel=noopener forzato su target=_blank, "/api" esatto riconosciuto da rottaRiservata, query sprecata per utenti autenticati rimossa, test mancante sulla riga di sanitizzazione al render - il finding piu' grave delle 3 review), 9 defer loggati in deferred-work.md, 3 reject. 1346/1346 test Vitest (+7), tsc/lint puliti, build riuscita (/[...slug] presente). Status: in-progress -> done (spec), 19-9 backlog -> in-progress -> review (sprint-status).)
 # last_updated: 2026-08-20 (Story 19.9: sviluppo avviato via bmad-build - spec-19-9-pagine-pubbliche-modello-dati.md gia' completa (status locale 'planned' equiparato a ready-for-dev, nessuna riscrittura del piano necessaria), baseline_commit catturato (22116a815aeb9f7a2171f05c783d9c3c06c3e46c), status spec -> in-progress, sprint-status 19-9 backlog -> in-progress.)
@@ -914,9 +917,9 @@ development_status:
   # controllo di autorizzazione, ora esteso anche a SITE_MANAGER tramite lo
   # stesso RUOLI_VALIDI condiviso). 1240/1240 test Vitest, tsc pulito.
   epic-19: in-progress
-  19-1-ruolo-site-manager-contatti-pubblici: review
-  19-2-site-manager-logo-nome-settore: review
-  19-3-site-manager-sponsor: review
+  19-1-ruolo-site-manager-contatti-pubblici: done
+  19-2-site-manager-logo-nome-settore: done
+  19-3-site-manager-sponsor: done
   # Story 19.4 implementata (spec-19-4-site-manager-foto-squadra.md): nuova
   # pagina scoped /app/foto-squadre (SITE_MANAGER-only, gruppo "Gestione
   # sito"), caricaFotoSquadraAction/risolviPossessoGruppo estesi con
@@ -928,7 +931,7 @@ development_status:
   # coordinatore stesso (fallback previsto dalla skill). 1 finding reale
   # (voce guida mancante per /app/foto-squadre, unica dell'Epic 19 priva),
   # patchato. 1258/1258 test Vitest, tsc pulito, lint 0 errori.
-  19-4-site-manager-foto-squadra: review
+  19-4-site-manager-foto-squadra: done
   # Story 19.5 implementata (spec-19-5-site-manager-url-facebook.md):
   # salvaUrlPaginaFacebookAction estesa a SITE_MANAGER (route-guard invariato,
   # /app/impostazioni gia' raggiungibile da Story 19.1 - solo la Server
@@ -940,7 +943,7 @@ development_status:
   # (react-hooks/refs, trovato da npm run lint). Guida in-app aggiornata.
   # 670/671 test Vitest (1 fallimento preesistente non correlato,
   # manifest.test.ts icone PWA), tsc pulito, lint 0 errori.
-  19-5-site-manager-url-facebook: review
+  19-5-site-manager-url-facebook: done
   # Story 19.6 implementata (spec-19-6-modello-dati-menu-pubblico.md): nuovo
   # model Prisma VoceMenuPubblico (id/etichetta/url/ordine/visibile),
   # migrazione a mano (prisma/migrations/20260819000000_add_voce_menu_pubblico)
@@ -955,7 +958,7 @@ development_status:
   # del repo - da app/ manifest.test.ts da' un falso negativo su un path
   # relativo a process.cwd(), non legato a questa o alle storie precedenti),
   # tsc pulito, lint 0 errori.
-  19-6-modello-dati-menu-pubblico: review
+  19-6-modello-dati-menu-pubblico: done
   # Story 19.7 implementata (spec-19-7-ui-gestione-menu-pubblico.md): nuova
   # pagina /app/menu-pubblico (route-guard: ADMIN+SITE_MANAGER, non
   # Dirigente - AC esplicito, funzionalita' nuova senza permesso preesistente
@@ -971,7 +974,7 @@ development_status:
   # Pagina scollegata da NavPubblica.tsx (arriva con 19.8) - avviso esplicito
   # in UI. 1291/1291 test Vitest (root del repo), tsc pulito, lint 0 errori,
   # npm run build verificato (/app/menu-pubblico compare come rotta dynamic).
-  19-7-ui-gestione-menu-pubblico: review
+  19-7-ui-gestione-menu-pubblico: done
   # Story 19.8 implementata (spec-19-8-menu-pubblico-dinamico.md), ultima
   # dell'Epic 19: app/NavPubblica.tsx da array hard-coded a Server Component
   # asincrono che legge VoceMenuPubblico (elencaVociMenuPubblicoVisibili,
@@ -988,7 +991,7 @@ development_status:
   # funzione async pura, nessuna libreria di rendering introdotta. 1294/1294
   # test Vitest (root del repo), tsc pulito, lint 0 errori, npm run build
   # verificato (le 5 rotte pubbliche restano dynamic, stesso shape).
-  19-8-menu-pubblico-dinamico: review
+  19-8-menu-pubblico-dinamico: done
   # Code review dell'intero Epic 19 (diff aa24bb6..HEAD + working tree),
   # 2026-08-19: 6 finding, 5 confermati e patchati, 1 (duplicazione di
   # urlEsternoValido/linkEsternoValido/urlVoceMenuValido su 3 file) segnalato
@@ -1024,8 +1027,8 @@ development_status:
   # spec-19-10-editor-pagine-pubbliche.md scritte, epics.md aggiornato con
   # gli AC decisi. NESSUNA IMPLEMENTAZIONE ANCORA - l'utente ha chiesto
   # esplicitamente solo la spec in questo giro, non "procedi".
-  19-9-pagine-pubbliche-modello-dati: review
-  19-10-editor-pagine-pubbliche: backlog
+  19-9-pagine-pubbliche-modello-dati: done
+  19-10-editor-pagine-pubbliche: review
   # Story 19.11 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
   # "nella home come sfondo sfumato... aggiungere una foto da caricare da
   # funzione siti da parte del site manager" - la sezione "Foto sfondo hero"

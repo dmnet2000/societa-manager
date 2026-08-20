@@ -4,52 +4,55 @@
 
 ## Goal
 
-Introdurre un settimo Ruolo, `SITE_MANAGER`, che permetta di delegare la gestione del sito pubblico (contatti, logo/nome Settore, Sponsor, foto squadra, URL Pagina Facebook, e un nuovo menu di navigazione pubblico configurabile) senza concedere accesso Admin completo né toccare l'amministrazione sportiva interna (Gruppi, Allenatori, Atlete). L'epica è stata aggiunta in corso d'opera (2026-08-14) e non è coperta dai documenti di pianificazione originali (PRD, architettura, UX del 2026-07-13/07-22): le decisioni sotto derivano dall'analisi di apertura e dalla party mode del 2026-08-18, non da artefatti precedenti.
+Introduce a new stackable role, `SITE_MANAGER`, dedicated to managing the public/static side of the club's site (Epic 18) without granting full Admin access. The role is additive throughout: it gains access alongside existing Admin/Dirigente/Allenatore permissions on public-content features (public contacts, logo, sponsors, team photos, Facebook URL, hero background), never replacing them. The epic's biggest architectural piece is new: today the public nav menu is a hardcoded array with no backing data model, so this epic builds a real menu data model + management UI, and — added mid-epic after a real production gap — a lightweight CMS for custom public pages (rich-text content behind configurable URLs) so a Site Manager can extend the site's navigation without hitting 404s or needing a developer. A final story (added 2026-08-20) extends Allenatore records with a free-text description and additional role labels, surfaced on the public `/staff` page.
 
 ## Stories
 
-- Story 19.1: Ruolo Site Manager e accesso ai contatti pubblici
-- Story 19.2: Accesso Site Manager a logo e nome Settore
-- Story 19.3: Accesso Site Manager a Sponsor
-- Story 19.4: Accesso Site Manager alla foto squadra (vista dedicata)
-- Story 19.5: Accesso Site Manager all'URL della Pagina Facebook
+- Story 19.1: Ruolo `SITE_MANAGER` + accesso a contatti pubblici
+- Story 19.2: Accesso a logo e nome Settore
+- Story 19.3: Accesso a Sponsor (crea/modifica/disattiva)
+- Story 19.4: Vista scoped dedicata alla foto squadra
+- Story 19.5: Accesso all'URL della Pagina Facebook (Token escluso)
 - Story 19.6: Modello dati per le voci di menu pubblico
 - Story 19.7: UI di gestione del menu pubblico
-- Story 19.8: Menu pubblico dinamico
+- Story 19.8: Menu pubblico dinamico (letto da DB)
 - Story 19.9: Modello dati e rendering pubblico delle Pagine personalizzate
-- Story 19.10: Editor di creazione e modifica delle Pagine personalizzate
-- Story 19.11: Accesso Site Manager alla foto sfondo hero
-- Story 19.12: Descrizione e ruoli aggiuntivi dello Staff (gestione Site Manager) - punti aperti non ancora risolti, vedi epics.md
+- Story 19.10: Editor (Tiptap) per creare/modificare Pagine personalizzate
+- Story 19.11: Accesso alla foto sfondo hero
+- Story 19.12 (draft, punti aperti da confermare prima dello sviluppo): descrizione + ruoli aggiuntivi per membri dello Staff
 
 ## Requirements & Constraints
 
-- Il nuovo Ruolo si chiama `SITE_MANAGER` (inglese, deliberatamente fuori dalla convenzione italiana degli altri 6 Ruoli) ed è cumulabile con qualsiasi altro Ruolo sullo stesso Utente, stesso principio già in uso.
-- L'accesso di `SITE_MANAGER` è **additivo**: nessun permesso viene tolto ad Admin/Dirigente/Allenatore sulle funzionalità che oggi già gestiscono (contatti pubblici, logo/nome Settore, Sponsor, foto squadra, URL Facebook).
-- Il Token Facebook (credenziale API) resta **esplicitamente escluso** dall'accesso di `SITE_MANAGER` in questa epica — resta Admin/Dirigente.
-- La gestione del menu pubblico richiede ampiezza piena: un vero modello dati per le voci di menu + una UI di gestione dedicata, non la semplice apertura di pagine esistenti al nuovo Ruolo — riconosciuta come la parte di maggior impatto architetturale dell'epica.
-- Site Manager ottiene per la foto squadra una vista **scoped** dedicata (solo upload foto per Gruppo), non l'intera pagina `/app/gruppi`: "gestione del sito pubblico" non implica amministrazione sportiva interna (creazione Gruppi, assegnazione Allenatori/Atlete).
-- Se la tabella delle voci menu risulta vuota (es. errore di migrazione), il rendering pubblico deve fallire in modo esplicito e loggato — mai un fallback silenzioso sulle 5 voci hard-coded attuali (Home, Squadre, Calendario, Staff, Contatti), per evitare due fonti di verità del menu da tenere sincronizzate.
-- Quando l'URL della Pagina Facebook cambia, l'interfaccia deve avvisare esplicitamente che il Token potrebbe non corrispondere più più (Site Manager non ha accesso al Token e non può risolvere da solo).
+- `SITE_MANAGER` is one role among seven, assignable from the user admin screen exactly like the other six, and freely combinable with any other role on the same user — no new exclusivity rule.
+- Guiding principle across the whole epic: "affianca, non sostituisce" — every extension adds `SITE_MANAGER` to an existing `requireRuolo(...)` check and to the relevant route-guard entry; no permission is removed from Admin/Dirigente/Allenatore anywhere.
+- The Facebook API token (credential, distinct from the Facebook Page URL) is explicitly out of scope for `SITE_MANAGER` in this epic — stays Admin/Dirigente only, to avoid delegating an API credential to a content-focused role.
+- Where a feature would otherwise require granting a whole existing admin page (e.g. `/app/gruppi`, staff data management), the pattern instead is a new **scoped** page that exposes only the single relevant control (team photo upload, staff description/roles) — no path from it to unrelated admin actions (Gruppo creation, Allenatore/Atleta assignment, identity field edits).
+- New `VoceMenuPubblico` table: seeded with the 5 current hardcoded menu entries so the table is never empty after a correct deploy. An empty table at render time is a hard, logged failure — not a silent fallback to the old hardcoded array (avoids two permanently-diverging sources of truth for the menu).
+- Custom pages (Story 19.9/19.10) have no draft/published state — a page is live at its URL the moment it is saved, mirroring the `VoceMenuPubblico` model.
+- Page content is HTML from a rich-text editor and must be sanitized twice — at save time and again at render time (defense in depth). This is the project's first use of `dangerouslySetInnerHTML` and is called out as an explicit risk point.
+- A shared "reserved route prefixes" check (derived from the existing `PUBLIC_ROUTES`/`PROTECTED_ROUTES`, single source of truth) must reject any menu-entry or custom-page URL that collides with a real app route (`/app/*`, `/api/*`, auth routes, the 5 existing hand-written public pages) — applies both to the new pages editor and retroactively to the existing menu-entry form from Story 19.7.
+- Image uploads in the page editor reuse the existing MIME/size validation (`lib/storage/validazione-immagine.ts`, PNG/JPEG, 2MB) and land in a new public per-entity Storage bucket mirroring the existing sponsor-banner bucket pattern.
+- Editor choice (Tiptap, MIT, self-hosted) is driven by the project's standing constraint to keep stack/hosting on free tiers — no paid CMS/editor service.
+- Any newly created structural table (e.g. `VoceMenuPubblico`, the Pagine table) must still get RLS enabled with explicit REVOKE grants per this project's standing convention, even though these tables are read via Prisma rather than the Supabase RLS runtime path.
 
 ## Technical Decisions
 
-- Aggiungere un Ruolo tocca più punti coordinati: enum `Ruolo` in Prisma, `RUOLI_VALIDI` in `lib/ruoli.ts`, `PROTECTED_ROUTES`/`requireRuolo` in `lib/auth/route-guard.ts`, e ogni Server Action che oggi limita esplicitamente a un sottoinsieme di Ruoli le funzionalità che `SITE_MANAGER` deve poter usare. I Ruoli vivono in `UtenteRuolo` via Prisma (fonte di verità) ma vengono letti a runtime solo da `app_metadata` Supabase (mai query diretta), specchiati lì ad ogni scrittura tramite chiamata service-role — la scrittura su `UtenteRuolo` e quella su `app_metadata` sono trattate come un'unica unità logica (fallimento parziale = fallimento complessivo, richiede retry).
-- Ogni cambio di schema passa da migrazione Prisma; nessuna modifica diretta alle tabelle da dashboard Supabase.
-- Per la nuova tabella delle voci di menu pubblico (19.6): va protetta con RLS abilitata e REVOKE espliciti come ogni altra tabella strutturale del progetto — convenzione del progetto, non derogabile anche per tabelle che altrove sarebbero gestite solo via connessione Prisma privilegiata.
-- Convenzione errori: i rifiuti di autorizzazione restituiscono sempre `{ error: { code: 'FORBIDDEN', message } }`, mai `NOT_FOUND` per un dato esistente ma non accessibile.
-- Naming: modelli Prisma in italiano PascalCase singolare (es. `VoceMenuPubblico`); route e file kebab-case; Server Action con verbo esplicito.
+- Adding a role touches: the Prisma `Ruolo` enum, `lib/ruoli.ts` (`RUOLI_VALIDI`), `lib/auth/route-guard.ts` (`PROTECTED_ROUTES`/`requireRuolo`), and every Server Action that currently hardcodes an allowed-role list for a feature this epic extends.
+- Roles are mirrored from `UtenteRuolo` (Prisma, source of truth) into Supabase `app_metadata` on every write; route guards and middleware read roles only from `app_metadata` in the validated JWT, never via a direct DB query. A role write is only considered successful if both the `UtenteRuolo` row and the `app_metadata` mirror succeed.
+- Tables split by access path: sensitive/RLS-protected tables (CertificatoMedico, Atleta, Presenza, Iscrizione, Notifica, ConfigurazioneSmtp) are read/written at runtime via the authenticated Supabase client so PostgREST forwards JWT claims; everything else (including the new menu/page tables, and existing Palestra/Campo/Slot/Gruppo/Allenatore/Utente) is Prisma with a privileged connection. Prisma is always the schema/migration owner regardless of runtime access path.
+- Server Action authorization failures return `{ error: { code: 'FORBIDDEN', message } }` — never `NOT_FOUND` — a convention this epic's new `requireRuolo` checks must follow.
+- Admin-managed runtime configuration (logo, SMTP, and by extension this epic's menu/page content) is persisted in DB/Storage rather than env vars, specifically so changes don't require a redeploy — the pattern this epic's new tables extend.
+- Deploy constraint: the project runs `middleware.ts` (legacy Next.js convention, not `proxy.ts`) with `runtime: "experimental-edge"`, the only combination compatible with both Edge-based role reading and the `@opennextjs/cloudflare` deploy adapter — relevant if any Epic 19 work touches middleware/route-guard.
 
 ## UX & Interaction Patterns
 
-- Il menu pubblico (`app/NavPubblica.tsx`) usa oggi un elenco di navigazione orizzontale con wrap su mobile (pattern già shippato in Story 18.7) — la Story 19.8 deve preservare questo rendering, non reintrodurre hamburger/drawer.
-- Nessun webfont: solo stack di sistema; le voci di navigazione usano la famiglia condensata (Arial Narrow/Arial/Helvetica Neue) in maiuscolo reso solo via CSS `text-transform`, mai testo già maiuscolo salvato a sorgente/DB (rilevante ora che le etichette diventano dati configurabili).
-- Ogni nuovo elemento cliccabile (voci menu, controlli della UI di gestione) richiede area di hit reale ≥44×44px, indipendente dalla resa visiva.
+- All public-facing rendering this epic touches (dynamic menu, custom pages, staff descriptions) must stay visually consistent with the "Poster Sportivo" design system finalized for the public site (DESIGN.md/EXPERIENCE.md, 2026-08-13) — no ad hoc styling divergent from that system.
+- Established scoped-admin-page pattern (first used in Story 19.4, reused in 19.12): list the relevant entities with exactly one purpose-built control per row, with no navigation path to the entity's full admin surface.
 
 ## Cross-Story Dependencies
 
-- 19.6 (modello dati) è propedeutica a 19.7 (UI di gestione, scrive sulla tabella) e a 19.8 (rendering dinamico, legge tramite le funzioni introdotte in 19.7): ordine di sviluppo vincolato 19.6 → 19.7 → 19.8.
-- 19.1 introduce il Ruolo `SITE_MANAGER` stesso: le Story 19.2–19.5 e 19.7 estendono route-guard/Server Action con questo Ruolo e presuppongono che 19.1 l'abbia già reso assegnabile.
-- 19.4 riusa `caricaFotoSquadraAction` (`lib/storage/foto-squadra.ts`, introdotta con la foto squadra per Gruppo dell'Epic 18) estendendone il `requireRuolo` con `SITE_MANAGER`, senza toccare `/app/gruppi` né l'accesso Allenatore a `/app/i-miei-gruppi`.
-- 19.5 estende `salvaUrlPaginaFacebookAction` (già `requireRuolo(["ADMIN","DIRIGENTE"])`) lasciando invariata `salvaTokenFacebookAction`, entrambe raggiungibili da `/app/impostazioni` insieme ai contatti pubblici di 19.1.
-- 19.3 estende sia il controllo di visibilità della rotta `/app/sponsor` sia le 3 Server Action di gestione Sponsor.
-- 19.11 estende `caricaFotoHeroAction` (`lib/storage/foto-hero.ts`, foto di sfondo dell'hero introdotta dalla Story 18.14), stesso pattern di 19.5: `/app/impostazioni` già aperta a `SITE_MANAGER` dalla 19.1, nessuna modifica a route-guard necessaria.
+- 19.1 is the foundational story (adds the role + base route-guard/UtenteRuolo wiring) that every other story in the epic builds on when extending its own `requireRuolo` checks.
+- 19.5 and 19.11 depend on `/app/impostazioni` already being open to `SITE_MANAGER` from Story 19.1.
+- 19.6 (data model) blocks 19.7 (management UI), which blocks 19.8 (switching `NavPubblica.tsx` to read from DB).
+- 19.9 (custom-page data model + public rendering + reserved-route check) blocks 19.10 (the Tiptap editor that writes those pages); 19.9's reserved-route check also retrofits the existing menu-entry form built in 19.7.
+- Story 19.12 is explicitly a draft — role scope, the shape of "ruoli aggiuntivi" (array field vs. join table), and description constraints are open questions the user must confirm before implementation starts.

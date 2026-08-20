@@ -38,3 +38,40 @@ export function contenutoSanitizzatoPaginaPubblica(pagina: {
 }): string {
   return sanitizzaHtml(pagina.contenutoHtml);
 }
+
+// Story 19.10: serve alla pagina di modifica (/app/pagine-pubbliche/[id])
+// per precaricare l'editor, e all'azione di aggiornamento per confrontare lo
+// slug inviato con quello gia' salvato - stesso motivo/stesso pattern di
+// trovaVoceMenuPubblicoPerId (lib/menu-pubblico.ts, Story 19.7/19.9):
+// permette di risalvare la STESSA Pagina con lo stesso slug invariato senza
+// urtare contro rottaRiservata() quando lo slug non e' davvero cambiato.
+export async function trovaPaginaPubblicaPerId(id: string) {
+  return prisma.paginaPubblica.findUnique({ where: { id } });
+}
+
+// Nessuna validazione qui (lunghezza titolo, formato/riserva dello slug,
+// sanitizzazione del contenuto) - stessa separazione di livelli gia'
+// stabilita da lib/menu-pubblico.ts: vive nel Server Action che chiama
+// questa funzione (app/app/(configurazione)/pagine-pubbliche/actions.ts).
+export async function creaPaginaPubblica(dati: {
+  titolo: string;
+  slug: string;
+  contenutoHtml: string;
+}) {
+  return prisma.paginaPubblica.create({ data: dati });
+}
+
+export async function aggiornaPaginaPubblica(
+  id: string,
+  dati: { titolo: string; slug: string; contenutoHtml: string }
+): Promise<void> {
+  await prisma.paginaPubblica.update({ where: { id }, data: dati });
+}
+
+// Hard delete (nessuno stato "bozza"/soft-delete per PaginaPubblica, deciso
+// in party mode - vedi spec-19-10, sezione Never): una volta rimossa, l'URL
+// torna a mostrare il 404 di oggi (app/[...slug]/page.tsx, trovaPaginaPubblicaPerSlug
+// torna null).
+export async function eliminaPaginaPubblica(id: string): Promise<void> {
+  await prisma.paginaPubblica.delete({ where: { id } });
+}

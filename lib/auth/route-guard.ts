@@ -334,6 +334,23 @@ export const PROTECTED_ROUTES: {
     gruppo: "Gestione sito",
   },
   {
+    // Story 19.10 (Epic 19, Ruolo Site Manager): editor di creazione/modifica
+    // delle Pagine personalizzate introdotte dalla Story 19.9 - stesso
+    // perimetro Ruoli di /app/menu-pubblico sopra (ADMIN+SITE_MANAGER, non
+    // DIRIGENTE): funzionalita' nuova, nessun permesso preesistente da
+    // affiancare (decisione esplicita della spec-19-10). Quinta (e ultima,
+    // per posizione nell'array) figlia del gruppo "Gestione sito" - dichiarata
+    // subito dopo /app/menu-pubblico come richiesto dal Code Map della spec.
+    // Il prefisso copre anche /app/pagine-pubbliche/nuova e
+    // /app/pagine-pubbliche/[id] (matchProtectedRoute usa
+    // pathname.startsWith(`${prefix}/`)), nessuna voce separata necessaria
+    // per le sotto-rotte.
+    prefix: "/app/pagine-pubbliche",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    navLabel: "Pagine",
+    gruppo: "Gestione sito",
+  },
+  {
     // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta
     // del progetto visibile a tutti i Ruoli (mirror di /sponsor,
     // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per
@@ -485,11 +502,21 @@ export function matchProtectedRoute(pathname: string) {
 // Nessuna dipendenza da Prisma/"server-only" qui (questo file resta
 // importabile anche da un bundle client, Story 12.3) - restano invariate le
 // stesse garanzie gia' documentate in testa al file.
+// Code review (Edge Case Hunter): confronto case-insensitive - un valore
+// come "/App" o "/Squadre" non veniva riconosciuto come riservato dai
+// confronti esatti sotto (stringhe letterali minuscole), permettendo di
+// creare una voce di menu/PaginaPubblica il cui slug "sembra" quello di una
+// rotta reale solo a meno delle maiuscole. isPublicRoute() stessa NON viene
+// toccata (resta case-sensitive per ogni altro chiamante, incluso il
+// routing live del Proxy su un pathname di richiesta reale) - solo il
+// confronto qui dentro, dedicato alla validazione "questo slug/url e'
+// riservato?", lavora su una copia minuscola.
 export function rottaRiservata(pathname: string): boolean {
-  if (pathname === "/app" || pathname.startsWith("/app/")) return true;
+  const valore = pathname.toLowerCase();
+  if (valore === "/app" || valore.startsWith("/app/")) return true;
   // Code review (Edge Case Hunter): "/api" esatto (senza slash finale) non
   // veniva riconosciuto - solo "/api/*" lo era - stesso trattamento
   // esatto+prefisso gia' applicato ad "/app" sopra, per coerenza.
-  if (pathname === "/api" || pathname.startsWith("/api/")) return true;
-  return isPublicRoute(pathname);
+  if (valore === "/api" || valore.startsWith("/api/")) return true;
+  return isPublicRoute(valore);
 }

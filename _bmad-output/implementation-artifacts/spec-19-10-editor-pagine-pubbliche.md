@@ -2,10 +2,10 @@
 title: "Story 19.10: Editor di creazione e modifica delle Pagine personalizzate"
 type: 'feature'
 created: '2026-08-19'
-status: 'planned'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 context: []
-baseline_commit: 'dipende da Story 19.9 (modello dati + rendering pubblico)'
+baseline_commit: '674c3555d5dcd489d0b627628737783bc45a2b95'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -51,18 +51,22 @@ baseline_commit: 'dipende da Story 19.9 (modello dati + rendering pubblico)'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `lib/pagine-pubbliche.ts` -- crea/aggiorna/elimina
-- [ ] migrazione -- bucket Storage `contenuti-pagine-pubbliche`
-- [ ] `route-guard.ts` -- nuova entry `/app/pagine-pubbliche`
-- [ ] `pagine-pubbliche/actions.ts` -- le 4 Server Action + validazione (URL riservato, slug duplicato, sanitizzazione)
-- [ ] `pagine-pubbliche/page.tsx` -- elenco + azioni
-- [ ] `pagine-pubbliche/nuova/page.tsx` + `[id]/page.tsx` -- form creazione/modifica
-- [ ] `PaginaPubblicaEditor.tsx` -- editor Tiptap, toolbar minimale, upload immagini
-- [ ] `contenuti.ts` -- guida in-app
+- [x] `lib/pagine-pubbliche.ts` -- crea/aggiorna/elimina
+- [x] migrazione -- bucket Storage `contenuti-pagine-pubbliche`
+- [x] `route-guard.ts` -- nuova entry `/app/pagine-pubbliche`
+- [x] `pagine-pubbliche/actions.ts` -- le 4 Server Action + validazione (URL riservato, slug duplicato, sanitizzazione)
+- [x] `pagine-pubbliche/page.tsx` -- elenco + azioni
+- [x] `pagine-pubbliche/nuova/page.tsx` + `[id]/page.tsx` -- form creazione/modifica
+- [x] `PaginaPubblicaEditor.tsx` -- editor Tiptap, toolbar minimale, upload immagini
+- [x] `contenuti.ts` -- guida in-app
 
 **Acceptance Criteria:** vedi epics.md Story 19.10 (5 AC, verbatim - non duplicati qui).
 
 ## Spec Change Log
+
+- **2026-08-20 (implementazione, ripresa dopo interruzione):** il subagent di implementazione iniziale è stato terminato a metà da un limite di spesa dell'account ("You've hit your monthly spend limit"), non da un errore nel codice - interrotto mentre scriveva `pagine-pubbliche/nuova/page.tsx`/`[id]/page.tsx`. Ripresa verificando lo stato reale su disco file per file (non fidandosi del solo report parziale): tutti i file del Code Map risultavano già scritti e completi (`lib/pagine-pubbliche.ts` con crea/aggiorna/elimina/trovaPerId, `lib/storage/pagine-pubbliche.ts`, la migrazione bucket, `route-guard.ts`, `pagine-pubbliche/actions.ts` con le 4 Server Action e relativo `actions.test.ts` molto completo, `page.tsx`/`nuova/page.tsx`/`[id]/page.tsx`/`PaginaPubblicaEditor.tsx`/`EliminaPaginaPubblicaForm.tsx`/CSS module, `contenuti.ts`). Solo i checkbox del Tasks & Acceptance non erano stati aggiornati.
+- **2026-08-20 (verifica finale, 3 gap reali trovati e corretti):** (1) `lib/auth/voci-navigazione.test.ts` aveva 4 test falliti - la nuova voce "Pagine" nel gruppo "Gestione sito" non era stata propagata alle asserzioni esatte (`toEqual`) di quel file, una regressione reale non ancora corretta; aggiornati i 4 test (Site Manager, Admin, ordine completo, conteggio nodi gruppo) per includere `/app/pagine-pubbliche`. (2) `lib/pagine-pubbliche.ts` aveva le nuove funzioni di scrittura (`creaPaginaPubblica`/`aggiornaPaginaPubblica`/`eliminaPaginaPubblica`/`trovaPaginaPubblicaPerId`) senza alcun test diretto - `lib/menu-pubblico.test.ts` (mirror strutturale dichiarato nel Code Map) testa invece ogni funzione della propria libreria dati individualmente, anche le più semplici; aggiunti i test mancanti. (3) `lib/storage/pagine-pubbliche.ts` (`caricaImmaginePaginaPubblica`) non aveva alcun file di test, mentre `lib/storage/sponsor.ts` (il mirror esplicitamente citato nel commento sorgente) ne ha uno; creato `lib/storage/pagine-pubbliche.test.ts`. Verifica finale dopo i 3 fix: `npx vitest run` 1385/1385 (era 1339 prima di questa storia, +46), `npx tsc --noEmit` pulito, `npm run lint` 0 errori (19 warning preesistenti invariati), `npm run build` riuscita (`/app/pagine-pubbliche`, `/app/pagine-pubbliche/nuova`, `/app/pagine-pubbliche/[id]` tutte presenti come rotte dynamic, nessuna regressione di shape).
+- **2026-08-20 (code review, 3 layer paralleli - Blind Hunter, Edge Case Hunter, Verification Gap):** nessun intent_gap/bad_spec (nessuna ambiguità nel testo congelato) - solo patch e defer. **6 patch applicati**: (1) `invalidaCachePaginePubbliche()` (Story 19.9) non veniva mai chiamata dopo un salvataggio riuscito - una Pagina appena creata/modificata/eliminata poteva restare non riflessa per un Visitatore anonimo fino a 90s (TTL della cache edge-safe del Proxy), in contraddizione con "subito visibile pubblicamente" mostrato in UI - ora chiamata dopo ogni scrittura riuscita nelle 3 Server Action. (2) Il controllo "contenuto obbligatorio" operava sul testo grezzo pre-sanitizzazione e non intercettava il markup "vuoto" reale prodotto da Tiptap (`"<p></p>"`, non vuoto come stringa) - trovato indipendentemente da Blind Hunter ed Edge Case Hunter; il controllo ora opera sul contenuto GIA' sanitizzato, spogliato dei tag, con un'eccezione esplicita per un contenuto fatto solo di immagini (`<img>`, nessun testo). (3) Nessun limite applicativo sulla lunghezza di `contenutoHtml` (colonna `@db.Text` illimitata) - aggiunto un tetto di 200.000 caratteri, generoso per l'ampiezza "dépliant" ma non illimitato. (4) Un errore DB nel lookup `trovaPaginaPubblicaPerId` durante la modifica veniva mascherato da un `.catch(() => null)` silenzioso, trasformando un genuino errore di sistema in un fuorviante "URL non valido" (l'esenzione slug-invariato falliva silenziosamente) - ora l'errore propaga fino a un onesto `INTERNAL`. (5) `rottaRiservata()` (Story 19.9) confrontava le rotte riservate case-sensitive - un valore come "/App" o "/Squadre" la bypassava pur "sembrando" una rotta reale solo a meno delle maiuscole - reso case-insensitive (solo per questa funzione, `isPublicRoute()` stessa resta invariata per non alterare il routing live del Proxy). (6) `window.prompt` per il link dell'editor non veniva trimmato - una stringa di soli spazi passava il controllo `!url` e finiva salvata come href vuoto. **9 defer** loggati in `deferred-work.md` (nessuna FK/avviso tra Pagine e voci di menu, immagini senza `alt`, nessuna guardia "modifiche non salvate", nessuna concorrenza ottimistica, P2025 generico invece di un messaggio dedicato, nessuna restrizione sui caratteri interni dello slug - stessa lacuna pre-esistente di `urlVoceMenuValido`, nessuna normalizzazione slug, nessun controllo lato client pre-upload, nessun segnale "URL già in uso" prima del submit completo). **1 reject** (immagini orfane su Storage senza cleanup: il commento sorgente della migrazione dichiara esplicitamente che è "same accepted tradeoff as Sponsor" - decisione già presa, non un difetto). Verifica finale dopo i 6 patch: `npx vitest run` 1392/1392 (+7 su questo giro), `npx tsc --noEmit` pulito, `npm run lint` 0 errori, `npm run build` riuscita, nessuna regressione di shape.
 
 ## Verification
 
@@ -77,12 +81,34 @@ baseline_commit: 'dipende da Story 19.9 (modello dati + rendering pubblico)'
 
 ## Suggested Review Order
 
-**Le Server Action (il cancello reale)**
+**Le Server Action (il cancello reale, validazione + sanitizzazione PRIMA della scrittura)**
 
-- Validazione URL riservato + slug duplicato + sanitizzazione - tutti e tre devono avvenire PRIMA della scrittura, non dopo.
-  [`pagine-pubbliche/actions.ts`](../../app/app/(configurazione)/pagine-pubbliche/actions.ts)
+- Contenuto validato sul risultato GIA' sanitizzato (fix review: il vecchio controllo pre-sanitizzazione non intercettava il markup "vuoto" reale di Tiptap).
+  [`pagine-pubbliche/actions.ts:85`](../../app/app/(configurazione)/pagine-pubbliche/actions.ts#L85)
+
+- Errore DB nel lookup dello slug attuale propaga onestamente a `INTERNAL` (fix review: prima mascherato da un `.catch(() =&gt; null)` silenzioso).
+  [`pagine-pubbliche/actions.ts:222`](../../app/app/(configurazione)/pagine-pubbliche/actions.ts#L222)
+
+- Invalidazione della cache dello slug dopo ogni scrittura riuscita (fix review: mancava, una Pagina appena salvata poteva restare non riflessa fino a 90s per un Visitatore anonimo) - 3 punti di chiamata, uno per azione.
+  [`pagine-pubbliche/actions.ts:199`](../../app/app/(configurazione)/pagine-pubbliche/actions.ts#L199)
+
+**Gli URL riservati (unica fonte di verità, ora anche case-insensitive)**
+
+- `rottaRiservata()` confronta ora una copia minuscola del pathname (fix review: "/App"/"/Squadre" bypassavano il controllo per via delle sole maiuscole) - `isPublicRoute()` stessa resta invariata altrove.
+  [`route-guard.ts:514`](../../lib/auth/route-guard.ts#L514)
 
 **L'editor (nessun test diretto possibile, come ogni altra pagina del progetto)**
 
 - Verificare a occhio che la toolbar sia davvero limitata a quanto deciso (niente tabelle/embed) e che l'HTML prodotto passi dalla sanitizzazione al submit.
   [`PaginaPubblicaEditor.tsx`](../../app/app/(configurazione)/pagine-pubbliche/PaginaPubblicaEditor.tsx)
+
+- URL del link trimmato prima dell'inserimento (fix review: una stringa di soli spazi passava il vecchio controllo `!url`).
+  [`PaginaPubblicaEditor.tsx:107`](../../app/app/(configurazione)/pagine-pubbliche/PaginaPubblicaEditor.tsx#L107)
+
+**Periferici (Storage, guida in-app, test)**
+
+- Upload per-file su path casuale (mai l'id di un'entità) - nessuna funzione di possesso da verificare.
+  [`lib/storage/pagine-pubbliche.ts`](../../lib/storage/pagine-pubbliche.ts)
+
+- Guida in-app aggiornata con i vincoli reali (2MB/PNG-JPG, immagini non rimosse all'eliminazione della Pagina) - fix review, mancavano.
+  [`contenuti.ts`](../../lib/guida/contenuti.ts)

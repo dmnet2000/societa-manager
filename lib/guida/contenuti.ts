@@ -152,6 +152,20 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
+    // Story 19.10 (Epic 19, Ruolo Site Manager): editor di creazione/modifica
+    // delle Pagine introdotte dalla Story 19.9 - mirror di ruoliAmmessi per
+    // /app/pagine-pubbliche in route-guard.ts.
+    rotta: "/app/pagine-pubbliche",
+    titolo: "Pagine pubbliche",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    corpo: [
+      "Qui crei e modifichi le Pagine di contenuto del sito pubblico: titolo, URL (deve iniziare con \"/\" e non può coincidere con una rotta riservata del sito) e testo formattato con l'editor.",
+      "L'editor permette titoli, grassetto/corsivo, elenchi e link, oltre a caricare immagini direttamente nel testo (PNG o JPG, max 2MB) - niente tabelle o contenuti incorporati.",
+      "Una Pagina salvata è subito visibile pubblicamente all'URL scelto: non esiste uno stato \"bozza\". Eliminarla fa tornare l'URL a mostrare una pagina non trovata, ma non rimuove dal sito le immagini già caricate al suo interno.",
+      "Per collegare una Pagina al menu del sito, aggiungi una voce corrispondente in /app/menu-pubblico.",
+    ],
+  },
+  {
     rotta: "/app/i-miei-gruppi",
     titolo: "I miei Gruppi",
     ruoliAmmessi: ["ALLENATORE"],

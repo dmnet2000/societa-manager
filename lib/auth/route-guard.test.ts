@@ -54,4 +54,15 @@ describe("rottaRiservata", () => {
   it("non tratta '/apis' come riservato sotto '/api' (nessun match parziale sul solo prefisso testuale)", () => {
     expect(rottaRiservata("/apis")).toBe(false);
   });
+
+  // Code review (Edge Case Hunter): senza un confronto case-insensitive, un
+  // valore come "/App" o "/Squadre" bypassava rottaRiservata() pur
+  // "sembrando" una rotta reale solo a meno delle maiuscole.
+  it("riconosce come riservato un valore che differisce solo per maiuscole/minuscole", () => {
+    expect(rottaRiservata("/App")).toBe(true);
+    expect(rottaRiservata("/APP/gruppi")).toBe(true);
+    expect(rottaRiservata("/Api/health")).toBe(true);
+    expect(rottaRiservata("/Squadre")).toBe(true);
+    expect(rottaRiservata("/Accedi")).toBe(true);
+  });
 });
