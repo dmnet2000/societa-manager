@@ -219,11 +219,16 @@
    bordo del blocco, uscendone visivamente (nessun margine di sicurezza
    contro l'overflow:hidden di .heroBlocco). Padding orizzontale
    ripristinato - stesso valore di prima del primo giro. */
+/* Richiesta esplicita dell'utente (2026-08-20, terzo giro): larghezza
+   della fascia ridotta di 100px rispetto a .heroBlocco (50px per lato,
+   centrata) - prima era larga quanto l'intero blocco (left:0;right:0).
+   inset orizzontale sostituisce left/right:0, stesso posizionamento
+   bottom:0 invariato. */
 .infoPost {
   position: absolute;
   z-index: 2;
-  left: 0;
-  right: 0;
+  left: 50px;
+  right: 50px;
   bottom: 0;
   padding: 0 var(--space-4) var(--space-4);
   color: #ffffff;
