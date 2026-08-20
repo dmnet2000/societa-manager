@@ -362,33 +362,33 @@ model ConfigurazioneSocialFacebook {
 // sessione. Sempre via Prisma diretto (lib/configurazione-applicazione.ts),
 // stesso trattamento di Palestra/Gruppo/AnnoAgonistico.
 model ConfigurazioneApplicazione {
-  id                String   @id @default(uuid())
-  nomeSettore       String?
+  id                  String   @id @default(uuid())
+  nomeSettore         String?
   // Story 9.31: destinatario unico dell'email di notifica upload Certificato
   // Medico (Story 4.3) - sostituisce la derivazione precedente da ogni
   // Utente con Ruolo Segreteria (lib/utenti/email-per-ruolo.ts, ancora
   // usata dal promemoria scadenza verso Dirigente, Story 4.6, invariato).
-  emailSegreteria   String?
+  emailSegreteria     String?
   // Story 18.5: URL della Pagina Facebook pubblica, usato per il Page
   // Plugin ufficiale (embed "ultimi post" in home pubblica). Solo Facebook
   // in questa storia - Instagram non ha un equivalente ufficiale gratuito
   // per un feed multi-post senza token API (decisione presa con l'utente).
-  urlPaginaFacebook String?
+  urlPaginaFacebook   String?
   // Story 18.11: contatti pubblici per la pagina "/contatti" - ciascuno
   // indipendentemente opzionale, editabili da Admin/Dirigente su
   // /app/impostazioni. Distinti da emailSegreteria (dato interno, mai
   // esposto pubblicamente) - questo campo esiste apposta per esserlo.
-  indirizzoSede     String?
-  telefonoPubblico  String?
-  emailPubblica     String?
+  indirizzoSede       String?
+  telefonoPubblico    String?
+  emailPubblica       String?
   // Story 18.20: URL del sito della Polisportiva (l'associazione madre
   // multi-settore) - link esterno mostrato sotto al suo logo (bucket
   // Storage "logo-polisportiva") sia nell'header sia nel footer pubblici.
   // Mirror di urlPaginaFacebook, nessun campo social (deciso con l'utente:
   // solo il link al sito, niente icone multi-piattaforma).
   urlSitoPolisportiva String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("configurazione_applicazione")
 }
@@ -741,4 +741,33 @@ model VoceMenuPubblico {
   updatedAt DateTime @updatedAt
 
   @@map("voci_menu_pubblico")
+}
+
+// Story 19.9 (Epic 19, Ruolo Site Manager): pagine di contenuto create da un
+// Site Manager/Admin dietro un URL configurato in VoceMenuPubblico sopra -
+// prima di questa storia una voce di menu con un URL nuovo puntava sempre a
+// un 404 (nessuna pagina reale generabile da configurazione). "slug" e'
+// assoluto ("/storia-societa"), stesso formato di VoceMenuPubblico.url per
+// le rotte interne - risolto a runtime dalla rotta catch-all
+// app/[...slug]/page.tsx (lib/pagine-pubbliche.ts). Nessuno stato
+// bozza/pubblicato (decisione esplicita di party mode, 2026-08-19: ampiezza
+// "dépliant digitale", non "blog") - una riga esiste ed e' quella che si
+// vede, stesso principio gia' stabilito per VoceMenuPubblico. Entita'
+// strutturale (AD-9), stesso trattamento RLS di VoceMenuPubblico/Sponsor
+// sopra: RLS abilitata senza alcuna policy (deny-all di default) + REVOKE
+// esplicito da "anon"/"authenticated" - accesso solo via Prisma diretto.
+// "contenutoHtml" e' HTML sanitizzato SIA prima della scrittura SIA di
+// nuovo al momento del render (difesa in profondita', mai un solo passaggio
+// quando si usa dangerouslySetInnerHTML - vedi lib/sanitizza-html.ts e
+// app/[...slug]/page.tsx) - creazione/modifica arrivano con la Story 19.10,
+// questa storia costruisce solo la lettura pubblica.
+model PaginaPubblica {
+  id            String   @id @default(uuid())
+  slug          String   @unique
+  titolo        String
+  contenutoHtml String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("pagine_pubbliche")
 }

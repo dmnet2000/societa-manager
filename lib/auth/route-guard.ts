@@ -472,3 +472,24 @@ export function matchProtectedRoute(pathname: string) {
       pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)
   );
 }
+
+// Story 19.9 (Epic 19, Ruolo Site Manager): unica fonte di verita' per "cosa
+// e' una rotta riservata del sito" - usata sia dalla validazione delle voci
+// di menu pubblico (Story 19.7, app/app/(configurazione)/menu-pubblico/
+// actions.ts) sia dalla futura creazione/modifica di una PaginaPubblica
+// (Story 19.10). Mai una seconda lista mantenuta a mano: riusa PUBLIC_ROUTES
+// (via isPublicRoute, gia' esportata sopra) per le 5 pagine pubbliche
+// esistenti e le rotte di autenticazione, e aggiunge solo i due prefissi
+// interni che PUBLIC_ROUTES non copre (per costruzione: sono l'opposto,
+// PROTECTED_ROUTES vive sotto "/app", "/api" non e' nemmeno una pagina).
+// Nessuna dipendenza da Prisma/"server-only" qui (questo file resta
+// importabile anche da un bundle client, Story 12.3) - restano invariate le
+// stesse garanzie gia' documentate in testa al file.
+export function rottaRiservata(pathname: string): boolean {
+  if (pathname === "/app" || pathname.startsWith("/app/")) return true;
+  // Code review (Edge Case Hunter): "/api" esatto (senza slash finale) non
+  // veniva riconosciuto - solo "/api/*" lo era - stesso trattamento
+  // esatto+prefisso gia' applicato ad "/app" sopra, per coerenza.
+  if (pathname === "/api" || pathname.startsWith("/api/")) return true;
+  return isPublicRoute(pathname);
+}

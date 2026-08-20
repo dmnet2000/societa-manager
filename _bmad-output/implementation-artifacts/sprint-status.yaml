@@ -1,3 +1,6 @@
+# last_updated: 2026-08-20 (Story 9.34 aggiunta: data di scadenza del certificato accanto al badge esistente in /i-miei-gruppi, /gruppi, e nel drill-down di /vista-dirigente/vista-allenatore - continuazione diretta di 9.19, dataFineValidita gia' disponibile nel codice. 2 punti aperti non risolti (sempre visibile o solo col badge; estendere anche GruppoCard.tsx). Nessuna implementazione, solo la story.)
+# last_updated: 2026-08-20 (Story 19.9: implementazione completata e code review (bmad-build, 3 layer paralleli - Blind Hunter, Edge Case Hunter, Verification Gap) - 1 intent_gap risolto con l'utente (rottaRiservata() riusa isPublicRoute(), che copre anche le 5 pagine pubbliche esistenti - risalvare una voce di menu col suo stesso url invariato veniva rifiutato come "riservato"; fix: urlAttuale esenta l'url invariato dal controllo), 5 patch applicati (typo commento schema, rel=noopener forzato su target=_blank, "/api" esatto riconosciuto da rottaRiservata, query sprecata per utenti autenticati rimossa, test mancante sulla riga di sanitizzazione al render - il finding piu' grave delle 3 review), 9 defer loggati in deferred-work.md, 3 reject. 1346/1346 test Vitest (+7), tsc/lint puliti, build riuscita (/[...slug] presente). Status: in-progress -> done (spec), 19-9 backlog -> in-progress -> review (sprint-status).)
+# last_updated: 2026-08-20 (Story 19.9: sviluppo avviato via bmad-build - spec-19-9-pagine-pubbliche-modello-dati.md gia' completa (status locale 'planned' equiparato a ready-for-dev, nessuna riscrittura del piano necessaria), baseline_commit catturato (22116a815aeb9f7a2171f05c783d9c3c06c3e46c), status spec -> in-progress, sprint-status 19-9 backlog -> in-progress.)
 # last_updated: 2026-08-20 (Story 19.12 aggiunta: descrizione + ruoli aggiuntivi per lo Staff, gestione Site Manager - 4 punti aperti non risolti (perimetro Ruoli, forma "ruoli aggiuntivi", lunghezza descrizione, posizione in /staff), nessuna implementazione su richiesta esplicita dell'utente. Nella stessa sessione, .infoPost del blocco Facebook in home ripristinato con padding orizzontale + overflow-wrap:break-word dopo che l'utente ha segnalato in produzione (volleymogliano.it) che il testo usciva dal blocco col padding a zero del giro precedente; poi ridotto ulteriormente di 200px totali di larghezza su richiesta diretta (due giri da 100px, inset 100px per lato) - tutte modifiche dirette di codice, non passate da story/spec.)
 # last_updated: 2026-08-20 (Story 19.11 aggiunta: Site Manager esteso alla foto sfondo hero (Story 18.14) - stesso gap gia' risolto per 19.2/19.4/19.5, caricaFotoHeroAction resta l'unica Server Action di /app/impostazioni non ancora aperta a SITE_MANAGER. spec-19-11-site-manager-foto-hero.md scritta, epics.md ed epic-19-context.md aggiornati (elenco Stories completato anche con 19.9/19.10, mancanti da un aggiornamento precedente). Nessuna implementazione, solo la story. Nella stessa sessione: .heroBlocco (blocco Post Facebook della home) ridotto di 50px in larghezza/100px in altezza su richiesta diretta dell'utente, .infoPost senza piu' padding orizzontale cosi' il testo del post ha la stessa larghezza del blocco - modifica di codice diretta, non passata da story/spec.)
 # last_updated: 2026-08-18 (Epic 19: scomposta in 8 story (bmad-create-epics-and-stories, poi party mode con Mary/John/Sally/Winston/Amelia che ha corretto 3 punti - 19.4 ridotta da accesso completo a /app/gruppi a una vista scoped solo-foto, 19.8 da fallback silenzioso su menu hard-coded a errore esplicito se la tabella e' vuota, 19.5 aggiunto avviso quando URL e Token Facebook si disallineano). readiness-gate PASS. Le 8 story aggiunte a development_status come backlog (chiavi brevi coerenti con lo stile gia' in uso, es. 18-4-foto-squadra-gruppo) - sprint_plan.py generate scartato: deriverebbe chiavi dal titolo completo di ogni story in epics.md, in conflitto con le chiavi brevi curate a mano gia' in uso per ~75 story esistenti (avrebbe le trattate come nuovi orfani backlog). Corretto anche un bug preesistente non collegato: last_updated (riga sotto, valore letterale, non i commenti in cima) non era quotato e conteneva ':' - YAML non valido, impediva a sprint_plan.py di leggere il file.)
@@ -413,6 +416,25 @@ development_status:
   9-31-email-segreteria-configurabile: done
   9-32-rimuovere-allenatore-da-gruppo: done
   9-33-atlete-riga-separata-gruppi: done
+
+  # Story 9.34 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
+  # "nella visione da parte dell'allenatore dei certificati medici sarebbe
+  # da visualizzare anche la data di scadenza del certificato". Continuazione
+  # diretta di 9.19 (badge scaduto/in scadenza), stesso perimetro di 3
+  # pagine (/i-miei-gruppi, /gruppi, /vista-dirigente+/vista-allenatore).
+  # dataFineValidita gia' letta e disponibile nel codice (lib/certificato-
+  # in-scadenza-per-atleta.ts), solo mai restituita/mostrata - nessun nuovo
+  # calcolo necessario. Entrambi i punti aperti RISOLTI con l'utente lo
+  # stesso giorno: (1) in AtletaTabellaRiga.tsx la data compare al click sul
+  # badge stesso, non sempre visibile - mirror del pattern toggle gia' in
+  # uso in GruppoCard.tsx per i drill-down; (2) nel drill-down di
+  # GruppoCard.tsx (vista-dirigente/vista-allenatore) la data e' sempre
+  # visibile accanto al nome una volta espanso il pannello (nessun secondo
+  # click), richiede cambiare atleteScadute/atleteInScadenza da string[] a
+  # oggetti {nome, dataScadenza} - vedi epics.md. Nessun punto aperto
+  # residuo, pronta per create-story. NESSUNA IMPLEMENTAZIONE ANCORA -
+  # l'utente ha chiesto solo la story in questo giro.
+  9-34-data-scadenza-certificato-elenco-atlete: backlog
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -1002,7 +1024,7 @@ development_status:
   # spec-19-10-editor-pagine-pubbliche.md scritte, epics.md aggiornato con
   # gli AC decisi. NESSUNA IMPLEMENTAZIONE ANCORA - l'utente ha chiesto
   # esplicitamente solo la spec in questo giro, non "procedi".
-  19-9-pagine-pubbliche-modello-dati: backlog
+  19-9-pagine-pubbliche-modello-dati: review
   19-10-editor-pagine-pubbliche: backlog
   # Story 19.11 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
   # "nella home come sfondo sfumato... aggiungere una foto da caricare da

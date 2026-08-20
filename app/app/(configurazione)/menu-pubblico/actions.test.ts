@@ -5,6 +5,7 @@ const elencaVociMenuPubblicoMock = vi.fn();
 const elencaVociMenuPubblicoVisibiliMock = vi.fn();
 const creaVoceMenuPubblicoMock = vi.fn();
 const aggiornaVoceMenuPubblicoMock = vi.fn();
+const trovaVoceMenuPubblicoPerIdMock = vi.fn();
 const impostaVisibileVoceMenuPubblicoMock = vi.fn();
 const riordinaVociMenuPubblicoMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("@/lib/menu-pubblico", () => ({
   elencaVociMenuPubblicoVisibili: elencaVociMenuPubblicoVisibiliMock,
   creaVoceMenuPubblico: creaVoceMenuPubblicoMock,
   aggiornaVoceMenuPubblico: aggiornaVoceMenuPubblicoMock,
+  trovaVoceMenuPubblicoPerId: trovaVoceMenuPubblicoPerIdMock,
   impostaVisibileVoceMenuPubblico: impostaVisibileVoceMenuPubblicoMock,
   riordinaVociMenuPubblico: riordinaVociMenuPubblicoMock,
 }));
@@ -60,6 +62,12 @@ beforeEach(() => {
   creaVoceMenuPubblicoMock.mockResolvedValue(undefined);
   aggiornaVoceMenuPubblicoMock.mockReset();
   aggiornaVoceMenuPubblicoMock.mockResolvedValue(undefined);
+  // Default "nessuna voce trovata" (urlAttuale = undefined): preserva il
+  // comportamento di tutti i test di aggiornamento scritti prima del fix
+  // intent_gap (sempre rottaRiservata, nessuna esenzione) - solo i test
+  // dedicati sotto impostano un valore diverso per esercitare l'esenzione.
+  trovaVoceMenuPubblicoPerIdMock.mockReset();
+  trovaVoceMenuPubblicoPerIdMock.mockResolvedValue(null);
   impostaVisibileVoceMenuPubblicoMock.mockReset();
   impostaVisibileVoceMenuPubblicoMock.mockResolvedValue(undefined);
   riordinaVociMenuPubblicoMock.mockReset();
@@ -185,6 +193,102 @@ describe("creaVoceMenuPubblicoAction", () => {
     expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
   });
 
+  // Story 19.9 (Epic 19, Ruolo Site Manager): urlVoceMenuValido ora rifiuta
+  // anche una rotta riservata (rottaRiservata(), lib/auth/route-guard.ts) -
+  // gap preesistente dalla Story 19.7, chiuso in questa storia. "/app" e'
+  // sotto il prefisso della dashboard interna.
+  it('returns VALIDATION per un URL riservato ("/app", gap chiuso dalla Story 19.9)', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Dashboard", url: "/app" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.9: "/app/gruppi" (un prefisso interno qualunque, non solo
+  // "/app" esatto) e' riservato allo stesso modo.
+  it('returns VALIDATION per un URL riservato sotto "/app/*"', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Gruppi", url: "/app/gruppi" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.9: "/api/health" e' riservato allo stesso modo.
+  it('returns VALIDATION per un URL riservato sotto "/api/*"', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Health", url: "/api/health" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.9: "/accedi" (rotta di autenticazione, isPublicRoute) e'
+  // riservato allo stesso modo - rottaRiservata riusa isPublicRoute come
+  // unica fonte di verita', nessuna seconda lista.
+  it('returns VALIDATION per un URL riservato di autenticazione ("/accedi")', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Login", url: "/accedi" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.9: creare una NUOVA voce con l'url di una pagina pubblica
+  // esistente ("/squadre") resta correttamente rifiutato - a differenza del
+  // caso "risalva la STESSA voce col suo url invariato" (bug reale, risolto
+  // sotto in aggiornaVoceMenuPubblicoAction con urlAttuale), qui non esiste
+  // alcuna riga da esentare: una seconda voce di menu che punta allo stesso
+  // url sarebbe comunque una duplicazione indesiderata.
+  it('returns VALIDATION per un url di una pagina pubblica esistente in creazione ("/squadre")', async () => {
+    const result = await creaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ etichetta: "Squadre", url: "/squadre" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(creaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
   it("returns INTERNAL fail-closed quando creaVoceMenuPubblico lancia", async () => {
     creaVoceMenuPubblicoMock.mockRejectedValue(new Error("db down"));
 
@@ -251,6 +355,77 @@ describe("aggiornaVoceMenuPubblicoAction", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile aggiornare la voce di menu. Riprova." },
     });
+  });
+
+  // Story 19.9: stessa validazione della creazione (validaCampi condivisa) -
+  // una modifica con un url riservato viene rifiutata allo stesso modo.
+  it('returns VALIDATION per un URL riservato in modifica ("/app")', async () => {
+    const result = await aggiornaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ id: "a", etichetta: "Dashboard", url: "/app" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(aggiornaVoceMenuPubblicoMock).not.toHaveBeenCalled();
+  });
+
+  // Code review (intent_gap, risolto con l'utente 2026-08-20): il fix reale
+  // di questa storia - risalvare una delle 5 voci seedate (es. "Squadre" ->
+  // "/squadre") con lo stesso url gia' salvato, cambiando solo l'etichetta,
+  // deve riuscire anche se quell'url e' "riservato" secondo rottaRiservata()
+  // (isPublicRoute copre anche le 5 pagine pubbliche esistenti).
+  it("accetta la modifica quando l'url inviato coincide con quello gia' salvato per la voce, anche se rottaRiservata() lo considera riservato", async () => {
+    trovaVoceMenuPubblicoPerIdMock.mockResolvedValue({
+      id: "b",
+      etichetta: "Squadre",
+      url: "/squadre",
+      ordine: 1,
+      visibile: true,
+    });
+
+    const result = await aggiornaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ id: "b", etichetta: "Le Nostre Squadre", url: "/squadre" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaVoceMenuPubblicoMock).toHaveBeenCalledWith("b", {
+      etichetta: "Le Nostre Squadre",
+      url: "/squadre",
+    });
+  });
+
+  // Cambiare l'url di una voce esistente verso UN NUOVO url riservato resta
+  // rifiutato - l'esenzione vale solo per "stesso url di prima", non
+  // permette di introdurre un nuovo url riservato passando per l'update.
+  it("returns VALIDATION se l'url viene cambiato verso un nuovo url riservato in modifica", async () => {
+    trovaVoceMenuPubblicoPerIdMock.mockResolvedValue({
+      id: "b",
+      etichetta: "Squadre",
+      url: "/squadre",
+      ordine: 1,
+      visibile: true,
+    });
+
+    const result = await aggiornaVoceMenuPubblicoAction(
+      undefined,
+      buildFormData({ id: "b", etichetta: "Squadre", url: "/app" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+      },
+    });
+    expect(aggiornaVoceMenuPubblicoMock).not.toHaveBeenCalled();
   });
 });
 

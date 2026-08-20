@@ -1,0 +1,66 @@
+/* Story 19.9 (Epic 19, Ruolo Site Manager): modulo dedicato alla rotta
+   catch-all - convenzione del progetto "un CSS module per pagina" (mirror di
+   app/contatti/contatti.module.css). Stessa struttura .main/.titolo delle
+   altre pagine pubbliche; .contenuto stila l'HTML libero (sanitizzato)
+   scritto tramite l'editor Tiptap della Story 19.10 - solo i tag
+   dell'allowlist di lib/sanitizza-html.ts (h2/h3/p/strong/em/ul/ol/li/a/
+   img/br) hanno bisogno di una regola qui. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+.contenuto {
+  margin-top: var(--space-4);
+  max-width: 70ch;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #0f2438;
+}
+
+.contenuto h2,
+.contenuto h3 {
+  margin-top: var(--space-6);
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-weight: 900;
+  color: var(--color-text-primary);
+}
+
+.contenuto p {
+  margin-top: var(--space-4);
+}
+
+.contenuto ul,
+.contenuto ol {
+  margin-top: var(--space-4);
+  padding-left: var(--space-6);
+}
+
+.contenuto a {
+  color: #0f2438;
+  text-decoration: underline;
+}
+
+.contenuto img {
+  max-width: 100%;
+  height: auto;
+  margin-top: var(--space-4);
+}

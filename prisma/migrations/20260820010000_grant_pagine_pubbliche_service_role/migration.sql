@@ -1,0 +1,16 @@
+-- Story 19.9 (Epic 19, Ruolo Site Manager, gap scoperto durante lo sviluppo,
+-- non nel Code Map originale della spec - vedi Spec Change Log): il Proxy
+-- (middleware.ts -> lib/auth/route-decision.ts) deve poter verificare
+-- l'esistenza di una PaginaPubblica per un pathname sconosciuto PRIMA di
+-- reindirizzare un Visitatore anonimo a /accedi, altrimenti ogni URL nuovo
+-- configurato da un Site Manager sarebbe login-wallato invece di mostrare il
+-- contenuto pubblico (AC #1) - il Proxy gira su runtime edge e non puo' usare
+-- Prisma/pg li' (vedi lib/auth/pagine-pubbliche-slug-cache.ts). Stesso
+-- identico gap gia' risolto per "permessi_rotte" (Story 12.4,
+-- 20260804010000_grant_permessi_rotte_service_role): "service_role" bypassa
+-- la RLS ma non i GRANT di base - le tabelle create via migrazione diretta
+-- non hanno GRANT di default per nessun ruolo Postgres
+-- (auto_expose_new_tables non attivo). "anon"/"authenticated" restano
+-- esplicitamente esclusi (REVOKE della migrazione precedente, invariato) -
+-- solo "service_role", mai esposto a un client, ottiene accesso in lettura.
+GRANT SELECT ON "pagine_pubbliche" TO service_role;

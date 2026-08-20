@@ -1473,6 +1473,30 @@ so that l'elenco Gruppi resti leggibile anche per rose numerose, senza dover scr
 4. **And** l'header della tabella (`page.tsx`) riflette la nuova struttura a 2 colonne (Nome, Categoria) per la riga principale — "Atlete" non è più un'intestazione di colonna
 5. **And** nessuna regressione su `assegnaAtleta`/`rimuoviAtleta`/`creaEAssegnaAtleta` né sulla riga Allenatori già esistente — solo riposizionamento/restyling, nessuna Server Action toccata
 
+### Story 9.34: Data di scadenza del certificato nell'elenco Atlete e nei drill-down
+
+*(Aggiunta post-apertura epica — 2026-08-20, richiesta esplicita dell'utente: "nella visione da parte dell'allenatore dei certificati medici sarebbe da visualizzare anche la data di scadenza del certificato". Continuazione diretta della Story 9.19 (badge "in scadenza"/"scaduto"), stesso perimetro di 3 pagine: `/i-miei-gruppi` (Allenatore), `/gruppi` (Admin/Dirigente, mirror per lo stesso componente condiviso `AtletaTabellaRiga.tsx`), `/vista-dirigente` e `/vista-allenatore` (drill-down condiviso `GruppoCard.tsx`, Story 9.26).)*
+
+As a Allenatore (o Admin/Dirigente, stesso componente condiviso),
+I want poter cliccare sul badge "Certificato scaduto"/"Certificato in scadenza" di un'Atleta per vederne la data di scadenza effettiva,
+so that sappia entro quando serve il rinnovo senza dover aprire il dettaglio del certificato di ciascuna Atleta, senza però appesantire la tabella con una data sempre visibile.
+
+**Contesto tecnico verificato leggendo il codice:** `dataFineValidita` è già letta da `lib/certificato-in-scadenza-per-atleta.ts` (`calcolaAtleteConCertificatoInScadenza`, usata sia da `/gruppi/page.tsx` sia da `/i-miei-gruppi/page.tsx`) per calcolare `certificatoScaduto`/`certificatoInScadenza` — oggi viene scartata subito dopo, mai restituita né mostrata. Stesso discorso per `/vista-dirigente` e `/vista-allenatore` (`vista-allenatore/page.tsx` legge già `certificato?.dataFineValidita` per `categorizzaStatoCertificato`), ma i due bucket `atleteScadute`/`atleteInScadenza` di `GruppoCard.tsx` sono oggi `string[]` di soli nomi — andrebbero estesi a coppie nome+data.
+
+**Decisioni prese con l'utente (2026-08-20):**
+1. In `AtletaTabellaRiga.tsx` la data compare **al click sul badge stesso**, non sempre visibile inline — il badge diventa un elemento cliccabile che rivela/nasconde la data (mirror diretto del pattern toggle già in uso in `GruppoCard.tsx` per i drill-down "scaduto"/"in scadenza" — `<button>` con `aria-expanded`/`aria-controls`, stesso principio, non una nuova interazione da inventare). Nessuna data mostrata per un'Atleta senza badge (certificato in regola o assente) — invariato.
+2. Nel drill-down di `GruppoCard.tsx` (`/vista-dirigente`/`/vista-allenatore`) la data è **sempre visibile** accanto al nome una volta che il drill-down è già espanso — nessun secondo livello di click dentro il pannello, coerente col fatto che è già un contenuto rivelato on-demand. Richiede cambiare `atleteScadute`/`atleteInScadenza` da `string[]` a un array di oggetti `{nome, dataScadenza}`, tipo che tocca `vista-dirigente/page.tsx`, `vista-allenatore/page.tsx` e `GruppoCard.tsx` insieme.
+3. **Formato data**: mirror del pattern già in uso nel progetto (`toLocaleDateString("it-IT", { timeZone: "UTC" })`, es. `app/page.tsx`) — nessuna nuova convenzione di formattazione.
+
+Nessun punto aperto residuo — pronta per `create-story`.
+
+**Acceptance Criteria:**
+
+1. **Given** un Allenatore su `/i-miei-gruppi` o un Admin/Dirigente su `/gruppi`, **when** un'Atleta ha il badge "Certificato scaduto" o "Certificato in scadenza", **then** il badge è cliccabile (area di tocco ≥44×44px) e, al click, mostra/nasconde la data di scadenza del certificato in formato italiano (gg/mm/aaaa) — stesso pattern toggle già in uso per i drill-down di `GruppoCard.tsx`
+2. **And** un'Atleta senza badge (certificato in regola o assente) non ha alcun elemento cliccabile nuovo — nessuna regressione sul layout della colonna Certificato per quel caso
+3. **Given** un Admin/Dirigente/Allenatore su `/vista-dirigente`/`/vista-allenatore` con il drill-down "scaduto"/"in scadenza" espanso, **when** vede l'elenco dei nomi, **then** vede anche la data di scadenza per ciascuna Atleta elencata, sempre visibile (nessun click aggiuntivo)
+4. **And** nessuna regressione sulla logica di calcolo esistente (`categorizzaStatoCertificato`, `calcolaAtleteConCertificatoInScadenza`) — questa storia aggiunge solo la visualizzazione di un dato già letto, nessun nuovo calcolo di scadenza
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

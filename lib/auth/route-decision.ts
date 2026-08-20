@@ -1,6 +1,7 @@
 import "server-only";
 import type { Ruolo } from "@prisma/client";
 import { rottaAbilitataPerRuolo } from "@/lib/auth/permessi-configurabili";
+import { paginaPubblicaEsistePerSlug } from "@/lib/auth/pagine-pubbliche-slug-cache";
 import {
   LOGIN_PATH,
   NON_AUTORIZZATO_PATH,
@@ -9,6 +10,7 @@ import {
   isRouteHandlerCron,
   isRouteHandlerHealth,
   matchProtectedRoute,
+  rottaRiservata,
   type RouteDecision,
 } from "@/lib/auth/route-guard";
 
@@ -66,6 +68,36 @@ export async function getRouteDecision(
     isPublicRoute(pathname) ||
     isRouteHandlerCron(pathname) ||
     isRouteHandlerHealth(pathname)
+  ) {
+    return { action: "allow" };
+  }
+
+  // Story 19.9 (Epic 19, Ruolo Site Manager): una PaginaPubblica esistente e'
+  // sempre pubblica, indipendentemente da autenticazione/Ruolo - stesso
+  // principio delle voci statiche di PUBLIC_ROUTES sopra, ma risolta a
+  // runtime (lo slug e' configurato da un Site Manager/Admin dopo il
+  // deploy, non elencabile in anticipo in un array statico). Senza questo
+  // controllo un Visitatore anonimo che apre un URL nuovo verrebbe
+  // reindirizzato a /accedi PRIMA di raggiungere app/[...slug]/page.tsx -
+  // esattamente lo stesso bug gia' corretto per /squadre,/calendario,/staff,
+  // /contatti in Story 18.7 (vedi commento su PUBLIC_ROUTES in
+  // lib/auth/route-guard.ts), qui impossibile da correggere con la stessa
+  // tecnica (lista statica) perche' lo slug non e' noto in anticipo.
+  // rottaRiservata(pathname), a questo punto del flusso (isPublicRoute gia'
+  // escluso sopra), equivale a "sotto /app o /api" - non vale la pena
+  // interrogare il database per un pathname che non potra' mai essere una
+  // PaginaPubblica (rottaRiservata la rifiuta gia' in creazione/modifica,
+  // Story 19.7/19.10).
+  // Code review: "!isAuthenticated &&" aggiunto in testa - un Utente gia'
+  // autenticato attraversa comunque invariato verso il ramo sotto (nessuna
+  // restrizione su un pathname sconosciuto per chi ha gia' una sessione,
+  // stesso comportamento di sempre), quindi interrogare
+  // paginaPubblicaEsistePerSlug per lui era un round-trip cache/DB sprecato
+  // il cui risultato non cambiava mai l'esito finale.
+  if (
+    !isAuthenticated &&
+    !rottaRiservata(pathname) &&
+    (await paginaPubblicaEsistePerSlug(pathname))
   ) {
     return { action: "allow" };
   }

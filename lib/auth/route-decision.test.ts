@@ -17,6 +17,18 @@ vi.mock("@/lib/auth/permessi-configurabili", () => ({
   rottaAbilitataPerRuolo: rottaAbilitataMock,
 }));
 
+// Story 19.9 (Epic 19, Ruolo Site Manager): route-decision.ts consulta anche
+// paginaPubblicaEsistePerSlug (lib/auth/pagine-pubbliche-slug-cache.ts,
+// mirror edge-safe di rottaAbilitataPerRuolo sopra) per lasciar passare un
+// Visitatore anonimo verso una PaginaPubblica esistente prima di
+// reindirizzarlo a /accedi. Mockato qui per non fare mai una vera chiamata
+// Supabase durante i test - default false (beforeEach sotto) cosi' i test
+// storici (che precedono questa storia) restano invariati per costruzione.
+const paginaPubblicaEsisteMock = vi.fn();
+vi.mock("@/lib/auth/pagine-pubbliche-slug-cache", () => ({
+  paginaPubblicaEsistePerSlug: paginaPubblicaEsisteMock,
+}));
+
 const { getRouteDecision, isAutorizzato } = await import("./route-decision");
 // Review fix (Blind Hunter): import statico invece che dinamico dentro il
 // singolo test AC #6 - nessuna ragione tecnica per un import() isolato li',
@@ -26,6 +38,8 @@ const { PROTECTED_ROUTES, isPublicRoute } = await import("./route-guard");
 describe("getRouteDecision", () => {
   beforeEach(() => {
     rottaAbilitataMock.mockReset();
+    paginaPubblicaEsisteMock.mockReset();
+    paginaPubblicaEsisteMock.mockResolvedValue(false);
   });
 
 
@@ -770,6 +784,60 @@ describe("getRouteDecision", () => {
       action: "redirect",
       location: "/app/non-autorizzato",
     });
+  });
+
+  // Story 19.9 (Epic 19, Ruolo Site Manager, AC #1): senza questo,
+  // paginaPubblicaEsisteMock=false (default beforeEach) fa cadere un
+  // pathname sconosciuto sul ramo "redirect a /accedi" per un Visitatore
+  // anonimo - stesso identico comportamento di oggi per un typo/link morto
+  // (invariato, AC #2). Qui il mock simula "esiste una PaginaPubblica con
+  // questo slug": il Visitatore anonimo deve passare, non essere
+  // reindirizzato al login.
+  it("allows an anonymous Visitatore on an unknown pathname that matches an existing PaginaPubblica (Story 19.9, AC #1)", async () => {
+    paginaPubblicaEsisteMock.mockResolvedValue(true);
+
+    expect(await getRouteDecision("/storia-societa", false, [])).toEqual({
+      action: "allow",
+    });
+    expect(paginaPubblicaEsisteMock).toHaveBeenCalledWith("/storia-societa");
+  });
+
+  // Story 19.9, AC #2: nessuna Pagina corrispondente -> comportamento di
+  // oggi invariato (redirect a /accedi per un Visitatore anonimo, la 404
+  // vera arriva solo per chi e' gia' autenticato - vedi test sotto).
+  it("still redirects an anonymous Visitatore to /accedi when no PaginaPubblica matches the pathname (Story 19.9, AC #2 - nessuna regressione)", async () => {
+    expect(await getRouteDecision("/pagina-inesistente", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+  });
+
+  it("allows an authenticated user on an unknown pathname regardless of PaginaPubblica match (falls through to the existing no-restriction path)", async () => {
+    expect(await getRouteDecision("/pagina-inesistente", true, ["ATLETA"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  // Code review: "!isAuthenticated &&" aggiunto davanti al controllo -
+  // l'esito per un Utente autenticato non dipende mai da
+  // paginaPubblicaEsistePerSlug (test sopra), quindi non va nemmeno
+  // interrogata per lui.
+  it("never queries paginaPubblicaEsistePerSlug for an already authenticated user", async () => {
+    await getRouteDecision("/pagina-inesistente", true, ["ATLETA"]);
+
+    expect(paginaPubblicaEsisteMock).not.toHaveBeenCalled();
+  });
+
+  // Story 19.9: rottaRiservata(pathname) esclude "/app/*"/"/api/*" PRIMA di
+  // interrogare il database - unica fonte di verita' condivisa con
+  // urlVoceMenuValido (menu-pubblico/actions.ts) e la futura validazione
+  // della Story 19.10, nessuna query sprecata per un pathname che non potra'
+  // mai essere una PaginaPubblica.
+  it("never queries paginaPubblicaEsistePerSlug for a pathname under /app or /api (rottaRiservata short-circuit)", async () => {
+    await getRouteDecision("/app/qualcosa-di-sconosciuto", false, []);
+    await getRouteDecision("/api/qualcosa-di-sconosciuto", false, []);
+
+    expect(paginaPubblicaEsisteMock).not.toHaveBeenCalled();
   });
 });
 

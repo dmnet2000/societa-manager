@@ -26,6 +26,14 @@ export async function elencaVociMenuPubblicoVisibili() {
   });
 }
 
+// Story 19.9 (code review, intent_gap): serve ad aggiornaVoceMenuPubblicoAction
+// per confrontare l'url inviato con quello gia' salvato, cosi' una
+// voce puo' essere risalvata (es. solo cambio etichetta) senza urtare contro
+// rottaRiservata() quando l'url stesso non e' cambiato.
+export async function trovaVoceMenuPubblicoPerId(id: string) {
+  return prisma.voceMenuPubblico.findUnique({ where: { id } });
+}
+
 export async function creaVoceMenuPubblico(dati: {
   etichetta: string;
   url: string;

@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import type { Ruolo } from "@prisma/client";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
+import { rottaRiservata } from "@/lib/auth/route-guard";
 import {
   elencaVociMenuPubblico,
   elencaVociMenuPubblicoVisibili,
   creaVoceMenuPubblico,
   aggiornaVoceMenuPubblico,
+  trovaVoceMenuPubblicoPerId,
   impostaVisibileVoceMenuPubblico,
   riordinaVociMenuPubblico,
 } from "@/lib/menu-pubblico";
@@ -41,9 +43,27 @@ const LUNGHEZZA_MASSIMA_URL = 200;
 // assoluta verso un altro dominio, non una rotta interna), rifiutato
 // esplicitamente qui invece di essere accettato per errore come "rotta
 // interna" solo perche' inizia con "/".
-function urlVoceMenuValido(valore: string): boolean {
+// Story 19.9 (Epic 19, Ruolo Site Manager): "&& !rottaRiservata(valore)"
+// aggiunto - oggi (prima di questa storia) un Site Manager poteva salvare
+// una voce di menu con un URL riservato (es. "/app", "/api/health",
+// "/accedi") senza alcun avviso, un link del menu pubblico che punterebbe
+// alla dashboard interna o romperebbe un flusso di autenticazione - gap
+// preesistente dalla Story 19.7, chiuso qui riusando rottaRiservata()
+// (lib/auth/route-guard.ts), unica fonte di verita' condivisa anche dalla
+// futura creazione/modifica di una PaginaPubblica (Story 19.10).
+// Code review (intent_gap, risolto con l'utente 2026-08-20): rottaRiservata()
+// riusa isPublicRoute(), che copre anche le 5 pagine pubbliche esistenti
+// ("/squadre" ecc, non solo le rotte davvero interne) - senza "urlAttuale"
+// risalvare una di quelle 5 voci di menu col proprio stesso url (es. solo
+// per cambiarne l'etichetta) veniva rifiutato come "riservato". urlAttuale
+// (l'url gia' salvato per quella voce, passato solo in aggiornamento) esenta
+// il caso "url invariato" dal controllo - un NUOVO url riservato resta
+// sempre rifiutato, sia in creazione sia in modifica.
+function urlVoceMenuValido(valore: string, urlAttuale?: string): boolean {
   if (!valore || valore.length > LUNGHEZZA_MASSIMA_URL) return false;
-  if (valore.startsWith("/") && !valore.startsWith("//")) return true;
+  if (valore.startsWith("/") && !valore.startsWith("//")) {
+    return valore === urlAttuale || !rottaRiservata(valore);
+  }
   try {
     const url = new URL(valore);
     return url.protocol === "http:" || url.protocol === "https:";
@@ -59,10 +79,13 @@ function leggiCampi(formData: FormData) {
   };
 }
 
-function validaCampi(campi: {
-  etichetta: string;
-  url: string;
-}): { code: string; message: string } | null {
+function validaCampi(
+  campi: {
+    etichetta: string;
+    url: string;
+  },
+  urlAttuale?: string
+): { code: string; message: string } | null {
   if (!campi.etichetta) {
     return { code: "VALIDATION", message: "L'etichetta è obbligatoria." };
   }
@@ -72,7 +95,7 @@ function validaCampi(campi: {
       message: `L'etichetta supera i ${LUNGHEZZA_MASSIMA_ETICHETTA} caratteri.`,
     };
   }
-  if (!urlVoceMenuValido(campi.url)) {
+  if (!urlVoceMenuValido(campi.url, urlAttuale)) {
     return {
       code: "VALIDATION",
       message:
@@ -115,7 +138,18 @@ export async function aggiornaVoceMenuPubblicoAction(
 
   const id = String(formData.get("id") ?? "");
   const campi = leggiCampi(formData);
-  const errore = validaCampi(campi);
+  // Code review (intent_gap): letta PRIMA della validazione per esentare
+  // dal controllo rottaRiservata() il caso "url invariato" (vedi
+  // urlVoceMenuValido) - se la voce non esiste piu' (id invalido/gia'
+  // rimossa), voceEsistente resta undefined e la validazione si comporta
+  // come prima (sempre rottaRiservata), nessun caso speciale da gestire qui:
+  // aggiornaVoceMenuPubblico sotto fallirebbe comunque con lo stesso errore
+  // INTERNAL di oggi.
+  const voceEsistente = await trovaVoceMenuPubblicoPerId(id).catch((err) => {
+    console.error(err);
+    return null;
+  });
+  const errore = validaCampi(campi, voceEsistente?.url);
   if (errore) return { error: errore };
 
   try {
