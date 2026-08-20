@@ -229,6 +229,14 @@
   color: #ffffff;
 }
 
+/* Segnalazione dell'utente in produzione (2026-08-20, verificato su
+   volleymogliano.it): un post Facebook reale (parola lunga senza spazi -
+   URL, hashtag concatenati) non andava a capo e superava il bordo del
+   blocco, nonostante il padding corretto - non riproducibile in locale
+   coi soli placeholder senza post reali. overflow-wrap forza l'a capo
+   anche dentro una singola "parola" troppo lunga per la larghezza
+   disponibile. line-clamp standard aggiunta accanto al prefisso
+   -webkit- per compatibilita' (segnalato da eslint/editor). */
 .testoPost {
   font-family: Arial, sans-serif;
   font-size: 15px;
@@ -237,8 +245,10 @@
   color: #eaf4fb;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 .metaPost {
@@ -332,6 +342,7 @@
   .testoPost {
     font-size: 14px;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 
