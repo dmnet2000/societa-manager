@@ -2794,6 +2794,22 @@ so that possa gestire i contenuti del sito senza intervento tecnico, come un CMS
 4. **And** un URL che collide con una rotta riservata (Story 19.9, AC #4) viene rifiutato con un errore esplicito, sia in creazione sia in modifica
 5. **And** un Utente senza quei Ruoli non raggiunge `/app/pagine-pubbliche` (redirect, stesso pattern di ogni altra rotta protetta)
 
+### Story 19.11: Accesso Site Manager alla foto sfondo hero
+
+*(Aggiunta post-apertura epica — 2026-08-20, richiesta esplicita dell'utente: "nella home come sfondo sfumato... aggiungere una foto da caricare da funzione siti da parte del site manager". Gap dello stesso tipo già risolto per 19.2/19.4/19.5 - la foto di sfondo dell'hero (Story 18.14, sezione "Foto sfondo hero" su `/app/impostazioni`) è rimasta l'unica sezione di quella pagina non ancora aperta a `SITE_MANAGER`.)*
+
+As a Site Manager,
+I want poter caricare la foto di sfondo dell'hero della home pubblica,
+So that possa curare l'immagine reale del sito senza bisogno di un Admin o Dirigente.
+
+**Acceptance Criteria:**
+
+**Given** `caricaFotoHeroAction` (oggi `requireRuolo(["ADMIN","DIRIGENTE"])`), raggiungibile da `/app/impostazioni` (già aperta a `SITE_MANAGER` dalla Story 19.1)
+**When** viene aggiunto `SITE_MANAGER`
+**Then** un Site Manager può caricare/sostituire la foto di sfondo dell'hero, stesso comportamento oggi riservato ad Admin/Dirigente
+
+**And** un Utente senza `ADMIN`/`DIRIGENTE`/`SITE_MANAGER` resta bloccato come oggi — nessuna regressione sui permessi esistenti
+
 ## Epic 20: Torneo Memorial
 
 *(Aggiunta il 2026-08-19, richiesta esplicita dell'utente. Solo l'epica scritta ora - nessuna story creata, nessuna analisi di apertura completata, nessun modello dati progettato. L'utente ha detto esplicitamente di NON mandare ancora nessuna story in sviluppo: il regolamento punteggi è da stabilire e verrà comunicato in seguito - questo blocca qualunque Acceptance Criteria sui risultati/classifiche finché non arriva.)*

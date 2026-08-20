@@ -16,6 +16,9 @@ Introdurre un settimo Ruolo, `SITE_MANAGER`, che permetta di delegare la gestion
 - Story 19.6: Modello dati per le voci di menu pubblico
 - Story 19.7: UI di gestione del menu pubblico
 - Story 19.8: Menu pubblico dinamico
+- Story 19.9: Modello dati e rendering pubblico delle Pagine personalizzate
+- Story 19.10: Editor di creazione e modifica delle Pagine personalizzate
+- Story 19.11: Accesso Site Manager alla foto sfondo hero
 
 ## Requirements & Constraints
 
@@ -48,3 +51,4 @@ Introdurre un settimo Ruolo, `SITE_MANAGER`, che permetta di delegare la gestion
 - 19.4 riusa `caricaFotoSquadraAction` (`lib/storage/foto-squadra.ts`, introdotta con la foto squadra per Gruppo dell'Epic 18) estendendone il `requireRuolo` con `SITE_MANAGER`, senza toccare `/app/gruppi` né l'accesso Allenatore a `/app/i-miei-gruppi`.
 - 19.5 estende `salvaUrlPaginaFacebookAction` (già `requireRuolo(["ADMIN","DIRIGENTE"])`) lasciando invariata `salvaTokenFacebookAction`, entrambe raggiungibili da `/app/impostazioni` insieme ai contatti pubblici di 19.1.
 - 19.3 estende sia il controllo di visibilità della rotta `/app/sponsor` sia le 3 Server Action di gestione Sponsor.
+- 19.11 estende `caricaFotoHeroAction` (`lib/storage/foto-hero.ts`, foto di sfondo dell'hero introdotta dalla Story 18.14), stesso pattern di 19.5: `/app/impostazioni` già aperta a `SITE_MANAGER` dalla 19.1, nessuna modifica a route-guard necessaria.

@@ -112,8 +112,13 @@
      range ristretto), venendo tagliato dall'overflow:hidden di .hero.
      calc() sottrae esplicitamente il margine dalla larghezza. */
   width: calc(100% - 96px);
-  max-width: 700px;
-  aspect-ratio: 1 / 1;
+  /* Richiesta esplicita dell'utente (2026-08-20): dimensioni ridotte di
+     50px in larghezza e 100px in altezza rispetto al riquadro 700x700 del
+     quinto giro di Story 18.19 -> tetto 650x600. aspect-ratio 650/600
+     (13/12) sostituisce 1/1 cosi' la proporzione resta fluida sotto il
+     tetto invece di due misure assolute indipendenti. */
+  max-width: 650px;
+  aspect-ratio: 13 / 12;
   margin: var(--space-4) 48px;
   /* Review fix (code review, Blind Hunter + Edge Case Hunter,
      indipendentemente): senza uno sfondo proprio, le bande vuote lasciate
@@ -207,13 +212,18 @@
    (.heroFotoPost::after, gradiente piu' scuro al 100% cioe' in basso) - la
    didascalia risultava poco leggibile. Ora .infoPost e' fissata al bordo
    inferiore del blocco, dove il testo e' garantito leggibile. */
+/* Richiesta esplicita dell'utente (2026-08-20): il testo del post deve
+   avere la stessa larghezza del blocco (.heroBlocco) - niente inset
+   orizzontale che lo restringesse rispetto al bordo del riquadro. Padding
+   orizzontale rimosso (restava solo quello inferiore, per staccare il
+   testo dal bordo di fondo). */
 .infoPost {
   position: absolute;
   z-index: 2;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0 var(--space-4) var(--space-4);
+  padding: 0 0 var(--space-4);
   color: #ffffff;
 }
 
@@ -314,7 +324,7 @@
 
 @media (max-width: 900px) {
   .infoPost {
-    padding: 0 20px 24px;
+    padding: 0 0 24px;
   }
 
   .testoPost {
