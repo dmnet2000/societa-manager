@@ -4,6 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
 import { categorizzaStatoCertificato } from "./categorizza-stato-certificato";
 import { GruppoCard, type GruppoCardData } from "./GruppoCard";
 import styles from "./vista-dirigente.module.css";
@@ -120,10 +121,10 @@ export default async function VistaDirigentePage() {
       SCADUTO: 0,
       SENZA_CERTIFICATO: 0,
     };
-    const atleteScadute: string[] = [];
+    const atleteScadute: { nome: string; dataScadenza: string }[] = [];
     // Story 9.19: stesso ciclo esistente, nessuna nuova query - popolato in
     // parallelo ad atleteScadute quando lo stato e' IN_SCADENZA.
-    const atleteInScadenza: string[] = [];
+    const atleteInScadenza: { nome: string; dataScadenza: string }[] = [];
 
     for (const atletaId of atleteIdDelGruppo) {
       const certificato = certificatoPerAtletaId.get(atletaId);
@@ -144,18 +145,28 @@ export default async function VistaDirigentePage() {
             `Story 5.1: Atleta ${atletaId} non risolvibile nell'elenco per la Vista d'insieme.`
           );
         }
+        // Story 9.34: stato SCADUTO/IN_SCADENZA implica dataFineValidita
+        // non-null (categorizzaStatoCertificato ritorna SENZA_CERTIFICATO
+        // altrimenti) - fallback vuoto solo difensivo, non atteso in
+        // pratica. La data non dipende dalla risoluzione del nome (mostrata
+        // anche per "Atleta sconosciuta").
+        const nome = atleta?.nome ?? "Atleta sconosciuta";
+        const dataScadenza = certificato?.dataFineValidita
+          ? formattaDataScadenzaCertificato(certificato.dataFineValidita)
+          : "";
         if (stato === "SCADUTO") {
-          atleteScadute.push(atleta?.nome ?? "Atleta sconosciuta");
+          atleteScadute.push({ nome, dataScadenza });
         } else {
-          atleteInScadenza.push(atleta?.nome ?? "Atleta sconosciuta");
+          atleteInScadenza.push({ nome, dataScadenza });
         }
       }
     }
     // Review fix: ordine altrimenti non deterministico (nessun orderBy su
     // gruppoAtleta.findMany) - a differenza di ogni altra lista della
-    // pagina, gia' ordinata per nome.
-    atleteScadute.sort((a, b) => a.localeCompare(b));
-    atleteInScadenza.sort((a, b) => a.localeCompare(b));
+    // pagina, gia' ordinata per nome. Story 9.34: ordina su .nome (ora un
+    // oggetto, non piu' una stringa).
+    atleteScadute.sort((a, b) => a.nome.localeCompare(b.nome));
+    atleteInScadenza.sort((a, b) => a.nome.localeCompare(b.nome));
 
     const slotFormattati = gruppo.slot.map((slot) => ({
       id: slot.id,

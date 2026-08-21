@@ -4,6 +4,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
 import { categorizzaStatoCertificato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { GruppoCard, type GruppoCardData } from "@/app/app/(amministrazione)/vista-dirigente/GruppoCard";
 import styles from "@/app/app/(amministrazione)/vista-dirigente/vista-dirigente.module.css";
@@ -133,8 +134,8 @@ export default async function VistaAllenatorePage() {
       SCADUTO: 0,
       SENZA_CERTIFICATO: 0,
     };
-    const atleteScadute: string[] = [];
-    const atleteInScadenza: string[] = [];
+    const atleteScadute: { nome: string; dataScadenza: string }[] = [];
+    const atleteInScadenza: { nome: string; dataScadenza: string }[] = [];
 
     for (const atletaId of atleteIdDelGruppo) {
       const certificato = certificatoPerAtletaId.get(atletaId);
@@ -154,15 +155,21 @@ export default async function VistaAllenatorePage() {
             `Story 9.26: Atleta ${atletaId} non risolvibile nell'elenco per la Vista d'insieme Allenatore.`
           );
         }
+        // Story 9.34: stesso principio di vista-dirigente/page.tsx - la data
+        // non dipende dalla risoluzione del nome.
+        const nome = atleta?.nome ?? "Atleta sconosciuta";
+        const dataScadenza = certificato?.dataFineValidita
+          ? formattaDataScadenzaCertificato(certificato.dataFineValidita)
+          : "";
         if (stato === "SCADUTO") {
-          atleteScadute.push(atleta?.nome ?? "Atleta sconosciuta");
+          atleteScadute.push({ nome, dataScadenza });
         } else {
-          atleteInScadenza.push(atleta?.nome ?? "Atleta sconosciuta");
+          atleteInScadenza.push({ nome, dataScadenza });
         }
       }
     }
-    atleteScadute.sort((a, b) => a.localeCompare(b));
-    atleteInScadenza.sort((a, b) => a.localeCompare(b));
+    atleteScadute.sort((a, b) => a.nome.localeCompare(b.nome));
+    atleteInScadenza.sort((a, b) => a.nome.localeCompare(b.nome));
 
     const slotFormattati = gruppo.slot.map((slot) => ({
       id: slot.id,

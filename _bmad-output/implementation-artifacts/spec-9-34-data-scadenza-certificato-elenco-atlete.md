@@ -2,8 +2,8 @@
 title: "Story 9.34: Data di scadenza del certificato nell'elenco Atlete e nei drill-down"
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 context: []
 baseline_commit: '1b44cdd3ddabdfc50482415127229fbecea1340f'
 ---
@@ -57,18 +57,22 @@ baseline_commit: '1b44cdd3ddabdfc50482415127229fbecea1340f'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `lib/certificato-in-scadenza-per-atleta.ts` -- `formattaDataScadenzaCertificato` + `dataFineValidita` propagato
-- [ ] `AtletaAssegnata.tsx` -- tipo `Atleta` esteso
-- [ ] `gruppi/page.tsx` + `i-miei-gruppi/page.tsx` -- type-guard estesi
-- [ ] `AtletaTabellaRiga.tsx` -- badge cliccabile con toggle data
-- [ ] `gruppi.module.css` -- touch target 44×44 + stile data
-- [ ] `GruppoCard.tsx` -- drill-down con data sempre visibile
-- [ ] `vista-dirigente/page.tsx` + `vista-allenatore/page.tsx` -- bucket `{nome, dataScadenza}`
-- [ ] `lib/certificato-in-scadenza-per-atleta.test.ts` -- nuovi casi
+- [x] `lib/certificato-in-scadenza-per-atleta.ts` -- `formattaDataScadenzaCertificato` + `dataFineValidita` propagato
+- [x] `AtletaAssegnata.tsx` -- tipo `Atleta` esteso
+- [x] `gruppi/page.tsx` + `i-miei-gruppi/page.tsx` -- type-guard estesi
+- [x] `AtletaTabellaRiga.tsx` -- badge cliccabile con toggle data
+- [x] `gruppi.module.css` -- touch target 44×44 + stile data
+- [x] `GruppoCard.tsx` -- drill-down con data sempre visibile
+- [x] `vista-dirigente/page.tsx` + `vista-allenatore/page.tsx` -- bucket `{nome, dataScadenza}`
+- [x] `lib/certificato-in-scadenza-per-atleta.test.ts` -- nuovi casi
 
 **Acceptance Criteria:** vedi epics.md Story 9.34 (4 AC, verbatim - non duplicati qui).
 
 ## Spec Change Log
+
+**2026-08-21 — review a 3 livelli (Blind Hunter, Edge Case Hunter, Verification Gap), review_loop_iteration 1.** Nessun `intent_gap`/`bad_spec`/`patch`/`defer` - le tre review, indipendentemente, non hanno trovato alcun bug reale né gap di convenzione bloccante. Ogni sospetto iniziale (stringa vuota/malformata a `formattaDataScadenzaCertificato`, `aria-controls` verso un elemento assente, fallback `dataScadenza:""`) si è rivelato provabilmente irraggiungibile per costruzione (`categorizzaStatoCertificato` garantisce `SENZA_CERTIFICATO` quando la data è nulla, quindi scaduto/in-scadenza implica sempre una data non-null) o esplicitamente dichiarato come difensivo nello spec stesso. Touch target 44×44px confermato conforme (tecnica identica a `.frecciaPost`/`.pausaPost`, nessuna trappola min-height-su-contenitore). Nessuna divergenza tra `vista-dirigente/page.tsx` e `vista-allenatore/page.tsx` (stessa modifica applicata identica). Unica nota, non bloccante: nessun test diretto per `AtletaTabellaRiga.tsx`/`GruppoCard.tsx`, coerente con la convenzione del progetto (nessun componente client ha mai un test diretto).
+
+Verificato: `npx vitest run` (106 file, 1420 test, tutti verdi), `npx tsc --noEmit` (pulito), `npm run lint` (0 errori), `npm run build` (riuscita).
 
 ## Verification
 
@@ -85,15 +89,16 @@ baseline_commit: '1b44cdd3ddabdfc50482415127229fbecea1340f'
 
 **Il dato che attraversa i livelli (nessuna regressione sul calcolo esistente)**
 
-- `formattaDataScadenzaCertificato` e la propagazione di `dataFineValidita` - verificare che non tocchi `categorizzaStatoCertificato`.
-  [`lib/certificato-in-scadenza-per-atleta.ts`](../../lib/certificato-in-scadenza-per-atleta.ts)
+- `formattaDataScadenzaCertificato` e la propagazione di `dataFineValidita` - non tocca `categorizzaStatoCertificato`.
+  [`lib/certificato-in-scadenza-per-atleta.ts:18-63`](../../lib/certificato-in-scadenza-per-atleta.ts#L18-L63)
 
 **Il badge cliccabile (touch target, nessun elemento nuovo se non c'è badge)**
 
-- Area di tocco 44×44px, toggle, nessuna regressione per un'Atleta senza badge.
-  [`AtletaTabellaRiga.tsx`](../../app/app/(gruppi-allenatori)/gruppi/AtletaTabellaRiga.tsx)
+- Area di tocco 44×44px sul bottone stesso, toggle, nessuna regressione per un'Atleta senza badge.
+  [`AtletaTabellaRiga.tsx:43-73`](../../app/app/(gruppi-allenatori)/gruppi/AtletaTabellaRiga.tsx#L43-L73)
+  [`gruppi.module.css:421-442`](../../app/app/(gruppi-allenatori)/gruppi/gruppi.module.css#L421-L442)
 
 **Il drill-down (data sempre visibile, nessun click aggiuntivo)**
 
-- `atleteScadute`/`atleteInScadenza` come oggetti, non più stringhe.
-  [`GruppoCard.tsx`](../../app/app/(amministrazione)/vista-dirigente/GruppoCard.tsx)
+- `atleteScadute`/`atleteInScadenza` come oggetti, non più stringhe; identico tra `/vista-dirigente` e `/vista-allenatore`.
+  [`GruppoCard.tsx:6-28`](../../app/app/(amministrazione)/vista-dirigente/GruppoCard.tsx#L6-L28)

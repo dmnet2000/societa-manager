@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { calcolaAtleteConCertificatoInScadenza } from "./certificato-in-scadenza-per-atleta";
+import {
+  calcolaAtleteConCertificatoInScadenza,
+  formattaDataScadenzaCertificato,
+} from "./certificato-in-scadenza-per-atleta";
 
 describe("calcolaAtleteConCertificatoInScadenza", () => {
   const oggi = new Date("2026-07-22T10:00:00Z");
@@ -74,5 +77,35 @@ describe("calcolaAtleteConCertificatoInScadenza", () => {
     const a1 = risultato.find((a) => a.id === "a1");
     expect(a1?.certificatoScaduto).toBe(false);
     expect(a1?.certificatoInScadenza).toBe(true);
+  });
+
+  // Story 9.34: propagazione di dataFineValidita (passthrough, nessun nuovo
+  // calcolo).
+  it("propaga dataFineValidita dal certificato per un'Atleta con certificato", () => {
+    const certificati = [
+      { atletaId: "a1", dataFineValidita: "2026-08-06T00:00:00.000Z", stato: "CONFERMATO" },
+    ];
+    const risultato = calcolaAtleteConCertificatoInScadenza(atlete, certificati, oggi);
+    expect(risultato.find((a) => a.id === "a1")?.dataFineValidita).toBe(
+      "2026-08-06T00:00:00.000Z"
+    );
+  });
+
+  it("dataFineValidita e' null per un'Atleta senza certificato", () => {
+    const risultato = calcolaAtleteConCertificatoInScadenza(atlete, [], oggi);
+    expect(risultato.every((a) => a.dataFineValidita === null)).toBe(true);
+  });
+});
+
+// Story 9.34: gg/mm/aaaa via parseDataUtc + toLocaleDateString("it-IT",
+// {timeZone:"UTC"}) - stesso pattern gia' in uso in app/page.tsx
+// (formattaData), mai un nuovo formato.
+describe("formattaDataScadenzaCertificato", () => {
+  it("formatta una stringa YYYY-MM-DD in formato italiano gg/mm/aaaa", () => {
+    expect(formattaDataScadenzaCertificato("2026-08-06")).toBe("06/08/2026");
+  });
+
+  it("gestisce anche un timestamp completo (.slice(0,10) difensivo)", () => {
+    expect(formattaDataScadenzaCertificato("2026-08-06T00:00:00.000Z")).toBe("06/08/2026");
   });
 });

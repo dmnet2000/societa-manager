@@ -115,8 +115,10 @@ export function GruppoCard({ gruppo }: { gruppo: GruppoCardData }) {
         <div id={drillDownScadutoId} className={styles.drillDown}>
           <p className={styles.drillDownTitolo}>Certificato scaduto:</p>
           <ul className={styles.drillDownLista}>
-            {gruppo.atleteScadute.map((nome, i) => (
-              <li key={`${nome}-${i}`}>{nome}</li>
+            {gruppo.atleteScadute.map((atleta, i) => (
+              <li key={`${atleta.nome}-${i}`}>
+                {atleta.nome} — {atleta.dataScadenza}
+              </li>
             ))}
           </ul>
         </div>

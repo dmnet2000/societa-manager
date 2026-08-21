@@ -1488,7 +1488,7 @@ so that sappia entro quando serve il rinnovo senza dover aprire il dettaglio del
 2. Nel drill-down di `GruppoCard.tsx` (`/vista-dirigente`/`/vista-allenatore`) la data è **sempre visibile** accanto al nome una volta che il drill-down è già espanso — nessun secondo livello di click dentro il pannello, coerente col fatto che è già un contenuto rivelato on-demand. Richiede cambiare `atleteScadute`/`atleteInScadenza` da `string[]` a un array di oggetti `{nome, dataScadenza}`, tipo che tocca `vista-dirigente/page.tsx`, `vista-allenatore/page.tsx` e `GruppoCard.tsx` insieme.
 3. **Formato data**: mirror del pattern già in uso nel progetto (`toLocaleDateString("it-IT", { timeZone: "UTC" })`, es. `app/page.tsx`) — nessuna nuova convenzione di formattazione.
 
-Nessun punto aperto residuo — pronta per `create-story`.
+Nessun punto aperto residuo — implementata e revisionata il 2026-08-21 (spec-9-34-data-scadenza-certificato-elenco-atlete.md, status done, 0 finding reali dalle 3 review).
 
 **Acceptance Criteria:**
 
