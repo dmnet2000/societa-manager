@@ -17,10 +17,13 @@ export type GruppoCardData = {
     SCADUTO: number;
     SENZA_CERTIFICATO: number;
   } | null;
-  atleteScadute: string[];
+  // Story 9.34: da string[] a oggetto - il drill-down mostra ora anche la
+  // data di scadenza accanto al nome, sempre visibile (nessun secondo
+  // livello di click, a differenza del badge di AtletaTabellaRiga.tsx).
+  atleteScadute: { nome: string; dataScadenza: string }[];
   // Story 9.19: bucket parallelo ad atleteScadute per lo stesso drill-down,
   // popolato quando categorizzaStatoCertificato === "IN_SCADENZA".
-  atleteInScadenza: string[];
+  atleteInScadenza: { nome: string; dataScadenza: string }[];
   numeroAtlete: number;
 };
 
@@ -99,8 +102,10 @@ export function GruppoCard({ gruppo }: { gruppo: GruppoCardData }) {
         <div id={drillDownScadenzaId} className={styles.drillDown}>
           <p className={styles.drillDownTitolo}>Certificato in scadenza:</p>
           <ul className={styles.drillDownLista}>
-            {gruppo.atleteInScadenza.map((nome, i) => (
-              <li key={`${nome}-${i}`}>{nome}</li>
+            {gruppo.atleteInScadenza.map((atleta, i) => (
+              <li key={`${atleta.nome}-${i}`}>
+                {atleta.nome} — {atleta.dataScadenza}
+              </li>
             ))}
           </ul>
         </div>

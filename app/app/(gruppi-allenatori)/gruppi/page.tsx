@@ -151,6 +151,7 @@ export default async function GruppiPage() {
                       nome: string;
                       certificatoInScadenza: boolean;
                       certificatoScaduto: boolean;
+                      dataFineValidita: string | null;
                     } => atleta !== undefined
                   )
                   // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento -

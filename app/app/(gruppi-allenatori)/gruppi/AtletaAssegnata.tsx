@@ -19,4 +19,8 @@ export type Atleta = {
   nome: string;
   certificatoInScadenza: boolean;
   certificatoScaduto: boolean;
+  // Story 9.34: passthrough della data di scadenza gia' calcolata da
+  // calcolaAtleteConCertificatoInScadenza - mostrata da AtletaTabellaRiga.tsx
+  // dietro al badge scaduto/in scadenza, nessun nuovo calcolo.
+  dataFineValidita: string | null;
 };

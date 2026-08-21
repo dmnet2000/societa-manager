@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { rimuoviAtleta } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
+import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
 import styles from "./gruppi.module.css";
 
 // Richiesta utente 2026-08-07: Iscrizione/Tesseramento aggiunti SOLO qui
@@ -39,17 +40,35 @@ export function AtletaTabellaRiga({
   atleta: AtletaConStato;
 }) {
   const [state, formAction, pending] = useActionState(rimuoviAtleta, undefined);
+  // Story 9.34: toggle locale per rivelare/nascondere la data di scadenza
+  // dietro al badge - nessuna Server Action coinvolta, mirror del pattern
+  // gia' in uso in GruppoCard.tsx (vista-dirigente/vista-allenatore) per i
+  // drill-down.
+  const [mostraData, setMostraData] = useState(false);
+  const haBadge = atleta.certificatoScaduto || atleta.certificatoInScadenza;
+  const dataScadenzaId = `data-scadenza-${atleta.id}`;
 
   return (
     <tr>
       <td>{atleta.nome}</td>
       <td>
-        {atleta.certificatoScaduto ? (
-          <span className={styles.badge}>Certificato scaduto</span>
-        ) : (
-          atleta.certificatoInScadenza && (
-            <span className={styles.badge}>Certificato in scadenza</span>
-          )
+        {haBadge && (
+          <>
+            <button
+              type="button"
+              className={styles.badgeBottone}
+              onClick={() => setMostraData((v) => !v)}
+              aria-expanded={mostraData}
+              aria-controls={dataScadenzaId}
+            >
+              {atleta.certificatoScaduto ? "Certificato scaduto" : "Certificato in scadenza"}
+            </button>
+            {mostraData && atleta.dataFineValidita && (
+              <span id={dataScadenzaId} className={styles.dataScadenza}>
+                {formattaDataScadenzaCertificato(atleta.dataFineValidita)}
+              </span>
+            )}
+          </>
         )}
       </td>
       <td>

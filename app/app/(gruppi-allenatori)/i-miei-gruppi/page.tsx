@@ -143,6 +143,7 @@ export default async function IMieiGruppiPage() {
                 nome: string;
                 certificatoInScadenza: boolean;
                 certificatoScaduto: boolean;
+                dataFineValidita: string | null;
               } => a !== undefined
             )
             .map((a) => ({

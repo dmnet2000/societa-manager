@@ -411,6 +411,36 @@
   color: var(--color-warning);
 }
 
+/* Story 9.34: badge "Certificato scaduto"/"in scadenza" diventa un bottone
+   cliccabile che rivela la data di scadenza (toggle) - composes riusa
+   l'aspetto visivo invariato di .badge (background/color/padding/font),
+   qui aggiunta solo l'area di tocco >=44x44px, mirror esatto del pattern
+   gia' in uso in home-pubblica.module.css (.frecciaPost/.pausaPost) -
+   regola permanente del progetto: min-height/min-width da soli non
+   bastano se non sono sul bottone stesso (qui lo sono). */
+.badgeBottone {
+  composes: badge;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  cursor: pointer;
+}
+
+.badgeBottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.dataScadenza {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 .badgeSuccesso {
   background: var(--color-success-bg);
   color: var(--color-success);
