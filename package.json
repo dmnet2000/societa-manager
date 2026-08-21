@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.110.6",
     "@tiptap/extension-image": "^3.30.2",
     "@tiptap/extension-link": "^3.30.2",
+    "@tiptap/extension-text-align": "^3.30.2",
     "@tiptap/pm": "^3.30.2",
     "@tiptap/react": "^3.30.2",
     "@tiptap/starter-kit": "^3.30.2",

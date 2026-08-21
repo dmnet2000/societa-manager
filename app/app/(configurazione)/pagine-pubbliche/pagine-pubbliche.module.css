@@ -253,3 +253,29 @@
   border-radius: var(--radius-sm);
   margin-top: var(--space-2);
 }
+
+/* Story 19.13: maniglie di ridimensionamento dell'immagine - la NodeView
+   nativa di @tiptap/extension-image (opzione `resize`) non applica alcuno
+   stile alle maniglie di default (nessuna `className` passata in
+   tiptap-estensioni.ts), restano invisibili/non trascinabili senza queste
+   regole. Selettori sugli attributi `data-resize-*` che la NodeView imposta
+   comunque (nessuna dipendenza da una classe custom) - solo nell'editor,
+   mai nel rendering pubblico (l'HTML sanitizzato non contiene questi
+   attributi, generati/consumati solo lato client dalla NodeView). */
+.corpoEditor :global([data-resize-handle]) {
+  width: 10px;
+  height: 10px;
+  background: var(--color-button-bg);
+  border: 1px solid var(--color-surface);
+  border-radius: 50%;
+}
+
+.corpoEditor :global([data-resize-handle="top-left"]),
+.corpoEditor :global([data-resize-handle="bottom-right"]) {
+  cursor: nwse-resize;
+}
+
+.corpoEditor :global([data-resize-handle="top-right"]),
+.corpoEditor :global([data-resize-handle="bottom-left"]) {
+  cursor: nesw-resize;
+}

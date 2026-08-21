@@ -161,6 +161,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei e modifichi le Pagine di contenuto del sito pubblico: titolo, URL (deve iniziare con \"/\" e non può coincidere con una rotta riservata del sito) e testo formattato con l'editor.",
       "L'editor permette titoli, grassetto/corsivo, elenchi e link, oltre a caricare immagini direttamente nel testo (PNG o JPG, max 2MB) - niente tabelle o contenuti incorporati.",
+      "Puoi allineare (sinistra/centro/destra/giustifica) i paragrafi e i titoli, e allineare o ridimensionare le immagini trascinando una delle maniglie che compaiono quando le selezioni. Titolo e testo della Pagina pubblica appaiono sempre centrati nella pagina.",
       "Una Pagina salvata è subito visibile pubblicamente all'URL scelto: non esiste uno stato \"bozza\". Eliminarla fa tornare l'URL a mostrare una pagina non trovata, ma non rimuove dal sito le immagini già caricate al suo interno.",
       "Per collegare una Pagina al menu del sito, aggiungi una voce corrispondente in /app/menu-pubblico.",
     ],

@@ -11,6 +11,8 @@
 }
 
 .titolo {
+  max-width: 70ch;
+  margin: 0 auto;
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
   font-size: 40px;
   font-weight: 900;
@@ -29,6 +31,8 @@
 
 .contenuto {
   margin-top: var(--space-4);
+  margin-left: auto;
+  margin-right: auto;
   max-width: 70ch;
   font-family: Arial, sans-serif;
   font-size: 14px;
@@ -63,4 +67,50 @@
   max-width: 100%;
   height: auto;
   margin-top: var(--space-4);
+}
+
+/* Story 19.13 (Epic 19, Ruolo Site Manager): allineamento testo/immagini -
+   stile via CSS per attributo, mai style inline (coerente con
+   lib/sanitizza-html.ts, che valida data-align a insieme chiuso). Una
+   Pagina scritta prima di questa storia non ha data-align su nessun nodo:
+   nessuno di questi selettori la tocca, resa identica a prima. */
+.contenuto p[data-align="left"],
+.contenuto h2[data-align="left"],
+.contenuto h3[data-align="left"] {
+  text-align: left;
+}
+
+.contenuto p[data-align="center"],
+.contenuto h2[data-align="center"],
+.contenuto h3[data-align="center"] {
+  text-align: center;
+}
+
+.contenuto p[data-align="right"],
+.contenuto h2[data-align="right"],
+.contenuto h3[data-align="right"] {
+  text-align: right;
+}
+
+.contenuto p[data-align="justify"],
+.contenuto h2[data-align="justify"],
+.contenuto h3[data-align="justify"] {
+  text-align: justify;
+}
+
+.contenuto img[data-align] {
+  display: block;
+}
+
+.contenuto img[data-align="left"] {
+  margin-right: auto;
+}
+
+.contenuto img[data-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.contenuto img[data-align="right"] {
+  margin-left: auto;
 }

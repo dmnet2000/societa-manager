@@ -1,4 +1,8 @@
 import sanitizeHtml from "sanitize-html";
+import {
+  ALLINEAMENTI_IMMAGINE_CONSENTITI,
+  ALLINEAMENTI_TESTO_CONSENTITI,
+} from "@/lib/allineamenti";
 
 // Story 19.9 (Epic 19, Ruolo Site Manager): prima introduzione di
 // sanitizzazione HTML in questo progetto - richiesta dal contenuto libero di
@@ -53,8 +57,53 @@ const TAG_CONSENTITI = [
 
 const ATTRIBUTI_CONSENTITI: sanitizeHtml.IOptions["allowedAttributes"] = {
   a: ["href", "target", "rel", "title"],
-  img: ["src", "alt", "title"],
+  img: ["src", "alt", "title", "data-align", "width", "height"],
+  p: ["data-align"],
+  h2: ["data-align"],
+  h3: ["data-align"],
 };
+
+// Story 19.13 (Epic 19, Ruolo Site Manager): allineamento testo/immagini e
+// ridimensionamento immagini (editor Tiptap, tiptap-estensioni.ts) - stessa
+// filosofia "insieme chiuso di stringhe letterali" gia' in uso per
+// target/rel su <a>, mai uno `style` libero (Boundaries della spec).
+// `data-align` e' rimosso silenziosamente se non e' uno dei valori attesi
+// per quel tag (invece del tag intero), coerente con il comportamento gia'
+// documentato/testato per il resto dell'allowlist. Gli insiemi consentiti
+// vivono in lib/allineamenti.ts (unica fonte di verita', condivisa col lato
+// client - review fix, Blind Hunter + Verification Gap, indipendentemente).
+function rimuoviAllineamentoNonValido(
+  valoriConsentiti: readonly string[]
+): sanitizeHtml.Transformer {
+  return (tagName, attribs) => {
+    const allineamento = attribs["data-align"];
+    if (allineamento !== undefined && !valoriConsentiti.includes(allineamento)) {
+      delete attribs["data-align"];
+    }
+    return { tagName, attribs };
+  };
+}
+
+// Review fix (Edge Case Hunter, Story 19.13): SOLO_CIFRE da sola accettava
+// "0" (e' una cifra) - un <img width="0" height="0"> sopravviveva alla
+// sanitizzazione (il vero cancello, Suggested Review Order della spec) e si
+// renderizzava invisibile (0x0), nessun'altra regola CSS lo ingrandisce
+// (.contenuto img ha solo max-width:100%/height:auto, nessun width minimo).
+// Il vincolo dei 40px minimi era gia' dichiarato nel Code Map come "stesso
+// principio" del minWidth/minHeight della NodeView di resize
+// (tiptap-estensioni.ts), ma enforced SOLO li' (lato client, durante il
+// trascinamento) - un bypass ipotetico dell'editor (incolla di HTML grezzo)
+// non passava mai dalla NodeView. Ora lo stesso minimo e' applicato anche
+// qui, il cancello reale. Tetto massimo aggiunto per lo stesso principio
+// di difesa in profondita' (nessun valore assurdo/enorme accettato).
+const LARGHEZZA_MINIMA_IMMAGINE = 40;
+const LARGHEZZA_MASSIMA_IMMAGINE = 4000;
+
+function dimensioneImmagineValida(valore: string): boolean {
+  if (!/^\d+$/.test(valore)) return false;
+  const numero = Number(valore);
+  return numero >= LARGHEZZA_MINIMA_IMMAGINE && numero <= LARGHEZZA_MASSIMA_IMMAGINE;
+}
 
 export function sanitizzaHtml(html: string): string {
   return sanitizeHtml(html, {
@@ -73,6 +122,22 @@ export function sanitizzaHtml(html: string): string {
           attribs.rel = "noopener noreferrer";
         }
         return { tagName, attribs };
+      },
+      p: rimuoviAllineamentoNonValido(ALLINEAMENTI_TESTO_CONSENTITI),
+      h2: rimuoviAllineamentoNonValido(ALLINEAMENTI_TESTO_CONSENTITI),
+      h3: rimuoviAllineamentoNonValido(ALLINEAMENTI_TESTO_CONSENTITI),
+      img: (tagName, attribs) => {
+        const risultato = rimuoviAllineamentoNonValido(ALLINEAMENTI_IMMAGINE_CONSENTITI)(
+          tagName,
+          attribs
+        );
+        (["width", "height"] as const).forEach((chiave) => {
+          const valore = risultato.attribs[chiave];
+          if (valore !== undefined && !dimensioneImmagineValida(valore)) {
+            delete risultato.attribs[chiave];
+          }
+        });
+        return risultato;
       },
     },
   });

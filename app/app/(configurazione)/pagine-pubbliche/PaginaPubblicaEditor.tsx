@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import TiptapImage from "@tiptap/extension-image";
 import {
   creaPaginaPubblicaAction,
   aggiornaPaginaPubblicaAction,
   caricaImmaginePaginaAction,
   type PaginaPubblicaActionState,
 } from "./actions";
+import { AllineamentoTesto, ImmagineAllineabile } from "./tiptap-estensioni";
 import styles from "./pagine-pubbliche.module.css";
 
 type PaginaPubblicaEsistente = {
@@ -73,7 +73,8 @@ export function PaginaPubblicaEditor(props: PaginaPubblicaEditorProps) {
         autolink: false,
         HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
       }),
-      TiptapImage,
+      ImmagineAllineabile,
+      AllineamentoTesto.configure({ types: ["paragraph", "heading"] }),
     ],
     content: paginaEsistente?.contenutoHtml ?? CONTENUTO_VUOTO,
     onUpdate: ({ editor }) => {
@@ -234,6 +235,79 @@ export function PaginaPubblicaEditor(props: PaginaPubblicaEditorProps) {
                 onClick={handleLinkClick}
               >
                 Link
+              </button>
+              {/* Story 19.13: allineamento testo (paragrafi/H2/H3) -
+                  toggleTextAlign gestisce anche la rimozione al secondo
+                  click sullo stesso pulsante attivo (comando ufficiale di
+                  @tiptap/extension-text-align, riusato via AllineamentoTesto). */}
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive({ textAlign: "left" })}
+                aria-label="Allinea testo a sinistra"
+                onClick={() => editor.chain().focus().toggleTextAlign("left").run()}
+              >
+                Sinistra
+              </button>
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive({ textAlign: "center" })}
+                aria-label="Centra testo"
+                onClick={() => editor.chain().focus().toggleTextAlign("center").run()}
+              >
+                Centro
+              </button>
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive({ textAlign: "right" })}
+                aria-label="Allinea testo a destra"
+                onClick={() => editor.chain().focus().toggleTextAlign("right").run()}
+              >
+                Destra
+              </button>
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive({ textAlign: "justify" })}
+                aria-label="Giustifica testo"
+                onClick={() => editor.chain().focus().toggleTextAlign("justify").run()}
+              >
+                Giustifica
+              </button>
+              {/* Story 19.13: allineamento immagine - solo attivo con
+                  un'immagine selezionata (updateAttributes imposta, non
+                  toggle: coerente con il Code Map della spec). */}
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive("image", { align: "left" })}
+                aria-label="Allinea immagine a sinistra"
+                disabled={!editor.isActive("image")}
+                onClick={() => editor.chain().focus().updateAttributes("image", { align: "left" }).run()}
+              >
+                Imm. sinistra
+              </button>
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive("image", { align: "center" })}
+                aria-label="Centra immagine"
+                disabled={!editor.isActive("image")}
+                onClick={() => editor.chain().focus().updateAttributes("image", { align: "center" }).run()}
+              >
+                Imm. centro
+              </button>
+              <button
+                type="button"
+                className={styles.bottoneToolbar}
+                aria-pressed={editor.isActive("image", { align: "right" })}
+                aria-label="Allinea immagine a destra"
+                disabled={!editor.isActive("image")}
+                onClick={() => editor.chain().focus().updateAttributes("image", { align: "right" }).run()}
+              >
+                Imm. destra
               </button>
               <button
                 type="button"

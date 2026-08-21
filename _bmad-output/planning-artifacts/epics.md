@@ -2887,6 +2887,37 @@ So that il sito pubblico comunichi meglio chi fa cosa nello staff tecnico, non s
 4. **Given** un Visitatore del sito pubblico, **when** apre `/staff`, **then** vede, per ogni Allenatore che ne ha almeno uno, i ruoli aggiuntivi (subito sotto il nome) e/o la descrizione (sotto i Gruppi allenati) - un Allenatore senza questi dati resta visibile come oggi (nessun campo vuoto mostrato)
 5. **And** un Utente senza `SITE_MANAGER`/`ADMIN`/`DIRIGENTE` resta bloccato sulla nuova rotta, stesso pattern di ogni altra rotta protetta
 
+### Story 19.13: Giustificazione testo/immagini, pagina centrata e ridimensionamento immagini nell'editor delle Pagine pubbliche
+
+*(Aggiunta post-apertura epica — 2026-08-21, richiesta esplicita dell'utente: "aggiungerei giustificazione testo, e anche pagina sempre in centro e non allineata a sinistra, possibilità anche di modificare le dimensioni delle immagini e anche di giustificare le immagini". Quattro richieste distinte ma cohesive (tutte estendono l'editor/rendering delle Pagine pubbliche, Story 19.9/19.10). I 4 punti aperti originali risolti lo stesso giorno su delega esplicita dell'utente ("procedi") - vedi "Decisioni prese" sotto. Implementata e revisionata lo stesso giorno (spec-19-13-editor-allineamento-dimensioni.md, status done) - vedi sprint-status.yaml per il dettaglio della code review.)*
+
+As a Site Manager (o Admin/Dirigente),
+I want poter giustificare il testo, allineare/ridimensionare le immagini nell'editor delle Pagine pubbliche, e vedere il contenuto pubblicato sempre centrato invece che allineato a sinistra,
+So that le Pagine pubbliche abbiano un controllo di formattazione più vicino a quello di un editor di documenti normale, e un aspetto pubblicato più curato.
+
+**Contesto tecnico verificato leggendo il codice, quattro parti distinte:**
+
+1. **Giustificazione testo**: `PaginaPubblicaEditor.tsx` (Tiptap, Story 19.10) non ha oggi alcuna estensione di allineamento - solo titoli H2/H3, grassetto/corsivo, elenchi, link, immagini. L'estensione ufficiale `@tiptap/extension-text-align` aggiungerebbe un attributo (tipicamente uno `style="text-align: ..."` inline) ai nodi `paragraph`/`heading` - ma `lib/sanitizza-html.ts` (Story 19.9, riscritta il 2026-08-21 su `sanitize-html` dopo un bug di produzione) oggi non permette **nessun** attributo `style`/`class` su `p`/`h2`/`h3`: andrebbe esteso l'allowlist (`sanitize-html` supporta `allowedStyles` con validazione per proprietà/regex, più sicuro di un `style` libero).
+2. **Pagina sempre centrata**: `app/[...slug]/pagina-pubblica.module.css` (`.main`/`.contenuto`) non centra oggi nulla - `.main` ha solo `padding`, `.contenuto` ha `max-width:70ch` ma nessun `margin:auto`: su schermi larghi il titolo e il testo restano allineati al bordo sinistro della pagina, non centrati. Nessun'altra pagina pubblica del progetto (`/contatti`, `/squadre`, ecc.) ha oggi un contenitore centrato a colonna stretta - questa sarebbe la prima, specifica di questa rotta (contenuto editoriale libero, diverso dalle altre pagine strutturate a sezioni/griglie).
+3. **Ridimensionamento immagini**: `@tiptap/extension-image` (già in uso) non ha una UI di resize integrata - serve decidere il meccanismo (vedi punti aperti).
+4. **Giustificazione/allineamento immagini**: stesso principio del punto 1 ma sul nodo Image (sinistra/centro/destra, con o senza testo che scorre attorno) - stesso bisogno di estendere l'allowlist del sanitizzatore.
+
+**Decisioni prese (2026-08-21, "procedi" - giudizio esplicitamente delegato dall'utente, nessun ulteriore giro di chiarimento):**
+
+1. **Ridimensionamento immagini - meccanismo**: **corretto durante l'implementazione** (2026-08-21) - `@tiptap/extension-image` nella versione già installata (3.30.2) include già una NodeView di ridimensionamento nativa (opzione `resize`, maniglie di trascinamento sugli angoli), nessun bisogno di scriverne una da zero. Trascinamento libero invece dei bottoni preimpostati inizialmente ipotizzati - più vicino a quanto letteralmente chiesto ("modificare le dimensioni"), meno codice (solo configurazione dell'estensione, nessuna UI di toolbar aggiuntiva), width/height salvati come attributi HTML semplici (non stile inline).
+2. **Allineamento immagini - meccanismo**: blocco centrato/sinistra/destra tramite `margin` (nessun "float"/testo che scorre attorno) - evita la complessità di gestire clear/interazione col resto del layout, resta coerente con l'allineamento block-level già scelto per il testo.
+3. **Pagina centrata - cosa si centra**: sia il titolo `<h1>` sia il blocco di contenuto (`.titolo` e `.contenuto` condividono lo stesso contenitore centrato, `max-width` + `margin:auto`) - "pagina sempre in centro" letto alla lettera, non solo il testo.
+4. **Giustificazione testo - applicabile anche ai titoli H2/H3**, non solo ai paragrafi - stesso comportamento di default di `@tiptap/extension-text-align` (nodi `paragraph`+`heading`), nessuna eccezione che complicherebbe la toolbar.
+
+**Acceptance Criteria (rifiniti in base alle decisioni sopra):**
+
+1. **Given** un Site Manager/Admin/Dirigente nell'editor di una Pagina pubblica, **when** seleziona del testo, **then** può impostare l'allineamento (sinistra/centro/destra/giustificato) tramite un controllo in toolbar
+2. **And** può impostare l'allineamento di un'immagine inserita (meccanismo esatto da punto aperto #2) e la sua dimensione (meccanismo esatto da punto aperto #1)
+3. **Given** un Visitatore che apre una Pagina pubblica, **when** la pagina viene renderizzata, **then** il contenuto (testo e immagini) appare centrato nella pagina invece che allineato al bordo sinistro
+4. **And** ogni nuovo attributo/stile prodotto dall'editor (allineamento, dimensione immagine) sopravvive alla sanitizzazione (`lib/sanitizza-html.ts`) sia al salvataggio sia al render - nessuna delle due formattazioni scompare silenziosamente
+5. **And** nessuna regressione sulle Pagine pubbliche già create prima di questa storia (contenuto esistente senza allineamento/dimensione esplicita continua a renderizzare come oggi)
+6. **And** nessuna regressione sull'allowlist di sicurezza esistente (nessun tag/attributo fuori scope diventa permesso oltre a quanto esplicitamente introdotto qui)
+
 ## Epic 20: Torneo Memorial
 
 *(Aggiunta il 2026-08-19, richiesta esplicita dell'utente. Solo l'epica scritta ora - nessuna story creata, nessuna analisi di apertura completata, nessun modello dati progettato. L'utente ha detto esplicitamente di NON mandare ancora nessuna story in sviluppo: il regolamento punteggi è da stabilire e verrà comunicato in seguito - questo blocca qualunque Acceptance Criteria sui risultati/classifiche finché non arriva.)*
