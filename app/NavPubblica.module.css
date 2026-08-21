@@ -90,6 +90,18 @@
   .voce {
     width: 100%;
   }
+
+  /* Story 18.23: .nav e' un figlio flex diretto di .headerLeft
+     (HeaderPubblico.module.css) - a questo breakpoint .lista qui sopra e'
+     position:absolute (fuori flusso), quindi l'unico contenuto in flusso di
+     .nav e' il bottone .hamburger. order:-1 sposta VISIVAMENTE l'intero
+     .nav (cioe' l'hamburger) prima di .brand nella riga di .headerLeft,
+     senza alcun riordino del DOM/markup - il tab-order/ordine per screen
+     reader segue sempre il markup (brand poi nav), invariato: `order` CSS
+     non altera la sequential focus navigation. */
+  .nav {
+    order: -1;
+  }
 }
 
 /* Touch target 44px sul link stesso, non su un contenitore - lezione gia'

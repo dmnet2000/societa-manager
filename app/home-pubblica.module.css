@@ -340,7 +340,19 @@
 }
 
 @media (max-width: 900px) {
+  /* Story 18.23: l'inset orizzontale fisso left:100px;right:100px (sopra,
+     introdotto in una sessione di tweak diretto il 2026-08-20, non da
+     story) non era mai stato adattato a questo breakpoint - su un
+     .heroBlocco largo ~320-350px su mobile lasciava alla didascalia meno di
+     150px di larghezza reale, disallineata rispetto alle foto del
+     carosello che occupano tutta la larghezza del blocco
+     (background-size:contain). left/right:0 restituisce alla didascalia la
+     larghezza reale di .heroBlocco - il padding orizzontale (sotto, gia'
+     presente) resta l'unico margine di sicurezza contro l'overflow:hidden
+     del blocco. */
   .infoPost {
+    left: 0;
+    right: 0;
     padding: 0 20px 24px;
   }
 

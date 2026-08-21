@@ -2629,6 +2629,35 @@ so that riconosca visivamente lo Staff della società, non solo per nome.
 3. **And** nessuna modifica alla privacy del bucket stesso (RLS/policy invariate) - la foto è recuperata lato server con un client privilegiato, non resa pubblicamente leggibile via URL diretto/permanente
 4. **And** nessuna regressione sul resto della pagina (elenco Gruppi, messaggio "nessun Allenatore assegnato")
 
+### Story 18.23: Riordino dell'header pubblico e larghezza della didascalia Facebook su mobile
+
+*(Aggiunta post-apertura epica — 2026-08-21, richiesta esplicita dell'utente dopo verifica dal vivo su volleymogliano.it da smartphone: "lato mobile il sito statico ha il logo Polisportiva e il pulsante accedi messi sotto volley mogliano, il blocco facebook con la scritta della didascalia del post grande ed in mezzo e anche non centrata rispetto alle foto dei post che scorrono". Story discussa e risolta in una sessione di party mode (Mary/John/Sally/Winston/Amelia) prima di essere scritta qui — le decisioni sotto sono l'esito di quella sessione, non assunzioni.)*
+
+As a Visitatore da smartphone,
+I want che l'header pubblico resti su un'unica riga ordinata e che la didascalia dei post Facebook nell'hero occupi la stessa larghezza reale del blocco fotografico,
+so that il sito non sembri rotto/disallineato su schermi stretti.
+
+**Problema 1 — header, verificato nel codice**: `HeaderPubblico.module.css` (`.header`) è `display:flex; flex-wrap:wrap; justify-content:space-between` senza alcuna media query dedicata — solo il menu al suo interno (`NavPubblica.module.css`) ha un breakpoint mobile esplicito (hamburger sotto i 900px, Story 18.18). Da quando la Story 18.20 ha aggiunto il logo Polisportiva a fianco di "Accedi" (`.headerRight`), la somma di logo Settore + nome Settore + hamburger (`.headerLeft`) e logo Polisportiva + Accedi (`.headerRight`) supera la larghezza disponibile su schermi stretti (~360-375px) — il `flex-wrap` del contenitore fa esattamente il suo lavoro e butta l'intero `.headerRight` su una seconda riga, mai deciso a tavolino, solo un effetto collaterale mai ricalcolato dopo la 18.20.
+
+**Problema 2 — didascalia Facebook, verificato nel codice**: `home-pubblica.module.css` (`.infoPost`) usa `left:100px; right:100px` fissi (inset introdotto in una sessione di tweak diretto il 2026-08-20, non da story). La media query `@media (max-width: 900px)` esistente riduce `padding` e `font-size` di `.testoPost`, ma non tocca quei due inset: su un `.heroBlocco` largo ~320-350px su mobile (`width: calc(100% - 40px)`), sottrarre 200px di inset totali lascia alla didascalia meno di 150px di larghezza reale — da qui l'effetto "grande, in mezzo, non allineata alle foto" segnalato dall'utente, che invece usano tutta la larghezza del blocco (`background-size:contain`).
+
+**Decisioni prese in party mode (2026-08-21), da implementare senza ulteriori chiarimenti:**
+
+1. **Riordino header, sola larghezza <900px**: l'hamburger di `NavPubblica` si sposta visivamente a sinistra del brand (logo+nome Settore) tramite `order` flexbox — **non** un riordino del DOM: il tab-order/ordine per screen reader resta invariato (brand prima, menu dopo), solo la posizione visiva cambia. `.header` guadagna `flex-wrap: nowrap` esplicito sotto i 900px, per impedire che il wrap accidentale attuale si ripresenti in futuro con un elemento in più.
+2. **Ordine di cedimento dello spazio, se la riga resta stretta** (mai negoziabile al contrario): (a) prima si riducono i `gap` tra i gruppi; (b) poi il logo Polisportiva si rimpicciolisce su mobile (da `max-height:40px` a ~28px); (c) l'hamburger, "Accedi" e il font di `.nomeSettore` **non si toccano mai** — sono gli elementi con più peso funzionale/informativo della riga.
+3. **Didascalia Facebook, sola larghezza <900px**: l'inset orizzontale fisso di `.infoPost` (`left:100px;right:100px`) va ridotto in modo che la didascalia usi la larghezza reale di `.heroBlocco`, coerente col padding già ridotto nella stessa media query esistente. Comportamento ≥900px invariato bit-per-bit (nessuna modifica ai valori desktop).
+4. **Verifica dal vivo obbligatoria** (`npm run cf:preview` o produzione) su almeno un viewport ~360-375px prima di considerare la storia chiusa — non solo devtools: stesso errore di processo già pagato 5 volte sulla Story 18.19 per non averlo fatto subito.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore su uno smartphone (larghezza ~360-390px) **When** visita qualunque pagina pubblica che monta `HeaderPubblico` **Then** hamburger, brand (logo+nome Settore), logo Polisportiva e "Accedi" restano tutti sulla stessa riga, nell'ordine hamburger → brand → logo Polisportiva → Accedi
+2. **And** se lo spazio resta insufficiente, cede prima il `gap` tra i gruppi, poi la dimensione del logo Polisportiva — mai l'hamburger, "Accedi" o il font di `.nomeSettore`
+3. **And** il tab-order/ordine per screen reader dell'header resta invariato rispetto a oggi (solo la posizione visiva dell'hamburger cambia)
+4. **Given** un Visitatore sulla home pubblica da smartphone con post Facebook disponibili **When** guarda il blocco hero **Then** la didascalia del post occupa la stessa larghezza reale del blocco fotografico (`.heroBlocco`), non una fascia stretta scentrata al centro
+5. **And** nessuna regressione sul layout desktop (≥900px) di header e didascalia Facebook, bit-per-bit invariato
+6. **And** nessuna regressione sul target di tocco 44×44px di hamburger/Accedi/controlli del carosello (`.frecciaPost`/`.pausaPost`/`.pallinoPost`), invariati da Story 18.14/18.18
+7. **And** verificato dal vivo (`cf:preview` o produzione) su almeno un viewport reale ~360-375px prima di chiudere la storia
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*

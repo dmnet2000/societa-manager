@@ -164,3 +164,68 @@ img.logoPolisportiva {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
+
+/* Story 18.23: sotto i 900px .header non ha mai avuto una media query
+   dedicata - solo NavPubblica.module.css (Story 18.18). Da quando la Story
+   18.20 ha aggiunto il logo Polisportiva accanto ad "Accedi", la somma degli
+   elementi supera la larghezza disponibile su schermi stretti (~360-390px) e
+   il flex-wrap:wrap di .header (sopra) butta l'intero .headerRight su una
+   seconda riga - mai deciso a tavolino. flex-wrap:nowrap esplicito qui
+   impedisce che si ripresenti. Ordine di cedimento dello spazio deciso in
+   party mode (2026-08-21), mai negoziabile al contrario: (a) prima i gap tra
+   i gruppi, (b) poi la dimensione del logo Polisportiva - mai hamburger,
+   "Accedi" o il font di .nomeSettore (vedi anche .nav in
+   NavPubblica.module.css per il riordino visivo dell'hamburger). */
+@media (max-width: 900px) {
+  .header {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  /* Review fix (code review Story 18.23, Blind Hunter + Edge Case Hunter,
+     indipendentemente): senza min-width:0 esplicito, il default
+     min-width:auto sui flex item impedisce a .headerLeft/.headerRight di
+     restringersi sotto la larghezza intrinseca del proprio contenuto - con
+     .header ora nowrap, questo avrebbe prodotto overflow orizzontale invece
+     del wrap che si voleva evitare, nel caso limite di un nomeSettore
+     configurato molto lungo. flex-wrap:nowrap aggiunto anche qui per
+     coerenza con .header (evita un wrap interno accidentale se in futuro
+     un terzo elemento si aggiunge a uno dei due gruppi). */
+  .headerLeft {
+    flex-wrap: nowrap;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .headerRight {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  /* Seconda leva (solo dopo aver ceduto i gap sopra): il logo Polisportiva
+     si rimpicciolisce da 40px a 28px (~0.7x, .logoPolisportiva img/
+     img.logoPolisportiva sopra) - il logo Settore (.logo) e il font di
+     .nomeSettore non si toccano mai, stessa decisione di party mode. */
+  .logoPolisportiva img,
+  img.logoPolisportiva {
+    max-height: 28px;
+    max-width: 84px;
+  }
+
+  /* Review fix: rete di sicurezza per il caso limite non coperto dalle due
+     leve sopra (nomeSettore configurato molto piu' lungo del previsto) -
+     tronca con ellissi invece di rompere la riga/spingere Accedi fuori
+     schermo. Il font (dimensione/famiglia) resta invariato, coerente con
+     "mai il font di .nomeSettore" della spec: qui si limita solo quanto
+     testo e' visibile, non se ne cambia la resa tipografica. */
+  .brand {
+    min-width: 0;
+  }
+
+  .nomeSettore {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
