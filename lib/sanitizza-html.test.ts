@@ -19,7 +19,11 @@ describe("sanitizzaHtml", () => {
     expect(risultato).toContain("<h3>Sottotitolo</h3>");
     expect(risultato).toContain("<strong>forte</strong>");
     expect(risultato).toContain("<em>corsivo</em>");
-    expect(risultato).toContain("<br>");
+    // sanitize-html serializza i void element auto-chiusi ("<br />", XHTML-
+    // style) invece di "<br>" (HTML5-style) di isomorphic-dompurify - stessa
+    // resa nel browser, nessuna differenza funzionale/di sicurezza - il
+    // check resta agnostico al formato esatto.
+    expect(risultato).toContain("<br");
     expect(risultato).toContain("<li>Uno</li>");
     expect(risultato).toContain("<li>Due</li>");
     expect(risultato).toContain('href="/altra-pagina"');
