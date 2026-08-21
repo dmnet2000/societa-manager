@@ -132,10 +132,21 @@
   background: #0f2438;
 }
 
+/* Richiesta esplicita dell'utente (2026-08-21, solo modalita' mobile): 100px
+   in piu' di larghezza rispetto al giro precedente - stessa formula
+   margine/larghezza di sopra (il margine resta meta' di quanto "width"
+   sottrae a 100%), qui ricalcolata con inset ridotto di 50px per lato
+   (100px totali): margine 20px -> -30px, "- 40px" -> "+ 60px" nel calc().
+   Il margine negativo fa "sanguinare" il blocco oltre i bordi di .hero, che
+   lo ritaglia simmetricamente col proprio overflow:hidden (nessuno scroll
+   orizzontale di pagina: .hero stesso non supera mai il 100% del viewport,
+   solo il suo figlio .heroBlocco lo fa, e viene tagliato). Non verificabile
+   dal vivo in locale (cf:preview rotto su questa macchina, problema
+   Prisma WASM/Windows gia' noto) - da confermare su dispositivo reale. */
 @media (max-width: 900px) {
   .heroBlocco {
-    width: calc(100% - 40px);
-    margin: var(--space-3) 20px;
+    width: calc(100% + 60px);
+    margin: var(--space-3) -30px;
   }
 }
 
@@ -346,13 +357,17 @@
      .heroBlocco largo ~320-350px su mobile lasciava alla didascalia meno di
      150px di larghezza reale, disallineata rispetto alle foto del
      carosello che occupano tutta la larghezza del blocco
-     (background-size:contain). left/right:0 restituisce alla didascalia la
-     larghezza reale di .heroBlocco - il padding orizzontale (sotto, gia'
-     presente) resta l'unico margine di sicurezza contro l'overflow:hidden
-     del blocco. */
+     (background-size:contain). left/right:0 restituiva alla didascalia la
+     larghezza reale di .heroBlocco.
+     Richiesta esplicita dell'utente (2026-08-21): col blocco ora piu' largo
+     (.heroBlocco sopra), il testo edge-to-edge risultava troppo grande/non
+     centrato rispetto alle foto - ridotto di 100px totali (50px per lato),
+     via di mezzo tra i due giri precedenti (100px/lato troppo stretto,
+     0/lato troppo largo). Il padding orizzontale (sotto) resta comunque il
+     margine di sicurezza contro l'overflow:hidden del blocco. */
   .infoPost {
-    left: 0;
-    right: 0;
+    left: 50px;
+    right: 50px;
     padding: 0 20px 24px;
   }
 
