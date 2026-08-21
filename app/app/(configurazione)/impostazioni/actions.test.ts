@@ -669,7 +669,7 @@ describe("salvaTokenFacebookAction (Server Action)", () => {
 // - stessa sequenza di validazione, ma requireRuolo ammette anche DIRIGENTE
 // (AC #2).
 describe("caricaFotoHeroAction (Server Action)", () => {
-  it("returns FORBIDDEN se il chiamante non e' Admin ne' Dirigente (AC #2)", async () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin, Dirigente ne' Site Manager (AC #2)", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
@@ -680,7 +680,7 @@ describe("caricaFotoHeroAction (Server Action)", () => {
     );
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
     expect(caricaFotoHeroMock).not.toHaveBeenCalled();
   });
 
@@ -765,9 +765,21 @@ describe("caricaFotoHeroAction (Server Action)", () => {
     // verificava solo l'happy-path col mock di default "tutto permesso",
     // senza provare nulla di diverso dal test ADMIN sopra - questa
     // asserzione verifica che il perimetro di Ruoli richiesto sia
-    // esplicitamente ["ADMIN", "DIRIGENTE"] (AC #2), non solo che un mock
-    // permissivo lasci passare la richiesta.
-    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    // esplicitamente ["ADMIN", "DIRIGENTE", "SITE_MANAGER"] (AC #2/Story
+    // 19.11), non solo che un mock permissivo lasci passare la richiesta.
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+  });
+
+  // Story 19.11 (Epic 19, Ruolo Site Manager): stesso gap gia' chiuso per
+  // logo/nome Settore (19.2), foto squadra (19.4), URL Pagina Facebook
+  // (19.5) - /app/impostazioni gia' ammette SITE_MANAGER dalla Story 19.1,
+  // solo questa Server Action restava ADMIN/DIRIGENTE-only.
+  it("accetta SITE_MANAGER (Story 19.11)", async () => {
+    const png = fileFotoHeroValido("foto-hero.png", "image/png");
+    const result = await caricaFotoHeroAction(undefined, buildFormDataFotoHero(png));
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   });
 
   it("returns INTERNAL fail-closed quando caricaFotoHero lancia (incluso un rifiuto RLS)", async () => {

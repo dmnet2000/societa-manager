@@ -1,3 +1,7 @@
+## Deferred from: bmad-build review of spec-19-12-staff-descrizione-ruoli-aggiuntivi (2026-08-21)
+
+- `leggiRuoliAggiuntivi`/`validaRuoliAggiuntivi` (`staff-descrizioni/actions.ts`) validano tipo e lunghezza di ogni singola etichetta di `ruoliAggiuntivi`, ma non limitano mai la lunghezza dell'array stesso: una richiesta forgiata con un JSON contenente migliaia di etichette valide (≤40 caratteri ciascuna) verrebbe accettata e scritta integralmente sulla colonna `TEXT[]`. Rischio ritenuto basso/teorico (il chiamante è già un Ruolo autenticato e privilegiato, SITE_MANAGER/ADMIN/DIRIGENTE - stesso trust boundary già accettato altrove nel progetto per Server Action equivalenti), e nessuna decisione esplicita con l'utente ha mai posto un tetto su questo numero (i 4 punti aperti risolti il 2026-08-20 riguardavano solo la lunghezza della singola etichetta/descrizione). Trovato da Blind Hunter. [app/app/(gruppi-allenatori)/staff-descrizioni/actions.ts]
+
 ## Deferred from: bmad-build review of spec-19-10-editor-pagine-pubbliche (2026-08-20)
 
 - Nessuna relazione/FK né controllo a runtime tra `PaginaPubblica` e `VoceMenuPubblico`: eliminare una Pagina o cambiarne lo slug (entrambe azioni introdotte da questa storia) può lasciare una voce di menu che punta a un link morto o rinominato, senza alcun avviso all'Admin/Site Manager. Già segnalato nel review della Story 19.9 come "da coprire esplicitamente nella spec della 19.10" - la spec di questa storia non lo ha coperto, resta aperto. [app/app/(configurazione)/pagine-pubbliche/actions.ts, prisma/schema.prisma]

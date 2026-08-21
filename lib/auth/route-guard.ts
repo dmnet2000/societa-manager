@@ -351,6 +351,22 @@ export const PROTECTED_ROUTES: {
     gruppo: "Gestione sito",
   },
   {
+    // Story 19.12 (Epic 19, Ruolo Site Manager): descrizione e ruoli
+    // aggiuntivi dello Staff (Allenatore.descrizione/ruoliAggiuntivi),
+    // mostrati su /staff (sito pubblico) quando presenti - decisione
+    // esplicita 2026-08-20: "affianca", stesso principio di tutta l'Epic 19.
+    // A differenza di /app/foto-squadre (SITE_MANAGER-only), qui non c'e' un
+    // permesso preesistente di Admin/Dirigente da NON toccare (funzionalita'
+    // del tutto nuova), quindi i tre Ruoli entrano subito insieme. Sesta (e
+    // ultima, per posizione nell'array) figlia del gruppo "Gestione sito" -
+    // dichiarata subito dopo /app/pagine-pubbliche come richiesto dal Code
+    // Map della spec.
+    prefix: "/app/staff-descrizioni",
+    ruoliAmmessi: ["SITE_MANAGER", "ADMIN", "DIRIGENTE"],
+    navLabel: "Staff",
+    gruppo: "Gestione sito",
+  },
+  {
     // Story 17.1 (Epic 17, Guida in-app e help contestuale): seconda rotta
     // del progetto visibile a tutti i Ruoli (mirror di /sponsor,
     // Story 16.2) - l'indice mostrato in pagina e' comunque filtrato per

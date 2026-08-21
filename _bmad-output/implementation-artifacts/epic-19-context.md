@@ -19,7 +19,7 @@ Introduce a new stackable role, `SITE_MANAGER`, dedicated to managing the public
 - Story 19.9: Modello dati e rendering pubblico delle Pagine personalizzate
 - Story 19.10: Editor (Tiptap) per creare/modificare Pagine personalizzate
 - Story 19.11: Accesso alla foto sfondo hero
-- Story 19.12 (draft, punti aperti da confermare prima dello sviluppo): descrizione + ruoli aggiuntivi per membri dello Staff
+- Story 19.12: description + additional role labels for Staff members (`/staff`) - role scope and data shape decided 2026-08-20, ready for `create-story`
 
 ## Requirements & Constraints
 
@@ -55,4 +55,4 @@ Introduce a new stackable role, `SITE_MANAGER`, dedicated to managing the public
 - 19.5 and 19.11 depend on `/app/impostazioni` already being open to `SITE_MANAGER` from Story 19.1.
 - 19.6 (data model) blocks 19.7 (management UI), which blocks 19.8 (switching `NavPubblica.tsx` to read from DB).
 - 19.9 (custom-page data model + public rendering + reserved-route check) blocks 19.10 (the Tiptap editor that writes those pages); 19.9's reserved-route check also retrofits the existing menu-entry form built in 19.7.
-- Story 19.12 is explicitly a draft — role scope, the shape of "ruoli aggiuntivi" (array field vs. join table), and description constraints are open questions the user must confirm before implementation starts.
+- Story 19.12 is decided and ready for `create-story` (2026-08-20): role scope is `SITE_MANAGER`+`ADMIN`+`DIRIGENTE`, "ruoli aggiuntivi" is a `String[]` array field (first use of this pattern in the project, a join table was explicitly rejected — labels never need sharing across Allenatori), description has no length limit (mirrors `Sponsor.descrizione`), and on `/staff` the additional roles render right under the name with the description below the Gruppi list.

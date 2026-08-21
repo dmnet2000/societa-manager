@@ -133,3 +133,47 @@
   line-height: 1.8;
   color: #5b6472;
 }
+
+/* Story 19.12 (Epic 19, Ruolo Site Manager): ruoli aggiuntivi (es. "Team
+   Manager") subito sotto .nomeAllenatore - badge, non un elenco puntato
+   come .listaGruppi: sono etichette brevi affiancabili, non righe di
+   contenuto distinto. Nessun token DESIGN.md dedicato (campo introdotto da
+   questa storia, non presente nel registro "Poster Sportivo" originale) -
+   stessa palette gia' in uso nel resto della pagina: {colors.blu-carbone}
+   #0F2438 di sfondo (stesso blu di .inizialiAllenatore/.header), testo
+   bianco per contrasto. */
+.listaRuoliAggiuntivi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.badgeRuoloAggiuntivo {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #0f2438;
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Descrizione sotto .listaGruppi - stessa tipografia/colore di .listaGruppi
+   ({typography.body} + {colors.grigio} #5B6472), un paragrafo secondario
+   invece di un elenco puntato (testo libero, non una lista di voci
+   discrete). */
+.descrizioneAllenatore {
+  margin-top: var(--space-2);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #5b6472;
+  white-space: pre-wrap;
+}

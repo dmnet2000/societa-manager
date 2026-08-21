@@ -1,0 +1,13 @@
+-- Story 19.12 (Epic 19, Ruolo Site Manager): Allenatore.descrizione e
+-- ruoliAggiuntivi, gestiti da /app/staff-descrizioni (SITE_MANAGER+ADMIN+
+-- DIRIGENTE) e mostrati su /staff (sito pubblico) solo quando presenti.
+-- Allenatore non e' protetta da RLS (AD-9) ma e' gia' in ENABLE ROW LEVEL
+-- SECURITY + REVOKE esplicito verso "anon"/"authenticated" da
+-- 20260804030000_fix_rls_disabled_public_tables - questa migrazione aggiunge
+-- solo due colonne, nessun cambio RLS/GRANT necessario qui.
+--
+-- "ruoliAggiuntivi" e' la prima occorrenza di un array Postgres (TEXT[]) in
+-- questo progetto - una tabella di giunzione e' stata scartata esplicitamente
+-- (decisione di analisi): queste etichette non servono condivise/riutilizzate
+-- tra Allenatori diversi.
+ALTER TABLE "allenatori" ADD COLUMN "descrizione" TEXT, ADD COLUMN "ruoliAggiuntivi" TEXT[] NOT NULL DEFAULT '{}';

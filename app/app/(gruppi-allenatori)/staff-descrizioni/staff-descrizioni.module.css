@@ -1,0 +1,170 @@
+/* Story 19.12 (Epic 19, Ruolo Site Manager): applica i token di DESIGN.md,
+   come ogni altro modulo del progetto. .campo/.errore/.successo/.bottone
+   sono mirror di gruppi.module.css (Story 8.6, riusato da page.tsx per
+   .sezione/.scrollWrapper/.tabella/.listaAssegnatiInline) - duplicato per
+   modulo, stessa convenzione gia' in uso nel progetto. Le classi per i chip
+   (.chip/.bottoneRimuoviChip/.listaChip/.aggiungiRuolo) sono nuove: prima
+   occorrenza nel progetto di un form "a chip" con etichette aggiungibili/
+   rimovibili lato client prima del submit. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 220px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.campo label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo textarea {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.campo textarea:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.listaChip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--color-surface-subtle, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 2px 2px var(--space-3);
+  font-size: 12.5px;
+  color: var(--color-text-primary);
+}
+
+/* Lezione gia' documentata in questo progetto: min-height/align-items non
+   bastano da soli a garantire un'area di tocco accessibile (>=44x44px) - il
+   figlio cliccabile resta piu' piccolo se non dimensionato esplicitamente.
+   width/height espliciti qui, non un padding che dipende dal contenuto
+   (l'unico contenuto e' "x", ma il principio vale comunque). */
+.bottoneRimuoviChip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--color-danger);
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bottoneRimuoviChip:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.aggiungiRuolo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.aggiungiRuolo input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  min-width: 140px;
+}
+
+.aggiungiRuolo input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneCompatto {
+  background: var(--color-surface);
+  color: var(--color-button-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneCompatto:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneCompatto:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.bottone {
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.errore {
+  font-size: 12.5px;
+  color: var(--color-danger);
+}
+
+.successo {
+  font-size: 12.5px;
+  color: var(--color-success);
+}

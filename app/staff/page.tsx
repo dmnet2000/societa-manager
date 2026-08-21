@@ -48,6 +48,12 @@ export default async function StaffPage() {
             id: true,
             nome: true,
             cognome: true,
+            // Story 19.12 (Epic 19, Ruolo Site Manager): entrambi opzionali,
+            // gestiti da /app/staff-descrizioni - "select" esplicito (mai
+            // "include", vedi commento sopra) li aggiunge qui senza aprire
+            // nessun altro campo dell'Allenatore.
+            descrizione: true,
+            ruoliAggiuntivi: true,
             gruppi: {
               where: { gruppo: { annoAgonisticoId: annoCorrente.id } },
               select: { gruppo: { select: { id: true, nome: true } } },
@@ -139,6 +145,23 @@ export default async function StaffPage() {
                   <div className={styles.nomeAllenatore}>
                     {allenatore.nome} {allenatore.cognome}
                   </div>
+                  {/* Story 19.12: ruoli aggiuntivi subito sotto il nome, solo
+                      quando l'array non e' vuoto (I/O matrix della spec: un
+                      Allenatore senza ruoli aggiuntivi resta identico a
+                      prima di questa storia, nessun "vuoto" mostrato). */}
+                  {allenatore.ruoliAggiuntivi.length > 0 && (
+                    <ul className={styles.listaRuoliAggiuntivi}>
+                      {allenatore.ruoliAggiuntivi.map((ruolo, indice) => (
+                        // Le etichette non sono garantite uniche (nessun
+                        // vincolo @unique, decisione di analisi) - indice
+                        // incluso nella key, stesso principio gia' seguito
+                        // altrove nel progetto per elenchi di stringhe libere.
+                        <li key={`${ruolo}-${indice}`} className={styles.badgeRuoloAggiuntivo}>
+                          {ruolo}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {/* Task 1 garantisce gruppi.length >= 1 per costruzione -
                       nessun elenco vuoto possibile qui. <ul>/<li> (non una
                       stringa unita da virgole) - stesso pattern gia'
@@ -150,6 +173,13 @@ export default async function StaffPage() {
                       <li key={gruppo.id}>{gruppo.nome}</li>
                     ))}
                   </ul>
+                  {/* Story 19.12: descrizione sotto l'elenco Gruppi, solo
+                      quando presente (stesso principio dei ruoli aggiuntivi
+                      sopra - un campo assente non lascia un "vuoto"
+                      visibile). */}
+                  {allenatore.descrizione && (
+                    <p className={styles.descrizioneAllenatore}>{allenatore.descrizione}</p>
+                  )}
                 </div>
               </div>
             ))}

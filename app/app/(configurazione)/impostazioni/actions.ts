@@ -267,11 +267,18 @@ export type FotoHeroActionState =
 // action di questo file (Pagina Facebook/Contatti pubblici/Token Facebook).
 // Nessun revalidatePath("/"): la home pubblica ha gia' dynamic =
 // "force-dynamic" (app/page.tsx), nessuna cache statica da invalidare.
+// Story 19.11 (Epic 19, Ruolo Site Manager): SITE_MANAGER aggiunto - stesso
+// gap gia' trovato e chiuso per logo/nome Settore (19.2), foto squadra
+// (19.4) e URL Pagina Facebook (19.5): /app/impostazioni gia' ammette
+// SITE_MANAGER dalla Story 19.1, ma questa Server Action restava
+// ADMIN/DIRIGENTE-only, quindi il form "Foto sfondo hero" era visibile ma
+// il submit falliva con FORBIDDEN. Nessuna modifica a route-guard.ts
+// necessaria (la rotta e' gia' aperta).
 export async function caricaFotoHeroAction(
   _prevState: FotoHeroActionState,
   formData: FormData
 ): Promise<FotoHeroActionState> {
-  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
   if (forbidden) return forbidden;
 
   const file = formData.get("file");

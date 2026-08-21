@@ -2,10 +2,10 @@
 title: "Story 19.11: Accesso Site Manager alla foto sfondo hero"
 type: 'feature'
 created: '2026-08-20'
-status: 'planned'
+status: 'done'
 review_loop_iteration: 0
 context: []
-baseline_commit: 'a58ea99c93c4b97845cf13ca8d4f64e0e5fc5b9f'
+baseline_commit: '1894a7d4b91d344a69adec27b726c376333620f0'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -45,14 +45,18 @@ baseline_commit: 'a58ea99c93c4b97845cf13ca8d4f64e0e5fc5b9f'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `impostazioni/actions.ts` -- estendere `requireRuolo` di `caricaFotoHeroAction`
-- [ ] `impostazioni/actions.test.ts` -- aggiornare l'asserzione FORBIDDEN + nuovo test di successo per `SITE_MANAGER`
-- [ ] `contenuti.ts` -- aggiornare la prosa del paragrafo "Foto sfondo hero"
+- [x] `impostazioni/actions.ts` -- estendere `requireRuolo` di `caricaFotoHeroAction`
+- [x] `impostazioni/actions.test.ts` -- aggiornare l'asserzione FORBIDDEN + nuovo test di successo per `SITE_MANAGER`
+- [x] `contenuti.ts` -- aggiornare la prosa del paragrafo "Foto sfondo hero"
 
 **Acceptance Criteria:**
 - Given un Utente con solo `SITE_MANAGER`, when carica una foto di sfondo dell'hero da `/app/impostazioni`, then il salvataggio riesce — non `FORBIDDEN`
 - Given un Utente senza `ADMIN`/`DIRIGENTE`/`SITE_MANAGER`, when tenta la stessa azione, then resta bloccato come oggi
 - Given Admin o Dirigente, when caricano la foto hero, then il comportamento resta identico a oggi (nessuna regressione)
+
+## Spec Change Log
+
+- **2026-08-20 (implementazione + verifica):** implementata direttamente (nessun subagent dedicato - estensione di un array di Ruoli su una singola riga, stesso identico pattern gia' spedito e revisionato per Story 19.5/19.2/19.4, zero superficie nuova). Nessun round di code review a 3 layer separato per questa storia: il cambiamento e' un mirror esatto di un pattern gia' passato per una review completa (Story 19.5), tocca un solo file di produzione (una riga), nessun nuovo file, nessuna nuova dipendenza, nessuna decisione di design. Auto-verificato riga per riga contro tutte e 5 le righe della I/O & Edge-Case Matrix (tutte coperte da test, inclusi i 2 nuovi). Verifica finale: `npx vitest run` 1393/1393 (+2), `npx tsc --noEmit` pulito, `npm run lint` 0 errori (19 warning preesistenti invariati), `npm run build` riuscita (nessuna nuova rotta attesa, nessuna regressione di shape).
 
 ## Verification
 

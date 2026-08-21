@@ -166,6 +166,22 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ],
   },
   {
+    // Story 19.12 (Epic 19, Ruolo Site Manager): descrizione e ruoli
+    // aggiuntivi dello Staff - a differenza delle altre 4 rotte di "Gestione
+    // sito" sopra, qui DIRIGENTE e' ammesso fin da subito insieme ad ADMIN e
+    // SITE_MANAGER (decisione esplicita 2026-08-20, nessun permesso
+    // preesistente da NON toccare) - mirror di ruoliAmmessi per
+    // /app/staff-descrizioni in route-guard.ts.
+    rotta: "/app/staff-descrizioni",
+    titolo: "Staff",
+    ruoliAmmessi: ["SITE_MANAGER", "ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui imposti la descrizione personale e i ruoli aggiuntivi (es. \"Team Manager\", \"Preparatore Atletico\") di ogni Allenatore assegnato a un Gruppo nella stagione corrente, mostrati sulla pagina pubblica \"/staff\".",
+      "I ruoli aggiuntivi sono etichette libere (max 40 caratteri ciascuna): aggiungine quante ne servono con \"Aggiungi\", oppure rimuovine una alla volta prima di salvare. Un solo salvataggio aggiorna insieme descrizione e intero elenco di ruoli.",
+      "Questa vista mostra solo questi due campi - per creare Allenatori o assegnarli a un Gruppo serve il Ruolo Admin o Dirigente su /app/gruppi.",
+    ],
+  },
+  {
     rotta: "/app/i-miei-gruppi",
     titolo: "I miei Gruppi",
     ruoliAmmessi: ["ALLENATORE"],
@@ -239,7 +255,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui imposti anche l'indirizzo email della Segreteria: senza questo indirizzo, le notifiche di nuovo Certificato Medico caricato non vengono inviate.",
       "Qui imposti anche l'URL della Pagina Facebook della società (mostra gli ultimi post sulla home pubblica, editabile anche da Site Manager) e i contatti pubblici - indirizzo, telefono ed email mostrati sulla pagina pubblica \"Contatti\": ogni campo è indipendente, un campo lasciato vuoto smette semplicemente di comparire sulla pagina pubblica. Dopo aver salvato un nuovo URL, un avviso ricorda che il Token Facebook potrebbe non corrispondere più alla nuova Pagina.",
       "Qui imposti anche il Token Facebook: serve al carosello \"Ultimi post\" della home pubblica per leggere i post reali della Pagina. Lascialo vuoto per non modificare il token già salvato. Un avviso ti segnala se manca o se l'ultima lettura dei post è fallita (es. token scaduto, da rigenerare periodicamente). A differenza dell'URL della Pagina sopra, il Token resta riservato ad Admin e Dirigente - se sei Site Manager e l'avviso ti segnala un possibile disallineamento, contatta uno di loro.",
-      "Qui carichi anche la foto di sfondo dell'hero della home pubblica (PNG o JPG, max 2MB): viene mostrata solo quando non ci sono post Facebook da mostrare - se sono presenti, il carosello dei post ha sempre la priorità. Senza nessuna delle due, resta visibile il placeholder grafico.",
+      "Qui carichi anche la foto di sfondo dell'hero della home pubblica (PNG o JPG, max 2MB, editabile anche da Site Manager): viene mostrata solo quando non ci sono post Facebook da mostrare - se sono presenti, il carosello dei post ha sempre la priorità. Senza nessuna delle due, resta visibile il placeholder grafico.",
       "Qui carichi anche il logo della Polisportiva (PNG o JPG, max 2MB) e l'URL del suo sito: il logo compare sia nell'header sia nel footer di ogni pagina pubblica. Se anche l'URL è impostato, il logo è cliccabile e apre il sito in una nuova scheda; senza URL il logo compare comunque, ma non è cliccabile.",
     ],
   },
