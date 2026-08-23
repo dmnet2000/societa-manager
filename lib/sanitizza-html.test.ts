@@ -54,13 +54,18 @@ describe("sanitizzaHtml", () => {
     expect(risultato).not.toContain("javascript:");
   });
 
-  it("rimuove un tag fuori allowlist (es. <table>/<iframe>) mantenendo il testo interno quando sicuro", () => {
+  // Story 19.14 (Epic 19, Ruolo Site Manager): <iframe> e' entrato
+  // nell'allowlist con questa storia (blocco Video, ristretto a due soli
+  // hostname via allowedIframeHostnames - vedi i test dedicati piu' sotto),
+  // quindi non e' piu' un esempio valido di "tag fuori allowlist" - sostituito
+  // con <video>, ancora oggi fuori allowlist.
+  it("rimuove un tag fuori allowlist (es. <table>/<video>) mantenendo il testo interno quando sicuro", () => {
     const risultato = sanitizzaHtml(
-      "<table><tr><td>Cella</td></tr></table><iframe src=\"https://esempio.it\"></iframe>"
+      '<table><tr><td>Cella</td></tr></table><video src="https://esempio.it/video.mp4"></video>'
     );
 
     expect(risultato).not.toContain("<table");
-    expect(risultato).not.toContain("<iframe");
+    expect(risultato).not.toContain("<video");
   });
 
   it('forza rel="noopener noreferrer" su un link con target="_blank" (reverse tabnabbing)', () => {
@@ -151,6 +156,126 @@ describe("sanitizzaHtml", () => {
 
     expect(risultato).not.toContain("width=");
     expect(risultato).toContain('height="240"');
+  });
+
+  // Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi - blocco
+  // Video. L'allowlist iframe (allowedIframeHostnames) e' il vero cancello
+  // sull'host; il sandbox forzato e la ri-validazione di
+  // data-platform/data-video-id sono difesa in profondita' aggiuntiva.
+  it("mantiene un iframe video su un hostname consentito (youtube-nocookie.com) e forza il sandbox", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" data-platform="youtube" data-video-id="dQw4w9WgXcQ" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>'
+    );
+
+    expect(risultato).toContain("<iframe");
+    expect(risultato).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"');
+    expect(risultato).toContain('sandbox="allow-scripts allow-same-origin allow-presentation"');
+    expect(risultato).toContain('data-platform="youtube"');
+    expect(risultato).toContain('data-video-id="dQw4w9WgXcQ"');
+  });
+
+  it("mantiene un iframe video su player.vimeo.com", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" data-platform="vimeo" data-video-id="123456789" src="https://player.vimeo.com/video/123456789"></iframe>'
+    );
+
+    expect(risultato).toContain('src="https://player.vimeo.com/video/123456789"');
+  });
+
+  // sanitize-html (allowedIframeHostnames) rimuove solo l'attributo src
+  // quando l'hostname non e' tra quelli consentiti - il tag <iframe> stesso
+  // resta (e' comunque un tag allowlistato), ma senza src non incorpora
+  // nulla: nessun URL/dominio arbitrario trapela mai nell'HTML pubblicato,
+  // che e' la garanzia reale richiesta dalla spec (mai un <iframe src> con
+  // URL letto direttamente dall'utente).
+  it("rimuove il src di un iframe con un hostname non consentito, senza lasciarlo trapelare (manomissione/embed generico)", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" src="https://malintenzionato.example/embed"></iframe>'
+    );
+
+    expect(risultato).not.toContain("malintenzionato");
+    expect(risultato).not.toContain("src=");
+  });
+
+  it("forza sempre lo stesso sandbox su un iframe video, anche se il valore persistito e' diverso (manomissione)", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" data-platform="youtube" data-video-id="dQw4w9WgXcQ" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" sandbox="allow-scripts allow-forms allow-top-navigation"></iframe>'
+    );
+
+    expect(risultato).toContain('sandbox="allow-scripts allow-same-origin allow-presentation"');
+    expect(risultato).not.toContain("allow-forms");
+    expect(risultato).not.toContain("allow-top-navigation");
+  });
+
+  // Review fix (Blind Hunter, Story 19.14): validare data-platform/
+  // data-video-id per formato e l'hostname di src separatamente non bastava -
+  // un contenutoHtml manomesso poteva avere entrambi validi ma un src che
+  // punta a un video DIVERSO sullo stesso hostname consentito (mai
+  // verificato che src corrisponda davvero alla coppia platform/videoId). Ora
+  // src viene sempre ricalcolato da quella coppia, mai fidato dal valore
+  // persistito.
+  it("ricalcola sempre src dalla coppia platform/videoId, anche se il src persistito punta a un altro video (manomissione)", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" data-platform="youtube" data-video-id="dQw4w9WgXcQ" src="https://www.youtube-nocookie.com/embed/UNALTROID999"></iframe>'
+    );
+
+    expect(risultato).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"');
+    expect(risultato).not.toContain("UNALTROID999");
+  });
+
+  it("rimuove data-platform/data-video-id quando l'id non e' riconosciuto per la piattaforma dichiarata (manomissione)", () => {
+    const risultato = sanitizzaHtml(
+      '<iframe data-blocco="video" data-platform="youtube" data-video-id="<script>" src="https://www.youtube-nocookie.com/embed/x"></iframe>'
+    );
+
+    expect(risultato).not.toContain("data-platform");
+    expect(risultato).not.toContain("data-video-id");
+    // Il tag/src restano (stesso comportamento gia' testato per
+    // data-align/width-height: si rimuove l'attributo manomesso, non
+    // l'intero tag) - il vero cancello sull'host resta
+    // allowedIframeHostnames sopra.
+    expect(risultato).toContain("<iframe");
+  });
+
+  // Story 19.14: blocco Colonne - due colonne fisse, nessun tag nuovo per il
+  // testo/immagine al loro interno (solo <div data-blocco="colonne/colonna">
+  // in piu' intorno ai tag gia' allowlistati).
+  it("mantiene il markup del blocco Colonne (contenitore + 2 colonne con testo/immagine)", () => {
+    const html =
+      '<div data-blocco="colonne">' +
+      '<div data-blocco="colonna"><p>Testo colonna 1</p></div>' +
+      '<div data-blocco="colonna"><img src="/x.png" alt=""></div>' +
+      "</div>";
+
+    const risultato = sanitizzaHtml(html);
+
+    expect(risultato).toContain('data-blocco="colonne"');
+    expect(risultato).toContain('data-blocco="colonna"');
+    expect(risultato).toContain("<p>Testo colonna 1</p>");
+    expect(risultato).toContain('src="/x.png"');
+  });
+
+  it('rimuove un data-blocco non valido su <div> (manomissione, insieme chiuso "colonne"/"colonna")', () => {
+    const risultato = sanitizzaHtml('<div data-blocco="qualcosaltro"><p>Testo</p></div>');
+
+    expect(risultato).not.toContain("data-blocco");
+    expect(risultato).toContain("<p>Testo</p>");
+  });
+
+  // Story 19.14: blocco Pulsante - riusa <a> gia' allowlistato, nessun tag
+  // nuovo aggiunto solo per questo blocco.
+  it('mantiene data-blocco="pulsante" su un link (blocco Pulsante)', () => {
+    const risultato = sanitizzaHtml('<a href="/squadre" data-blocco="pulsante">Vai</a>');
+
+    expect(risultato).toContain('data-blocco="pulsante"');
+    expect(risultato).toContain('href="/squadre"');
+  });
+
+  it('rimuove un data-blocco non valido su <a> (manomissione, insieme chiuso "pulsante")', () => {
+    const risultato = sanitizzaHtml('<a href="/squadre" data-blocco="qualcosaltro">Vai</a>');
+
+    expect(risultato).not.toContain("data-blocco");
+    expect(risultato).toContain('href="/squadre"');
   });
 
   it("un dato gia' pericoloso in ingresso (bypass ipotetico del salvataggio) resta innocuo al render", () => {

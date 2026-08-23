@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Ruolo } from "@prisma/client";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
-import { rottaRiservata } from "@/lib/auth/route-guard";
+import { urlVoceMenuValido } from "@/lib/validazione-url";
 import {
   elencaVociMenuPubblico,
   elencaVociMenuPubblicoVisibili,
@@ -31,47 +31,13 @@ export type VoceMenuPubblicoActionState =
 const RUOLI_GESTIONE_MENU_PUBBLICO: Ruolo[] = ["ADMIN", "SITE_MANAGER"];
 
 const LUNGHEZZA_MASSIMA_ETICHETTA = 40;
-const LUNGHEZZA_MASSIMA_URL = 200;
 
-// A differenza di linkEsternoValido (sponsor/actions.ts, sempre un URL
-// assoluto http/https), qui il valore puo' anche essere una rotta interna
-// del sito ("/squadre", stesso formato di app/NavPubblica.tsx) - un
-// input type="url" browser rifiuterebbe un valore relativo, per questo il
-// campo lato UI resta type="text" e questa e' l'unica validazione reale.
-// Review fix: "/" da solo non basta - "//host.esterno" e' un URL
-// protocol-relative (il browser/Next Link lo risolve come navigazione
-// assoluta verso un altro dominio, non una rotta interna), rifiutato
-// esplicitamente qui invece di essere accettato per errore come "rotta
-// interna" solo perche' inizia con "/".
-// Story 19.9 (Epic 19, Ruolo Site Manager): "&& !rottaRiservata(valore)"
-// aggiunto - oggi (prima di questa storia) un Site Manager poteva salvare
-// una voce di menu con un URL riservato (es. "/app", "/api/health",
-// "/accedi") senza alcun avviso, un link del menu pubblico che punterebbe
-// alla dashboard interna o romperebbe un flusso di autenticazione - gap
-// preesistente dalla Story 19.7, chiuso qui riusando rottaRiservata()
-// (lib/auth/route-guard.ts), unica fonte di verita' condivisa anche dalla
-// futura creazione/modifica di una PaginaPubblica (Story 19.10).
-// Code review (intent_gap, risolto con l'utente 2026-08-20): rottaRiservata()
-// riusa isPublicRoute(), che copre anche le 5 pagine pubbliche esistenti
-// ("/squadre" ecc, non solo le rotte davvero interne) - senza "urlAttuale"
-// risalvare una di quelle 5 voci di menu col proprio stesso url (es. solo
-// per cambiarne l'etichetta) veniva rifiutato come "riservato". urlAttuale
-// (l'url gia' salvato per quella voce, passato solo in aggiornamento) esenta
-// il caso "url invariato" dal controllo - un NUOVO url riservato resta
-// sempre rifiutato, sia in creazione sia in modifica.
-function urlVoceMenuValido(valore: string, urlAttuale?: string): boolean {
-  if (!valore || valore.length > LUNGHEZZA_MASSIMA_URL) return false;
-  if (valore.startsWith("/") && !valore.startsWith("//")) {
-    return valore === urlAttuale || !rottaRiservata(valore);
-  }
-  try {
-    const url = new URL(valore);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
+// Story 19.14 (Epic 19, Ruolo Site Manager): urlVoceMenuValido e' stata
+// spostata in lib/validazione-url.ts - un modulo "use server" come questo
+// puo' esportare solo funzioni async (ogni export diventa un riferimento a
+// Server Action), quindi non poteva piu' restare qui nel momento in cui il
+// blocco Pulsante dell'editor a blocchi (pagine-pubbliche/actions.ts) ha
+// avuto bisogno di riusarla tal quale. Comportamento invariato.
 function leggiCampi(formData: FormData) {
   return {
     etichetta: String(formData.get("etichetta") ?? "").trim(),

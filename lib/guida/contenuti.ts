@@ -154,14 +154,20 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     // Story 19.10 (Epic 19, Ruolo Site Manager): editor di creazione/modifica
     // delle Pagine introdotte dalla Story 19.9 - mirror di ruoliAmmessi per
-    // /app/pagine-pubbliche in route-guard.ts.
+    // /app/pagine-pubbliche in route-guard.ts. Story 19.14: editor a blocchi
+    // riordinabili (drag-and-drop + scorciatoia da tastiera) e 3 nuovi tipi
+    // di blocco (Video, Pulsante, Colonne) - aggiornato qui in parallelo
+    // all'implementazione, per convenzione del progetto (ogni story che
+    // tocca una funzionalità già documentata aggiorna anche la guida).
     rotta: "/app/pagine-pubbliche",
     titolo: "Pagine pubbliche",
     ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
     corpo: [
       "Qui crei e modifichi le Pagine di contenuto del sito pubblico: titolo, URL (deve iniziare con \"/\" e non può coincidere con una rotta riservata del sito) e testo formattato con l'editor.",
-      "L'editor permette titoli, grassetto/corsivo, elenchi e link, oltre a caricare immagini direttamente nel testo (PNG o JPG, max 2MB) - niente tabelle o contenuti incorporati.",
-      "Puoi allineare (sinistra/centro/destra/giustifica) i paragrafi e i titoli, e allineare o ridimensionare le immagini trascinando una delle maniglie che compaiono quando le selezioni. Titolo e testo della Pagina pubblica appaiono sempre centrati nella pagina.",
+      "L'editor permette titoli, grassetto/corsivo, elenchi e link, oltre a caricare immagini direttamente nel testo (PNG o JPG, max 2MB) - niente tabelle o codice HTML incollato.",
+      "Puoi comporre la pagina come una sequenza di blocchi: oltre a testo e immagine, puoi aggiungere un blocco Video (incollando il link di un video YouTube o Vimeo, non un codice di incorporamento), un blocco Pulsante (testo + link, per un invito all'azione) e un blocco Colonne (due colonne affiancate, ciascuna con solo testo o immagine). Usa il pulsante \"+\" in fondo all'ultimo blocco per aggiungerne uno nuovo.",
+      "Puoi riordinare i blocchi trascinandoli dalla maniglia a sinistra, oppure selezionando un blocco e usando Alt+Maiusc+Freccia su/giù, se non usi il mouse o il touch. Il riordino vale solo tra i blocchi principali della pagina: il testo o l'immagine dentro una singola colonna del blocco Colonne non si può riordinare rispetto all'altro contenuto della stessa colonna.",
+      "Puoi allineare (sinistra/centro/destra/giustifica) i paragrafi e i titoli, e allineare o ridimensionare le immagini trascinando una delle maniglie che compaiono quando le selezioni. Titolo e testo della Pagina pubblica appaiono sempre centrati nella pagina; su schermi stretti le due colonne del blocco Colonne si dispongono una sotto l'altra.",
       "Una Pagina salvata è subito visibile pubblicamente all'URL scelto: non esiste uno stato \"bozza\". Eliminarla fa tornare l'URL a mostrare una pagina non trovata, ma non rimuove dal sito le immagini già caricate al suo interno.",
       "Per collegare una Pagina al menu del sito, aggiungi una voce corrispondente in /app/menu-pubblico.",
     ],

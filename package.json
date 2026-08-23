@@ -18,6 +18,8 @@
     "@prisma/client": "^6.19.3",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.6",
+    "@tiptap/extension-drag-handle": "^3.30.2",
+    "@tiptap/extension-drag-handle-react": "^3.30.2",
     "@tiptap/extension-image": "^3.30.2",
     "@tiptap/extension-link": "^3.30.2",
     "@tiptap/extension-text-align": "^3.30.2",

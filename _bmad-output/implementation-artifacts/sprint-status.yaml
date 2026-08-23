@@ -1,3 +1,10 @@
+# last_updated: 2026-08-23 (Story 19.14: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 5 patch applicate e riverificate (src iframe video ora sempre ricalcolato da platform/videoId invece di fidarsi del valore persistito; struttura del blocco Colonne ri-validata lato server, prima solo enforced dallo schema client; riordino da tastiera ora testato attraverso il vero comando registrato, non solo le funzioni pure; Annulla sul secondo prompt del blocco Pulsante ora abortisce l'inserimento invece di usare comunque il testo di default; aggiunta indicazione testuale della scorciatoia da tastiera sul drag-handle), 5 defer loggati in deferred-work.md, resto reject (incluso un falso positivo verificato leggendo il sorgente della libreria: draggable:false sui nuovi Node non impedisce il drag, gestito internamente da @tiptap/extension-drag-handle). Un test scritto durante l'applicazione dei patch usava per errore un href riservato ("/squadre") nel fixture di manomissione Colonne, corretto. 108/108 file test, 1475/1475 test Vitest, tsc/lint puliti (19 warning pre-esistenti non correlati), build riuscita. Guida in-app rifinita con la precisazione che il riordino vale solo tra i blocchi principali. Status: in-review -> done (spec), 19-14 in-progress -> review (sprint-status).)
+# last_updated: 2026-08-22 (Story 19.14: spec scritta (spec-19-14-editor-blocchi-pagine-pubbliche.md, baseline_commit 24113876d075e477f5934dccd0c659ae874d49db) dopo investigazione del codice esistente (PaginaPubblicaEditor.tsx, tiptap-estensioni.ts, sanitizza-html.ts, route-guard.ts, menu-pubblico/actions.ts) - riuso confermato di urlVoceMenuValido per il blocco Pulsante, nessun componente dropdown condiviso esistente (pattern inline ref+onBlur di NavBarClient.tsx da replicare), button-primary confermato mai implementato in CSS. Spec approvata dall'utente pur sopra la soglia di 1600 token (~1750-2000 stimati, tenuta intera - story gia' scoping-ata come un solo obiettivo coerente). Status: draft -> ready-for-dev -> in-progress (spec), 19-14 backlog -> in-progress (sprint-status). Nessuna implementazione di codice ancora in questo giro - solo la spec.)
+# last_updated: 2026-08-22 (Story 19.14: revisione finale in party mode (Mary/John/Sally/Winston/Amelia) prima di create-story. Gap reale scoperto da Winston (appoggiato da Sally/Amelia): il drag-handle di ProseMirror non ha alcun percorso da tastiera, in contraddizione con la disciplina di accessibilita' gia' stabilita nel progetto (touch target 44px, focus ring dedicati) - aggiunta un'alternativa da tastiera come AC (non piu' opzionale), stessa funzione pura di riordino richiamata sia dal drag sia dal keymap (nessuna duplicazione). Aggiunta anche una guardia esplicita: verificare il delta di dimensione bundle (npm run build prima/dopo) prima di considerare chiusa l'installazione di @tiptap/extension-drag-handle (che porta con se' yjs inutilizzato, gia' accettato la sessione precedente) - se il delta e' sproporzionato, riaprire verso il plugin custom scartato. Dettaglio UX deciso (non bloccante): bottone "+" con menu a comparsa per inserire un blocco, non una toolbar libera. Proposta di Winston di un audit responsivo di tutto il sito pubblico respinta di nuovo da John (fuori scope, gia' successo in sessioni precedenti). epics.md aggiornato (AC #1 ora include l'alternativa da tastiera, nuova sezione "Esiti della revisione in party mode"). Nessuna implementazione ancora - story pronta per create-story.)
+# last_updated: 2026-08-22 (Story 19.14: risolti i restanti 3 punti tecnici aperti, via ricerca nel codice esistente (nessun ulteriore giro con l'utente necessario - tutte scelte "mirror di un pattern gia' in uso", non nuovi tradeoff prodotto). Video/embed: mai iframe/HTML libero incollato - solo un URL YouTube/Vimeo, parser server-side estrae l'id e ricostruisce lui stesso l'src (youtube-nocookie.com/player.vimeo.com), stesso principio gia' in uso per l'embed Facebook (Story 18.5, mai markup utente); allowedIframeHostnames di sanitize-html (nativo) invece di permettere iframe generici. Colonne: 2 fisse (non configurabili), contengono solo testo/immagine (non altri blocchi annidati) - evita validazione ricorsiva nel sanitizzatore, stack verticale su mobile. Pulsante/CTA: riusa components.button-primary gia' definito in DESIGN.md Poster Sportivo (2026-08-13) ma mai implementato in CSS dopo la rimozione del CTA hero (Story 18.19) - var(--color-primary)/#0f2438 blu-carbone/maiuscolo/no radius; link validato con la stessa urlVoceMenuValido/rottaRiservata gia' in uso per il menu pubblico (Story 19.7/19.9), nessun meccanismo nuovo. epics.md aggiornato (decisioni + AC rifiniti, ora 8 invece di 6). Nessuna implementazione ancora - la story e' pronta per create-story.)
+# last_updated: 2026-08-22 (Story 19.14: punto aperto "meccanismo drag-and-drop" RISOLTO - verificato scaricando da npm (non solo doc) @tiptap/extension-drag-handle + @tiptap/extension-drag-handle-react, versione 3.30.2 (combacia col Tiptap gia' installato), MIT/gratuiti. Rischio scoperto ispezionando il tarball: il pacchetto importa staticamente isChangeOrigin da @tiptap/extension-collaboration, che dipende da @tiptap/y-tiptap -> yjs+y-protocols+lib0 (stack di editing collaborativo mai usato da questo progetto) - 4 dipendenze in piu' solo per un dettaglio implementativo interno, non per una funzionalita' voluta. Presentato all'utente via AskUserQuestion (estensione ufficiale + yjs inutilizzata vs plugin ProseMirror custom senza dipendenze extra): scelta l'estensione ufficiale, accettando le 4 dipendenze aggiuntive per avere meno codice interno da mantenere. Restano aperti gli altri 3 punti tecnici (allowlist sicurezza blocco video/embed, struttura blocco Colonne, stile/link blocco Pulsante). Nessuna implementazione ancora.)
+# last_updated: 2026-08-22 (Story 19.14 aggiunta su richiesta esplicita dell'utente: editor a blocchi drag-and-drop per le Pagine pubbliche ("qualcosa di piu' per la gestione dei contenuti... un editor piu' spinto che permetta di spostare il testo, come l'editor di WordPress"), estensione di 19.9/19.10/19.13. 3 punti di scope risolti via AskUserQuestion: perimetro solo Pagine pubbliche (non la Home), nuovi tipi di blocco video/embed+pulsante/CTA+colonne oltre a testo/immagine gia' esistenti, riordino via drag libero (non bottoni Su/Giu). 4 punti tecnici lasciati esplicitamente aperti in epics.md (meccanismo drag-and-drop da verificare contro Tiptap 3.30.2 gia' installato, allowlist di sicurezza per il blocco video/embed - primo iframe del progetto, struttura del blocco Colonne, stile/link del blocco Pulsante) - da chiudere prima/durante create-story, coerente con lo stesso pattern gia' seguito per i punti aperti di story precedenti. Nessuna implementazione ancora. sprint-status 19-14 backlog.)
+# last_updated: 2026-08-22 (Bookkeeping su richiesta esplicita dell'utente: 9-34, 18-22, 18-23, 19-10, 19-11, 19-12, 19-13 promosse review -> done. Tutte e 7 erano gia' implementate e revisionate (code review adversariale completata per ciascuna, fix applicati, verifica finale verde), ferme a "review" solo per convenzione di bookkeeping mai chiusa esplicitamente - stesso caso gia' visto per 19.1-19.9. Nessuna implementazione ne' modifica di codice in questo giro.)
 # last_updated: 2026-08-21 (Story 19.13: implementazione completata e code review (bmad-build, 3 layer paralleli) - 0 intent_gap/bad_spec, 2 patch applicate (width/height="0" su img superava la validazione del sanitizzatore, producendo un'immagine invisibile - aggiunto range 40-4000px, stesso minimo della NodeView di resize lato client, Edge Case Hunter; insieme di allineamento immagine duplicato tra client e sanitizzatore, estratto lib/allineamenti.ts come unica fonte di verita', Blind Hunter + Verification Gap indipendentemente), 1 defer (maniglie di resize sotto i 44px, rischio basso su editor desktop-oriented), resto reject. 106/106 file test, 1416/1416 test Vitest (+8 da questa storia), tsc/lint puliti, build riuscita. Status: in-progress -> done (spec), 19-13 in-progress -> review (sprint-status).)
 # last_updated: 2026-08-21 (Story 19.13: 4 punti aperti risolti su delega esplicita dell'utente ("procedi") - allineamento immagini via margin block-level (no float), pagina centrata su titolo+contenuto insieme, giustificazione anche sui titoli H2/H3. Punto 1 (ridimensionamento immagini) corretto durante l'indagine tecnica: @tiptap/extension-image 3.30.2 (gia' installata) ha gia' una NodeView di resize nativa, nessun bisogno di bottoni preimpostati. Decisione presa in tutta la storia: mai uno `style` libero nel sanitizzatore, ogni nuova formattazione passa da un attributo `data-align`/`width`/`height` validato a insieme chiuso. spec-19-13-editor-allineamento-dimensioni.md scritta, baseline_commit 6498066074ecd32eb5ed689bd7c30708845d787d, sprint-status 19-13 backlog -> in-progress.)
 # last_updated: 2026-08-21 (Story 19.13 aggiunta: giustificazione testo, pagina Pagine pubbliche sempre centrata, ridimensionamento/allineamento immagini nell'editor Tiptap - 4 punti aperti non risolti (meccanismo resize immagini: bottoni preimpostati vs drag libero; meccanismo allineamento immagini: block vs float con testo che scorre; cosa si centra esattamente: solo .contenuto o anche titolo/main; giustificazione anche sui titoli H2/H3 o solo p). Nessuna implementazione, solo la story. sprint-status 19-13 backlog.)
@@ -451,7 +458,7 @@ development_status:
   # oggetti {nome, dataScadenza} - vedi epics.md. Nessun punto aperto
   # residuo, pronta per create-story. NESSUNA IMPLEMENTAZIONE ANCORA -
   # l'utente ha chiesto solo la story in questo giro.
-  9-34-data-scadenza-certificato-elenco-atlete: review
+  9-34-data-scadenza-certificato-elenco-atlete: done
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -914,7 +921,7 @@ development_status:
   # Change Log) aggiornati di conseguenza. 1302/1302 test Vitest, tsc
   # pulito, lint 0 errori, npm run build verificato (/staff invariata,
   # dynamic).
-  18-22-foto-allenatore-staff: review
+  18-22-foto-allenatore-staff: done
 
   # Story 18.23 aggiunta 2026-08-21 su richiesta esplicita dell'utente dopo
   # verifica dal vivo su volleymogliano.it da smartphone: header pubblico
@@ -925,7 +932,7 @@ development_status:
   # risolta in party mode (Mary/John/Sally/Winston/Amelia) prima di essere
   # scritta - nessun punto aperto residuo (vedi epics.md#Story 18.23).
   # Nessuna implementazione ancora.
-  18-23-header-mobile-didascalia-facebook: review
+  18-23-header-mobile-didascalia-facebook: done
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
@@ -1053,7 +1060,7 @@ development_status:
   # gli AC decisi. NESSUNA IMPLEMENTAZIONE ANCORA - l'utente ha chiesto
   # esplicitamente solo la spec in questo giro, non "procedi".
   19-9-pagine-pubbliche-modello-dati: done
-  19-10-editor-pagine-pubbliche: review
+  19-10-editor-pagine-pubbliche: done
   # Story 19.11 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
   # "nella home come sfondo sfumato... aggiungere una foto da caricare da
   # funzione siti da parte del site manager" - la sezione "Foto sfondo hero"
@@ -1064,7 +1071,7 @@ development_status:
   # Action caricaFotoHeroAction va estesa. spec-19-11-site-manager-foto-hero.md
   # scritta, epics.md/epic-19-context.md aggiornati. NESSUNA IMPLEMENTAZIONE
   # ANCORA - solo la story in questo giro.
-  19-11-site-manager-foto-hero: review
+  19-11-site-manager-foto-hero: done
 
   # Story 19.12 aggiunta il 2026-08-20 su richiesta esplicita dell'utente:
   # "possibilita' di avere per ogni membro dello staff eventuale descrizione
@@ -1078,7 +1085,7 @@ development_status:
   # lunghezza sulla descrizione, ruoli sotto il nome/descrizione sotto i
   # Gruppi in /staff - vedi epics.md. Pronta per create-story. NESSUNA
   # IMPLEMENTAZIONE ANCORA.
-  19-12-staff-descrizione-ruoli-aggiuntivi: review
+  19-12-staff-descrizione-ruoli-aggiuntivi: done
 
   # Story 19.13 aggiunta 2026-08-21 su richiesta esplicita dell'utente:
   # giustificazione testo, pagina delle Pagine pubbliche sempre centrata
@@ -1087,7 +1094,15 @@ development_status:
   # di resize immagini, meccanismo di allineamento immagini - block vs
   # float, cosa si centra esattamente, giustificazione anche sui titoli) -
   # vedi epics.md#Story 19.13. Nessuna implementazione ancora.
-  19-13-editor-allineamento-dimensioni: review
+  19-13-editor-allineamento-dimensioni: done
+
+  # Story 19.14 aggiunta il 2026-08-22 su richiesta esplicita dell'utente:
+  # editor a blocchi drag-and-drop per le Pagine pubbliche (testo, immagine,
+  # video/embed, pulsante/CTA, colonne) - vedi epics.md#Story 19.14 per i
+  # punti tecnici ancora aperti (meccanismo drag-and-drop, allowlist
+  # sicurezza embed, struttura Colonne/Pulsante) da chiudere prima di
+  # create-story. Nessuna implementazione ancora.
+  19-14-editor-blocchi-pagine-pubbliche: review
 
   # Epic 20 (Torneo Memorial) aggiunta il 2026-08-19 su richiesta esplicita
   # dell'utente - solo l'epica scritta in epics.md, nessuna story creata,

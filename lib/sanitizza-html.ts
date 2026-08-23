@@ -3,6 +3,11 @@ import {
   ALLINEAMENTI_IMMAGINE_CONSENTITI,
   ALLINEAMENTI_TESTO_CONSENTITI,
 } from "@/lib/allineamenti";
+import {
+  costruisciSrcVideo,
+  videoIdRiconosciuto,
+  type PiattaformaVideo,
+} from "@/lib/video-embed";
 
 // Story 19.9 (Epic 19, Ruolo Site Manager): prima introduzione di
 // sanitizzazione HTML in questo progetto - richiesta dal contenuto libero di
@@ -41,6 +46,15 @@ import {
 // target/rel/title su <a>, src/alt/title su <img>) - piu' preciso, nessuna
 // regressione sui contenuti gia' scritti (Tiptap non produce mai altre
 // combinazioni).
+// Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi - "iframe" e
+// "div" sono gli UNICI due tag nuovi aggiunti da questa storia (Design Notes
+// della spec: preferire il riuso di tag gia' allowlistati con un attributo
+// data-blocco quando possibile). Il blocco Pulsante non ne ha bisogno affatto
+// (riusa <a>, gia' presente); il blocco Colonne ha bisogno di un contenitore
+// generico (nessun tag esistente nell'allowlist e' un contenitore di blocco
+// generico) -> "div"; il blocco Video ha bisogno dell'embed stesso -> "iframe",
+// ristretto a due soli hostname via allowedIframeHostnames sotto (mai un
+// iframe generico).
 const TAG_CONSENTITI = [
   "h2",
   "h3",
@@ -53,14 +67,38 @@ const TAG_CONSENTITI = [
   "a",
   "img",
   "br",
+  "iframe",
+  "div",
 ];
 
 const ATTRIBUTI_CONSENTITI: sanitizeHtml.IOptions["allowedAttributes"] = {
-  a: ["href", "target", "rel", "title"],
+  // "data-blocco" su <a>: solo per distinguere il blocco Pulsante (Story
+  // 19.14) da un link inline normale - insieme chiuso validato in
+  // transformTags sotto (rimosso silenziosamente se non e' "pulsante").
+  a: ["href", "target", "rel", "title", "data-blocco"],
   img: ["src", "alt", "title", "data-align", "width", "height"],
   p: ["data-align"],
   h2: ["data-align"],
   h3: ["data-align"],
+  // Story 19.14: blocco Colonne - contenitore esterno ("colonne") e le due
+  // colonne interne ("colonna"), insieme chiuso validato sotto.
+  div: ["data-blocco"],
+  // Story 19.14: blocco Video - src/allow/sandbox/etc sono SEMPRE
+  // ricostruiti da transformTags sotto (mai fidarsi del valore persistito),
+  // ma devono comunque comparire qui: sanitize-html applica l'allowlist
+  // attributi anche al risultato di transformTags, un attributo forzato ma
+  // non allowlistato verrebbe comunque rimosso subito dopo.
+  iframe: [
+    "src",
+    "title",
+    "allow",
+    "allowfullscreen",
+    "sandbox",
+    "loading",
+    "data-blocco",
+    "data-platform",
+    "data-video-id",
+  ],
 };
 
 // Story 19.13 (Epic 19, Ruolo Site Manager): allineamento testo/immagini e
@@ -105,10 +143,33 @@ function dimensioneImmagineValida(valore: string): boolean {
   return numero >= LARGHEZZA_MINIMA_IMMAGINE && numero <= LARGHEZZA_MASSIMA_IMMAGINE;
 }
 
+// Story 19.14 (Epic 19, Ruolo Site Manager): "data-blocco" su <a>/<div> e'
+// sempre un insieme chiuso di stringhe letterali - stessa filosofia gia' in
+// uso per data-align (rimosso silenziosamente se il valore non e' tra quelli
+// attesi, il resto del tag resta invariato).
+const VALORI_DATA_BLOCCO_A = ["pulsante"];
+const VALORI_DATA_BLOCCO_DIV = ["colonne", "colonna"];
+
+function rimuoviDataBloccoNonValido(valoriConsentiti: readonly string[]): sanitizeHtml.Transformer {
+  return (tagName, attribs) => {
+    const valore = attribs["data-blocco"];
+    if (valore !== undefined && !valoriConsentiti.includes(valore)) {
+      delete attribs["data-blocco"];
+    }
+    return { tagName, attribs };
+  };
+}
+
 export function sanitizzaHtml(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: TAG_CONSENTITI,
     allowedAttributes: ATTRIBUTI_CONSENTITI,
+    // Story 19.14: unico hostname ammesso per l'src di un <iframe> - un
+    // Node BloccoVideo legittimo lo ricostruisce sempre su uno di questi due
+    // domini (lib/video-embed.ts, costruisciSrcVideo); qualunque altro src
+    // (un <iframe> generico incollato/manomesso) fa rimuovere l'intero tag,
+    // stesso comportamento gia' testato per <iframe> prima di questa storia.
+    allowedIframeHostnames: ["www.youtube-nocookie.com", "player.vimeo.com"],
     // Code review (Blind Hunter + Edge Case Hunter, trovato
     // indipendentemente, Story 19.9): l'allowlist permette target/rel su
     // <a>, ma nulla forzava rel="noopener noreferrer" quando target="_blank"
@@ -121,7 +182,7 @@ export function sanitizzaHtml(html: string): string {
         if (attribs.target === "_blank") {
           attribs.rel = "noopener noreferrer";
         }
-        return { tagName, attribs };
+        return rimuoviDataBloccoNonValido(VALORI_DATA_BLOCCO_A)(tagName, attribs);
       },
       p: rimuoviAllineamentoNonValido(ALLINEAMENTI_TESTO_CONSENTITI),
       h2: rimuoviAllineamentoNonValido(ALLINEAMENTI_TESTO_CONSENTITI),
@@ -138,6 +199,39 @@ export function sanitizzaHtml(html: string): string {
           }
         });
         return risultato;
+      },
+      div: rimuoviDataBloccoNonValido(VALORI_DATA_BLOCCO_DIV),
+      // Story 19.14 ("Always" della spec): mai un <iframe src> con URL letto
+      // direttamente dall'utente. allowedIframeHostnames sopra e' il vero
+      // cancello sull'host; qui si forza SEMPRE lo stesso sandbox (mai
+      // quello eventualmente persistito/manomesso) e si ri-valida
+      // data-platform/data-video-id con lo stesso insieme chiuso di regex
+      // usato da lib/video-embed.ts al salvataggio - un iframe con id
+      // malformato perde quei due attributi (il tag/src restano, coerenti
+      // col comportamento gia' in uso per data-align/width/height: si rimuove
+      // l'attributo manomesso, non l'intero tag).
+      // Review fix (Blind Hunter, Story 19.14): validare data-platform/
+      // data-video-id per formato e l'hostname di src separatamente non basta
+      // - un contenutoHtml manomesso poteva avere entrambi validi ma un src
+      // che punta a un video diverso sullo stesso hostname consentito. Ora,
+      // quando la coppia e' valida, src viene SEMPRE ricalcolato da
+      // costruisciSrcVideo(platform, videoId) - mai fidarsi del valore
+      // persistito, mai il contrario (src non convalida mai platform/videoId).
+      iframe: (tagName, attribs) => {
+        attribs.sandbox = "allow-scripts allow-same-origin allow-presentation";
+
+        const platform = attribs["data-platform"];
+        const videoId = attribs["data-video-id"];
+        if (platform !== undefined && videoId !== undefined) {
+          if (videoIdRiconosciuto(platform, videoId)) {
+            attribs.src = costruisciSrcVideo(platform as PiattaformaVideo, videoId);
+          } else {
+            delete attribs["data-platform"];
+            delete attribs["data-video-id"];
+          }
+        }
+
+        return { tagName, attribs };
       },
     },
   });

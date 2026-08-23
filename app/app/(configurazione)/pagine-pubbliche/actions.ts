@@ -6,6 +6,8 @@ import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { rottaRiservata } from "@/lib/auth/route-guard";
 import { invalidaCachePaginePubbliche } from "@/lib/auth/pagine-pubbliche-slug-cache";
 import { sanitizzaHtml } from "@/lib/sanitizza-html";
+import { urlVoceMenuValido } from "@/lib/validazione-url";
+import { estraiIdVideo, videoIdRiconosciuto } from "@/lib/video-embed";
 import { createClient } from "@/lib/supabase/server";
 import {
   creaPaginaPubblica,
@@ -82,9 +84,183 @@ function leggiCampi(formData: FormData) {
 // tutto (es. un utente incolla solo markup fuori allowlist), il risultato
 // resta comunque vuoto e va rifiutato allo stesso modo, non solo il caso
 // letterale "<p></p>".
+// Story 19.14 (Epic 19, Ruolo Site Manager): un blocco Video (<iframe>, mai
+// testo al suo interno) conta come "ha contenuto" allo stesso modo di
+// un'immagine da sola - stessa logica di prima, solo estesa al nuovo tipo di
+// blocco senza testo. Un blocco Pulsante non ha bisogno dello stesso
+// trattamento: la sua etichetta e' testo vero (sopravvive al replace sopra).
+// Un blocco Colonne conta come vuoto/pieno in base al SUO contenuto interno
+// (testo/immagine), gia' coperto da queste stesse due condizioni.
 function contenutoVisibilmenteVuoto(contenutoSicuro: string): boolean {
   const senzaTag = contenutoSicuro.replace(/<[^>]*>/g, "").trim();
-  return senzaTag.length === 0 && !contenutoSicuro.includes("<img");
+  return (
+    senzaTag.length === 0 &&
+    !contenutoSicuro.includes("<img") &&
+    !contenutoSicuro.includes("<iframe")
+  );
+}
+
+// Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi - i blocchi
+// Video/Pulsante vengono gia' validati lato client prima di essere inseriti
+// nell'editor (validaUrlVideoAction sotto per il Video, urlVoceMenuValido
+// importato direttamente nel componente client per il Pulsante) - ma quello
+// e' solo UX, mai il vero cancello (Boundaries "Always" della spec, stesso
+// principio "mai fidarsi del solo passaggio client" gia' in uso per
+// sanitizzaHtml). Qui si ri-analizza il markup GIA' sanitizzato (stesso
+// ordine "sanitizza poi valida" di sopra) per trovare ogni blocco Video/
+// Pulsante e ri-validarne gli attributi con le stesse funzioni pure - un
+// campo hidden manomesso non puo' aggirare questo controllo. Estrazione via
+// regex (non un parser DOM, stesso stile gia' in uso in
+// lib/sanitizza-html.test.ts) - sufficiente perche' guarda solo attributi
+// tra virgolette doppie del markup che NOI stessi produciamo (Tiptap
+// renderHTML), mai HTML arbitrario di terze parti.
+const TAG_BLOCCO_PULSANTE = /<a\b[^>]*data-blocco="pulsante"[^>]*>/g;
+const TAG_BLOCCO_VIDEO = /<iframe\b[^>]*data-blocco="video"[^>]*>/g;
+
+function leggiAttributo(tag: string, nome: string): string | null {
+  const match = tag.match(new RegExp(`\\b${nome}="([^"]*)"`));
+  return match ? match[1] : null;
+}
+
+const MESSAGGIO_URL_NON_VALIDO =
+  'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).';
+
+// Review fix (Verification Gap, Story 19.14): il blocco Colonne (Boundaries
+// "Always" della spec: "esattamente 2 fisse... mai Video/Pulsante/Colonne
+// annidate") era imposto SOLO dallo schema ProseMirror lato client
+// (BloccoColonna/BloccoColonne, tiptap-estensioni.ts - content expression),
+// mai al salvataggio - un contenutoHtml manomesso (campo hidden, bypassa
+// l'editor) poteva avere un <div data-blocco="colonne"> con un numero di
+// figli data-blocco="colonna" diverso da 2, oppure una colonna con un altro
+// blocco Colonne/Video/Pulsante annidato al suo interno. Stesso stile a
+// regex gia' in uso sopra per Pulsante/Video (nessun parser DOM - sufficiente
+// perche' guarda solo il markup GIA' sanitizzato che NOI stessi produciamo),
+// ma qui serve tracciare la profondita' dei <div> per distinguere un figlio
+// DIRETTO da uno annidato piu' in profondita'.
+type FiglioDivDiretto = { attribs: string; contenuto: string };
+
+// Trova i <div>...</div> di primo livello dentro un frammento di markup (non
+// annidati in un div piu' interno DI QUEL FRAMMENTO) - usato per contare le
+// colonne dirette di un blocco Colonne. Traccia la profondita' SOLO dei tag
+// <div> (altri tag - p/a/iframe/ecc - non delimitano mai un blocco).
+function trovaDivDiPrimoLivello(frammento: string): FiglioDivDiretto[] {
+  const regex = /<(\/)?div\b([^>]*)>/g;
+  const figli: FiglioDivDiretto[] = [];
+  let profondita = 0;
+  let inizioContenuto = -1;
+  let attribsCorrente = "";
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(frammento))) {
+    if (match[1] !== "/") {
+      if (profondita === 0) {
+        inizioContenuto = regex.lastIndex;
+        attribsCorrente = match[2];
+      }
+      profondita += 1;
+    } else if (profondita > 0) {
+      profondita -= 1;
+      if (profondita === 0) {
+        figli.push({
+          attribs: attribsCorrente,
+          contenuto: frammento.slice(inizioContenuto, match.index),
+        });
+      }
+    }
+  }
+  return figli;
+}
+
+// Trova, a partire da `daIndice` (gia' l'inizio di un tag di apertura
+// "<div...>"), il "</div>" che lo chiude - conta la profondita' SOLO dei tag
+// <div>. Ritorna null se l'HTML non e' ben formato (non dovrebbe mai
+// accadere su un contenuto gia' passato da sanitizzaHtml, ma per sicurezza si
+// rifiuta invece di leggere oltre i confini del blocco).
+function trovaChiusuraDiv(html: string, daIndice: number): { inizio: number; fine: number } | null {
+  const regex = /<(\/)?div\b([^>]*)>/g;
+  regex.lastIndex = daIndice;
+  let profondita = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html))) {
+    if (match[1] !== "/") {
+      profondita += 1;
+    } else {
+      profondita -= 1;
+      if (profondita === 0) return { inizio: match.index, fine: regex.lastIndex };
+    }
+  }
+  return null;
+}
+
+const MESSAGGIO_COLONNE_NON_VALIDE =
+  "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).";
+
+function erroreBloccoColonneNonValido(
+  contenutoSicuro: string
+): { code: string; message: string } | null {
+  const regexApertura = /<div\b([^>]*)>/g;
+  let match: RegExpExecArray | null;
+  while ((match = regexApertura.exec(contenutoSicuro))) {
+    const attribs = match[1];
+    if (!/data-blocco="colonne"/.test(attribs)) continue;
+
+    const fineTagApertura = regexApertura.lastIndex;
+    const chiusura = trovaChiusuraDiv(contenutoSicuro, match.index);
+    if (!chiusura) {
+      return { code: "VALIDATION", message: MESSAGGIO_COLONNE_NON_VALIDE };
+    }
+
+    const contenutoColonne = contenutoSicuro.slice(fineTagApertura, chiusura.inizio);
+    const figli = trovaDivDiPrimoLivello(contenutoColonne);
+    const dueColonneDirette =
+      figli.length === 2 && figli.every((figlio) => /data-blocco="colonna"/.test(figlio.attribs));
+    if (!dueColonneDirette) {
+      return { code: "VALIDATION", message: MESSAGGIO_COLONNE_NON_VALIDE };
+    }
+
+    for (const colonna of figli) {
+      if (
+        /data-blocco="colonne"/.test(colonna.contenuto) ||
+        /data-blocco="colonna"/.test(colonna.contenuto) ||
+        /<iframe\b[^>]*data-blocco="video"/.test(colonna.contenuto) ||
+        /<a\b[^>]*data-blocco="pulsante"/.test(colonna.contenuto)
+      ) {
+        return { code: "VALIDATION", message: MESSAGGIO_COLONNE_NON_VALIDE };
+      }
+    }
+
+    // Salta oltre l'intero blocco appena validato: un'eventuale colonne
+    // annidata al suo interno e' gia' stata rilevata sopra (test su
+    // colonna.contenuto), non va ri-processata come occorrenza indipendente.
+    regexApertura.lastIndex = chiusura.fine;
+  }
+
+  return null;
+}
+
+function erroreBlocchiNonValidi(
+  contenutoSicuro: string
+): { code: string; message: string } | null {
+  for (const tagMatch of contenutoSicuro.matchAll(TAG_BLOCCO_PULSANTE)) {
+    const href = leggiAttributo(tagMatch[0], "href");
+    if (!href || !urlVoceMenuValido(href)) {
+      return { code: "VALIDATION", message: MESSAGGIO_URL_NON_VALIDO };
+    }
+  }
+
+  for (const tagMatch of contenutoSicuro.matchAll(TAG_BLOCCO_VIDEO)) {
+    const platform = leggiAttributo(tagMatch[0], "data-platform");
+    const videoId = leggiAttributo(tagMatch[0], "data-video-id");
+    if (!platform || !videoId || !videoIdRiconosciuto(platform, videoId)) {
+      return { code: "VALIDATION", message: "URL video non riconosciuto." };
+    }
+  }
+
+  const erroreColonne = erroreBloccoColonneNonValido(contenutoSicuro);
+  if (erroreColonne) {
+    return erroreColonne;
+  }
+
+  return null;
 }
 
 function validaCampi(
@@ -116,6 +292,10 @@ function validaCampi(
   }
   if (contenutoVisibilmenteVuoto(contenutoSicuro)) {
     return { code: "VALIDATION", message: "Il contenuto della pagina è obbligatorio." };
+  }
+  const erroreBlocchi = erroreBlocchiNonValidi(contenutoSicuro);
+  if (erroreBlocchi) {
+    return erroreBlocchi;
   }
   return null;
 }
@@ -327,4 +507,30 @@ export async function caricaImmaginePaginaAction(
       error: { code: "INTERNAL", message: "Impossibile caricare l'immagine. Riprova." },
     };
   }
+}
+
+// Story 19.14 (Epic 19, Ruolo Site Manager): blocco Video dell'editor a
+// blocchi - stesso pattern di caricaImmaginePaginaAction sopra (invocata come
+// funzione asincrona ordinaria dal componente client "use client"
+// PaginaPubblicaEditor.tsx, non da un <form action>). "il blocco Video passa
+// sempre da un parser server-side" (Boundaries "Always" della spec):
+// estraiIdVideo() gira qui, MAI nel bundle client - un Utente non deve poter
+// forgiare platform/videoId direttamente lato browser. Il Server Action di
+// salvataggio (validaCampi sopra) ri-valida comunque l'id gia' estratto al
+// momento di salvare l'intera Pagina - difesa in profondita', non un
+// sostituto di questo controllo.
+export type ValidaUrlVideoResult =
+  | { piattaforma: "youtube" | "vimeo"; videoId: string }
+  | { error: { code: string; message: string } };
+
+export async function validaUrlVideoAction(url: string): Promise<ValidaUrlVideoResult> {
+  const forbidden = await requireRuolo(RUOLI_GESTIONE_PAGINE_PUBBLICHE);
+  if (forbidden) return forbidden;
+
+  const riconosciuto = estraiIdVideo(url);
+  if (!riconosciuto) {
+    return { error: { code: "VALIDATION", message: "URL video non riconosciuto." } };
+  }
+
+  return { piattaforma: riconosciuto.piattaforma, videoId: riconosciuto.id };
 }

@@ -114,3 +114,72 @@
 .contenuto img[data-align="right"] {
   margin-left: auto;
 }
+
+/* Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi - i 3 nuovi
+   tipi di blocco (Video/Colonne/Pulsante) sono in aggiunta a quanto sopra,
+   nessuna riga esistente toccata: una Pagina senza questi blocchi (creata
+   con l'editor precedente, Story 19.9-19.13) non ha nessuno di questi
+   selettori applicabile, resa identica a prima (AC #7). */
+
+/* Blocco Colonne - 2 colonne fisse affiancate su desktop, impilate su
+   schermi stretti (AC #6). */
+.contenuto div[data-blocco="colonne"] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 700px) {
+  .contenuto div[data-blocco="colonne"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+.contenuto div[data-blocco="colonna"] > *:first-child {
+  margin-top: 0;
+}
+
+/* Blocco Video - contenitore responsive 16:9, mai un width/height fisso in
+   pixel (si adatta alla larghezza del contenuto, coerente con .contenuto
+   img sopra). */
+.contenuto iframe[data-blocco="video"] {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  margin-top: var(--space-4);
+}
+
+/* Blocco Pulsante - prima implementazione reale del componente
+   "button-primary" di DESIGN.md (Poster Sportivo, 2026-08-13, sezione
+   Componenti): sfondo azzurro, testo blu-carbone, nessun border-radius,
+   maiuscolo, hover sfondo bianco + sollevamento di 2px (200ms). Un solo
+   stile, nessuna variante. */
+.contenuto a[data-blocco="pulsante"] {
+  display: inline-block;
+  margin-top: var(--space-4);
+  background: var(--color-primary);
+  color: #0f2438;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: var(--space-4) var(--space-8);
+  border-radius: 0;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.contenuto a[data-blocco="pulsante"]:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+}
+
+.contenuto a[data-blocco="pulsante"]:focus-visible {
+  /* Contorno blu-carbone (non il --color-focus-ring standard, troppo
+     vicino all'azzurro di sfondo per un contrasto sufficiente) - stessa
+     scelta di DESIGN.md (focus-ring-su-azzurro). */
+  outline: 2px solid #0f2438;
+  outline-offset: 2px;
+}

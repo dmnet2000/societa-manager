@@ -52,6 +52,7 @@ const {
   aggiornaPaginaPubblicaAction,
   eliminaPaginaPubblicaAction,
   caricaImmaginePaginaAction,
+  validaUrlVideoAction,
 } = await import("./actions");
 
 const supabaseFinto = { finto: true };
@@ -337,6 +338,271 @@ describe("creaPaginaPubblicaAction", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare la Pagina. Riprova." },
+    });
+  });
+
+  // Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi - il blocco
+  // Pulsante/Video e' gia' validato lato client prima dell'inserimento, ma
+  // il vero cancello e' qui: un campo hidden manomesso (contenutoHtml con un
+  // blocco Pulsante/Video invalido scritto a mano) deve comunque essere
+  // rifiutato al salvataggio (Boundaries "Always" della spec).
+  describe("blocco Pulsante/Video (editor a blocchi, Story 19.14)", () => {
+    it("returns VALIDATION quando il blocco Pulsante ha un href riservato (\"/app\")", async () => {
+      const contenutoHtml = '<a href="/app" data-blocco="pulsante">Vai</a>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            'URL non valido (deve iniziare con "/" per una pagina del sito, oppure con http:// o https:// per un link esterno).',
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("accetta un blocco Pulsante con un href valido (rotta interna non riservata)", async () => {
+      // "/squadre" e' una delle 5 pagine pubbliche gia' hardcoded (isPublicRoute)
+      // ed e' quindi "riservata" per urlVoceMenuValido - stesso comportamento
+      // gia' in uso per il menu pubblico (Story 19.9), riusato tal quale qui
+      // (Boundaries "Always" della spec). Una PaginaPubblica creata dinamicamente
+      // con questo slug invece non collide con isPublicRoute.
+      const contenutoHtml = '<a href="/una-pagina-qualsiasi" data-blocco="pulsante">Vai</a>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(creaPaginaPubblicaMock).toHaveBeenCalled();
+    });
+
+    it("accetta un blocco Pulsante con un href esterno http/https valido", async () => {
+      const contenutoHtml = '<a href="https://esempio.it" data-blocco="pulsante">Vai</a>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({ success: true });
+    });
+
+    it("returns VALIDATION ('URL video non riconosciuto') quando il blocco Video ha un id non riconosciuto", async () => {
+      const contenutoHtml =
+        '<iframe data-blocco="video" data-platform="youtube" data-video-id="non-valido" src="https://www.youtube-nocookie.com/embed/x"></iframe>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: { code: "VALIDATION", message: "URL video non riconosciuto." },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("accetta un blocco Video con platform/id validi", async () => {
+      const contenutoHtml =
+        '<iframe data-blocco="video" data-platform="youtube" data-video-id="dQw4w9WgXcQ" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  // Review fix (Verification Gap, Story 19.14): il blocco Colonne
+  // (esattamente 2 colonne fisse, mai Video/Pulsante/Colonne annidate -
+  // Boundaries "Always" della spec) era imposto SOLO dallo schema ProseMirror
+  // lato client - un contenutoHtml manomesso (campo hidden, bypassa
+  // l'editor) doveva restare rifiutato al salvataggio, non solo lato UI.
+  describe("blocco Colonne (editor a blocchi, Story 19.14)", () => {
+    it("accetta un blocco Colonne valido (esattamente 2 colonne dirette)", async () => {
+      const contenutoHtml =
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna"><p>Testo colonna 1</p></div>' +
+        '<div data-blocco="colonna"><img src="/x.png" alt=""></div>' +
+        "</div>";
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({ success: true });
+    });
+
+    it("returns VALIDATION quando il blocco Colonne ha una sola colonna (manomissione)", async () => {
+      const contenutoHtml =
+        '<div data-blocco="colonne"><div data-blocco="colonna"><p>Sola</p></div></div>';
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).",
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("returns VALIDATION quando il blocco Colonne ha tre colonne (manomissione)", async () => {
+      const contenutoHtml =
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna"><p>Uno</p></div>' +
+        '<div data-blocco="colonna"><p>Due</p></div>' +
+        '<div data-blocco="colonna"><p>Tre</p></div>' +
+        "</div>";
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).",
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("returns VALIDATION quando una colonna contiene un altro blocco Colonne annidato (manomissione)", async () => {
+      const contenutoHtml =
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna">' +
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna"><p>Interno 1</p></div>' +
+        '<div data-blocco="colonna"><p>Interno 2</p></div>' +
+        "</div>" +
+        "</div>" +
+        '<div data-blocco="colonna"><p>Due</p></div>' +
+        "</div>";
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).",
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("returns VALIDATION quando una colonna contiene un blocco Video annidato (manomissione)", async () => {
+      const contenutoHtml =
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna">' +
+        '<iframe data-blocco="video" data-platform="youtube" data-video-id="dQw4w9WgXcQ" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>' +
+        "</div>" +
+        '<div data-blocco="colonna"><p>Due</p></div>' +
+        "</div>";
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).",
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+
+    it("returns VALIDATION quando una colonna contiene un blocco Pulsante annidato (manomissione)", async () => {
+      // href non riservato (a differenza di "/squadre", una delle 5 pagine
+      // pubbliche storiche) - qui interessa la struttura del blocco Colonne,
+      // non la validazione dell'href del Pulsante annidato (gia' coperta
+      // altrove), quindi l'href deve superare quel controllo indipendente
+      // perche' il test isoli davvero il fallimento sulla struttura.
+      const contenutoHtml =
+        '<div data-blocco="colonne">' +
+        '<div data-blocco="colonna"><a href="https://esempio.it" data-blocco="pulsante">Vai</a></div>' +
+        '<div data-blocco="colonna"><p>Due</p></div>' +
+        "</div>";
+      sanitizzaHtmlMock.mockReturnValue(contenutoHtml);
+
+      const result = await creaPaginaPubblicaAction(
+        undefined,
+        buildFormData({ ...campiValidi(), contenutoHtml })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il blocco Colonne non è valido (deve avere esattamente 2 colonne, mai un altro blocco Colonne/Video/Pulsante annidato).",
+        },
+      });
+      expect(creaPaginaPubblicaMock).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("validaUrlVideoAction", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Site Manager", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await validaUrlVideoAction("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+  });
+
+  it("returns piattaforma/videoId per un URL YouTube riconosciuto", async () => {
+    const result = await validaUrlVideoAction("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+
+    expect(result).toEqual({ piattaforma: "youtube", videoId: "dQw4w9WgXcQ" });
+  });
+
+  it("returns piattaforma/videoId per un URL Vimeo riconosciuto", async () => {
+    const result = await validaUrlVideoAction("https://vimeo.com/123456789");
+
+    expect(result).toEqual({ piattaforma: "vimeo", videoId: "123456789" });
+  });
+
+  it("returns VALIDATION ('URL video non riconosciuto') per un URL non riconosciuto", async () => {
+    const result = await validaUrlVideoAction("https://esempio.it/video");
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "URL video non riconosciuto." },
     });
   });
 });

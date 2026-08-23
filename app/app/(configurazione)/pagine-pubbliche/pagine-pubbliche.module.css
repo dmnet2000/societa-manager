@@ -206,6 +206,11 @@
 }
 
 .corpoEditor {
+  /* Story 19.14: <DragHandle> (@tiptap/extension-drag-handle-react) posiziona
+     la propria maniglia con position:absolute relativo al piu' vicino
+     antenato posizionato - senza "relative" qui la maniglia finirebbe
+     posizionata rispetto a un antenato piu' in alto nella pagina. */
+  position: relative;
   margin-top: var(--space-2);
   min-height: 240px;
   background: var(--color-surface);
@@ -278,4 +283,91 @@
 .corpoEditor :global([data-resize-handle="top-right"]),
 .corpoEditor :global([data-resize-handle="bottom-left"]) {
   cursor: nesw-resize;
+}
+
+/* Story 19.14 (Epic 19, Ruolo Site Manager): editor a blocchi. */
+
+/* Maniglia di trascinamento (@tiptap/extension-drag-handle-react) - la
+   libreria gestisce da sola visibility/position (nascosta finche' non si
+   passa sopra un blocco di primo livello), qui solo l'aspetto visivo. */
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.dragHandle[data-dragging="true"] {
+  opacity: 0.6;
+}
+
+/* Menu "+" di inserimento blocco - stesso pattern (ref + onBlur +
+   click-outside) gia' in uso per il menu profilo di app/NavBarClient.tsx. */
+.menuBlocchiWrapper {
+  position: relative;
+  margin-top: var(--space-2);
+}
+
+.bottoneAggiungiBlocco {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.bottoneAggiungiBlocco:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.menuBlocchi {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.voceMenuBlocchi {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.voceMenuBlocchi:hover,
+.voceMenuBlocchi:focus-visible {
+  background: var(--color-surface-alt);
+}
+
+.voceMenuBlocchi:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
