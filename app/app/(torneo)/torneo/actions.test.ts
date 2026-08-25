@@ -26,6 +26,7 @@ const elencaSquadreTorneoMock = vi.fn();
 const contaPartiteTorneoMock = vi.fn();
 const contaPartiteTorneoTabelloneMock = vi.fn();
 const creaPartiteTorneoMock = vi.fn();
+const cancellaPartiteTorneoMock = vi.fn();
 const elencaPartiteTorneoMock = vi.fn();
 const aggiornaRisultatoPartitaTorneoMock = vi.fn();
 const trovaPartitaTorneoPerIdMock = vi.fn();
@@ -68,6 +69,7 @@ vi.mock("@/lib/torneo", () => ({
   contaPartiteTorneo: contaPartiteTorneoMock,
   contaPartiteTorneoTabellone: contaPartiteTorneoTabelloneMock,
   creaPartiteTorneo: creaPartiteTorneoMock,
+  cancellaPartiteTorneo: cancellaPartiteTorneoMock,
   elencaPartiteTorneo: elencaPartiteTorneoMock,
   aggiornaRisultatoPartitaTorneo: aggiornaRisultatoPartitaTorneoMock,
   trovaPartitaTorneoPerId: trovaPartitaTorneoPerIdMock,
@@ -87,6 +89,7 @@ const {
   aggiornaSquadraTorneoAction,
   cancellaSquadraTorneoAction,
   generaCalendarioGironiAction,
+  cancellaPartiteTorneoAction,
   salvaRisultatoPartitaTorneoAction,
   generaTabelloneAction,
   caricaVolantinoTorneoAction,
@@ -166,6 +169,7 @@ beforeEach(() => {
   contaPartiteTorneoTabelloneMock.mockReset();
   contaPartiteTorneoTabelloneMock.mockResolvedValue(0);
   creaPartiteTorneoMock.mockReset();
+  cancellaPartiteTorneoMock.mockReset();
   elencaPartiteTorneoMock.mockReset();
   elencaPartiteTorneoMock.mockResolvedValue([]);
   aggiornaRisultatoPartitaTorneoMock.mockReset();
@@ -1556,6 +1560,129 @@ describe("generaCalendarioGironiAction", () => {
         message: "Il calendario è già stato generato per questa Categoria.",
       },
     });
+  });
+});
+
+describe("cancellaPartiteTorneoAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(cancellaPartiteTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when categoriaTorneoId is missing", async () => {
+    const result = await cancellaPartiteTorneoAction(undefined, buildFormData({}));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Categoria non specificata." },
+    });
+    expect(cancellaPartiteTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Categoria does not exist", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Categoria non trovata." },
+    });
+    expect(cancellaPartiteTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("deletes all Partite of the Categoria and revalidates both risultati and tabellone (AC #1)", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue({
+      id: "categoria-1",
+      edizioneTorneoId: "edizione-1",
+    });
+    cancellaPartiteTorneoMock.mockResolvedValue({ count: 12 });
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(cancellaPartiteTorneoMock).toHaveBeenCalledWith("categoria-1");
+    // Review fix (Blind Hunter): anche la pagina della Categoria (elenco
+    // Squadre) va rivalidata, da li' l'Admin procede a cancellare le
+    // Squadre dopo le partite.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1/categoria-1");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/app/torneo/edizione-1/categoria-1/risultati"
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/app/torneo/edizione-1/categoria-1/tabellone"
+    );
+  });
+
+  it("is a valid no-op (success) when there are no Partite to delete", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue({
+      id: "categoria-1",
+      edizioneTorneoId: "edizione-1",
+    });
+    cancellaPartiteTorneoMock.mockResolvedValue({ count: 0 });
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a friendly error, no crash, when the Categoria lookup fails", async () => {
+    trovaCategoriaTorneoPerIdMock.mockRejectedValue(new Error("db down"));
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile cancellare le partite. Riprova." },
+    });
+    // Review fix (Blind Hunter): la lettura della Categoria e' ora separata
+    // dalla cancellazione - un suo fallimento non deve mai arrivare a
+    // cancellare nulla.
+    expect(cancellaPartiteTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when the delete fails", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue({
+      id: "categoria-1",
+      edizioneTorneoId: "edizione-1",
+    });
+    cancellaPartiteTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await cancellaPartiteTorneoAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile cancellare le partite. Riprova." },
+    });
+    // Review fix (Verification Gap Reviewer): se la cancellazione stessa
+    // fallisce, nessun revalidatePath deve essere chiamato - a differenza
+    // dello scenario "cancellazione riuscita ma revalidatePath fallito",
+    // qui i dati non sono mai stati toccati, quindi l'errore riportato e'
+    // sempre corretto/coerente con lo stato reale.
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });
 

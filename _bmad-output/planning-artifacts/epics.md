@@ -3150,3 +3150,20 @@ so that edizioni diverse possano distinguersi anche per nome (es. dedicate a una
 2. **And** l'elenco Edizioni su `/app/torneo`, il titolo della pagina di dettaglio `/app/torneo/[edizioneId]`, e il titolo della sezione pubblica `/torneo` mostrano tutti Nome e Anno insieme (es. "Memorial Mario Rossi 2027")
 3. **And** le Edizioni già esistenti al momento del deploy di questa storia ricevono un Nome di backfill ("Torneo Memorial") - nessuna resta senza nome
 4. **And** nessuna regressione sul vincolo di unicità esistente sull'Anno (Story 20.1) - il Nome non introduce un vincolo di unicità proprio, due Edizioni possono avere lo stesso Nome
+
+### Story 20.8: Cancellazione delle partite di una Categoria
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente dopo aver creato una Categoria di test: "ho creato una categoria di test per provare tutto ma non riesco più a cancellarla. ti chiedo di aggiungere la possibilità di cancellare i risultati delle partite per poter poi eliminare tutto". Gap già segnalato come limite noto in `deferred-work.md` dalle review delle Story 20.3/20.4 ("nessuna via di recupero in-app per un calendario/tabellone generato per errore") - mai risolto finché non richiesto esplicitamente.)*
+
+As a Admin (o Dirigente),
+I want poter cancellare tutte le partite (calendario di girone e tabellone) di una Categoria,
+so that possa ripulire una Categoria creata per errore/test e poi cancellare le Squadre e la Categoria stessa, oggi bloccate dalla presenza di quelle partite.
+
+**Contesto tecnico verificato leggendo il codice:** oggi non esiste alcuna funzione/azione per cancellare una `PartitaTorneo` - una volta generato il calendario di girone (e a maggior ragione il tabellone), le partite restano per sempre. `cancellaSquadraTorneo` (lib/torneo.ts) rifiuta esplicitamente la cancellazione di una Squadra con `partiteCasa`/`partiteOspite` esistenti, e `cancellaCategoriaTorneo` rifiuta una Categoria con Squadre esistenti - la catena di cancellazione è quindi bloccata strutturalmente non appena un calendario viene generato, senza alcuna via di recupero in-app.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Dirigente sulla pagina "Risultati" di una Categoria con almeno una partita generata (girone e/o tabellone) **When** usa la nuova azione "Cancella tutte le partite" **Then** tutte le `PartitaTorneo` di quella Categoria (qualunque fase/tabellone) vengono cancellate in un'unica operazione, con una conferma esplicita prima dell'invio (operazione non reversibile)
+2. **And** dopo la cancellazione, la Categoria torna allo stato "calendario non ancora generato" (stesso comportamento di una Categoria appena creata) - le Squadre restano invariate, solo le partite vengono rimosse
+3. **And** una volta cancellate tutte le partite, le Squadre di quella Categoria tornano ad essere cancellabili (nessuna `PartitaTorneo` residua le blocca), e una volta cancellate tutte le Squadre la Categoria torna cancellabile
+4. **And** nessuna regressione sulla generazione del calendario/tabellone (`generaCalendarioGironiAction`/`generaTabelloneAction`) - dopo la cancellazione è possibile rigenerare da zero

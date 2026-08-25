@@ -12,6 +12,7 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { GeneraCalendarioGironiForm } from "./GeneraCalendarioGironiForm";
 import { RisultatoPartitaTorneoForm } from "./RisultatoPartitaTorneoForm";
+import { CancellaPartiteTorneoForm } from "./CancellaPartiteTorneoForm";
 import styles from "../../../torneo.module.css";
 
 // Story 20.3 (Epic 20, Torneo Memorial): mirror di
@@ -155,6 +156,24 @@ export default async function RisultatiTorneoPage({
             </section>
           );
         })
+      )}
+
+      {/* Story 20.8: via di recupero per un calendario/tabellone generato
+          per errore - visibile solo se esiste almeno una partita, mai per
+          una Categoria gia' nello stato "nessun calendario". Review fix
+          (Blind Hunter): spostata in fondo alla pagina ("danger zone"),
+          non piu' il primo elemento interattivo incontrato scorrendo -
+          un'azione irreversibile a raggio cosi' ampio non deve precedere
+          il riepilogo di cio' che sta per cancellare. */}
+      {calendarioGenerato && (
+        <section className={styles.sezione}>
+          <h2>Ripristino</h2>
+          <CancellaPartiteTorneoForm
+            categoriaTorneoId={categoriaId}
+            categoriaNome={categoria.nome}
+            numeroPartite={partite.length}
+          />
+        </section>
       )}
     </main>
   );

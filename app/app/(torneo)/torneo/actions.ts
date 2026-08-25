@@ -22,6 +22,7 @@ import {
   contaPartiteTorneo,
   contaPartiteTorneoTabellone,
   creaPartiteTorneo,
+  cancellaPartiteTorneo,
   elencaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
@@ -797,6 +798,65 @@ export async function generaCalendarioGironiAction(
       error: { code: "INTERNAL", message: "Impossibile generare il calendario. Riprova." },
     };
   }
+
+  return { success: true };
+}
+
+// Story 20.8: cancella TUTTE le partite (girone e tabellone insieme) di una
+// Categoria - sblocca la catena Categoria->Squadre->Partite, oggi bloccata
+// per sempre una volta generato un calendario (cancellaSquadraTorneo
+// rifiuta una Squadra con partite esistenti). Nessuna guardia di
+// idempotenza necessaria a differenza di generaCalendarioGironiAction
+// sopra: cancellare 0 partite non e' un errore, e' un esito valido (Nessuna
+// partita da rimuovere).
+export async function cancellaPartiteTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Categoria non specificata." } };
+  }
+
+  let categoria: { edizioneTorneoId: string } | null;
+  try {
+    categoria = await trovaCategoriaTorneoPerId(categoriaTorneoId);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile cancellare le partite. Riprova." },
+    };
+  }
+  if (!categoria) {
+    return { error: { code: "VALIDATION", message: "Categoria non trovata." } };
+  }
+
+  try {
+    await cancellaPartiteTorneo(categoriaTorneoId);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile cancellare le partite. Riprova." },
+    };
+  }
+
+  // Review fix (Verification Gap Reviewer): revalidatePath ora fuori dal
+  // try/catch della cancellazione - prima, un revalidatePath fallito dopo
+  // una cancellazione gia' riuscita produceva un falso "Impossibile
+  // cancellare le partite. Riprova." nonostante i dati fossero gia' stati
+  // cancellati in modo irreversibile (l'ambiguita' piu' pericolosa
+  // possibile per un'azione distruttiva). Anche la Categoria (per
+  // edizioneTorneoId) e' ora letta separatamente prima, cosi' un suo
+  // fallimento non si confonde con un fallimento della cancellazione vera
+  // e propria. Include anche la pagina della Categoria stessa (elenco
+  // Squadre, dimenticata nella prima stesura): e' da li' che l'Admin
+  // procede a cancellare le Squadre dopo le partite.
+  revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}`);
+  revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/risultati`);
+  revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
 
   return { success: true };
 }

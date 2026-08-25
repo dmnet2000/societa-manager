@@ -98,6 +98,17 @@
   opacity: 0.6;
 }
 
+/* Story 20.8 (review fix, Blind Hunter): .bottoneSecondario da solo (grigio
+   neutro, stesso stile di un "Annulla" non distruttivo) non distingueva
+   visivamente un'azione che cancella in blocco tutte le partite/classifiche
+   di una Categoria - mirror di .iconaBottoneDanger (bordo/testo invece di
+   solo colore testo, essendo qui un bottone di blocco non un'icona inline). */
+.bottoneDanger {
+  composes: bottoneSecondario;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
 .messaggioVuoto {
   margin-top: var(--space-2);
   font-size: 13px;

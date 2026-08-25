@@ -23,6 +23,7 @@ const partitaFindUniqueMock = vi.fn();
 const partitaCountMock = vi.fn();
 const partitaCreateManyMock = vi.fn();
 const partitaUpdateManyMock = vi.fn();
+const partitaDeleteManyMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -54,6 +55,7 @@ vi.mock("@/lib/prisma", () => ({
       count: partitaCountMock,
       createMany: partitaCreateManyMock,
       updateMany: partitaUpdateManyMock,
+      deleteMany: partitaDeleteManyMock,
     },
   },
 }));
@@ -79,6 +81,7 @@ const {
   contaPartiteTorneo,
   contaPartiteTorneoTabellone,
   creaPartiteTorneo,
+  cancellaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
 } = await import("./torneo");
@@ -105,6 +108,7 @@ beforeEach(() => {
   partitaCountMock.mockReset();
   partitaCreateManyMock.mockReset();
   partitaUpdateManyMock.mockReset();
+  partitaDeleteManyMock.mockReset();
 });
 
 describe("elencaEdizioniTorneo", () => {
@@ -463,5 +467,26 @@ describe("aggiornaRisultatoPartitaTorneo", () => {
       data: dati,
     });
     expect(result).toEqual({ count: 1 });
+  });
+});
+
+describe("cancellaPartiteTorneo", () => {
+  it("deletes all Partite for the given Categoria (girone and tabellone together)", async () => {
+    partitaDeleteManyMock.mockResolvedValue({ count: 12 });
+
+    const result = await cancellaPartiteTorneo("categoria-1");
+
+    expect(partitaDeleteManyMock).toHaveBeenCalledWith({
+      where: { categoriaTorneoId: "categoria-1" },
+    });
+    expect(result).toEqual({ count: 12 });
+  });
+
+  it("is a valid no-op when there are no Partite to delete", async () => {
+    partitaDeleteManyMock.mockResolvedValue({ count: 0 });
+
+    const result = await cancellaPartiteTorneo("categoria-1");
+
+    expect(result).toEqual({ count: 0 });
   });
 });

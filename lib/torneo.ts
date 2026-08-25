@@ -221,6 +221,17 @@ export async function contaPartiteTorneoTabellone(categoriaTorneoId: string) {
   });
 }
 
+// Story 20.8: cancella TUTTE le PartitaTorneo di una Categoria (girone e
+// tabellone insieme, nessuna cancellazione parziale) - sblocca la catena
+// Categoria->Squadre->Partite, oggi bloccata per sempre una volta generato
+// un calendario (cancellaSquadraTorneo rifiuta una Squadra con
+// partiteCasa/partiteOspite esistenti). Nessuna guardia necessaria: cancellare
+// partite non ha alcun impatto su Squadre/Categoria stesse, e count 0 (nessuna
+// partita da cancellare) e' un esito valido, non un errore.
+export async function cancellaPartiteTorneo(categoriaTorneoId: string) {
+  return prisma.partitaTorneo.deleteMany({ where: { categoriaTorneoId } });
+}
+
 // Bulk insert del calendario di girone ("tutti contro tutti" dentro
 // ciascun girone) - createMany invece di N create() singole, tutte le
 // coppie di entrambi i gironi in un'unica scrittura. Story 20.4: fase/

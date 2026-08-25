@@ -1252,3 +1252,19 @@ development_status:
   # limite preesistente). Riverificato: 118 file/1722 test verdi, tsc
   # pulito, lint 0 errori, build riuscita, prisma validate ok.
   20-7-nome-edizione-torneo: review
+
+  # Story 20.8 chiusa 2026-08-25 su richiesta esplicita dell'utente (bloccato
+  # nel cancellare una Categoria di test perche' le sue partite non erano mai
+  # cancellabili - gap gia' segnalato in deferred-work.md dalla review 20.4,
+  # ora marcato risolto li'). Nuova cancellaPartiteTorneoAction
+  # (ADMIN/DIRIGENTE), sblocca la catena partite -> squadre -> categoria.
+  # Review a 3 livelli: 6 patch (stile/testo/conteggio del dialog di
+  # conferma non piu' minimizzanti, sezione spostata in fondo pagina,
+  # revalidatePath riordinato per non produrre un falso errore dopo una
+  # cancellazione gia' riuscita, revalidatePath esteso alla pagina
+  # Categoria, guida in-app aggiornata), 3 item deferiti (deferred-work.md:
+  # race concorrenti con generaTabelloneAction/salvaRisultatoPartitaTorneoAction
+  # - stessa classe di rischio gia' accettata nell'epica, resto minore).
+  # Riverificato: 118 file/1731 test verdi, tsc pulito, lint 0 errori,
+  # build riuscita.
+  20-8-cancellazione-partite-categoria: review
