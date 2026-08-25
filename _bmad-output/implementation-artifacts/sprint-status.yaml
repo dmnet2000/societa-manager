@@ -976,7 +976,21 @@ development_status:
   # (funzione pura, mirror raggruppaPerSettimana). baseline_commit
   # c66b97f2fd3fa53e5c62599cdf709b58c665e03c. Vedi
   # spec-18-24-squadre-pubblica-atlete-numero-blocchi.md.
-  18-24-squadre-pubblica-atlete-numero-blocchi: in-progress
+  # Story 18.24 chiusa 2026-08-25: trovata a meta' (4 file gia'
+  # implementati in una parte precedente della sessione ma mai wired
+  # in app/squadre/page.tsx, e senza il test di
+  # raggruppa-gruppi-per-categoria) - completata: page.tsx esteso
+  # (query/join/raggruppamento/sezione Atlete), CSS, test mancante
+  # scritto. Review a 3 agenti su un diff che copre l'intera storia:
+  # nessun bug di privacy/sicurezza, 1 finding di efficienza rilevante
+  # patchato (foto risolta per l'intero storico Atlete invece che solo
+  # per la rosa della stagione corrente - convergente su 2 reviewer),
+  # 1 query non condizionata da annoCorrente corretta, 1 test mancante
+  # aggiunto (elencaAtletePubbliche), 1 imprecisione testuale in
+  # epics.md corretta. Verifica: 1803 test verdi, tsc/lint/build
+  # puliti. Nessuna verifica manuale (dev locale rotto). Vedi Spec
+  # Change Log in spec-18-24-squadre-pubblica-atlete-numero-blocchi.md.
+  18-24-squadre-pubblica-atlete-numero-blocchi: review
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story

@@ -169,3 +169,134 @@
   line-height: 1.8;
   color: var(--color-text-primary);
 }
+
+/* Story 18.24: blocco visivo per una run contigua di Gruppi della stessa
+   categoria (raggruppaGruppiPerCategoriaContigua) - mirror dello stesso
+   principio di spaziatura verticale gia' in uso per .sezioneSettimana
+   (calendario.module.css)/.sezioneCategoria (torneo-pubblico.module.css),
+   nessun riquadro proprio: solo intestazione + margine, le .schedaGruppo
+   dentro restano lo stesso "team-card" di sempre. */
+.bloccoCategoria {
+  margin-top: var(--space-8);
+}
+
+.bloccoCategoria:first-of-type {
+  margin-top: var(--space-6);
+}
+
+/* {typography.label-heading} + {colors.grigio} #5B6472 - stesso token di
+   .titoloGirone/.titoloSettimana nelle altre pagine pubbliche
+   (torneo-pubblico.module.css/calendario.module.css), qui applicato
+   all'intestazione di blocco categoria. */
+.titoloBloccoCategoria {
+  font-family: "Arial Black", sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #5b6472;
+  margin-bottom: var(--space-3);
+}
+
+/* Story 18.24: sezione Atlete dentro ogni .schedaGruppo - rovescia
+   esplicitamente Story 18.8 AC #2 su conferma diretta dell'utente
+   (spec-18-24 Intent). */
+.sezioneAtlete {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid #e5e9ee;
+}
+
+/* Stessa tipografia/colore di .categoriaGruppo ma grigio (non azzurro) -
+   un'etichetta di sezione secondaria, non l'informazione principale della
+   card. */
+.titoloSezioneAtlete {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #5b6472;
+  margin: 0 0 var(--space-2);
+}
+
+.messaggioAtleteVuoto {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.listaAtlete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rigaAtleta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Foto profilo Atleta (Story 9.12/18.24) - stesso trattamento circolare di
+   .fotoAllenatore (staff.module.css), scalato a 40px (qui nidificata
+   dentro una card piu' piccola, non l'elemento principale di una riga a
+   piena larghezza). */
+.fotoAtleta {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e9ee;
+}
+
+/* Placeholder a iniziali quando l'Atleta non ha una foto caricata - mirror
+   di .inizialiAllenatore (staff.module.css), stessa palette
+   {colors.blu-carbone} #0F2438, scalato a 40px/12px. */
+.inizialiAtleta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #0f2438;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+
+.nomeAtleta {
+  flex: 1;
+  min-width: 0;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+/* Numero di maglia (Story 9.35) - badge compatto, stesso principio visivo
+   di .badgeRuoloAggiuntivo (staff.module.css) ma neutro (nessuna semantica
+   di "ruolo"), solo un numero identificativo breve. */
+.numeroAtleta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: #f2f5f7;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5b6472;
+}

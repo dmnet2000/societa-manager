@@ -18,7 +18,8 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock } as never;
 
-const { creaAtleta, aggiornaAtleta, elencaAtlete } = await import("./atleta");
+const { creaAtleta, aggiornaAtleta, elencaAtlete, elencaAtletePubbliche } =
+  await import("./atleta");
 
 const datiEsempio = {
   codiceFiscale: "ABC123",
@@ -138,5 +139,47 @@ describe("elencaAtlete", () => {
     orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
 
     await expect(elencaAtlete(supabase)).rejects.toThrow("boom");
+  });
+});
+
+// Story 18.24: mirror del blocco elencaAtlete sopra, ma verifica in
+// particolare che il .select() sia ristretto a "id, nome" - il vincolo di
+// privacy piu' critico di questa storia (mai codiceFiscale/categoria su
+// una pagina pubblica), quindi verificato esplicitamente qui e non solo
+// per lettura del codice sorgente.
+describe("elencaAtletePubbliche", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    elencoSelectMock.mockClear();
+    orderMock.mockReset();
+  });
+
+  it("selects only id and nome, ordered by nome - never codiceFiscale/categoria (spec-18-24 Boundaries)", async () => {
+    const atlete = [
+      { id: "a1", nome: "Bianchi Laura" },
+      { id: "a2", nome: "Rossi Mario" },
+    ];
+    orderMock.mockResolvedValue({ data: atlete, error: null });
+
+    const result = await elencaAtletePubbliche(supabase);
+
+    expect(fromMock).toHaveBeenCalledWith("atlete");
+    expect(elencoSelectMock).toHaveBeenCalledWith("id, nome");
+    expect(orderMock).toHaveBeenCalledWith("nome", { ascending: true });
+    expect(result).toEqual(atlete);
+  });
+
+  it("returns an empty array when there are no rows", async () => {
+    orderMock.mockResolvedValue({ data: null, error: null });
+
+    const result = await elencaAtletePubbliche(supabase);
+
+    expect(result).toEqual([]);
+  });
+
+  it("throws when the query fails", async () => {
+    orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(elencaAtletePubbliche(supabase)).rejects.toThrow("boom");
   });
 });
