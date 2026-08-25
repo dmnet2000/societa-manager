@@ -1225,6 +1225,14 @@ development_status:
   # ancora collegata dal menu pubblico - passo operativo post-deploy per
   # un Admin/Site Manager). Riverificato: 116 file/1677 test verdi, tsc
   # pulito, lint 0 errori, build riuscita (/torneo registrata).
+  # Follow-up 2026-08-25 su richiesta esplicita dell'utente: /torneo non
+  # era raggiungibile dal menu pubblico (item deferito in deferred-work.md
+  # come "passo operativo post-deploy"). Aggiunta migrazione
+  # 20260825010000_add_torneo_voce_menu_pubblico che inserisce la voce nel
+  # seed (tra Calendario e Staff), invece di lasciarlo manuale. Nessuna
+  # modifica di codice (NavPubblica.tsx gia' legge dinamicamente da
+  # voci_menu_pubblico, Story 19.8). Riverificato: 118 file/1722 test
+  # verdi, prisma validate ok.
   20-6-sezione-pubblica-torneo: review
 
   # Story 20.7 aggiunta 2026-08-25 su richiesta esplicita dell'utente:
