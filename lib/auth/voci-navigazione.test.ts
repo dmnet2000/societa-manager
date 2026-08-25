@@ -58,13 +58,15 @@ describe("filtraVociNavigazione", () => {
 
   // Story 19.4: /app/impostazioni e' ora figlia del gruppo "Gestione sito"
   // (non piu' voce diretta) - stesso principio dei gruppi "Atleti"/"Orari-
-  // Palestre"/"Accounting". Un Site Manager vede tutte e sei le figlie
-  // (Impostazioni/Sponsor/Foto squadre/Menu pubblico/Pagine/Staff, tutte le
-  // rotte SITE_MANAGER-ammesse di questo gruppo), in ordine di dichiarazione.
+  // Palestre"/"Accounting". Un Site Manager vede tutte e sette le figlie
+  // (Impostazioni/Sponsor/Foto squadre/Menu pubblico/Ordine squadre/Pagine/
+  // Staff, tutte le rotte SITE_MANAGER-ammesse di questo gruppo), in ordine
+  // di dichiarazione.
   // Story 19.7: quarta figlia, /app/menu-pubblico.
-  // Story 19.10: quinta figlia, /app/pagine-pubbliche.
-  // Story 19.12: sesta figlia, /app/staff-descrizioni.
-  it("un Site Manager vede il gruppo Gestione sito con Impostazioni/Sponsor/Foto squadre/Menu pubblico/Pagine/Staff (Story 19.1, 19.4, 19.7, 19.10, 19.12)", () => {
+  // Story 19.15: quinta figlia, /app/ordine-squadre.
+  // Story 19.10: sesta figlia, /app/pagine-pubbliche.
+  // Story 19.12: settima figlia, /app/staff-descrizioni.
+  it("un Site Manager vede il gruppo Gestione sito con Impostazioni/Sponsor/Foto squadre/Menu pubblico/Ordine squadre/Pagine/Staff (Story 19.1, 19.4, 19.7, 19.10, 19.12, 19.15)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["SITE_MANAGER"]), "Gestione sito");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
@@ -72,6 +74,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/sponsor", label: "Sponsor" },
       { href: "/app/foto-squadre", label: "Foto squadre" },
       { href: "/app/menu-pubblico", label: "Menu pubblico" },
+      { href: "/app/ordine-squadre", label: "Ordine squadre" },
       { href: "/app/pagine-pubbliche", label: "Pagine" },
       { href: "/app/staff-descrizioni", label: "Staff" },
     ]);
@@ -235,19 +238,21 @@ describe("filtraVociNavigazione", () => {
     expect(accounting).toHaveLength(4);
 
     // Story 19.4: gruppo "Gestione sito" - Impostazioni/Sponsor/Foto squadre.
-    // Story 19.7: quarta rotta, Menu pubblico. Story 19.10: quinta rotta,
-    // Pagine pubbliche. Story 19.12: sesta rotta, Staff (staff-descrizioni).
+    // Story 19.7: quarta rotta, Menu pubblico. Story 19.15: quinta rotta,
+    // Ordine squadre. Story 19.10: sesta rotta, Pagine pubbliche. Story
+    // 19.12: settima rotta, Staff (staff-descrizioni).
     expect(gestioneSito.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
         "/app/impostazioni",
         "/app/sponsor",
         "/app/foto-squadre",
         "/app/menu-pubblico",
+        "/app/ordine-squadre",
         "/app/pagine-pubbliche",
         "/app/staff-descrizioni",
       ])
     );
-    expect(gestioneSito).toHaveLength(6);
+    expect(gestioneSito).toHaveLength(7);
 
     // Nessuna rotta ha un "gruppo" al di fuori dei quattro valori attesi -
     // una futura story che aggiungesse un quinto gruppo dovra' estendere
@@ -500,6 +505,11 @@ describe("filtraVociNavigazione", () => {
   // Story 19.12 (Epic 19): quinta figlia per Admin, /app/staff-descrizioni -
   // a differenza di /app/foto-squadre (SITE_MANAGER-only), questa rotta
   // ammette ADMIN+DIRIGENTE+SITE_MANAGER (decisione esplicita 2026-08-20).
+  // Story 20.1 (Epic 20, Torneo Memorial): nuova voce diretta /app/torneo,
+  // dichiarata dopo /app/guida e prima del gruppo "Accounting" in
+  // PROTECTED_ROUTES (non in fondo all'array: AC #1 di Story 15.4 richiede
+  // che "Accounting" resti l'ultima voce del menu) - nessun "gruppo"
+  // assegnato, stesso principio di /app/sponsor/guida sopra.
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -529,6 +539,7 @@ describe("filtraVociNavigazione", () => {
           { href: "/app/impostazioni", label: "Impostazioni" },
           { href: "/app/sponsor", label: "Sponsor" },
           { href: "/app/menu-pubblico", label: "Menu pubblico" },
+          { href: "/app/ordine-squadre", label: "Ordine squadre" },
           { href: "/app/pagine-pubbliche", label: "Pagine" },
           { href: "/app/staff-descrizioni", label: "Staff" },
         ],
@@ -537,6 +548,7 @@ describe("filtraVociNavigazione", () => {
       { tipo: "voce", href: "/app/campionati", label: "Campionati" },
       { tipo: "voce", href: "/app/partite", label: "Partite" },
       { tipo: "voce", href: "/app/guida", label: "Guida" },
+      { tipo: "voce", href: "/app/torneo", label: "Torneo" },
       {
         tipo: "gruppo",
         label: "Accounting",
@@ -555,13 +567,14 @@ describe("filtraVociNavigazione", () => {
   // Menu pubblico, (Story 19.10) Pagine e (Story 19.12) Staff, non Foto
   // squadre (SITE_MANAGER-only), a differenza di Site Manager che vede tutte
   // e sei (vedi test dedicato sopra).
-  it("Admin vede il gruppo Gestione sito con Impostazioni/Sponsor/Menu pubblico/Pagine/Staff, non Foto squadre (Story 19.4, 19.7, 19.10, 19.12)", () => {
+  it("Admin vede il gruppo Gestione sito con Impostazioni/Sponsor/Menu pubblico/Ordine squadre/Pagine/Staff, non Foto squadre (Story 19.4, 19.7, 19.10, 19.12, 19.15)", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN"]), "Gestione sito");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
       { href: "/app/impostazioni", label: "Impostazioni" },
       { href: "/app/sponsor", label: "Sponsor" },
       { href: "/app/menu-pubblico", label: "Menu pubblico" },
+      { href: "/app/ordine-squadre", label: "Ordine squadre" },
       { href: "/app/pagine-pubbliche", label: "Pagine" },
       { href: "/app/staff-descrizioni", label: "Staff" },
     ]);

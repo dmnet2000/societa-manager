@@ -1,0 +1,299 @@
+/* Story 20.1 (Epic 20, Torneo Memorial) - mirror di
+   app/(orari-palestre)/slot/slot.module.css (Story 8.3/15.5): stesso schema
+   tabella compatta + riga con toggle sola-lettura/modifica, stessi token di
+   DESIGN.md. Classi invariate rispetto all'originale (tranne .linkNaviga,
+   specifico di Slot/Palestra, rimossa - nessun equivalente qui) cosi' i due
+   moduli restano visivamente coerenti tra loro. */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.sezione h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin-top: var(--space-4);
+}
+
+.tabella th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabella td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.iconaBottone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Touch target 44px - il genitore e' un <td>, non un contenitore flex,
+     min-width/min-height bastano (stessa lezione gia' documentata in
+     slot.module.css). */
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  cursor: pointer;
+}
+
+.iconaBottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.iconaBottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.iconaBottoneDanger {
+  color: var(--color-danger);
+}
+
+.formIconaInline {
+  display: inline;
+}
+
+.bottoneSecondario {
+  margin-top: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneSecondario:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSecondario:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Story 20.2 (Epic 20, Torneo Memorial): riepilogo settimana/numero
+   massimo squadre in cima a [edizioneId]/[categoriaId]/page.tsx - stesso
+   colore/dimensione di .messaggioVuoto ma senza corsivo, non e' uno stato
+   vuoto. */
+.riepilogo {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.campiRiga {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 150px;
+  min-width: 150px;
+  margin-top: var(--space-4);
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campo input,
+.campo select {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campo input:focus-visible,
+.campo select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Link "Vai alle Categorie" nell'elenco Edizioni (/app/torneo) - stesso
+   trattamento visivo di .linkNaviga di slot.module.css. */
+.link {
+  color: var(--color-button-bg);
+  font-weight: 700;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.successo {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.bottone {
+  margin-top: var(--space-5);
+  align-self: flex-start;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.bottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Story 20.5 (Epic 20, Torneo Memorial): sezione "Volantino" di
+   [edizioneId]/page.tsx - mirror di .fotoSquadra/.formCompatto/.formInline/
+   .bottoneCompatto (app/(gruppi-allenatori)/gruppi/gruppi.module.css),
+   copiate qui invece di importate cross-modulo (stesso principio gia'
+   applicato per .rigaFotoSquadra li'). Review fix (Blind Hunter): rinominata
+   da .fotoSquadra (nome copiato dal mirror senza adattarlo) a
+   .sezioneVolantino - questa sezione riguarda il Volantino del Torneo, non
+   una foto di Gruppo. */
+.sezioneVolantino {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* A differenza di .anteprimaFotoSquadra (gruppi.module.css, 64x64 - una
+   miniatura quadrata), il volantino e' un manifesto/locandina in formato
+   verticale/A4 - anteprima piu' grande, altezza vincolata invece di un
+   quadrato fisso, object-fit: contain (mai un ritaglio che nasconderebbe
+   parte del volantino). */
+.anteprimaVolantino {
+  max-width: 100%;
+  height: 160px;
+  width: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.formCompatto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 160px;
+}
+
+.formCompatto label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.formCompatto input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.formCompatto input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.formInline {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+}
+
+.formInline label {
+  margin: 0;
+}
+
+.bottoneCompatto {
+  margin-top: var(--space-1);
+  align-self: flex-start;
+  background: var(--color-surface);
+  color: var(--color-button-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.bottoneCompatto:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneCompatto:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

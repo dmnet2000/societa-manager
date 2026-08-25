@@ -121,6 +121,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
+      "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
       "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/slot.",
     ],
   },
@@ -149,6 +150,20 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui gestisci le voci del menu di navigazione del sito pubblico: etichetta, URL (una pagina del sito come \"/squadre\", oppure un link esterno completo di http:// o https://), ordine e visibilità.",
       "Puoi aggiungere una nuova voce, modificarne una esistente, spostarla su o giù nell'ordine, oppure nasconderla senza cancellarla.",
       "Le modifiche sono visibili sul menu del sito pubblico non appena le salvi - deve restare sempre almeno una voce visibile, un tentativo di nascondere l'ultima rimasta viene rifiutato.",
+    ],
+  },
+  {
+    // Story 19.15 (Epic 19, Ruolo Site Manager): riordino dei Gruppi (squadre
+    // interne) per la pagina pubblica /squadre - stesso perimetro Ruoli di
+    // /app/menu-pubblico sopra, DIRIGENTE non ammesso - mirror di
+    // ruoliAmmessi per /app/ordine-squadre in route-guard.ts.
+    rotta: "/app/ordine-squadre",
+    titolo: "Ordine squadre",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    corpo: [
+      "Qui scegli l'ordine con cui le squadre della stagione corrente compaiono sulla pagina pubblica \"/squadre\".",
+      "Ogni squadra ha due bottoni Su/Giù: spostala per cambiarne la posizione, il salvataggio è immediato.",
+      "Questa vista non permette di creare squadre né di assegnare Allenatori/Atlete - per quello serve il Ruolo Admin o Dirigente su /app/gruppi.",
     ],
   },
   {
@@ -195,6 +210,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui vedi solo i Gruppi che ti sono stati assegnati come Allenatore, con il Roster di Atlete di ciascuno.",
       "Puoi aggiungere o rimuovere un'Atleta dal Gruppo direttamente da qui: l'assegnazione è sempre additiva, non toglie l'Atleta da altri Gruppi.",
+      "Puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) per ogni Atleta del tuo Gruppo.",
       "Se non gestisci ancora nessun Gruppo, contatta la segreteria per farti assegnare.",
     ],
   },
@@ -389,6 +405,33 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui limiti quali Gruppi un Dirigente può vedere nella sezione Certificati Medici della Vista d'insieme.",
       "Se non selezioni nessun Gruppo, non si applica nessuna restrizione: ogni Dirigente vede i Certificati di tutti i Gruppi, come impostazione di default.",
+    ],
+  },
+  {
+    // Story 20.1 (Epic 20, Torneo Memorial): Edizione (anno) e Categorie
+    // (nome, settimana, numero massimo squadre). Story 20.2: apri una
+    // Categoria per iscrivere le sue Squadre e ripartirle sui due gironi.
+    // Story 20.3: dentro una Categoria, "Risultati e classifica" genera il
+    // calendario di girone e permette di inserire i punteggi. Story 20.4:
+    // dalla stessa Categoria, "Tabellone semifinali/finali" genera le
+    // semifinali di posizionamento (1°-4° e 5°-8°) dalla classifica di
+    // girone completa; le finali si generano da sole non appena entrambe le
+    // semifinali dello stesso tabellone hanno un risultato, e la classifica
+    // finale 1°-8° appare una volta completi tutti gli incontri. Story 20.5:
+    // dentro un'Edizione, "Volantino" carica l'immagine/manifesto (PNG/JPEG,
+    // max 2MB). Story 20.6: tutto quanto sopra (volantino, squadre,
+    // classifica di girone, incontri, tabellone) dell'Edizione più recente è
+    // visibile in sola lettura sulla pagina pubblica /torneo.
+    rotta: "/app/torneo",
+    titolo: "Torneo",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui gestisci le Edizioni del Torneo Memorial (una per anno) e, dentro ciascuna, le sue Categorie (nome, settimana 1 o 2, numero massimo di squadre da 2 a 8).",
+      "Apri un'Edizione dall'elenco per vedere/gestire le sue Categorie. Un'Edizione non è eliminabile finché ha Categorie collegate: elimina prima quelle.",
+      "Dentro un'Edizione, in \"Volantino\" carichi l'immagine di sfondo/manifesto del Torneo (PNG o JPEG, fino a 2MB): caricarne una nuova sostituisce sempre quella precedente. Il volantino, le squadre iscritte, la classifica di girone, gli incontri e il tabellone dell'edizione più recente sono visibili a tutti sulla pagina pubblica /torneo, senza bisogno di accedere.",
+      "Apri una Categoria dall'elenco per iscrivere le squadre partecipanti (nome, referente e contatto opzionali) e ripartirle sui due gironi A e B, fino al numero massimo impostato per quella Categoria. Anche una Categoria con squadre iscritte non è eliminabile: elimina prima quelle.",
+      "Dentro una Categoria, apri \"Risultati e classifica\" per generare il calendario degli incontri di girone (tutti contro tutti dentro ciascun girone, generabile una sola volta e solo con almeno 2 squadre per girone) e inserire il punteggio set per set di ogni incontro (al meglio dei 3 set). Il sistema calcola da solo l'esito e i punti dell'incontro, e la classifica di ciascun girone si aggiorna subito ogni volta che modifichi un risultato.",
+      "Da \"Tabellone semifinali/finali\" genera il tabellone di posizionamento (una sola volta, quando entrambi i gironi hanno almeno 4 squadre e una classifica completa): crea le semifinali 1°A-2°B/1°B-2°A per il tabellone 1°-4° e 3°A-4°B/3°B-4°A per il 5°-8°. Non serve generare le finali a mano: appena hai inserito il risultato di entrambe le semifinali di uno stesso tabellone, il sistema crea da solo la finale vincenti e quella perdenti. La classifica finale 1°-8° compare in fondo alla pagina non appena tutti gli incontri del tabellone hanno un risultato.",
     ],
   },
 ];

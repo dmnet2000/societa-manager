@@ -84,7 +84,8 @@ export default async function IMieiGruppiPage() {
               annoAgonisticoId: annoCorrente!.id,
               gruppoId: { in: gruppiPropri.map((g) => g.id) },
             },
-            select: { atletaId: true, gruppoId: true },
+            // Story 9.35: "numero" incluso qui, stesso mirror di gruppi/page.tsx.
+            select: { atletaId: true, gruppoId: true, numero: true },
           })
         : Promise.resolve([]),
       elencaCertificati(supabase),
@@ -134,7 +135,12 @@ export default async function IMieiGruppiPage() {
         gruppiPropri.map((gruppo) => {
           const atleteGruppo = gruppoAtleteRows
             .filter((riga) => riga.gruppoId === gruppo.id)
-            .map((riga) => atletaPerId.get(riga.atletaId))
+            // Story 9.35: stesso mirror di gruppi/page.tsx - "numero" unito
+            // qui insieme al lookup, non perso come prima di questa storia.
+            .map((riga) => {
+              const a = atletaPerId.get(riga.atletaId);
+              return a ? { ...a, numero: riga.numero } : undefined;
+            })
             .filter(
               (
                 a
@@ -144,6 +150,7 @@ export default async function IMieiGruppiPage() {
                 certificatoInScadenza: boolean;
                 certificatoScaduto: boolean;
                 dataFineValidita: string | null;
+                numero: number | null;
               } => a !== undefined
             )
             .map((a) => ({

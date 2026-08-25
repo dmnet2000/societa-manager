@@ -140,8 +140,29 @@ export async function creaGruppo(
     // motore condiviso gia' riusato da confermaIscrizione, Story 1.6) - non
     // reimplementare questa logica qui.
     const anno = await risolviAnnoAgonisticoCorrente();
+    // Story 19.15 (Epic 19, Ruolo Site Manager): nuovo Gruppo sempre in coda
+    // nell'ordine di visualizzazione di /squadre - l'ordine e' il max
+    // esistente + 1 TRA I GRUPPI DELLA STESSA STAGIONE (non un contatore
+    // globale, mirror di creaVoceMenuPubblico in lib/menu-pubblico.ts), 0 se
+    // la stagione non ha ancora nessun Gruppo. Nota (Blind Hunter + Edge
+    // Case Hunter, convergenti): aggregate+create restano due chiamate
+    // separate (check-then-act) - due creaGruppo concorrenti sulla stessa
+    // stagione potrebbero leggere lo stesso max e produrre un ordine
+    // duplicato PERMANENTE (a differenza del duplicato transitorio ammesso
+    // per il riordino). Non risolto qui: un $transaction Prisma di per se'
+    // non basta sotto l'isolamento READ COMMITTED di default di Postgres (le
+    // due transazioni leggerebbero comunque lo stesso max prima che l'altra
+    // scriva) - una vera soluzione richiederebbe SERIALIZABLE con retry o un
+    // lock esplicito, sproporzionato per un pannello interno a bassa
+    // concorrenza (stesso principio gia' accettato per la guardia numero
+    // massimo squadre, Story 20.2) - vedi deferred-work.md.
+    const aggregato = await prisma.gruppo.aggregate({
+      where: { annoAgonisticoId: anno.id },
+      _max: { ordine: true },
+    });
+    const ordine = (aggregato._max.ordine ?? -1) + 1;
     await prisma.gruppo.create({
-      data: { nome, categoria, annoAgonisticoId: anno.id },
+      data: { nome, categoria, annoAgonisticoId: anno.id, ordine },
     });
   } catch (err) {
     console.error(err);
@@ -384,6 +405,119 @@ export async function rimuoviAtleta(
     console.error(err);
     return {
       error: { code: "INTERNAL", message: "Impossibile rimuovere l'Atleta. Riprova." },
+    };
+  }
+
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
+  return { success: true };
+}
+
+// Story 9.35: Numero di maglia, specifico della coppia Atleta+Gruppo+Stagione
+// (GruppoAtleta) - stesso perimetro Ruoli e stessa guardia di possesso di
+// rimuoviAtleta sopra (mirror esatto: risoluzione annoAgonisticoId +
+// risolviPossessoGruppo). A differenza di rimuoviAtleta (deleteMany,
+// idempotente), qui l'update NON e' idempotente-per-difetto: un count === 0
+// e' sempre un errore VALIDATION esplicito, mai un no-op silenzioso -
+// l'assegnazione potrebbe essere stata rimossa nel frattempo, e in quel caso
+// l'utente deve saperlo invece di credere il Numero salvato (stessa
+// disciplina gia' stabilita per aggiornaCategoriaTorneo/aggiornaSquadraTorneo,
+// app/(torneo)/torneo/actions.ts).
+export async function impostaNumeroAtletaAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+  if (forbidden) return forbidden;
+
+  const gruppoId = String(formData.get("gruppoId") ?? "");
+  const atletaId = String(formData.get("atletaId") ?? "");
+  const numeroGrezzo = String(formData.get("numero") ?? "").trim();
+
+  if (!gruppoId) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  if (!atletaId) {
+    return { error: { code: "VALIDATION", message: "Atleta non specificata." } };
+  }
+
+  // Campo facoltativo (mai obbligatorio, epics.md): vuoto -> null. Altrimenti
+  // deve essere un intero positivo (1-999) - un numero di maglia non ha senso
+  // <= 0, e 999 e' un limite ragionevole contro un input manomesso (bypass
+  // del widget <input type="number">). Review fix (Edge Case Hunter + Blind
+  // Hunter): Number("1e2")/Number("0x7") sono interi validi per
+  // Number.isInteger ma non sono cifre decimali semplici - un FormData
+  // manomesso poteva far passare notazioni mai digitabili dal widget reale.
+  // /^\d+$/ accetta solo sequenze di cifre 0-9, prima di qualunque
+  // conversione numerica.
+  let numero: number | null;
+  if (numeroGrezzo === "") {
+    numero = null;
+  } else if (!/^\d+$/.test(numeroGrezzo)) {
+    return {
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    };
+  } else {
+    const parsed = Number(numeroGrezzo);
+    if (parsed < 1 || parsed > 999) {
+      return {
+        error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+      };
+    }
+    numero = parsed;
+  }
+
+  let gruppo: { annoAgonisticoId: string } | null;
+  try {
+    // Stesso blocco di risoluzione dell'annoAgonisticoId gia' usato in
+    // assegnaAtleta/rimuoviAtleta - non reinventarlo. Mai fidarsi del client
+    // per la stagione: gruppoId/atletaId arrivano dal FormData, ma
+    // annoAgonisticoId e' sempre ri-derivato qui da una query fresca.
+    gruppo = await prisma.gruppo.findUnique({
+      where: { id: gruppoId },
+      select: { annoAgonisticoId: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile impostare il Numero. Riprova." },
+    };
+  }
+  if (!gruppo) {
+    return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+  }
+
+  // Stesso principio di assegnaAtleta/rimuoviAtleta - un Allenatore puo'
+  // impostare il Numero solo per Atlete del proprio Gruppo della stagione
+  // corrente.
+  const possesso = await risolviPossessoGruppo(gruppoId, gruppo.annoAgonisticoId);
+  if (!possesso.ok) {
+    return { error: possesso.error };
+  }
+
+  try {
+    const risultato = await prisma.gruppoAtleta.updateMany({
+      where: { atletaId, gruppoId, annoAgonisticoId: gruppo.annoAgonisticoId },
+      data: { numero },
+    });
+    if (risultato.count === 0) {
+      // Review fix (Blind Hunter): senza revalidatePath anche qui, la riga
+      // restava visibile e modificabile nella UI stantia (l'Atleta sembrava
+      // ancora assegnata al Gruppo) anche se lato server l'assegnazione non
+      // esiste piu' - un vicolo cieco in cui l'Utente poteva ripetere il
+      // salvataggio all'infinito ricevendo sempre lo stesso errore. Ora la
+      // pagina si aggiorna comunque, facendo sparire la riga (coerente con
+      // lo stato reale) insieme al messaggio d'errore.
+      revalidatePath("/app/gruppi");
+      revalidatePath("/app/i-miei-gruppi");
+      return {
+        error: { code: "VALIDATION", message: "Assegnazione non trovata." },
+      };
+    }
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile impostare il Numero. Riprova." },
     };
   }
 

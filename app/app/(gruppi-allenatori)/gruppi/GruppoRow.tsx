@@ -241,6 +241,7 @@ export function GruppoRow({
               <thead>
                 <tr>
                   <th>Nome</th>
+                  <th>Numero</th>
                   <th>Certificato</th>
                   <th>Iscrizione</th>
                   <th>Tesseramento</th>

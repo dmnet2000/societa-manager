@@ -26,3 +26,48 @@ export async function contenutoCorrispondeAlMimeImmagine(
   );
   return magic.every((byte, i) => intestazione[i] === byte);
 }
+
+export type ErroreValidazioneImmagine = {
+  error: { code: "VALIDATION"; message: string };
+};
+
+// Story 20.5 (Epic 20, Torneo Memorial): sequenza a 4 passaggi
+// (presenza/dimensione -> MIME dichiarato -> dimensione massima -> contenuto
+// reale) gia' duplicata per intero in logo/actions.ts, impostazioni/actions.ts
+// (caricaFotoHeroAction) e gruppi/actions.ts prima di questa storia -
+// estratta qui come singola fonte di verita' per i nuovi chiamanti (i 3
+// preesistenti non vengono toccati in questa storia, fuori scope).
+export async function validaFileImmagine(
+  file: FormDataEntryValue | null
+): Promise<ErroreValidazioneImmagine | { file: File }> {
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      error: { code: "VALIDATION", message: "Seleziona un'immagine da caricare." },
+    };
+  }
+  if (!MIME_AMMESSI_IMMAGINE.includes(file.type)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Formato immagine non ammesso (solo PNG, JPG).",
+      },
+    };
+  }
+  if (file.size > DIMENSIONE_MASSIMA_IMMAGINE_BYTE) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il file supera la dimensione massima di 2MB.",
+      },
+    };
+  }
+  if (!(await contenutoCorrispondeAlMimeImmagine(file))) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il contenuto del file non corrisponde al formato dichiarato.",
+      },
+    };
+  }
+  return { file };
+}

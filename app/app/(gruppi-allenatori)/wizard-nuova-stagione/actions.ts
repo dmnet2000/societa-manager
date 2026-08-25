@@ -98,6 +98,13 @@ export async function confermaWizardNuovaStagione(
           nome: gruppo.nome,
           categoria: gruppo.categoria,
           annoAgonisticoId: annoCorrente.id,
+          // Story 19.15 (Epic 19, Ruolo Site Manager): stesso ordine di
+          // visualizzazione copiato dalla stagione precedente (gruppo.ordine,
+          // gia' presente sulla riga letta sopra - nessun "select" esplicito
+          // la esclude) - preserva l'ordine gia' scelto invece di farlo
+          // ripartire da zero a ogni nuova stagione, coerente con "nome"/
+          // "categoria" copiati invariati qui accanto.
+          ordine: gruppo.ordine,
         },
       }),
       // AC #5: un Gruppo senza Allenatori assegnati produce semplicemente

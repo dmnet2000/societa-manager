@@ -1497,6 +1497,24 @@ Nessun punto aperto residuo — implementata e revisionata il 2026-08-21 (spec-9
 3. **Given** un Admin/Dirigente/Allenatore su `/vista-dirigente`/`/vista-allenatore` con il drill-down "scaduto"/"in scadenza" espanso, **when** vede l'elenco dei nomi, **then** vede anche la data di scadenza per ciascuna Atleta elencata, sempre visibile (nessun click aggiuntivo)
 4. **And** nessuna regressione sulla logica di calcolo esistente (`categorizzaStatoCertificato`, `calcolaAtleteConCertificatoInScadenza`) — questa storia aggiunge solo la visualizzazione di un dato già letto, nessun nuovo calcolo di scadenza
 
+### Story 9.35: Numero di maglia per Atleta, per stagione
+
+*(Aggiunta post-apertura epica — 2026-08-24, richiesta esplicita dell'utente nel contesto della Story 18.24 "elenco atlete su /squadre": prevedere un campo "Numero" per Atleta, legato alla stagione. Chiarito con l'utente via AskUserQuestion lo stesso giorno: il Numero è legato a Atleta+Gruppo+Stagione, non all'anagrafica Atleta, e viene gestito dall'Allenatore del Gruppo.)*
+
+As a Allenatore del Gruppo,
+I want assegnare un numero di maglia a ciascuna Atleta del mio Gruppo per la stagione corrente,
+so that le Atlete abbiano un numero riconoscibile, coerente con la stagione in cui giocano (una stessa Atleta può avere numeri diversi in stagioni o Gruppi diversi).
+
+**Contesto tecnico:** il Numero non appartiene all'anagrafica `Atleta` (svincolata dalla stagione) ma al legame stagionale `GruppoAtleta` (già univoco per `[atletaId, gruppoId, annoAgonisticoId]`, Story 9.21) — nuovo campo opzionale `numero Int?` su quel modello, nessun vincolo di unicità a livello DB (stesso principio già in uso per `ordine` su `VoceMenuPubblico`, Story 19.6 — un duplicato transitorio o deliberato non è un problema che il DB debba impedire). Editabile ovunque l'elenco Atlete di un Gruppo è già gestito dallo stesso componente condiviso (`AtletaTabellaRiga.tsx`, usato sia da `/i-miei-gruppi` per l'Allenatore sia da `/gruppi` per Admin/Dirigente, stesso principio "stesso componente, stessa capacità" già seguito in Story 9.34) — nessuna nuova pagina.
+
+**Acceptance Criteria:**
+
+1. **Given** un Allenatore su `/i-miei-gruppi` (o un Admin/Dirigente su `/gruppi`, stesso componente condiviso) **When** apre la riga di un'Atleta del Gruppo per la stagione corrente **Then** può impostare/modificare un Numero (intero positivo) o lasciarlo vuoto
+2. **And** il Numero è specifico della coppia Atleta+Gruppo+Stagione — la stessa Atleta in un altro Gruppo o in un'altra stagione (righe `GruppoAtleta` diverse) mantiene un Numero indipendente, mai condiviso
+3. **And** nessun vincolo di unicità è imposto tra Atlete dello stesso Gruppo — due Atlete possono avere lo stesso Numero senza che l'azione sia bloccata (nessun AC di questa storia richiede di impedirlo)
+4. **And** un'Atleta senza Numero impostato resta valida in ogni vista esistente (elenco Atlete, drill-down, presenze) — nessuna regressione, il campo è sempre facoltativo
+5. **And** rimuovere un'Atleta da un Gruppo (Story 9.14, `deleteMany` su `GruppoAtleta`) cancella anche il Numero associato, essendo lo stesso record — nessuna azione aggiuntiva richiesta
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -2289,6 +2307,27 @@ so that possa conoscere l'organizzazione sportiva del settore volley.
 3. **And** un Gruppo senza Allenatori assegnati compare comunque, senza elenco staff — nessuna riga dell'elenco viene nascosta per questo
 4. **And** se nessun Gruppo esiste per la stagione corrente, la pagina mostra un messaggio esplicito invece di un'area vuota
 
+### Story 18.24: Elenco Atlete a blocchi per categoria su "Squadre", con foto e Numero
+
+*(Aggiunta post-apertura epica — 2026-08-24, richiesta esplicita dell'utente: "aggiungere nella sezione squadre la lista degli atleti di ogni squadra... dividere la pagina delle squadre a blocchi partendo dalla Serie D in giù mantenendo la foto di squadra e poi allenatori + lista atleti con la foto come per la sezione Staff... prevedere anche il campo Numero". Dipende da Story 19.15 (campo `ordine` su Gruppo, gestito da Site Manager) e Story 9.35 (campo `numero` per Atleta/stagione) — entrambe aperte nello stesso giorno per rendere possibile questa storia.)*
+
+As a Visitatore senza account,
+I want vedere, per ogni Squadra, l'elenco delle Atlete con foto e numero oltre allo staff tecnico,
+so that possa conoscere davvero la composizione di ogni Squadra, non solo chi la allena.
+
+**Decisione che rovescia un vincolo esplicito precedente:** la Story 18.8 (AC #2) escludeva deliberatamente ogni dato di Atleta da `/squadre` per motivi di privacy — questa storia lo rovescia **su richiesta esplicita e confermata dall'utente** (AskUserQuestion, 2026-08-24): nome, cognome e foto profilo (se caricata) di ogni Atleta diventano pubblici su `/squadre`. La foto riusa il bucket privato `foto-profilo-atlete` (RLS più stretta della foto Allenatore — solo Allenatore proprio/Atleta stessa, FR-24) tramite un URL firmato generato lato server con client privilegiato, esattamente lo stesso meccanismo già in uso per la foto Allenatore in `/staff` (Story 18.22) — il bucket resta tecnicamente privato, nessuna policy RLS cambia, ma la foto di ogni Atleta elencata diventa di fatto visibile a chiunque visiti la pagina pubblica. Un'Atleta senza foto mostra lo stesso placeholder a iniziali di Story 18.22 (mai un'immagine rotta).
+
+**Struttura a blocchi:** i Gruppi sono ordinati secondo il campo `ordine` di Story 19.15 (non più per `nome`, sostituisce l'`orderBy` odierno di `/squadre`) — un nuovo blocco visivo inizia ogni volta che la `categoria` del Gruppo corrente differisce da quella del Gruppo precedente nell'ordine impostato: **nessuna lista di categorie fissata in questa storia**, il raggruppamento in blocchi segue passivamente qualunque ordine il Site Manager abbia scelto in `/app/ordine-squadre` (se, ad esempio, ordina "Serie D" prima e le categorie giovanili dopo, i blocchi rifletteranno esattamente quello). Ogni scheda Gruppo (foto di squadra, nome, categoria, Allenatori — invariati da Story 18.8) guadagna una nuova sezione "Atlete": elenco ordinato per Numero crescente (Atlete senza Numero in fondo, poi per nome) con foto/placeholder + nome + cognome + Numero se presente.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `/squadre` **Then** i Gruppi sono raggruppati in blocchi visivi per categoria, nell'ordine impostato in `/app/ordine-squadre` (Story 19.15) — non più ordinati per nome
+2. **And** ogni scheda Gruppo mostra, oltre a foto/nome/categoria/Allenatori (invariati), l'elenco delle Atlete assegnate per la stagione corrente: foto profilo (o placeholder a iniziali se assente, stesso stile Story 18.22), nome, cognome, e Numero se impostato (Story 9.35)
+3. **And** un Gruppo senza Atlete assegnate mostra comunque la propria scheda, con la sezione Atlete che indica esplicitamente l'assenza invece di un'area vuota — stesso principio già in uso per Gruppo senza Allenatori (Story 18.8 AC #3)
+4. **And** nessuna modifica alla privacy del bucket `foto-profilo-atlete` (RLS/policy invariate) — la foto è recuperata lato server con un client privilegiato, mai resa pubblicamente leggibile via URL diretto/permanente, stesso vincolo di Story 18.22 AC #3
+5. **And** un blocco categoria compare una sola volta anche se più Gruppi non consecutivi nell'ordine condividessero la stessa categoria per errore di ordinamento (il raggruppamento segue l'ordine reale, non un dizionario ordinato a parte) — comportamento accettato: è compito di chi ordina in Story 19.15 tenere le categorie contigue, non un vincolo imposto dal codice
+6. **And** nessuna regressione sulle altre pagine pubbliche che riusano gli stessi dati (nessuna, ad oggi nessun'altra pagina pubblica legge Atlete)
+
 ### Story 18.9: Pagina pubblica "Calendario"
 
 As a Visitatore senza account,
@@ -2957,20 +2996,142 @@ So that possa costruire pagine più articolate senza essere vincolato a un unico
 7. **And** nessuna regressione sulle Pagine pubbliche esistenti create con l'editor precedente (Story 19.9-19.13) - contenuto già salvato continua a renderizzare invariato
 8. **And** nessuna regressione sull'allowlist di sicurezza esistente per i tipi di blocco già presenti (testo, immagine)
 
+### Story 19.15: Ordinamento delle Squadre per la pagina pubblica
+
+*(Aggiunta post-apertura epica — 2026-08-24, richiesta esplicita dell'utente nel contesto della Story 18.24 (elenco atlete a blocchi su `/squadre`): l'utente ha rifiutato una lista di categorie fissata a priori ("la lista ordinata non può essere scelta [da me a voce], crea una sezione in site manager con la lista di tutte le squadre e la possibilità di scegliere l'ordinamento da lì") — l'ordinamento diventa un dato gestito da UI, non una costante congelata in una spec.)*
+
+As a Site Manager (o Admin),
+I want vedere l'elenco di tutti i Gruppi della stagione corrente e poterne scegliere l'ordine di visualizzazione,
+so that possa decidere in autonomia come le Squadre compaiono sul sito pubblico (es. dalla Serie D in giù), senza dover chiedere una modifica di codice ogni volta che l'ordine desiderato cambia.
+
+**Contesto tecnico:** nuovo campo `ordine Int` su `Gruppo` — mirror esatto di `VoceMenuPubblico.ordine` (Story 19.6): intero libero, nessun vincolo di unicità DB, riscritto per l'intero set in un'unica transazione da una nuova `riordinaGruppi(idInOrdine: string[])`. La migrazione che introduce il campo effettua un backfill (es. ordine alfabetico per `nome`, stato attuale) così che l'ordine sia sempre definito fin dal giorno del deploy, senza uno stato "non ancora ordinato" da gestire nella UI pubblica. Nuova rotta scoped `/app/ordine-squadre` (`ruoliAmmessi`/`requireRuolo`: `["ADMIN", "SITE_MANAGER"]` — mirror esatto del perimetro di `/app/menu-pubblico`, Story 19.6/19.7, non quello SITE_MANAGER-only di `/app/foto-squadre`, Story 19.4, perché qui — come per il menu — è l'Admin stesso il proprietario naturale della configurazione sito insieme al Site Manager). UI: bottoni Su/Giù per riga (mirror esatto di `spostaVoceMenuPubblicoAction`/`VoceMenuPubblicoRow.tsx`, Story 19.7 — "nessuna libreria di drag-and-drop nel progetto" resta valido, stessa scelta già presa lì), server rilegge sempre l'elenco completo già ordinato invece di fidarsi di un indice client-side stale (stesso principio). Questa storia **non** tocca `/app/gruppi` né la creazione/gestione sportiva dei Gruppi (stesso confine di competenza già stabilito per Site Manager in Story 19.4) — gestisce solo l'ordine di visualizzazione pubblico. Un nuovo Gruppo creato dopo il deploy riceve `ordine` in coda all'elenco esistente (`max(ordine) + 1`), mai `0`/collisione col primo.
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente con Ruolo `ADMIN` o `SITE_MANAGER` **When** apre `/app/ordine-squadre` **Then** vede l'elenco di tutti i Gruppi della stagione corrente, nell'ordine attuale, con un bottone Su e un bottone Giù per riga (disabilitati rispettivamente sulla prima e sull'ultima riga)
+2. **And** cliccando Su/Giù la riga scambia posizione con la vicina e l'ordine è persistito immediatamente (stesso pattern Story 19.7) — nessun bottone "Salva" separato
+3. **And** un Utente senza `ADMIN` né `SITE_MANAGER` resta bloccato su questa rotta come su `/app/menu-pubblico`
+4. **Given** i Gruppi esistenti al momento del deploy di questa storia **When** la migrazione viene applicata **Then** ciascuno riceve un `ordine` valido (backfill alfabetico per nome) — nessun Gruppo resta con un ordine indefinito
+5. **And** un nuovo Gruppo creato da `/app/gruppi` dopo il deploy compare in coda all'elenco di `/app/ordine-squadre`, senza richiedere un intervento manuale per essere visibile/ordinabile
+6. **And** questa storia non introduce alcuna modifica a `/app/gruppi` (creazione Gruppi, assegnazione Allenatori/Atlete) — resta un dato di sola visualizzazione pubblica
+
 ## Epic 20: Torneo Memorial
 
-*(Aggiunta il 2026-08-19, richiesta esplicita dell'utente. Solo l'epica scritta ora - nessuna story creata, nessuna analisi di apertura completata, nessun modello dati progettato. L'utente ha detto esplicitamente di NON mandare ancora nessuna story in sviluppo: il regolamento punteggi è da stabilire e verrà comunicato in seguito - questo blocca qualunque Acceptance Criteria sui risultati/classifiche finché non arriva.)*
+*(Aggiunta il 2026-08-19, richiesta esplicita dell'utente. Regolamento punteggi e 4 punti aperti architetturali risolti il 2026-08-23 (regolamento fornito per esteso dall'utente, i 4 punti aperti risolti via AskUserQuestion) - sblocca la scrittura delle story, vedi "Decisioni prese" sotto.)*
 
 **Requisito originale (testo dell'utente, 2026-08-19):** "ogni anno viene fatto un torneo dalla società nella sezione memorial vorrei gestire il torneo, il torneo si sviluppa in genere su due week con due categoria a week. al massimo 8 squadre. vorrei avere la gestione di inserimento/modifica categorie + inserimento/modifica squadre partecipanti con gestione risultati e calcolo classifiche. un'immagine di sfondo da precaricare (rappresenta il volantino del torneo) per i risultati si prevede 2 set su 3, da stabilire ancora il regolamento punteggi te lo dico prima mandare in dev la story."
 
-**Letto come:** un torneo annuale ("Memorial") organizzato dalla società, articolato in genere su 2 turni/weekend ("week"), 2 categorie per turno (quindi tipicamente 4 categorie a edizione), fino a 8 squadre per categoria. Gestionale richiesto: CRUD Categorie, CRUD Squadre partecipanti, inserimento risultati, calcolo classifiche automatico, un'immagine di sfondo/volantino caricabile per l'edizione. Formato partita: al meglio dei 3 set (2 su 3) - il regolamento di punteggio (punti per set, eventuale differenza punti, criteri di classifica a parità) resta esplicitamente **da definire**, comunicato dall'utente prima di procedere.
+**Regolamento del torneo (testo dell'utente, 2026-08-23):** "Il torneo prevede la formula a due gironi 'all'italiana' con classifica finale stilata in base ai set vinti, le prime due classificate di entrambi i gironi disputeranno le semifinali e finali dal 1° al 4° posizionamento; mentre le terze e quarte classificate di entrambi i gironi disputeranno le semifinali e finali dal 5° all'8° posizionamento. Tutti gli incontri saranno al meglio dei tre set. Verranno attribuiti 3 punti in caso di vittoria con il punteggio di 2-0, 2 punti con la vittoria per 2-1, un punto con la sconfitta per 1-2, 0 punti con la sconfitta 2-0."
 
-**Contesto tecnico rilevante da verificare in fase di analisi (non ancora approfondito, solo osservazioni preliminari):**
-- **"Due week"**: da confermare se significa due *weekend* (interpretazione più probabile, uso colloquiale) o due *settimane* di calendario - cambia come viene modellata la programmazione delle partite.
-- **Squadre partecipanti probabilmente NON sono i `Gruppo` interni della società**: il torneo verosimilmente ospita anche squadre esterne (altri club), che in questo sistema non hanno alcuna riga `Gruppo`/`Atleta`/`Allenatore` - servirebbe un'entità "Squadra torneo" leggera (nome, categoria, forse un referente/contatto), non un riuso diretto del modello Gruppo esistente. Da confermare con l'utente.
-- **Precedente architetturale nel codice, verosimilmente non riusabile direttamente**: l'Epic 10 (Gestione Partite e Campionati) ha già `Campionato`/`Partita` con risultato/parziali per un Gruppo interno importato da Excel federale - stesso dominio concettuale (partite, risultati, classifiche) ma con presupposti diversi (squadra = Gruppo interno esistente, dati importati da file, nessun concetto di "categoria"/"edizione annuale"/"torneo con squadre esterne"). Da valutare in apertura se vale come riferimento di pattern (struttura risultato/parziali, calcolo classifica) o se serve un modello completamente nuovo.
-- **Multi-edizione**: "ogni anno viene fatto" implica verosimilmente la necessità di distinguere edizioni diverse nel tempo (mirror del pattern `AnnoAgonistico` già in uso altrove) - da confermare se serve archiviare/consultare edizioni passate o se conta solo l'edizione corrente.
-- **Sito pubblico o solo gestionale interno?** "Sezione memorial" + "volantino" suggeriscono una componente pubblica (i Visitatori vedono il torneo/classifiche/volantino sul sito), non solo un pannello di gestione interno - da confermare quale parte è pubblica e quale è riservata a chi gestisce (Admin/Dirigente? Coinvolge Site Manager, visto il taglio "contenuto pubblico" simile all'Epic 19?).
-- **Regolamento punteggi**: **bloccante esplicito** per qualunque Acceptance Criteria su inserimento risultati/calcolo classifiche - l'utente ha detto che lo comunicherà. Nessuna assunzione da fare qui (es. punti per set, tie-break, criteri di spareggio a parità in classifica).
+**Letto come:** un torneo annuale ("Memorial") organizzato dalla società, articolato in genere su 2 turni/weekend ("week"), 2 categorie per turno (tipicamente 4 categorie a edizione), fino a 8 squadre per categoria. Ogni categoria si gioca a 2 gironi all'italiana (girone = tutti contro tutti al proprio interno); ogni incontro è al meglio dei 3 set, con punteggio 3/2/1/0 (vittoria 2-0 / vittoria 2-1 / sconfitta 1-2 / sconfitta 0-2). Classifica di girone ordinata per punti, con i set vinti come criterio di spareggio a parità di punti. Al termine dei gironi: le prime due di ciascun girone si incrociano in semifinale/finale per il posizionamento 1°-4°; le terze/quarte di ciascun girone si incrociano in semifinale/finale per il posizionamento 5°-8°. Gestionale richiesto: CRUD Categorie, CRUD Squadre partecipanti, inserimento risultati (per set), calcolo classifiche di girone automatico, generazione degli accoppiamenti di semifinale/finale in base alla classifica, un'immagine di sfondo/volantino caricabile per l'edizione.
 
-**Nessuna story ancora scritta.** Prossimo passo naturale: una sessione di analisi/party mode dedicata (stesso pattern già seguito per l'Epic 19) una volta che l'utente fornisce il regolamento punteggi mancante.
+**Decisioni prese (2026-08-23, via AskUserQuestion):**
+1. **Criterio di classifica**: punti (3/2/1/0) come criterio primario di ordinamento del girone; a parità di punti, il numero di set vinti decide lo spareggio (schema pallavolistico standard - concilia la frase dell'utente "classifica... in base ai set vinti", letta come criterio di spareggio esplicito, non come criterio primario che scarterebbe il sistema a punti appena descritto).
+2. **Modello squadre**: nuova entità leggera "Squadra torneo" (nome, categoria, referente/contatto) distinta dai `Gruppo` interni della società - il torneo ospita anche club esterni, che in questo sistema non hanno alcuna riga `Gruppo`/`Atleta`/`Allenatore`. Nessun riuso diretto del modello `Gruppo`/`Campionato`/`Partita` esistente (Epic 10), stessi concetti di dominio (partite, risultati, classifiche) ma presupposti diversi (squadra esterna vs Gruppo interno, nessun concetto di "girone"/"categoria torneo"/"edizione annuale" in Epic 10) - da trattare come riferimento di pattern (struttura risultato/parziali) più che come base di riuso diretto.
+3. **"Due week"**: due weekend distinti (non due settimane di calendario) - programmazione partite pensata per 2 turni concentrati di gioco.
+4. **Visibilità**: sezione pubblica sul sito (classifiche, risultati, volantino) oltre alla gestione interna - coerente con "sezione memorial" e "volantino" del requisito originale. Ruolo di gestione da confermare in apertura story (Admin/Dirigente, eventualmente Site Manager per coerenza con l'Epic 19 se il taglio è "contenuto pubblico").
+
+**Contesto tecnico ancora da verificare in fase di analisi/scrittura story (non ancora approfondito):**
+- **Multi-edizione**: "ogni anno viene fatto" implica la necessità di distinguere edizioni diverse nel tempo (mirror del pattern `AnnoAgonistico` già in uso altrove) - da confermare se serve archiviare/consultare edizioni passate fin dalla prima story o se può essere rimandato (singola edizione "corrente" per ora, modello esteso più avanti).
+- **Formula incroci semifinale**: l'utente ha detto "le prime due classificate di entrambi i gironi disputeranno le semifinali" senza specificare l'accoppiamento esatto (es. 1° girone A vs 2° girone B e viceversa, pattern incrociato standard) - da confermare in apertura story, assunzione di lavoro: incrocio standard (1°A-2°B, 1°B-2°A), stesso per il tabellone 5°-8°.
+- **Numero di squadre per girone**: fino a 8 squadre per categoria, presumibilmente divise in 2 gironi da 4 (8/2) ma non specificato esplicitamente se sempre paritario o variabile - da confermare in apertura story.
+
+**Scomposizione in story (2026-08-23):** 6 story, dati → risultati/classifica gironi → tabellone eliminazione → volantino → vetrina pubblica. Gestione riservata ad Admin/Dirigente (stesso perimetro di Epic 10 Campionati/Partite, dominio sportivo) salvo dove annotato diversamente; nessuna story dedicata all'introduzione di un Ruolo (a differenza dell'Epic 19) perché i Ruoli usati esistono già.
+
+### Story 20.1: Edizione del torneo e Categorie
+
+As an Admin o Dirigente,
+I want creare un'edizione del Torneo Memorial (anno) e le Categorie al suo interno (nome, week 1/2, numero massimo di squadre fino a 8),
+So that possa impostare la struttura di base prima di iscrivere le squadre.
+
+**Acceptance Criteria:**
+
+**Given** nessun modello dati esiste ancora per il torneo
+**When** vengono introdotte due nuove tabelle Prisma (`EdizioneTorneo`: anno, timestamp; `CategoriaTorneo`: nome, edizione, week 1|2, numero massimo squadre) protette da RLS/REVOKE espliciti come ogni altra tabella strutturale del progetto
+**Then** un Admin/Dirigente può creare, modificare ed eliminare un'edizione e le sue Categorie da una nuova pagina di gestione (es. `/app/torneo`, `requireRuolo(["ADMIN","DIRIGENTE"])`)
+
+**And** un'edizione non può essere eliminata se ha già Categorie con squadre iscritte (stesso principio fail-closed già in uso altrove nel progetto per le eliminazioni con dipendenze)
+
+**And** un Utente senza quei Ruoli non raggiunge la pagina (redirect, stesso pattern di ogni altra rotta protetta)
+
+### Story 20.2: Squadre partecipanti e gironi
+
+As an Admin o Dirigente,
+I want iscrivere le squadre partecipanti a una Categoria (nome squadra, referente/contatto) e assegnarle a uno dei due gironi (A/B),
+So that possa organizzare i gironi prima di generare il calendario degli incontri.
+
+**Acceptance Criteria:**
+
+**Given** la Categoria di 20.1
+**When** viene introdotta una nuova tabella `SquadraTorneo` (nome, categoria, girone A|B, referente, contatto) e una UI per crearla/modificarla/eliminarla dentro la pagina di gestione della Categoria
+**Then** un Admin/Dirigente può iscrivere fino al numero massimo di squadre impostato in 20.1, ripartite sui due gironi
+
+**And** un tentativo di iscrivere più squadre del massimo impostato, o di eliminare una squadra con incontri già registrati (20.3), viene rifiutato con un errore esplicito
+
+**And** l'entità è indipendente dai `Gruppo` interni della società - nessun collegamento a Gruppo/Atleta/Allenatore, il torneo ospita anche squadre esterne
+
+### Story 20.3: Risultati di girone e classifica automatica
+
+As an Admin o Dirigente,
+I want inserire il risultato (punteggio per set) di ogni incontro di girone e vedere la classifica di ciascun girone calcolata automaticamente,
+So that non debba calcolare a mano punti e spareggi durante il torneo.
+
+**Acceptance Criteria:**
+
+**Given** le squadre di 20.2 assegnate ai due gironi di una Categoria
+**When** viene generato automaticamente il calendario degli incontri di girone (tutti contro tutti all'interno dello stesso girone, "all'italiana") e un Admin/Dirigente inserisce il risultato di un incontro come punteggio dei singoli set (al meglio dei 3)
+**Then** il sistema calcola l'esito (2-0/2-1/1-2/0-2) e assegna i punti dell'incontro secondo il regolamento (3/2/1/0)
+
+**And** la classifica di ogni girone è ordinata per punti totali, con il numero di set vinti come criterio di spareggio a parità di punti
+
+**And** un punteggio inserito che non è coerente con "al meglio dei 3 set" (es. un set vinto da entrambe le squadre, più di 3 set, una squadra a 3 set vinti) è rifiutato con un errore esplicito
+
+**And** modificare un risultato già inserito ricalcola immediatamente la classifica del girone (nessuno stato "classifica congelata" intermedio)
+
+### Story 20.4: Tabellone semifinali/finali e classifica finale
+
+As an Admin o Dirigente,
+I want che il tabellone delle semifinali e finali (posizionamento 1°-4° e 5°-8°) si generi automaticamente dalla classifica dei gironi, e poter inserire i risultati di quegli incontri,
+So that il torneo prosegua senza dover ricalcolare a mano gli accoppiamenti.
+
+**Acceptance Criteria:**
+
+**Given** entrambi i gironi di una Categoria con classifica completa (tutti gli incontri di girone registrati, 20.3)
+**When** un Admin/Dirigente genera il tabellone
+**Then** vengono create le semifinali per il posizionamento 1°-4° (1° girone A - 2° girone B, 1° girone B - 2° girone A) e per il posizionamento 5°-8° (3° girone A - 4° girone B, 3° girone B - 4° girone A), ciascuna al meglio dei 3 set come le partite di girone
+
+**And** una volta inseriti i risultati delle semifinali, vengono generate la finale (vincenti, per il 1°/2° posto) e la finale per il 3°/4° posto (perdenti) nel tabellone 1°-4°, e lo stesso schema (finale 5°/6°, finale 7°/8°) nel tabellone 5°-8°
+
+**And** il tabellone non può essere generato finché la classifica di entrambi i gironi non è completa - un tentativo prima di allora viene rifiutato con un errore esplicito
+
+**And** la classifica finale della Categoria (1°-8° posto) è consultabile una volta completati tutti gli incontri del tabellone
+
+### Story 20.5: Immagine di sfondo del torneo (volantino)
+
+As an Admin o Dirigente,
+I want caricare un'immagine di sfondo (il volantino del torneo) per un'edizione,
+So that la sezione pubblica del torneo mostri la grafica ufficiale dell'evento.
+
+**Acceptance Criteria:**
+
+**Given** l'edizione di 20.1, stesso pattern di validazione/storage già in uso per la foto sfondo hero (Story 18.14/19.11: PNG/JPEG, 2MB, `lib/storage/validazione-immagine.ts`)
+**When** un Admin/Dirigente carica un'immagine dalla pagina di gestione dell'edizione
+**Then** l'immagine sostituisce quella eventualmente già presente per quella edizione, in un nuovo bucket Storage pubblico dedicato (mirror del pattern sponsor/foto-hero)
+
+**And** un file che non supera la validazione MIME/dimensione è rifiutato con lo stesso messaggio di errore già in uso altrove nel progetto
+
+### Story 20.6: Sezione pubblica del Torneo Memorial
+
+As a Visitatore del sito pubblico,
+I want vedere le Categorie, le squadre iscritte, le classifiche di girone, il tabellone e i risultati del Torneo Memorial, con il volantino dell'edizione corrente,
+So that possa seguire il torneo organizzato dalla società senza dover chiedere informazioni.
+
+**Acceptance Criteria:**
+
+**Given** l'edizione, le Categorie, le squadre, i risultati e il volantino delle story 20.1-20.5
+**When** un Visitatore apre la nuova sezione pubblica del torneo (es. `/torneo`, coerente con il pattern delle altre pagine pubbliche del sito)
+**Then** vede il volantino dell'edizione corrente, l'elenco delle Categorie, per ciascuna la classifica di girone aggiornata e - una volta generato - il tabellone di semifinale/finale con i risultati e la classifica finale
+
+**And** finché una Categoria non ha ancora risultati registrati, la sezione mostra le squadre iscritte senza classifica (nessun errore, nessuna tabella vuota fuorviante)
+
+**And** la sezione segue lo stesso sistema di design "Poster Sportivo" già in uso nel resto del sito pubblico (DESIGN.md/EXPERIENCE.md, 2026-08-13) - nessuno stile ad hoc

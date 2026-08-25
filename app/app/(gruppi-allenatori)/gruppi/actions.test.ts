@@ -10,12 +10,14 @@ const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const gruppoCreateMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();
+const gruppoAggregateMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
 const gruppoAllenatoreFindUniqueMock = vi.fn();
 const gruppoAllenatoreDeleteManyMock = vi.fn();
 const allenatoreFindFirstMock = vi.fn();
 const gruppoAtletaUpsertMock = vi.fn();
 const gruppoAtletaDeleteManyMock = vi.fn();
+const gruppoAtletaUpdateManyMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const getUserMock = vi.fn();
 const creaAtletaMock = vi.fn();
@@ -36,14 +38,22 @@ vi.mock("@/lib/anno-agonistico", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    gruppo: { create: gruppoCreateMock, findUnique: gruppoFindUniqueMock },
+    gruppo: {
+      create: gruppoCreateMock,
+      findUnique: gruppoFindUniqueMock,
+      aggregate: gruppoAggregateMock,
+    },
     allenatore: { findFirst: allenatoreFindFirstMock },
     gruppoAllenatore: {
       create: gruppoAllenatoreCreateMock,
       findUnique: gruppoAllenatoreFindUniqueMock,
       deleteMany: gruppoAllenatoreDeleteManyMock,
     },
-    gruppoAtleta: { upsert: gruppoAtletaUpsertMock, deleteMany: gruppoAtletaDeleteManyMock },
+    gruppoAtleta: {
+      upsert: gruppoAtletaUpsertMock,
+      deleteMany: gruppoAtletaDeleteManyMock,
+      updateMany: gruppoAtletaUpdateManyMock,
+    },
   },
 }));
 
@@ -93,6 +103,7 @@ const {
   rimuoviAllenatore,
   assegnaAtleta,
   rimuoviAtleta,
+  impostaNumeroAtletaAction,
   creaEAssegnaAtleta,
   caricaFotoSquadraAction,
 } = await import("./actions");
@@ -129,12 +140,15 @@ beforeEach(() => {
   trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
   gruppoCreateMock.mockReset();
   gruppoFindUniqueMock.mockReset();
+  gruppoAggregateMock.mockReset();
+  gruppoAggregateMock.mockResolvedValue({ _max: { ordine: null } });
   gruppoAllenatoreCreateMock.mockReset();
   gruppoAllenatoreFindUniqueMock.mockReset();
   gruppoAllenatoreDeleteManyMock.mockReset();
   allenatoreFindFirstMock.mockReset();
   gruppoAtletaUpsertMock.mockReset();
   gruppoAtletaDeleteManyMock.mockReset();
+  gruppoAtletaUpdateManyMock.mockReset();
   atletaMaybeSingleMock.mockReset();
   creaAtletaMock.mockReset();
   creaNotificaMock.mockReset();
@@ -198,6 +212,7 @@ describe("creaGruppo", () => {
 
   it("resolves the current AnnoAgonistico and creates the Gruppo linked to it (AC #1, #2)", async () => {
     risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    gruppoAggregateMock.mockResolvedValue({ _max: { ordine: null } });
     gruppoCreateMock.mockResolvedValue({ id: "g1" });
 
     const result = await creaGruppo(
@@ -208,9 +223,42 @@ describe("creaGruppo", () => {
     expect(result).toEqual({ success: true });
     expect(risolviAnnoAgonisticoCorrenteMock).toHaveBeenCalled();
     expect(gruppoCreateMock).toHaveBeenCalledWith({
-      data: { nome: "Under 13", categoria: "Under 13", annoAgonisticoId: "anno-1" },
+      data: {
+        nome: "Under 13",
+        categoria: "Under 13",
+        annoAgonisticoId: "anno-1",
+        ordine: 0,
+      },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+  });
+
+  // Story 19.15 (Epic 19, Ruolo Site Manager): ordine = max esistente + 1
+  // TRA I GRUPPI DELLA STESSA STAGIONE (non un contatore globale) - mirror
+  // di creaVoceMenuPubblico in lib/menu-pubblico.ts.
+  it("assigns ordine = max esistente + 1 tra i Gruppi della stessa stagione (Story 19.15)", async () => {
+    risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    gruppoAggregateMock.mockResolvedValue({ _max: { ordine: 4 } });
+    gruppoCreateMock.mockResolvedValue({ id: "g1" });
+
+    const result = await creaGruppo(
+      undefined,
+      buildFormData({ nome: "Under 13", categoria: "Under 13" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAggregateMock).toHaveBeenCalledWith({
+      where: { annoAgonisticoId: "anno-1" },
+      _max: { ordine: true },
+    });
+    expect(gruppoCreateMock).toHaveBeenCalledWith({
+      data: {
+        nome: "Under 13",
+        categoria: "Under 13",
+        annoAgonisticoId: "anno-1",
+        ordine: 5,
+      },
+    });
   });
 
   it("returns a friendly error, no crash, when resolving the AnnoAgonistico fails", async () => {
@@ -907,6 +955,313 @@ describe("rimuoviAtleta", () => {
       error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
     });
     expect(gruppoAtletaDeleteManyMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("impostaNumeroAtletaAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente/Allenatore", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "ALLENATORE"]);
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when gruppoId is missing", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when atletaId is missing", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when numero is not an integer", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "abc" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when numero is below the minimum", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "0" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    });
+  });
+
+  it("returns a validation error when numero is above the maximum", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "1000" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    });
+  });
+
+  it("returns a validation error when the Gruppo does not exist", async () => {
+    gruppoFindUniqueMock.mockResolvedValue(null);
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
+    });
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  it("sets the numero (AC #1)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(gruppoAtletaUpdateManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
+      data: { numero: 7 },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("clears the numero to null when the field is left empty (AC #2)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "" })
+    );
+
+    expect(gruppoAtletaUpdateManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
+      data: { numero: null },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a validation error, not a silent no-op, when the assignment no longer exists (count 0)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpdateManyMock.mockResolvedValue({ count: 0 });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Assegnazione non trovata." },
+    });
+    // Review fix (Blind Hunter): senza revalidatePath anche su questo ramo,
+    // la riga restava visibile/modificabile nella UI stantia nonostante
+    // l'assegnazione non esista piu' lato server.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("returns a friendly error, no crash, when the Gruppo lookup fails", async () => {
+    gruppoFindUniqueMock.mockRejectedValue(new Error("db down"));
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile impostare il Numero. Riprova." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the update fails", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpdateManyMock.mockRejectedValue(new Error("db down"));
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile impostare il Numero. Riprova." },
+    });
+  });
+
+  // Story 9.35 (stesso principio di rimuoviAtleta, Story 9.15): un
+  // Allenatore puo' impostare il Numero solo per Atlete del proprio Gruppo.
+  it("allows an ALLENATORE who manages the Gruppo to set the numero", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-1", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-1" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue({ gruppoId: "g1", allenatoreId: "all-1" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    gruppoAtletaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoAtletaUpdateManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "at1", gruppoId: "g1", annoAgonisticoId: "anno-1" },
+      data: { numero: 7 },
+    });
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE who does not manage the Gruppo, no write", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-2", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-2" });
+    gruppoAllenatoreFindUniqueMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Blind Hunter): parita' di test mancante con rimuoviAtleta -
+  // gli stessi 3 rami di risolviPossessoGruppo erano gia' testati li' ma non
+  // ancora replicati qui, nonostante la spec dichiari "mirror esatto".
+  it("rejects (FORBIDDEN) an ALLENATORE without a linked profile, no write", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-senza-profilo", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue(null);
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects (FORBIDDEN) an ALLENATORE whose Gruppo belongs to a past season, no write", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-3", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockResolvedValue({ id: "all-3" });
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-corrente" });
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-vecchio" });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non gestisci questo Gruppo." },
+    });
+    expect(gruppoAllenatoreFindUniqueMock).not.toHaveBeenCalled();
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL, no crash, when checking possesso throws", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "utente-all-4", app_metadata: { ruoli: ["ALLENATORE"] } } },
+      error: null,
+    });
+    allenatoreFindFirstMock.mockRejectedValue(new Error("db down"));
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile verificare i permessi. Riprova." },
+    });
+    expect(gruppoAtletaUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Blind Hunter): il solo test "non e' un intero" esistente
+  // passava una stringa non numerica ("abc", NaN) - mai un vero decimale.
+  it("returns a validation error when numero is a real decimal, not just a non-numeric string", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "7.5" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    });
+    expect(gruppoFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Edge Case Hunter + Blind Hunter): Number("1e2")/Number("0x7")
+  // sono interi "validi" per Number.isInteger ma non sono cifre decimali
+  // semplici - mai digitabili dal widget <input type="number"> reale, solo
+  // tramite un FormData manomesso.
+  it("returns a validation error for scientific/hex notation, even though it parses to a valid integer", async () => {
+    const result = await impostaNumeroAtletaAction(
+      undefined,
+      buildFormData({ gruppoId: "g1", atletaId: "at1", numero: "1e2" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il Numero deve essere un intero tra 1 e 999." },
+    });
   });
 });
 

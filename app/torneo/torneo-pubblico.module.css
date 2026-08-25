@@ -1,0 +1,247 @@
+/* Story 20.6 (Epic 20, Torneo Memorial): modulo dedicato al contenuto di
+   /torneo, convenzione del progetto "un CSS module per pagina". Mirror
+   stilistico di app/calendario/calendario.module.css (card-incontro
+   .matchGrid/.matchCard/.squadre/.vs/.meta) e app/squadre/squadre.module.css
+   (sezioni/titoli/messaggioVuoto) - registro "Poster Sportivo"
+   (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13). NON
+   importa/riusa app/app/(torneo)/torneo/torneo.module.css (CSS interno/
+   amministrativo, design diverso - spec-20-6 Boundaries). Nessun nuovo
+   custom property in app/globals.css: stessa disciplina delle due pagine
+   mirror, hex letterali commentati con il nome del token DESIGN.md
+   d'origine, eccezione solo per i valori con hex identico gia' verificati. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+/* {typography.display-section} - stesso token del titolo di /calendario e
+   /squadre. */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.sezioneVolantino {
+  margin-top: var(--space-6);
+}
+
+.volantino {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+}
+
+/* components.team-card (mirror .schedaGruppo di squadre.module.css): sfondo
+   {colors.bianco}, nessun angolo arrotondato, ombra leggera - qui contenitore
+   di UNA Categoria (nome, gironi, incontri, tabellone), non di UNA Squadra. */
+.sezioneCategoria {
+  margin-top: var(--space-8);
+  background: var(--color-surface);
+  border-radius: 0;
+  padding: var(--space-6);
+  box-shadow: 0 8px 24px rgba(15, 36, 56, 0.08);
+}
+
+.sezioneCategoria:first-of-type {
+  margin-top: var(--space-6);
+}
+
+/* {typography.display-card}. */
+.titoloCategoria {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+/* {typography.label-tag} + {colors.azzurro-scuro} #0072A3 - letterale,
+   stesso valore/motivo di .categoriaGruppo in squadre.module.css. */
+.etichettaSettimana {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #0072a3;
+  margin-top: var(--space-1);
+}
+
+.sezioneGirone {
+  margin-top: var(--space-6);
+}
+
+/* {typography.label-heading} + {colors.grigio} #5B6472 - stesso token di
+   .titoloSettimana in calendario.module.css, qui applicato all'intestazione
+   di raggruppamento per girone. */
+.titoloGirone {
+  font-family: "Arial Black", sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #5b6472;
+  margin-bottom: var(--space-3);
+}
+
+.messaggioSezione {
+  color: var(--color-text-secondary);
+}
+
+.listaSquadre {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: var(--color-text-primary);
+}
+
+.listaSquadre li {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid #e6ebef;
+}
+
+.listaSquadre li:last-child {
+  border-bottom: none;
+}
+
+.tabellaClassifica {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-4);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.tabellaClassifica th,
+.tabellaClassifica td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid #e6ebef;
+}
+
+.tabellaClassifica th {
+  font-weight: 700;
+  color: #5b6472;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* match-grid: 2 colonne desktop, 1 colonna sotto i 900px - stesso identico
+   breakpoint/idioma di .matchGrid in calendario.module.css. */
+.matchGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .matchGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* components.match-card: mirror letterale di .matchCard in
+   calendario.module.css - sfondo {colors.azzurro-partite} #2E6F99, testo
+   bianco, taglio diagonale asimmetrico, {rounded.none}. */
+.matchCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: #2e6f99;
+  color: #ffffff;
+  padding: var(--space-4);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.matchCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 56px;
+  height: 56px;
+  background: var(--color-primary);
+  opacity: 0.15;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+
+/* {typography.label-tag} + {colors.testo-chiaro-partite} #EAF4FB - stesso
+   token di .categoria in calendario.module.css, qui usata per l'etichetta
+   di fase (Semifinale/Finale 1°-2° posto/ecc.) nel tabellone. */
+.categoria {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #eaf4fb;
+}
+
+/* {typography.display-card}. */
+.squadre {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* {colors.magenta-chiaro} #FFCBE6 - stesso valore/motivo di .vs in
+   calendario.module.css. */
+.vs {
+  color: #ffcbe6;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB, stesso
+   padding-left di .meta in calendario.module.css (evita il testo a ridosso
+   del taglio diagonale in basso a sinistra). */
+.meta {
+  padding-left: var(--space-4);
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #eaf4fb;
+}
+
+.sezioneTabellone {
+  margin-top: var(--space-6);
+}
+
+.blocoTabellone {
+  margin-bottom: var(--space-4);
+}

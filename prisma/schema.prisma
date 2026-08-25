@@ -453,6 +453,15 @@ model Gruppo {
   visibileDirigente GruppoVisibileDirigente?
   campionati        Campionato[]
   partite           Partita[]
+  // Story 19.15 (Epic 19, Ruolo Site Manager): ordine di visualizzazione sulla
+  // pagina pubblica /squadre - mirror esatto di VoceMenuPubblico.ordine (Story
+  // 19.6), stesso principio "intero libero, nessun vincolo di unicita' DB": un
+  // duplicato transitorio durante un riordino non e' un problema che il DB
+  // debba impedire. Scoped per annoAgonisticoId (non un contatore globale) -
+  // stagioni diverse hanno insiemi di Gruppi indipendenti, mai mostrati
+  // insieme in nessuna pagina esistente. Backfill alfabetico per nome nella
+  // migrazione che introduce questa colonna.
+  ordine            Int
 
   @@map("gruppi")
 }
@@ -585,6 +594,12 @@ model GruppoAtleta {
   atleta           Atleta         @relation(fields: [atletaId], references: [id], onDelete: Cascade)
   annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
   createdAt        DateTime       @default(now())
+  // Story 9.35: Numero di maglia, facoltativo e specifico della coppia
+  // Atleta+Gruppo+Stagione (questa riga) - mai condiviso con un'altra
+  // stagione o un altro Gruppo della stessa Atleta. Nessun vincolo di
+  // unicita' DB (deciso esplicitamente in epics.md AC #3): due Atlete dello
+  // stesso Gruppo possono avere lo stesso Numero.
+  numero           Int?
 
   // Story 9.21: allentato da [atletaId, annoAgonisticoId] - un'Atleta puo'
   // ora essere assegnata a piu' Gruppi contemporaneamente nella stessa
@@ -778,4 +793,186 @@ model PaginaPubblica {
   updatedAt     DateTime @updatedAt
 
   @@map("pagine_pubbliche")
+}
+
+// Story 20.1 (Epic 20, Torneo Memorial): prima entita' del nuovo dominio -
+// mirror di GiornoSettimana sopra (righe 599-607), stesso principio di
+// enum chiuso a due valori. "SETTIMANA_1"/"SETTIMANA_2" (non "1"/"2": un
+// enum Postgres non puo' iniziare con una cifra).
+enum SettimanaTorneo {
+  SETTIMANA_1
+  SETTIMANA_2
+}
+
+// Entita' indipendente da Gruppo/AnnoAgonistico (decisione esplicita, vedi
+// epics.md Story 20.1 e spec-20-1 Intent/Boundaries): il Torneo Memorial
+// ospita anche squadre esterne alla societa', nessun collegamento alla
+// stagione sportiva interna. Non protetta da RLS (AD-9, stesso trattamento
+// di Sponsor/VoceMenuPubblico/PaginaPubblica sopra): RLS abilitata senza
+// alcuna policy (deny-all di default) + REVOKE esplicito da
+// "anon"/"authenticated" nella stessa migrazione di creazione - accesso
+// solo via Prisma diretto (connessione privilegiata). "anno" univoco: una
+// sola Edizione per anno (spec-20-1 I/O matrix - VALIDATION se gia'
+// esistente). Nessuna guardia di eliminazione qui sul modello: espressa
+// dalla Server Action (deleteMany con where composto, mirror cancellaSlot)
+// - un'Edizione con Categorie non e' eliminabile (spec-20-1 Design Notes:
+// adeguamento rispetto all'AC originale di epics.md, che legava il
+// vincolo alle "Categorie con squadre iscritte" - SquadraTorneo non esiste
+// ancora, arriva con la Story 20.2).
+model EdizioneTorneo {
+  id        String            @id @default(uuid())
+  anno      Int               @unique
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  categorie CategoriaTorneo[]
+
+  @@map("edizioni_torneo")
+}
+
+// "numeroMassimoSquadre" 2-8: validato nella Server Action, non a livello
+// DB (stesso principio di lunghezza etichetta VoceMenuPubblico, la
+// validazione vive sempre li', mai nello schema). FK verso EdizioneTorneo
+// senza onDelete esplicito (default Prisma Restrict) - stesso identico
+// trattamento di Gruppo -> AnnoAgonistico (righe 443-458): nessuna UI di
+// eliminazione dell'Edizione la cancellerebbe comunque (vedi sopra), ma il
+// Restrict resta la garanzia a livello DB. Story 20.2: guardia di
+// eliminazione aggiunta ora che la relazione inversa "squadre" esiste
+// (cancellaCategoriaTorneo, lib/torneo.ts, where esteso a
+// "squadre: { none: {} } }") - obbligo gia' annotato qui in Story 20.1
+// (Design Notes di spec-20-1), assolto da spec-20-2.
+model CategoriaTorneo {
+  id                   String          @id @default(uuid())
+  nome                 String
+  settimana            SettimanaTorneo
+  numeroMassimoSquadre Int
+  edizioneTorneoId     String
+  edizioneTorneo       EdizioneTorneo  @relation(fields: [edizioneTorneoId], references: [id])
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  squadre              SquadraTorneo[]
+  partite              PartitaTorneo[]
+
+  @@map("categorie_torneo")
+}
+
+// Story 20.2 (Epic 20, Torneo Memorial): mirror di SettimanaTorneo sopra -
+// stesso principio di enum chiuso a due valori. "GIRONE_A"/"GIRONE_B" (non
+// "A"/"B": un enum Postgres non puo' essere un singolo carattere ambiguo,
+// e resta coerente con lo stile SETTIMANA_1/SETTIMANA_2 sopra).
+enum GironeTorneo {
+  GIRONE_A
+  GIRONE_B
+}
+
+// Entita' indipendente da Gruppo/Atleta/Allenatore (decisione esplicita,
+// vedi epics.md Story 20.2 e spec-20-2 Intent/Boundaries): il Torneo
+// Memorial ospita anche squadre esterne alla societa', nessun collegamento
+// alle entita' interne. "referente"/"contatto" stringhe libere opzionali -
+// un club esterno potrebbe non aver ancora fornito questi dati, stesso
+// principio "campo indipendente, vuoto non mostra nulla" gia' in uso per i
+// contatti pubblici (ConfigurazioneApplicazione sopra). Non protetta da RLS
+// (AD-9), stesso trattamento di EdizioneTorneo/CategoriaTorneo: RLS
+// abilitata senza alcuna policy (deny-all di default) + REVOKE esplicito da
+// "anon"/"authenticated" nella stessa migrazione di creazione - accesso
+// solo via Prisma diretto. FK verso CategoriaTorneo senza onDelete
+// esplicito (default Prisma Restrict) - stesso identico trattamento di
+// CategoriaTorneo -> EdizioneTorneo sopra: la guardia applicativa in
+// cancellaCategoriaTorneo blocca gia' la cancellazione di una Categoria con
+// Squadre, ma il Restrict resta la garanzia a livello DB. Nessun vincolo di
+// bilanciamento tra i due gironi (decisione esplicita, spec-20-2
+// Boundaries "Never") - l'Admin/Dirigente assegna liberamente. Il numero
+// massimo di squadre per Categoria e' un controllo applicativo nella Server
+// Action (confronto con categoria.numeroMassimoSquadre al momento della
+// creazione), mai un vincolo DB CHECK - stessa filosofia gia' stabilita per
+// numeroMassimoSquadre di CategoriaTorneo.
+model SquadraTorneo {
+  id                String          @id @default(uuid())
+  nome              String
+  girone            GironeTorneo
+  referente         String?
+  contatto          String?
+  categoriaTorneoId String
+  categoriaTorneo   CategoriaTorneo @relation(fields: [categoriaTorneoId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  // Story 20.3: due relazioni verso PartitaTorneo (casa/ospite) - nomi
+  // espliciti obbligatori perche' esistono due FK indipendenti tra le
+  // stesse due tabelle (Prisma richiede un @relation con nome quando piu'
+  // di una relazione collega la stessa coppia di modelli).
+  partiteCasa       PartitaTorneo[] @relation("PartiteCasa")
+  partiteOspite     PartitaTorneo[] @relation("PartiteOspite")
+
+  @@map("squadre_torneo")
+}
+
+// Story 20.4 (Epic 20, Torneo Memorial): mirror di GironeTorneo/
+// SettimanaTorneo sopra - stesso principio di enum chiuso. GIRONE resta il
+// default (vedi PartitaTorneo.fase sotto): copre automaticamente le righe
+// di girone gia' esistenti dalla Story 20.3, nessuna migrazione dati
+// necessaria.
+enum FaseTorneo {
+  GIRONE
+  SEMIFINALE
+  FINALE_VINCENTI
+  FINALE_PERDENTI
+}
+
+// Story 20.4: distingue il tabellone di posizionamento 1°-4° da quello
+// 5°-8° - nullo per fase GIRONE (un incontro di girone non appartiene a
+// nessun tabellone).
+enum TabelloneTorneo {
+  POSIZIONI_1_4
+  POSIZIONI_5_8
+}
+
+// Story 20.3 (Epic 20, Torneo Memorial): incontro di girone "tutti contro
+// tutti" (all'italiana), generato in blocco da generaCalendarioGironiAction
+// (app/app/(torneo)/torneo/actions.ts) - mai tra Squadre di gironi diversi.
+// Le 6 colonne set1Casa..set3Ospite sono Int? (nulle finche' il
+// risultato non e' inserito) invece di un campo libero tipo
+// Partita.parziali (Epic 10, stringa non strutturata importata da Excel) -
+// qui il risultato arriva da un form compilato da un Utente reale, non da
+// un import, quindi vale la pena validarlo strutturalmente
+// (risultatoValido, lib/risultato-partita-torneo.ts) e calcolarci sopra la
+// classifica di girone senza fare parsing di stringhe. Nessuna colonna
+// "punti"/"esito" qui: derivati sempre al volo da esitoPartita, mai
+// persistiti (spec-20-3 Design Notes - stesso principio "mai una seconda
+// fonte di verita'" gia' seguito nel progetto). FK verso CategoriaTorneo/
+// SquadraTorneo senza onDelete esplicito (default Prisma Restrict) - stesso
+// identico trattamento delle FK Torneo precedenti.
+model PartitaTorneo {
+  id                String          @id @default(uuid())
+  categoriaTorneoId String
+  categoriaTorneo   CategoriaTorneo @relation(fields: [categoriaTorneoId], references: [id])
+  squadraCasaId     String
+  squadraCasa       SquadraTorneo   @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
+  squadraOspiteId   String
+  squadraOspite     SquadraTorneo   @relation("PartiteOspite", fields: [squadraOspiteId], references: [id])
+  // Story 20.4: distingue un incontro di girone (fase GIRONE, tabellone
+  // nullo, comportamento invariato dalla Story 20.3) da una
+  // semifinale/finale del tabellone di posizionamento, generato da
+  // generaTabelloneAction/il side-effect di salvaRisultatoPartitaTorneoAction
+  // (app/app/(torneo)/torneo/actions.ts, spec-20-4). tabellone e' nullo
+  // solo per fase GIRONE - nessun vincolo CHECK a livello DB per questa
+  // coerenza (stessa filosofia "il vero cancello e' nella Server Action"
+  // gia' applicata a numeroMassimoSquadre).
+  fase              FaseTorneo      @default(GIRONE)
+  tabellone         TabelloneTorneo?
+  set1Casa          Int?
+  set1Ospite        Int?
+  set2Casa          Int?
+  set2Ospite        Int?
+  set3Casa          Int?
+  set3Ospite        Int?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Review fix (Edge Case Hunter, Story 20.3): rete di sicurezza a livello
+  // DB contro la generazione duplicata della stessa coppia (la guardia di
+  // idempotenza in generaCalendarioGironiAction e' un check-then-act non
+  // atomico, accettato ma non sufficiente da solo) - un doppio invio
+  // concorrente ora fallisce con un vincolo unico invece di raddoppiare
+  // silenziosamente i punti di una Squadra in classifica.
+  @@unique([categoriaTorneoId, squadraCasaId, squadraOspiteId])
+  @@map("partite_torneo")
 }

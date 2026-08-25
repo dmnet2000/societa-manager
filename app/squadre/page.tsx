@@ -41,7 +41,13 @@ export default async function SquadrePage() {
       ? prisma.gruppo
           .findMany({
             where: { annoAgonisticoId: annoCorrente.id },
-            orderBy: { nome: "asc" },
+            // Story 19.15 (Epic 19, Ruolo Site Manager): ordinamento
+            // configurabile da /app/ordine-squadre (bottoni Su/Giù),
+            // sostituisce l'ordine alfabetico fisso di Story 18.8 - la
+            // migrazione che introduce Gruppo.ordine esegue un backfill
+            // alfabetico per nome, quindi il comportamento resta invariato
+            // finché nessuno riordina esplicitamente.
+            orderBy: { ordine: "asc" },
             select: {
               id: true,
               nome: true,

@@ -1,0 +1,95 @@
+/* Story 19.15 - applica i token di DESIGN.md, come ogni altro modulo del
+   progetto. Mirror di menu-pubblico.module.css (Story 19.7) - stesse classi,
+   stesso stile visivo, nessun nuovo sistema inventato per questa pagina. */
+
+.sezione {
+  margin-top: var(--space-5);
+}
+
+.sezione h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.avviso {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.errore {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.bottoneSecondario {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.bottoneSecondario:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottoneSecondario:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.intestazioneCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.azioniIntestazione {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.nomeGruppo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.categoriaGruppo {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

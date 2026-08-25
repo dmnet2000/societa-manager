@@ -88,6 +88,34 @@ export async function elencaAtlete(
   return data ?? [];
 }
 
+export type AtletaPubblica = {
+  id: string;
+  nome: string;
+};
+
+// Story 18.24: lettura dedicata e ristretta per la pagina pubblica /squadre
+// (nessuna sessione) - espone SOLO id+nome, mai codiceFiscale/categoria come
+// elencaAtlete sopra (dati non ammessi su una pagina pubblica). La RLS di
+// "atlete" non concede alcun accesso a un Visitatore anonimo (nessuna
+// policy pubblica esiste su questa tabella) - il client passato DEVE essere
+// createAdminClient() (service-role, bypassa RLS), mai createClient()
+// (sessione anonima), che qui fallirebbe silenziosamente (righe vuote, non
+// un errore) esattamente come su qualunque altra lettura RLS senza sessione.
+export async function elencaAtletePubbliche(
+  supabaseAdmin: SupabaseClient
+): Promise<AtletaPubblica[]> {
+  const { data, error } = await supabaseAdmin
+    .from("atlete")
+    .select("id, nome")
+    .order("nome", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 export async function aggiornaAtleta(
   supabase: SupabaseClient,
   id: string,

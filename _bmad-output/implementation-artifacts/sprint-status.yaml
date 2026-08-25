@@ -1,3 +1,8 @@
+# last_updated: 2026-08-24 (Story 20.4: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 9 patch applicate e riverificate. Gap piu' significativo, convergente su tutti e 3 i reviewer: modificare un risultato di girone dopo la generazione del tabellone, o una semifinale dopo la generazione delle finali, lasciava silenziosamente stantii gli accoppiamenti/vincitori gia' derivati - bloccato esplicitamente (erroreModificaBloccata). Verification Gap ha trovato 2 punti di wiring a livello pagina senza alcun test capace di intercettare una regressione (filtro girone, abbinamento riga-tabellone della classifica finale) - risolti eliminando il rischio alla radice (calcolaClassificaGirone filtra fase internamente, calcolaClassificaFinale non prende piu' argomenti posizionali ma un solo array e deriva tutto dai dati). Anche: P2002 su generazione finali ora ri-verificato prima di trattarlo come idempotenza; due messaggi distinti per calendario mai generato vs incompleto; le due finali di un tabellone ora etichettate esplicitamente; bottone "Genera tabellone" disabilitato quando non generabile; GIRONE_A/B hardcoded sostituiti con GIRONI_TORNEO; haRisultatoCompleto (duplicata 5 volte) estratta come unica fonte di verita'; vincolo CHECK aggiunto in migrazione per l'unione discriminata fase/tabellone; copertura test asimmetrica del vincolo min-4-squadre corretta. 2 defer loggati in deferred-work.md (nessun recupero per un tabellone generato per errore, accoppiamento incidentale min-4/max-8), resto reject. Due bug propri scoperti applicando le patch: un'inversione vincitore/perdente in un test nuovo, e 2 test preesistenti che assumevano ancora il vecchio comportamento (nessun blocco) - riscritti. 115/115 file test, 1655/1655 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-4 in-progress -> review (sprint-status). Story 20.5 avviata subito dopo, stessa richiesta di procedere in sequenza.)
+# last_updated: 2026-08-24 (Story 20.3: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 8 patch applicate e riverificate. Tutti e 3 i reviewer hanno convergito indipendentemente su due gap reali: cancellare una Squadra con incontri gia' generati falliva a livello DB (nuova FK Restrict da PartitaTorneo) mostrando un fuorviante INTERNAL "Riprova" invece di un rifiuto esplicito - guardia aggiunta; cambiare il girone di una Squadra (azione di Story 20.2, mai toccata prima) dopo la generazione del calendario spostava silenziosamente i suoi incontri fuori dalla classifica del girone originale - bloccato esplicitamente. Anche: iscrivere una nuova Squadra dopo la generazione del calendario bloccato; vincolo unico + CHECK aggiunti alla migrazione (mai applicata altrove) come rete di sicurezza DB contro un doppio invio concorrente di "Genera calendario" (guardia applicativa gia' check-then-act, P2002 tradotto nello stesso messaggio); terzoSetNecessario duplicata a mano nel form estratta come funzione pura condivisa; bug UI "Annulla non resetta i campi" corretto; lib/torneo.ts trovato senza copertura test per le 4 nuove funzioni Partita durante la verifica propria (stessa classe di gap gia' vista in 20.1/20.2), aggiunta; trovaPartitaTorneoPerId (codice morto, mai chiamata) rimossa invece di testata. 1 defer loggato in deferred-work.md (etichette Casa/Ospite sempre alfabetiche, nessun significato reale per un torneo a sede unica), resto reject (incluso un falso positivo: esitoPartita non valida il proprio input per decisione esplicita gia' nel Code Map, l'unico chiamante reale valida sempre prima). Diff isolato correttamente dalla 20.1/20.2 gia' spedite (stesso pattern snapshot via git stash create). 114/114 file test, 1618/1618 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-3 in-progress -> review (sprint-status). Story 20.4 avviata subito dopo, stessa richiesta di procedere in sequenza.)
+# last_updated: 2026-08-23 (Story 20.2: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 6 patch applicate e riverificate (SquadraTorneoRow.tsx/NuovaSquadraTorneoForm.tsx spostati da [edizioneId]/ a [edizioneId]/[categoriaId]/, colocati con l'unica pagina che li usa; edizioneTorneoId non piu' letto da un campo nascosto client mai verificato per update/delete Squadra, derivato lato server; lookup Categoria/conteggio in creaSquadraTorneoAction ora nello stesso try/catch della scrittura; aggiornaCategoriaTorneoAction (Story 20.1, mai toccata prima) ora rifiuta di abbassare il numero massimo sotto le Squadre gia' iscritte; riepilogo "N/max squadre iscritte" aggiunto alla pagina; nuovi test di confine/ramo mancante), 2 defer loggati in deferred-work.md (guardia sul massimo e' check-then-act non atomico, rischio accettato per basso traffico; nessun vincolo di unicita' sul nome Squadra), resto reject. Diff isolato correttamente dalla 20.1 gia' spedita (snapshot via git stash create, mai committato). 112/112 file test, 1562/1562 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-2 in-progress -> review (sprint-status). Story 20.3 avviata subito dopo, stessa richiesta di procedere in sequenza.)
+# last_updated: 2026-08-23 (Story 20.1: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 8 patch applicate e riverificate (scritture spostate da actions.ts a lib/torneo.ts per allinearsi alle Boundaries della spec e al vero precedente lib/menu-pubblico.ts; range 2000-2100 su anno; verifica esistenza Edizione prima di creare una Categoria; update/delete Categoria scoped anche su edizioneTorneoId, non solo id, con VALIDATION esplicito su mismatch invece di successo silenzioso/idempotente; nuovo lib/torneo.test.ts e lib/settimana-torneo.test.ts, prima assenti; ordinamento Categorie per settimana poi nome; link di ritorno da [edizioneId] all'elenco Edizioni; due bug di stato stantio in CategoriaTorneoRow.tsx corretti), 1 defer loggato in deferred-work.md (nessun vincolo di unicita' sul nome Categoria), resto reject (incluso un falso positivo verificato nel codice: nessuna migrazione del progetto ha mai un indice esplicito su una colonna FK, non una regressione). Guida in-app aggiunta per /app/torneo (mancava). 111/111 file test, 1524/1524 test Vitest, tsc/lint puliti, build riuscita (npx prisma migrate dev non eseguibile, DB locale non in esecuzione su questa macchina - nota gia' in memoria progetto). Status: in-review -> done (spec), 20-1 in-progress -> review (sprint-status). Story 20.2 avviata subito dopo su richiesta esplicita dell'utente di procedere in sequenza senza fermarsi.)
+# last_updated: 2026-08-23 (Epic 20 - Torneo Memorial: regolamento punteggi fornito dall'utente (3/2/1/0, classifica per punti con set vinti come spareggio) sblocca l'epica; risolti anche i 4 punti tecnici aperti via AskUserQuestion (Squadra torneo entita' leggera separata dai Gruppo interni, "due week" = due weekend, sezione pubblica sul sito, criterio di classifica). Scomposta in 6 story (20.1 edizione+Categorie, 20.2 Squadre+gironi, 20.3 risultati/classifica di girone, 20.4 tabellone semifinali/finali 1-4 e 5-8, 20.5 volantino, 20.6 sezione pubblica) - vedi epics.md#Epic 20. Gestione riservata ad Admin/Dirigente (perimetro Epic 10). NESSUNA IMPLEMENTAZIONE ANCORA - solo regolamento+story in questo giro, l'utente non ha ancora chiesto "procedi" su nessuna story specifica. epic-20 resta backlog (nessuna story ha ancora avviato lo sviluppo), 20-1..20-6 aggiunte in backlog.)
 # last_updated: 2026-08-23 (Story 19.14: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 5 patch applicate e riverificate (src iframe video ora sempre ricalcolato da platform/videoId invece di fidarsi del valore persistito; struttura del blocco Colonne ri-validata lato server, prima solo enforced dallo schema client; riordino da tastiera ora testato attraverso il vero comando registrato, non solo le funzioni pure; Annulla sul secondo prompt del blocco Pulsante ora abortisce l'inserimento invece di usare comunque il testo di default; aggiunta indicazione testuale della scorciatoia da tastiera sul drag-handle), 5 defer loggati in deferred-work.md, resto reject (incluso un falso positivo verificato leggendo il sorgente della libreria: draggable:false sui nuovi Node non impedisce il drag, gestito internamente da @tiptap/extension-drag-handle). Un test scritto durante l'applicazione dei patch usava per errore un href riservato ("/squadre") nel fixture di manomissione Colonne, corretto. 108/108 file test, 1475/1475 test Vitest, tsc/lint puliti (19 warning pre-esistenti non correlati), build riuscita. Guida in-app rifinita con la precisazione che il riordino vale solo tra i blocchi principali. Status: in-review -> done (spec), 19-14 in-progress -> review (sprint-status).)
 # last_updated: 2026-08-22 (Story 19.14: spec scritta (spec-19-14-editor-blocchi-pagine-pubbliche.md, baseline_commit 24113876d075e477f5934dccd0c659ae874d49db) dopo investigazione del codice esistente (PaginaPubblicaEditor.tsx, tiptap-estensioni.ts, sanitizza-html.ts, route-guard.ts, menu-pubblico/actions.ts) - riuso confermato di urlVoceMenuValido per il blocco Pulsante, nessun componente dropdown condiviso esistente (pattern inline ref+onBlur di NavBarClient.tsx da replicare), button-primary confermato mai implementato in CSS. Spec approvata dall'utente pur sopra la soglia di 1600 token (~1750-2000 stimati, tenuta intera - story gia' scoping-ata come un solo obiettivo coerente). Status: draft -> ready-for-dev -> in-progress (spec), 19-14 backlog -> in-progress (sprint-status). Nessuna implementazione di codice ancora in questo giro - solo la spec.)
 # last_updated: 2026-08-22 (Story 19.14: revisione finale in party mode (Mary/John/Sally/Winston/Amelia) prima di create-story. Gap reale scoperto da Winston (appoggiato da Sally/Amelia): il drag-handle di ProseMirror non ha alcun percorso da tastiera, in contraddizione con la disciplina di accessibilita' gia' stabilita nel progetto (touch target 44px, focus ring dedicati) - aggiunta un'alternativa da tastiera come AC (non piu' opzionale), stessa funzione pura di riordino richiamata sia dal drag sia dal keymap (nessuna duplicazione). Aggiunta anche una guardia esplicita: verificare il delta di dimensione bundle (npm run build prima/dopo) prima di considerare chiusa l'installazione di @tiptap/extension-drag-handle (che porta con se' yjs inutilizzato, gia' accettato la sessione precedente) - se il delta e' sproporzionato, riaprire verso il plugin custom scartato. Dettaglio UX deciso (non bloccante): bottone "+" con menu a comparsa per inserire un blocco, non una toolbar libera. Proposta di Winston di un audit responsivo di tutto il sito pubblico respinta di nuovo da John (fuori scope, gia' successo in sessioni precedenti). epics.md aggiornato (AC #1 ora include l'alternativa da tastiera, nuova sezione "Esiti della revisione in party mode"). Nessuna implementazione ancora - story pronta per create-story.)
@@ -459,6 +464,29 @@ development_status:
   # residuo, pronta per create-story. NESSUNA IMPLEMENTAZIONE ANCORA -
   # l'utente ha chiesto solo la story in questo giro.
   9-34-data-scadenza-certificato-elenco-atlete: done
+
+  # Story 9.35 aggiunta 2026-08-24 su richiesta esplicita dell'utente, nel
+  # contesto dell'elenco Atlete su /squadre (Story 18.24): campo "Numero"
+  # opzionale su GruppoAtleta (Atleta+Gruppo+Stagione, non sull'anagrafica
+  # Atleta), gestito dall'Allenatore del Gruppo (chiarito via
+  # AskUserQuestion). Nessuna implementazione ancora.
+  # Story 9.35 chiusa 2026-08-25. Campo GruppoAtleta.numero (Int?, nessun
+  # vincolo di unicita'), impostaNumeroAtletaAction in gruppi/actions.ts
+  # (mirror rimuoviAtleta: requireRuolo ADMIN/DIRIGENTE/ALLENATORE +
+  # risolviPossessoGruppo), colonna Numero in AtletaTabellaRiga.tsx
+  # (condivisa /gruppi e /i-miei-gruppi). Nota: l'agente di implementazione
+  # e' andato in errore per limite di spesa a meta' storia (fermato subito
+  # dopo aver aggiunto lo useActionState in AtletaTabellaRiga.tsx, prima
+  # della colonna JSX/query/th mancanti) - completato a mano dopo il
+  # ripristino, nessun lavoro perso. Review a 3 livelli: 6 patch (remount
+  # input via key su cambio valore, feedback "Salvato", id HTML composito
+  # per Atlete multi-Gruppo, revalidatePath anche su count===0, guardia
+  # regex contro notazione scientifica/esadecimale, parita' di test con
+  # rimuoviAtleta), 5 item deferiti (deferred-work.md: nessun optimistic
+  # lock - stesso principio gia' accettato nel progetto, resto minore).
+  # Riverificato: 118 file/1708 test verdi, tsc pulito, lint 0 errori,
+  # build riuscita.
+  9-35-numero-maglia-atleta-stagione: review
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -934,6 +962,22 @@ development_status:
   # Nessuna implementazione ancora.
   18-23-header-mobile-didascalia-facebook: done
 
+  # Story 18.24 aggiunta 2026-08-24 su richiesta esplicita dell'utente:
+  # elenco Atlete (foto+nome+Numero) su /squadre, a blocchi per categoria.
+  # ROVESCIA Story 18.8 AC#2 (privacy) su conferma esplicita dell'utente
+  # (AskUserQuestion). Dipende da Story 19.15 (campo ordine su Gruppo) e
+  # Story 9.35 (campo numero) - non avviabile prima che entrambe siano
+  # implementate. Nessuna implementazione ancora.
+  # Story 18.24 avviata 2026-08-25 (dipendenze 19.15/9.35 chiuse). Spec
+  # scritta: nuova elencaAtletePubbliche (id+nome soli, createAdminClient(),
+  # mai elencaAtlete che espone codiceFiscale), join in memoria GruppoAtleta
+  # (Prisma diretto) + Atlete (client privilegiato) - mai un include Prisma
+  # diretto che bypasserebbe RLS. Nuova raggruppaGruppiPerCategoriaContigua
+  # (funzione pura, mirror raggruppaPerSettimana). baseline_commit
+  # c66b97f2fd3fa53e5c62599cdf709b58c665e03c. Vedi
+  # spec-18-24-squadre-pubblica-atlete-numero-blocchi.md.
+  18-24-squadre-pubblica-atlete-numero-blocchi: in-progress
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi
@@ -1104,16 +1148,81 @@ development_status:
   # create-story. Nessuna implementazione ancora.
   19-14-editor-blocchi-pagine-pubbliche: review
 
+  # Story 19.15 aggiunta 2026-08-24 su richiesta esplicita dell'utente, nel
+  # contesto della Story 18.24: campo "ordine" su Gruppo (mirror
+  # VoceMenuPubblico.ordine, Story 19.6) + nuova rotta /app/ordine-squadre
+  # (ADMIN+SITE_MANAGER, mirror /app/menu-pubblico) con bottoni Su/Giu
+  # (mirror Story 19.7, nessuna libreria drag-and-drop). Blocca Story 18.24.
+  # Nessuna implementazione ancora.
+  # Story 19.15 chiusa 2026-08-24. Campo Gruppo.ordine (mirror
+  # VoceMenuPubblico.ordine, scoped per annoAgonisticoId), nuova rotta
+  # /app/ordine-squadre (ADMIN+SITE_MANAGER, mirror /app/menu-pubblico),
+  # bottoni Su/Giu, creaGruppo/wizard-nuova-stagione/squadre estesi.
+  # Review a 3 livelli, nessun bug di scoping trovato (punto di attenzione
+  # critico verificato corretto da tutti e 3 i reviewer). 3 patch (tiebreak
+  # deterministico nel backfill migrazione e in elencaGruppiOrdinati,
+  # commento su deviazione dal mirror in page.tsx), 5 item deferiti
+  # (deferred-work.md: race non-atomica in creaGruppo - stesso pattern gia'
+  # irrisolto nel mirror menu-pubblico, nessuna difesa-in-profondita' in
+  # riordinaGruppi, wizard-nuova-stagione senza test dedicati - gap
+  # sistemico preesistente, nessun indice composito, nessun raggruppamento
+  # per categoria - competenza di 18.24). Riverificato: 118 file/1689 test
+  # verdi, tsc pulito, lint 0 errori, build riuscita (/app/ordine-squadre
+  # registrata).
+  19-15-ordinamento-squadre-pubblica: review
+
   # Epic 20 (Torneo Memorial) aggiunta il 2026-08-19 su richiesta esplicita
-  # dell'utente - solo l'epica scritta in epics.md, nessuna story creata,
-  # nessuna analisi di apertura. BLOCCANTE ESPLICITO: il regolamento
-  # punteggi (criteri di classifica, punti per set) e' da stabilire, l'utente
-  # lo comunichera' prima di procedere - "te lo dico prima mandare in dev la
-  # story". Non avviare sviluppo su questa epica finche' non arriva quel
-  # dettaglio. Diversi punti tecnici aperti (vedi epics.md): interpretazione
-  # di "due week" (weekend o settimane), se le squadre partecipanti sono
-  # entita' leggere nuove o riuso di Gruppo esistente (probabile la prima,
-  # il torneo verosimilmente ospita club esterni), se Campionato/Partita
-  # (Epic 10) e' un riferimento di pattern riusabile, multi-edizione annuale
-  # (mirror AnnoAgonistico), perimetro pubblico vs solo gestionale interno.
-  epic-20: backlog
+  # dell'utente. Regolamento punteggi (3/2/1/0, classifica per punti con set
+  # vinti come spareggio) e i 4 punti tecnici aperti risolti il 2026-08-23
+  # (via AskUserQuestion): Squadra torneo e' un'entita' leggera separata dai
+  # Gruppo interni (il torneo ospita club esterni), "due week" = due weekend,
+  # sezione pubblica sul sito oltre alla gestione interna, classifica per
+  # punti con spareggio a set vinti - vedi epics.md#Epic 20 "Decisioni prese".
+  # Scomposta in 6 story (20.1-20.6): edizione+Categorie, Squadre+gironi,
+  # risultati/classifica di girone, tabellone semifinali/finali 1-4 e 5-8,
+  # volantino, sezione pubblica. Gestione riservata ad Admin/Dirigente
+  # (stesso perimetro di Epic 10 Campionati/Partite). 3 punti minori restano
+  # assunzioni di lavoro da confermare in apertura story (vedi epics.md):
+  # profondita' multi-edizione, accoppiamento esatto delle semifinali,
+  # ripartizione squadre nei due gironi. NESSUNA IMPLEMENTAZIONE ANCORA -
+  # solo le story in questo giro.
+  # Tutte le 6 story (20.1-20.6) chiuse (status review, mirror del
+  # trattamento gia' riservato alle altre epiche del progetto - "review"
+  # e' lo stato terminale di sprint-status per una story che ha superato
+  # il proprio ciclo di 3-layer review, non un residuo "in attesa").
+  # Epic 20 (Torneo Memorial) completa 2026-08-24.
+  epic-20: done
+
+  20-1-edizione-categorie-torneo: review
+  20-2-squadre-partecipanti-gironi: review
+  20-3-risultati-classifica-gironi: review
+  20-4-tabellone-semifinali-finali: review
+  # Story 20.5 chiusa 2026-08-24. Bucket pubblico "volantino-torneo"
+  # (mirror per-entita' di foto-squadra.ts), caricaVolantinoTorneoAction,
+  # VolantinoTorneoForm.tsx, sezione "Volantino" su [edizioneId]/page.tsx.
+  # Review a 3 livelli: 6 patch applicate (validazione file centralizzata
+  # in validaFileImmagine(), upload/revalidatePath su edizione.id verificato
+  # invece della stringa client grezza, rinominata classe CSS fuorviante,
+  # alt testo parametrizzato con l'anno Edizione, CSS morto rimosso, test
+  # limite esatto 2MB aggiunto), 3 item deferiti (deferred-work.md: pulizia
+  # Storage orfano su cancellazione Edizione, race TOCTOU verifica/upload,
+  # cache-busting basato su timestamp). Riverificato: 116 file/1672 test
+  # verdi, tsc pulito, lint 0 errori, build riuscita.
+  20-5-immagine-sfondo-torneo: review
+  # Story 20.6 chiusa 2026-08-24 - ULTIMA story dell'Epic 20 (Torneo
+  # Memorial completo: 20.1-20.6 tutte chiuse). Nuova pagina pubblica
+  # top-level /torneo (mirror app/calendario/page.tsx), sola lettura,
+  # trovaEdizioneTorneoCorrente() (anno piu' alto), formattaRisultatoPartitaTorneo
+  # estratta come funzione pura condivisa, TABELLONI_TORNEO estratta in
+  # lib/tabelloni-torneo.ts (riusata da pagina interna e pubblica). Review
+  # a 3 livelli: 7 patch applicate (fetch squadre+partite con un unico
+  # try/catch per evitare stato auto-contraddittorio, createClient()
+  # fail-soft, TABELLONI condivisa, messaggio "nessun incontro" mancante,
+  # aria-labelledby/id sulle sezioni, <em> su "In programma", ordine mock
+  # test), 3 item deferiti (deferred-work.md: nessuna barriera query per
+  # referente/contatto - nessuna fuga reale oggi, criterio "edizione
+  # corrente" puo' nascondere il torneo appena concluso, /torneo non
+  # ancora collegata dal menu pubblico - passo operativo post-deploy per
+  # un Admin/Site Manager). Riverificato: 116 file/1677 test verdi, tsc
+  # pulito, lint 0 errori, build riuscita (/torneo registrata).
+  20-6-sezione-pubblica-torneo: review

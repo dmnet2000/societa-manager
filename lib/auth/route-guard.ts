@@ -334,6 +334,19 @@ export const PROTECTED_ROUTES: {
     gruppo: "Gestione sito",
   },
   {
+    // Story 19.15 (Epic 19, Ruolo Site Manager): riordino dei Gruppi (squadre
+    // interne) per la pagina pubblica /squadre - stesso perimetro Ruoli di
+    // /app/menu-pubblico sopra (ADMIN+SITE_MANAGER, non DIRIGENTE):
+    // funzionalita' nuova, nessun permesso preesistente da affiancare
+    // (mirror esatto della decisione gia' presa per /app/menu-pubblico).
+    // Dichiarata subito dopo /app/menu-pubblico come richiesto dal Code Map
+    // della spec.
+    prefix: "/app/ordine-squadre",
+    ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
+    navLabel: "Ordine squadre",
+    gruppo: "Gestione sito",
+  },
+  {
     // Story 19.10 (Epic 19, Ruolo Site Manager): editor di creazione/modifica
     // delle Pagine personalizzate introdotte dalla Story 19.9 - stesso
     // perimetro Ruoli di /app/menu-pubblico sopra (ADMIN+SITE_MANAGER, non
@@ -387,6 +400,23 @@ export const PROTECTED_ROUTES: {
       "SITE_MANAGER",
     ],
     navLabel: "Guida",
+  },
+  {
+    // Story 20.1 (Epic 20, Torneo Memorial): gestione di Edizione/Categoria
+    // del Torneo Memorial - stesso perimetro Ruoli di Epic 10
+    // Campionati/Partite (dominio sportivo), decisione di scomposizione
+    // epics.md 2026-08-23. Dichiarata qui (dopo /app/guida, prima del
+    // gruppo "Accounting") non in fondo all'array: AC #1 di Story 15.4
+    // richiede che "Accounting" resti l'ULTIMA voce del menu
+    // (raggruppaVociNavigazione posiziona il nodo gruppo all'indice della
+    // PRIMA rotta del gruppo incontrata - una voce diretta dopo
+    // /permessi-certificati romperebbe quell'invariante). Il prefisso copre
+    // anche /app/torneo/[edizioneId] (matchProtectedRoute usa
+    // pathname.startsWith(`${prefix}/`)), nessuna voce separata necessaria
+    // per la sotto-rotta di dettaglio - mirror /app/pagine-pubbliche sopra.
+    prefix: "/app/torneo",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Torneo",
   },
   {
     // Story 15.4 (Epic 15): le tre rotte raggruppate sotto "Accounting"

@@ -71,7 +71,10 @@ export default async function GruppiPage() {
       annoCorrente
         ? prisma.gruppoAtleta.findMany({
             where: { annoAgonisticoId: annoCorrente.id },
-            select: { atletaId: true, gruppoId: true },
+            // Story 9.35: "numero" incluso qui (unica fonte del dato,
+            // specifico della riga GruppoAtleta stessa) e unito sotto insieme
+            // ad atletaId/gruppoId.
+            select: { atletaId: true, gruppoId: true, numero: true },
           })
         : Promise.resolve([]),
       // Story 9.19: stesso pattern di join in memoria gia' usato in
@@ -142,7 +145,14 @@ export default async function GruppiPage() {
               {gruppi.map((gruppo) => {
                 const atleteGruppo = gruppoAtleteRows
                   .filter((riga) => riga.gruppoId === gruppo.id)
-                  .map((riga) => atletaPerId.get(riga.atletaId))
+                  // Story 9.35: "numero" vive sulla riga GruppoAtleta stessa
+                  // (riga), non su atletaPerId (proiezione di Atleta) -
+                  // unito qui insieme al lookup, invece di perderlo con un
+                  // semplice atletaPerId.get() come prima di questa storia.
+                  .map((riga) => {
+                    const atleta = atletaPerId.get(riga.atletaId);
+                    return atleta ? { ...atleta, numero: riga.numero } : undefined;
+                  })
                   .filter(
                     (
                       atleta
@@ -152,6 +162,7 @@ export default async function GruppiPage() {
                       certificatoInScadenza: boolean;
                       certificatoScaduto: boolean;
                       dataFineValidita: string | null;
+                      numero: number | null;
                     } => atleta !== undefined
                   )
                   // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento -
