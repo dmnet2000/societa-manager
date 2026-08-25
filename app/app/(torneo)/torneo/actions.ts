@@ -22,6 +22,7 @@ import {
   elencaSquadreTorneo,
   contaPartiteTorneo,
   contaPartiteTorneoTabellone,
+  prossimoNumeroPartitaTorneo,
   creaPartiteTorneo,
   cancellaPartiteTorneo,
   elencaPartiteTorneo,
@@ -909,6 +910,28 @@ export async function cancellaSquadraTorneoAction(
   return { success: true };
 }
 
+// Story 20.11 (Epic 20, Torneo Memorial): distingue le due cause possibili
+// di un P2002 sollevato da creaPartiteTorneo, ora che PartitaTorneo ha DUE
+// vincoli unici indipendenti: (categoriaTorneoId, squadraCasaId,
+// squadraOspiteId) (preesistente, Story 20.3) e (edizioneTorneoId, numero)
+// (questa story). Prisma su Postgres popola err.meta.target con l'elenco dei
+// nomi colonna del vincolo violato - se contiene "numero" e' sempre l'indice
+// unico nuovo (l'altro vincolo non ha mai una colonna "numero" tra i suoi
+// target). A differenza del vincolo preesistente (una violazione li'
+// significa quasi sempre "questa esatta generazione e' gia' avvenuta",
+// idempotenza), una violazione qui significa quasi sempre l'opposto: QUESTA
+// generazione non e' mai avvenuta, e' un'altra generazione CONCORRENTE (di
+// un'altra Categoria, o della stessa in un'altra richiesta) ad aver preso
+// nel frattempo lo stesso numero (spec-20-11 Design Notes) - trattarla come
+// idempotenza restituirebbe un messaggio falso ("gia' generato") su una
+// Categoria che in realta' non ha ricevuto nessuna partita. Usata nei 3 punti
+// di generazione sotto, PRIMA di ogni controllo P2002 esistente.
+function erroreNumeroPartitaTorneoDuplicato(err: unknown): boolean {
+  if ((err as { code?: string }).code !== "P2002") return false;
+  const target = (err as { meta?: { target?: unknown } }).meta?.target;
+  return Array.isArray(target) && target.includes("numero");
+}
+
 // Story 20.3 (Epic 20, Torneo Memorial): genera tutte le coppie "tutti
 // contro tutti" (all'italiana) di UN girone - mai tra le due squadre[i] e
 // squadre[i] stessa, mai tra gironi diversi (quell'incrocio e' il
@@ -982,14 +1005,39 @@ export async function generaCalendarioGironiAction(
       };
     }
 
-    const righe = [
+    const coppie = [
       ...generaCoppieGirone(squadreGironeA, categoriaTorneoId),
       ...generaCoppieGirone(squadreGironeB, categoriaTorneoId),
     ];
+    // Story 20.11: numero di gara progressivo per l'intera Edizione - una
+    // sola lettura del massimo attuale (prossimoNumeroPartitaTorneo), poi N
+    // numeri consecutivi assegnati localmente prima dell'insert in blocco
+    // (spec-20-11 Boundaries "Always").
+    const prossimoNumero = await prossimoNumeroPartitaTorneo(categoria.edizioneTorneoId);
+    const righe = coppie.map((coppia, indice) => ({
+      ...coppia,
+      edizioneTorneoId: categoria.edizioneTorneoId,
+      numero: prossimoNumero + indice,
+    }));
     await creaPartiteTorneo(righe);
 
     revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/risultati`);
   } catch (err) {
+    // Story 20.11: una collisione sul NUOVO vincolo (edizioneTorneoId,
+    // numero) non e' mai idempotenza (a differenza del vincolo preesistente
+    // sotto) - questa Categoria non ha ancora nessuna partita, e' un'altra
+    // generazione concorrente ad aver preso lo stesso numero. Controllato
+    // PRIMA del ramo P2002 esistente, altrimenti verrebbe scambiata per
+    // "calendario già generato" (messaggio falso).
+    if (erroreNumeroPartitaTorneoDuplicato(err)) {
+      return {
+        error: {
+          code: "INTERNAL",
+          message:
+            "Numero gara in conflitto con un'altra generazione avvenuta nello stesso istante. Riprova.",
+        },
+      };
+    }
     // Review fix (Edge Case Hunter, Story 20.3): il controllo di idempotenza
     // sopra (contaPartiteTorneo) e' un check-then-act non atomico - due
     // generazioni concorrenti potrebbero entrambe superarlo. Il vincolo
@@ -1186,6 +1234,10 @@ async function generaFinaliSeCompletate(
   const { vincitoreId: vincitore1, perdenteId: perdente1 } = vincitorePerdenteId(semi1);
   const { vincitoreId: vincitore2, perdenteId: perdente2 } = vincitorePerdenteId(semi2);
 
+  // Story 20.11: numero di gara progressivo per l'intera Edizione - stesso
+  // schema di generaCalendarioGironiAction/generaTabelloneAction, una sola
+  // lettura del massimo attuale, poi i 2 numeri consecutivi per le finali.
+  const prossimoNumero = await prossimoNumeroPartitaTorneo(edizioneTorneoId);
   const righe = [
     {
       categoriaTorneoId,
@@ -1193,6 +1245,8 @@ async function generaFinaliSeCompletate(
       squadraOspiteId: vincitore2,
       fase: "FINALE_VINCENTI" as const,
       tabellone,
+      edizioneTorneoId,
+      numero: prossimoNumero,
     },
     {
       categoriaTorneoId,
@@ -1200,6 +1254,8 @@ async function generaFinaliSeCompletate(
       squadraOspiteId: perdente2,
       fase: "FINALE_PERDENTI" as const,
       tabellone,
+      edizioneTorneoId,
+      numero: prossimoNumero + 1,
     },
   ];
 
@@ -1218,7 +1274,13 @@ async function generaFinaliSeCompletate(
     // come un no-op silenzioso; se non esistono, l'eccezione originale viene
     // comunque propagata (il tabellone resterebbe altrimenti bloccato per
     // sempre, nessun percorso di recupero in questa story).
-    if ((err as { code?: string }).code === "P2002") {
+    // Story 20.11: la re-verifica di idempotenza sotto va eseguita SOLO se
+    // la violazione NON e' sul nuovo vincolo (edizioneTorneoId, numero) - una
+    // collisione di numero non e' mai un caso di idempotenza (spec-20-11
+    // Design Notes), va sempre ripropagata cosi' com'e' (throw err sotto,
+    // che risale fino al catch generico di salvaRisultatoPartitaTorneoAction,
+    // gia' gestito con un messaggio "Riprova" generico, invariato).
+    if (!erroreNumeroPartitaTorneoDuplicato(err) && (err as { code?: string }).code === "P2002") {
       const partiteDopo = await elencaPartiteTorneo(categoriaTorneoId);
       const finaliOraEsistenti = partiteDopo.some(
         (p) =>
@@ -1331,6 +1393,10 @@ export async function generaTabelloneAction(
     const classificaA = calcolaClassificaGirone(squadreGironeA, partiteGironeA);
     const classificaB = calcolaClassificaGirone(squadreGironeB, partiteGironeB);
 
+    // Story 20.11: numero di gara progressivo per l'intera Edizione - stesso
+    // schema di generaCalendarioGironiAction, una sola lettura del massimo
+    // attuale, poi i 4 numeri consecutivi per le semifinali.
+    const prossimoNumero = await prossimoNumeroPartitaTorneo(categoria.edizioneTorneoId);
     const righe = [
       {
         categoriaTorneoId,
@@ -1338,6 +1404,8 @@ export async function generaTabelloneAction(
         squadraOspiteId: classificaB[1].squadra.id,
         fase: "SEMIFINALE" as const,
         tabellone: "POSIZIONI_1_4" as const,
+        edizioneTorneoId: categoria.edizioneTorneoId,
+        numero: prossimoNumero,
       },
       {
         categoriaTorneoId,
@@ -1345,6 +1413,8 @@ export async function generaTabelloneAction(
         squadraOspiteId: classificaA[1].squadra.id,
         fase: "SEMIFINALE" as const,
         tabellone: "POSIZIONI_1_4" as const,
+        edizioneTorneoId: categoria.edizioneTorneoId,
+        numero: prossimoNumero + 1,
       },
       {
         categoriaTorneoId,
@@ -1352,6 +1422,8 @@ export async function generaTabelloneAction(
         squadraOspiteId: classificaB[3].squadra.id,
         fase: "SEMIFINALE" as const,
         tabellone: "POSIZIONI_5_8" as const,
+        edizioneTorneoId: categoria.edizioneTorneoId,
+        numero: prossimoNumero + 2,
       },
       {
         categoriaTorneoId,
@@ -1359,6 +1431,8 @@ export async function generaTabelloneAction(
         squadraOspiteId: classificaA[3].squadra.id,
         fase: "SEMIFINALE" as const,
         tabellone: "POSIZIONI_5_8" as const,
+        edizioneTorneoId: categoria.edizioneTorneoId,
+        numero: prossimoNumero + 3,
       },
     ];
 
@@ -1383,6 +1457,21 @@ export async function generaTabelloneAction(
 
     revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
   } catch (err) {
+    // Story 20.11: una collisione sul NUOVO vincolo (edizioneTorneoId,
+    // numero) non e' mai idempotenza (a differenza del vincolo preesistente
+    // sotto) - questa Categoria non ha ancora nessun tabellone, e' un'altra
+    // generazione concorrente ad aver preso lo stesso numero. Controllato
+    // PRIMA del ramo P2002 esistente, altrimenti verrebbe scambiata per
+    // "tabellone già generato" (messaggio falso).
+    if (erroreNumeroPartitaTorneoDuplicato(err)) {
+      return {
+        error: {
+          code: "INTERNAL",
+          message:
+            "Numero gara in conflitto con un'altra generazione avvenuta nello stesso istante. Riprova.",
+        },
+      };
+    }
     // Stesso principio del review fix di generaCalendarioGironiAction sopra
     // (Story 20.3): il controllo di idempotenza e' un check-then-act non
     // atomico - una violazione del vincolo unico (P2002) e' tradotta nello

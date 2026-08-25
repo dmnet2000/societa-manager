@@ -27,6 +27,7 @@ const trovaSquadraTorneoPerIdMock = vi.fn();
 const elencaSquadreTorneoMock = vi.fn();
 const contaPartiteTorneoMock = vi.fn();
 const contaPartiteTorneoTabelloneMock = vi.fn();
+const prossimoNumeroPartitaTorneoMock = vi.fn();
 const creaPartiteTorneoMock = vi.fn();
 const cancellaPartiteTorneoMock = vi.fn();
 const elencaPartiteTorneoMock = vi.fn();
@@ -77,6 +78,7 @@ vi.mock("@/lib/torneo", () => ({
   elencaSquadreTorneo: elencaSquadreTorneoMock,
   contaPartiteTorneo: contaPartiteTorneoMock,
   contaPartiteTorneoTabellone: contaPartiteTorneoTabelloneMock,
+  prossimoNumeroPartitaTorneo: prossimoNumeroPartitaTorneoMock,
   creaPartiteTorneo: creaPartiteTorneoMock,
   cancellaPartiteTorneo: cancellaPartiteTorneoMock,
   elencaPartiteTorneo: elencaPartiteTorneoMock,
@@ -189,6 +191,12 @@ beforeEach(() => {
   contaPartiteTorneoMock.mockResolvedValue(0);
   contaPartiteTorneoTabelloneMock.mockReset();
   contaPartiteTorneoTabelloneMock.mockResolvedValue(0);
+  // Story 20.11: nessuna PartitaTorneo esistente per default (Edizione
+  // "vuota") - la prima generazione riceve quindi 1, 2, 3... in sequenza
+  // (AC #1), stesso stato "mai generato" gia' assunto implicitamente dai
+  // test pre-esistenti.
+  prossimoNumeroPartitaTorneoMock.mockReset();
+  prossimoNumeroPartitaTorneoMock.mockResolvedValue(1);
   creaPartiteTorneoMock.mockReset();
   cancellaPartiteTorneoMock.mockReset();
   elencaPartiteTorneoMock.mockReset();
@@ -1566,15 +1574,114 @@ describe("generaCalendarioGironiAction", () => {
     );
 
     expect(result).toEqual({ success: true });
+    // Story 20.11: ogni riga riceve edizioneTorneoId + un numero progressivo
+    // consecutivo a partire dal prossimo numero disponibile dell'Edizione
+    // (mockato a 1 di default, Edizione "vuota" - AC #1).
+    expect(prossimoNumeroPartitaTorneoMock).toHaveBeenCalledWith("edizione-1");
     expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
-      { categoriaTorneoId: "categoria-1", squadraCasaId: "a1", squadraOspiteId: "a2" },
-      { categoriaTorneoId: "categoria-1", squadraCasaId: "a1", squadraOspiteId: "a3" },
-      { categoriaTorneoId: "categoria-1", squadraCasaId: "a2", squadraOspiteId: "a3" },
-      { categoriaTorneoId: "categoria-1", squadraCasaId: "b1", squadraOspiteId: "b2" },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a1",
+        squadraOspiteId: "a2",
+        edizioneTorneoId: "edizione-1",
+        numero: 1,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a1",
+        squadraOspiteId: "a3",
+        edizioneTorneoId: "edizione-1",
+        numero: 2,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a2",
+        squadraOspiteId: "a3",
+        edizioneTorneoId: "edizione-1",
+        numero: 3,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "b1",
+        squadraOspiteId: "b2",
+        edizioneTorneoId: "edizione-1",
+        numero: 4,
+      },
     ]);
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/app/torneo/edizione-1/categoria-1/risultati"
     );
+  });
+
+  // AC #2: una seconda Categoria della stessa Edizione riceve N+1, N+2, ...
+  // - mai una numerazione che riparte da 1 - qui simulato dal
+  // prossimoNumeroPartitaTorneo mockato a un valore > 1 (come se un'altra
+  // Categoria avesse gia' generato partite numerate 1..N in precedenza).
+  it("continues the Edizione-wide sequence instead of restarting from 1 when other partite already exist (AC #2)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+    ]);
+    prossimoNumeroPartitaTorneoMock.mockResolvedValue(7);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 2 });
+
+    const result = await generaCalendarioGironiAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a1",
+        squadraOspiteId: "a2",
+        edizioneTorneoId: "edizione-1",
+        numero: 7,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "b1",
+        squadraOspiteId: "b2",
+        edizioneTorneoId: "edizione-1",
+        numero: 8,
+      },
+    ]);
+  });
+
+  // spec-20-11 Boundaries "Never" + AC #7: una collisione sul vincolo
+  // (edizioneTorneoId, numero) non e' mai idempotenza - questa Categoria non
+  // ha ancora nessuna partita, e' un'altra generazione concorrente ad aver
+  // preso lo stesso numero. Deve restituire un messaggio distinto da
+  // "calendario già generato" (che sarebbe falso).
+  it("returns an explicit conflict message (not the idempotency message) when creaPartiteTorneo fails on the numero constraint (review fix)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+    ]);
+    creaPartiteTorneoMock.mockRejectedValue(
+      Object.assign(new Error("Unique constraint failed"), {
+        code: "P2002",
+        meta: { target: ["edizioneTorneoId", "numero"] },
+      })
+    );
+
+    const result = await generaCalendarioGironiAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message:
+          "Numero gara in conflitto con un'altra generazione avvenuta nello stesso istante. Riprova.",
+      },
+    });
   });
 
   it("returns a friendly error, no crash, when the create fails", async () => {
@@ -1977,6 +2084,10 @@ describe("generaTabelloneAction", () => {
     );
 
     expect(result).toEqual({ success: true });
+    // Story 20.11: AC #3 - le 4 semifinali ricevono i 4 numeri successivi al
+    // massimo attuale dell'Edizione (mockato a 1 di default), continuando la
+    // stessa sequenza del girone.
+    expect(prossimoNumeroPartitaTorneoMock).toHaveBeenCalledWith("edizione-1");
     expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
       {
         categoriaTorneoId: "categoria-1",
@@ -1984,6 +2095,8 @@ describe("generaTabelloneAction", () => {
         squadraOspiteId: "b2",
         fase: "SEMIFINALE",
         tabellone: "POSIZIONI_1_4",
+        edizioneTorneoId: "edizione-1",
+        numero: 1,
       },
       {
         categoriaTorneoId: "categoria-1",
@@ -1991,6 +2104,8 @@ describe("generaTabelloneAction", () => {
         squadraOspiteId: "a2",
         fase: "SEMIFINALE",
         tabellone: "POSIZIONI_1_4",
+        edizioneTorneoId: "edizione-1",
+        numero: 2,
       },
       {
         categoriaTorneoId: "categoria-1",
@@ -1998,6 +2113,8 @@ describe("generaTabelloneAction", () => {
         squadraOspiteId: "b4",
         fase: "SEMIFINALE",
         tabellone: "POSIZIONI_5_8",
+        edizioneTorneoId: "edizione-1",
+        numero: 3,
       },
       {
         categoriaTorneoId: "categoria-1",
@@ -2005,6 +2122,8 @@ describe("generaTabelloneAction", () => {
         squadraOspiteId: "a4",
         fase: "SEMIFINALE",
         tabellone: "POSIZIONI_5_8",
+        edizioneTorneoId: "edizione-1",
+        numero: 4,
       },
     ]);
     expect(revalidatePathMock).toHaveBeenCalledWith(
@@ -2015,6 +2134,21 @@ describe("generaTabelloneAction", () => {
     // l'assenza di crash, mai che l'auto-assegnazione best-effort non tenti
     // realmente alcuna scrittura quando non ci sono Slot liberi.
     expect(assegnaSlotPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // AC #3: le semifinali continuano la sequenza gia' esistente dell'Edizione
+  // (es. dopo che un girone ha gia' generato le partite 1..N), mai una
+  // numerazione propria che riparte.
+  it("continues the Edizione-wide sequence for the semifinali instead of starting its own (AC #3)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    elencaPartiteTorneoMock.mockResolvedValue(partiteGironeComplete);
+    prossimoNumeroPartitaTorneoMock.mockResolvedValue(13);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+
+    await generaTabelloneAction(undefined, buildFormData({ categoriaTorneoId: "categoria-1" }));
+
+    const righeCreate = creaPartiteTorneoMock.mock.calls[0][0] as { numero: number }[];
+    expect(righeCreate.map((r) => r.numero)).toEqual([13, 14, 15, 16]);
   });
 
   it("returns a friendly error, no crash, when the create fails", async () => {
@@ -2048,6 +2182,35 @@ describe("generaTabelloneAction", () => {
       error: {
         code: "VALIDATION",
         message: "Il tabellone è già stato generato per questa Categoria.",
+      },
+    });
+  });
+
+  // spec-20-11 Boundaries "Never" + AC #7: una collisione sul vincolo
+  // (edizioneTorneoId, numero) non e' mai idempotenza - questa Categoria non
+  // ha ancora nessun tabellone, e' un'altra generazione concorrente ad aver
+  // preso lo stesso numero. Messaggio distinto da "tabellone già generato"
+  // (che sarebbe falso).
+  it("returns an explicit conflict message (not the idempotency message) when creaPartiteTorneo fails on the numero constraint (review fix)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    elencaPartiteTorneoMock.mockResolvedValue(partiteGironeComplete);
+    creaPartiteTorneoMock.mockRejectedValue(
+      Object.assign(new Error("Unique constraint failed"), {
+        code: "P2002",
+        meta: { target: ["edizioneTorneoId", "numero"] },
+      })
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message:
+          "Numero gara in conflitto con un'altra generazione avvenuta nello stesso istante. Riprova.",
       },
     });
   });
@@ -2459,6 +2622,9 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
       // partita-1: a1 vince 2-0 su b2 -> vincitore a1, perdente b2.
       // partita-2: a2 (ospite) vince 2-0 su b1 (casa) -> vincitore a2,
       // perdente b1.
+      // Story 20.11 (AC #4): le 2 finali ricevono i 2 numeri successivi al
+      // massimo attuale dell'Edizione (mockato a 1 di default).
+      expect(prossimoNumeroPartitaTorneoMock).toHaveBeenCalledWith("edizione-1");
       expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
         {
           categoriaTorneoId: "categoria-1",
@@ -2466,6 +2632,8 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
           squadraOspiteId: "a2",
           fase: "FINALE_VINCENTI",
           tabellone: "POSIZIONI_1_4",
+          edizioneTorneoId: "edizione-1",
+          numero: 1,
         },
         {
           categoriaTorneoId: "categoria-1",
@@ -2473,6 +2641,85 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
           squadraOspiteId: "b1",
           fase: "FINALE_PERDENTI",
           tabellone: "POSIZIONI_1_4",
+          edizioneTorneoId: "edizione-1",
+          numero: 2,
+        },
+      ]);
+    });
+
+    // Edge Case Hunter (review): il test sopra copre solo il valore di
+    // default di prossimoNumeroPartitaTorneoMock (1, beforeEach) - qui si
+    // verifica esplicitamente che le finali continuino la sequenza da un
+    // valore > 1 (come se girone/semifinali di questa o altre Categorie
+    // avessero gia' numerato partite in precedenza nella stessa Edizione),
+    // mirror del test analogo gia' presente per generaCalendarioGironiAction
+    // (AC #2, riga ~1620) e generaTabelloneAction (AC #3).
+    it("continues the Edizione-wide sequence instead of restarting from 1 for the finali too (AC #4)", async () => {
+      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+      trovaPartitaTorneoPerIdMock.mockResolvedValue({
+        id: "partita-1",
+        categoriaTorneoId: "categoria-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+      });
+      elencaPartiteTorneoMock.mockResolvedValue([
+        {
+          id: "partita-1",
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "a1",
+          squadraOspiteId: "b2",
+          fase: "SEMIFINALE",
+          tabellone: "POSIZIONI_1_4",
+          set1Casa: 25,
+          set1Ospite: 20,
+          set2Casa: 25,
+          set2Ospite: 18,
+          set3Casa: null,
+          set3Ospite: null,
+        },
+        {
+          id: "partita-2",
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "b1",
+          squadraOspiteId: "a2",
+          fase: "SEMIFINALE",
+          tabellone: "POSIZIONI_1_4",
+          set1Casa: 20,
+          set1Ospite: 25,
+          set2Casa: 15,
+          set2Ospite: 25,
+          set3Casa: null,
+          set3Ospite: null,
+        },
+      ]);
+      prossimoNumeroPartitaTorneoMock.mockResolvedValue(20);
+      creaPartiteTorneoMock.mockResolvedValue({ count: 2 });
+
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData(campiRisultato2a0)
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(prossimoNumeroPartitaTorneoMock).toHaveBeenCalledWith("edizione-1");
+      expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
+        {
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "a1",
+          squadraOspiteId: "a2",
+          fase: "FINALE_VINCENTI",
+          tabellone: "POSIZIONI_1_4",
+          edizioneTorneoId: "edizione-1",
+          numero: 20,
+        },
+        {
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "b2",
+          squadraOspiteId: "b1",
+          fase: "FINALE_PERDENTI",
+          tabellone: "POSIZIONI_1_4",
+          edizioneTorneoId: "edizione-1",
+          numero: 21,
         },
       ]);
     });
@@ -2737,6 +2984,72 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
         buildFormData(campiRisultato2a0)
       );
 
+      expect(result).toEqual({
+        error: { code: "INTERNAL", message: "Impossibile salvare il risultato. Riprova." },
+      });
+    });
+
+    // spec-20-11 Design Notes: una collisione sul vincolo (edizioneTorneoId,
+    // numero) non e' MAI un caso di idempotenza (a differenza del vincolo
+    // preesistente coperto dai due test sopra) - va sempre ripropagata senza
+    // nemmeno tentare la re-verifica "le finali esistono già davvero", anche
+    // se le finali esistessero per davvero al momento della ri-lettura
+    // (irrilevante: qui il mock non le crea mai, a dimostrazione che la
+    // re-verifica non viene proprio interpellata per questa causa).
+    it("always propagates a collision on the numero constraint (never treated as finali idempotency, AC #7)", async () => {
+      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+      trovaPartitaTorneoPerIdMock.mockResolvedValue({
+        id: "partita-1",
+        categoriaTorneoId: "categoria-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+      });
+      const semifinaliComplete = [
+        {
+          id: "partita-1",
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "a1",
+          squadraOspiteId: "b2",
+          fase: "SEMIFINALE",
+          tabellone: "POSIZIONI_1_4",
+          set1Casa: 25,
+          set1Ospite: 20,
+          set2Casa: 25,
+          set2Ospite: 18,
+          set3Casa: null,
+          set3Ospite: null,
+        },
+        {
+          id: "partita-2",
+          categoriaTorneoId: "categoria-1",
+          squadraCasaId: "b1",
+          squadraOspiteId: "a2",
+          fase: "SEMIFINALE",
+          tabellone: "POSIZIONI_1_4",
+          set1Casa: 20,
+          set1Ospite: 25,
+          set2Casa: 15,
+          set2Ospite: 25,
+          set3Casa: null,
+          set3Ospite: null,
+        },
+      ];
+      elencaPartiteTorneoMock.mockResolvedValue(semifinaliComplete);
+      creaPartiteTorneoMock.mockRejectedValue(
+        Object.assign(new Error("Unique constraint failed"), {
+          code: "P2002",
+          meta: { target: ["edizioneTorneoId", "numero"] },
+        })
+      );
+
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData(campiRisultato2a0)
+      );
+
+      // Il salvataggio del risultato stesso e' gia' andato a buon fine
+      // sopra: solo il side-effect di generazione delle finali fallisce, e
+      // risale come errore generico (mai "successo silenzioso").
       expect(result).toEqual({
         error: { code: "INTERNAL", message: "Impossibile salvare il risultato. Riprova." },
       });

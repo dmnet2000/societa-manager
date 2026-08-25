@@ -840,6 +840,10 @@ model EdizioneTorneo {
   // SlotTorneo.edizioneTorneoId sotto - stesso trattamento di "categorie"
   // sopra.
   slot      SlotTorneo[]
+  // Story 20.11: relazione inversa richiesta da Prisma per
+  // PartitaTorneo.edizioneTorneoId sotto - stesso trattamento di
+  // "categorie"/"slot" sopra.
+  partite   PartitaTorneo[]
 
   @@map("edizioni_torneo")
 }
@@ -959,6 +963,28 @@ model PartitaTorneo {
   id                String          @id @default(uuid())
   categoriaTorneoId String
   categoriaTorneo   CategoriaTorneo @relation(fields: [categoriaTorneoId], references: [id])
+  // Story 20.11: denormalizzato da categoriaTorneo.edizioneTorneoId -
+  // necessario per esprimere @@unique([edizioneTorneoId, numero]) sotto
+  // senza attraversare la FK verso categorie_torneo (un vincolo @@unique in
+  // Postgres non puo' attraversare una relazione). Il valore "vero" resta
+  // comunque derivabile da categoriaTorneo.edizioneTorneoId e DEVE sempre
+  // coincidere - scritto una sola volta alla creazione (mai aggiornato dopo,
+  // categoriaTorneoId stesso non cambia mai dopo la creazione in questa
+  // epica). FK senza onDelete esplicito (default Prisma Restrict), stesso
+  // trattamento di ogni altra FK strutturale Torneo.
+  edizioneTorneoId  String
+  edizioneTorneo    EdizioneTorneo  @relation(fields: [edizioneTorneoId], references: [id])
+  // Story 20.11: numero di gara progressivo, calcolato SEMPRE server-side al
+  // momento della generazione (prossimoNumeroPartitaTorneo, lib/torneo.ts) -
+  // mai un input manuale dell'Admin. Un'unica sequenza per l'intera
+  // Edizione (mai per singola Categoria, stesso scoping gia' scelto per
+  // SlotTorneo.edizioneTorneoId sopra) che non riparte mai tra girone e fasi
+  // successive. @@unique sotto e' il vero cancello contro una collisione tra
+  // due generazioni concorrenti (check-then-act non atomico in
+  // prossimoNumeroPartitaTorneo) - mai fidarsi solo della disciplina
+  // applicativa, stesso principio di ogni altro vincolo unico di questa
+  // epica.
+  numero            Int
   squadraCasaId     String
   squadraCasa       SquadraTorneo   @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
   squadraOspiteId   String
@@ -999,6 +1025,16 @@ model PartitaTorneo {
   // concorrente ora fallisce con un vincolo unico invece di raddoppiare
   // silenziosamente i punti di una Squadra in classifica.
   @@unique([categoriaTorneoId, squadraCasaId, squadraOspiteId])
+  // Story 20.11: rete di sicurezza a livello DB contro due generazioni
+  // concorrenti che assegnerebbero altrimenti lo stesso numero (stesso
+  // principio del vincolo unico sopra, review fix Story 20.3) - una
+  // violazione qui e' SEMPRE una collisione di numero (mai idempotenza,
+  // spec-20-11 Design Notes: a differenza del vincolo sopra, dove una
+  // violazione significa quasi sempre "gia' generato", qui significa quasi
+  // sempre l'opposto: un'altra generazione concorrente ha preso nel
+  // frattempo lo stesso numero), distinta esplicitamente da
+  // erroreNumeroPartitaTorneoDuplicato (app/app/(torneo)/torneo/actions.ts).
+  @@unique([edizioneTorneoId, numero])
   @@map("partite_torneo")
 }
 

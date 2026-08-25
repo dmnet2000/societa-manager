@@ -25,6 +25,9 @@ type SlotTorneoOpzione = {
 type Partita = {
   id: string;
   categoriaTorneoId: string;
+  // Story 20.11: numero di gara progressivo dell'Edizione, sempre calcolato
+  // server-side al momento della generazione - mai un input di questo form.
+  numero: number;
   fase: FaseTorneo;
   tabellone: TabelloneTorneo | null;
   slotTorneoId: string | null;
@@ -134,6 +137,9 @@ export function RisultatoPartitaTorneoForm({
   return (
     <div>
       <p>
+        {/* Story 20.11: numero di gara progressivo dell'Edizione, sempre
+            calcolato server-side - solo lettura, mai editabile qui. */}
+        <span className={styles.numeroGara}>Gara {partita.numero}</span>{" "}
         <strong>{partita.squadraCasa.nome}</strong> vs{" "}
         <strong>{partita.squadraOspite.nome}</strong>
         {" — "}

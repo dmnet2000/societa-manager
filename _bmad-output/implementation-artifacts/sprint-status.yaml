@@ -1340,4 +1340,30 @@ development_status:
   # della numerazione (per Categoria/Edizione/girone), se
   # semifinali/finali proseguono la stessa sequenza, se e' editabile a
   # mano. Prossima story da affrontare dopo la 20.10.
-  20-11-numero-progressivo-gare-torneo: backlog
+  # Story 20.11 avviata 2026-08-25. Punti aperti risolti con l'utente
+  # (AskUserQuestion): numerazione per Edizione (cross-categoria), le
+  # fasi successive proseguono la stessa sequenza, solo automatico
+  # (mai editabile a mano). Spec scritta: PartitaTorneo.edizioneTorneoId
+  # (denormalizzato) + numero Int, @@unique([edizioneTorneoId, numero]).
+  # prossimoNumeroPartitaTorneo (lib/torneo.ts) wired in
+  # generaCalendarioGironiAction/generaTabelloneAction/
+  # generaFinaliSeCompletate, con distinzione esplicita tra P2002 sul
+  # nuovo vincolo (collisione concorrente, messaggio "riprova") e P2002
+  # sul vincolo esistente (idempotenza, messaggio "già generato") - le
+  # due cause NON vanno confuse. Display "Gara N" su risultati/tabellone
+  # Admin e sulla pagina pubblica /torneo. baseline_commit
+  # cc03659b587c9a7b6f2317c9bd95ced07b941721. Vedi
+  # spec-20-11-numero-progressivo-gare-torneo.md.
+  # Story 20.11 chiusa 2026-08-25: implementata (agente in background,
+  # interrotto da un errore di rete a verifica quasi completata - non
+  # un problema di codice, ripreso e verificato personalmente). Review
+  # a 3 agenti su diff isolato (1207 righe): nessun bug bloccante, 1
+  # gap di test reale patchato (continuazione sequenza per le finali,
+  # AC #4), 2 segnalazioni risultate gia' coperte da test esistenti o
+  # non applicabili (provider Prisma sempre Postgres), 2 race
+  # condition a basso rischio deferred (stesso pattern gia' accettato
+  # altrove nell'epica). Verifica: 1788 test verdi (7 nuovi + 1 di
+  # patch review), tsc/lint/build/prisma validate puliti. Nessuna
+  # verifica manuale (Epic 20 mai deployata, dev locale rotto). Vedi
+  # Spec Change Log in spec-20-11-numero-progressivo-gare-torneo.md.
+  20-11-numero-progressivo-gare-torneo: review

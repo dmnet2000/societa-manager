@@ -302,6 +302,10 @@ export default async function TorneoPubblicoPage() {
                             <div className={styles.matchGrid}>
                               {partiteDelGirone.map((partita) => (
                                 <div className={styles.matchCard} key={partita.id}>
+                                  {/* Story 20.11: numero di gara progressivo
+                                      dell'Edizione, sempre calcolato
+                                      server-side. */}
+                                  <div className={styles.numeroGara}>Gara {partita.numero}</div>
                                   <div className={styles.squadre}>
                                     <span>{partita.squadraCasa.nome}</span>
                                     <span className={styles.vs}>vs</span>
@@ -358,6 +362,10 @@ export default async function TorneoPubblicoPage() {
                             <div className={styles.matchGrid}>
                               {semifinali.map((partita) => (
                                 <div className={styles.matchCard} key={partita.id}>
+                                  {/* Story 20.11: numero di gara progressivo
+                                      dell'Edizione, sempre calcolato
+                                      server-side. */}
+                                  <div className={styles.numeroGara}>Gara {partita.numero}</div>
                                   <div className={styles.categoria}>Semifinale</div>
                                   <div className={styles.squadre}>
                                     <span>{partita.squadraCasa.nome}</span>
@@ -374,6 +382,12 @@ export default async function TorneoPubblicoPage() {
                               ))}
                               {finaleVincenti && (
                                 <div className={styles.matchCard} key={finaleVincenti.id}>
+                                  {/* Story 20.11: numero di gara progressivo
+                                      dell'Edizione, sempre calcolato
+                                      server-side. */}
+                                  <div className={styles.numeroGara}>
+                                    Gara {finaleVincenti.numero}
+                                  </div>
                                   <div className={styles.categoria}>
                                     {tabellone.etichettaVincenti}
                                   </div>
@@ -392,6 +406,12 @@ export default async function TorneoPubblicoPage() {
                               )}
                               {finalePerdenti && (
                                 <div className={styles.matchCard} key={finalePerdenti.id}>
+                                  {/* Story 20.11: numero di gara progressivo
+                                      dell'Edizione, sempre calcolato
+                                      server-side. */}
+                                  <div className={styles.numeroGara}>
+                                    Gara {finalePerdenti.numero}
+                                  </div>
                                   <div className={styles.categoria}>
                                     {tabellone.etichettaPerdenti}
                                   </div>

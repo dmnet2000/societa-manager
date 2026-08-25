@@ -28,6 +28,11 @@ function partita(
   return {
     id,
     categoriaTorneoId: "categoria-1",
+    // Story 20.11: edizioneTorneoId/numero aggiunti al tipo PartitaTorneo -
+    // valori fissi qui, invariato per questi test scritti prima della Story
+    // 20.11 (calcolaClassificaFinale continua a non guardare questi campi).
+    edizioneTorneoId: "edizione-1",
+    numero: 1,
     squadraCasaId: squadraCasa.id,
     squadraCasa,
     squadraOspiteId: squadraOspite.id,

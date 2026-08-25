@@ -205,6 +205,15 @@
   color: #eaf4fb;
 }
 
+/* Story 20.11 (Epic 20, Torneo Memorial): numero di gara ("Gara N"), primo
+   elemento di ogni match-card (girone/semifinale/finale) - composes
+   .categoria sopra, stessa tipografia label-tag gia' in uso per l'etichetta
+   di fase, mirror del pattern composes gia' stabilito nel progetto (es.
+   .bottoneDanger in torneo.module.css amministrativo). */
+.numeroGara {
+  composes: categoria;
+}
+
 /* {typography.display-card}. */
 .squadre {
   display: flex;

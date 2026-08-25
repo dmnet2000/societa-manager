@@ -315,3 +315,13 @@
   color: var(--color-text-secondary);
   font-size: 12px;
 }
+
+/* Story 20.11 (Epic 20, Torneo Memorial): numero di gara ("Gara N") nella
+   riga di riepilogo di ogni incontro (RisultatoPartitaTorneoForm.tsx) -
+   discreto rispetto alle Squadre in grassetto accanto, stesso colore
+   secondario di .riepilogo ma in grassetto per farlo risaltare come
+   etichetta identificativa. */
+.numeroGara {
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}

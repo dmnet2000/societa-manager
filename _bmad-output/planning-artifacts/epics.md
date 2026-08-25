@@ -3221,7 +3221,17 @@ As a Admin (o Dirigente),
 I want che ogni `PartitaTorneo` generata (girone, semifinale, finale) abbia un numero di gara progressivo,
 so that io e i Visitatori possiamo riferirci a un incontro specifico per numero (es. "Gara 3"), come già avviene per le gare importate da un Campionato federale (`Partita.garaNumero`, Story 10.2 - riferimento terminologico, non necessariamente lo stesso meccanismo: lì è una stringa esterna importata dal file federale, qui va generato internamente come un semplice intero progressivo).
 
-**Punti aperti da risolvere in fase di spec (non ancora decisi):**
-- Ambito della numerazione progressiva: per Categoria, per Edizione (cross-categoria), o per girone/fase? Il weekend ospita più Categorie in parallelo (stesso principio già emerso per `SlotTorneo`, Story 20.9) - va chiarito con l'utente prima di implementare.
-- Le semifinali/finali (generate in un secondo momento, non tutte insieme al girone) proseguono la stessa sequenza del girone o hanno una numerazione propria?
-- Il numero è editabile a mano dall'Admin o è sempre calcolato automaticamente alla generazione?
+**Punti aperti risolti con l'utente (`AskUserQuestion`, 2026-08-25):**
+1. Ambito della numerazione: **per Edizione** (un'unica sequenza cross-categoria, non per singola Categoria) - stesso scoping già scelto per `SlotTorneo`, Story 20.9.
+2. Semifinali/finali (generate in un secondo momento): **proseguono la stessa sequenza** del girone, mai una numerazione propria che riparte.
+3. Modificabilità: **solo automatico** - mai un campo editabile a mano dall'Admin.
+
+**Acceptance Criteria:**
+
+1. **Given** un'Edizione senza alcuna `PartitaTorneo` **When** una Categoria genera il proprio calendario di girone (`generaCalendarioGironiAction`) **Then** ogni incontro generato riceve un numero progressivo a partire da 1, in ordine
+2. **Given** un'Edizione con partite già numerate 1..N (di una qualunque Categoria) **When** un'altra Categoria della stessa Edizione genera il proprio calendario **Then** i suoi incontri ricevono i numeri N+1, N+2, ... - mai una numerazione che riparte da 1
+3. **Given** una Categoria con classifica di girone completa **When** l'Admin genera il tabellone (`generaTabelloneAction`) **Then** le 4 semifinali generate ricevono i 4 numeri successivi al massimo attuale dell'intera Edizione, continuando la stessa sequenza
+4. **Given** una finale generata automaticamente (side-effect di Story 20.4) **When** viene creata **Then** riceve il numero successivo disponibile nell'Edizione, con lo stesso comportamento del punto 3
+5. **And** il numero non è mai editabile a mano in nessun form - è sempre calcolato automaticamente al momento della generazione
+6. **And** ogni incontro (calendario/tabellone lato Admin, pagina pubblica `/torneo`) mostra il proprio numero ("Gara N")
+7. **And** una collisione di numero dovuta a generazioni concorrenti (rara, race accettata a basso rischio come altrove nell'epica) è rifiutata da un vincolo unico a livello DB e restituisce un messaggio esplicito che invita a riprovare, mai confuso con il messaggio "calendario/tabellone già generato"

@@ -20,6 +20,7 @@ const squadraUpdateManyMock = vi.fn();
 const squadraDeleteManyMock = vi.fn();
 const partitaFindManyMock = vi.fn();
 const partitaFindUniqueMock = vi.fn();
+const partitaFindFirstMock = vi.fn();
 const partitaCountMock = vi.fn();
 const partitaCreateManyMock = vi.fn();
 const partitaUpdateManyMock = vi.fn();
@@ -56,6 +57,7 @@ vi.mock("@/lib/prisma", () => ({
     partitaTorneo: {
       findMany: partitaFindManyMock,
       findUnique: partitaFindUniqueMock,
+      findFirst: partitaFindFirstMock,
       count: partitaCountMock,
       createMany: partitaCreateManyMock,
       updateMany: partitaUpdateManyMock,
@@ -90,6 +92,7 @@ const {
   elencaPartiteTorneo,
   contaPartiteTorneo,
   contaPartiteTorneoTabellone,
+  prossimoNumeroPartitaTorneo,
   creaPartiteTorneo,
   cancellaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
@@ -121,6 +124,7 @@ beforeEach(() => {
   squadraDeleteManyMock.mockReset();
   partitaFindManyMock.mockReset();
   partitaFindUniqueMock.mockReset();
+  partitaFindFirstMock.mockReset();
   partitaCountMock.mockReset();
   partitaCreateManyMock.mockReset();
   partitaUpdateManyMock.mockReset();
@@ -375,8 +379,12 @@ describe("cancellaSquadraTorneo", () => {
 });
 
 describe("elencaPartiteTorneo", () => {
-  it("returns only the Partite of the given Categoria, with squadre incluse, ordinate per girone poi nome", async () => {
-    const righe = [{ id: "partita-1", squadraCasa: { nome: "ASD Uno" } }];
+  // Story 20.11: orderBy semplificato a "numero" - una sequenza globale
+  // dell'Edizione assegnata per blocchi consecutivi per girone/fase, produce
+  // gia' un raggruppamento naturale equivalente al precedente ordine per
+  // girone/nome Squadra.
+  it("returns only the Partite of the given Categoria, with squadre incluse, ordinate per numero", async () => {
+    const righe = [{ id: "partita-1", numero: 1, squadraCasa: { nome: "ASD Uno" } }];
     partitaFindManyMock.mockResolvedValue(righe);
 
     const result = await elencaPartiteTorneo("categoria-1");
@@ -388,11 +396,7 @@ describe("elencaPartiteTorneo", () => {
         squadraOspite: true,
         slotTorneo: { include: { palestra: true } },
       },
-      orderBy: [
-        { squadraCasa: { girone: "asc" } },
-        { squadraCasa: { nome: "asc" } },
-        { squadraOspite: { nome: "asc" } },
-      ],
+      orderBy: [{ numero: "asc" }],
     });
     expect(result).toBe(righe);
   });
@@ -426,9 +430,18 @@ describe("contaPartiteTorneoTabellone", () => {
 });
 
 describe("creaPartiteTorneo", () => {
+  // Story 20.11: edizioneTorneoId/numero ora obbligatori sul tipo del
+  // parametro - il chiamante li calcola sempre prima (prossimoNumeroPartitaTorneo
+  // sotto), nessun default silenzioso possibile per un numero di gara.
   it("bulk-creates all the given pairs in a single createMany call", async () => {
     const righe = [
-      { categoriaTorneoId: "categoria-1", squadraCasaId: "a1", squadraOspiteId: "a2" },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a1",
+        squadraOspiteId: "a2",
+        edizioneTorneoId: "edizione-1",
+        numero: 1,
+      },
     ];
     partitaCreateManyMock.mockResolvedValue({ count: 1 });
 
@@ -447,6 +460,8 @@ describe("creaPartiteTorneo", () => {
         categoriaTorneoId: "categoria-1",
         squadraCasaId: "s1",
         squadraOspiteId: "s2",
+        edizioneTorneoId: "edizione-1",
+        numero: 5,
         fase: "SEMIFINALE" as const,
         tabellone: "POSIZIONI_1_4" as const,
       },
@@ -457,6 +472,34 @@ describe("creaPartiteTorneo", () => {
 
     expect(partitaCreateManyMock).toHaveBeenCalledWith({ data: righe });
     expect(result).toEqual({ count: 1 });
+  });
+});
+
+// Story 20.11 (Epic 20, Torneo Memorial): "prossimo numero" - legge il
+// massimo numero gia' assegnato nell'Edizione e incrementa da li'.
+describe("prossimoNumeroPartitaTorneo", () => {
+  it("returns 1 when the Edizione has no PartitaTorneo yet (AC #1)", async () => {
+    partitaFindFirstMock.mockResolvedValue(null);
+
+    const result = await prossimoNumeroPartitaTorneo("edizione-1");
+
+    expect(partitaFindFirstMock).toHaveBeenCalledWith({
+      where: { edizioneTorneoId: "edizione-1" },
+      orderBy: { numero: "desc" },
+      select: { numero: true },
+    });
+    expect(result).toBe(1);
+  });
+
+  // AC #2: la nuova Categoria riceve N+1, mai una numerazione che riparte -
+  // qui simulato dal massimo gia' presente nell'Edizione (indipendentemente
+  // da quale Categoria l'abbia generato).
+  it("returns one more than the highest numero already assigned in the Edizione", async () => {
+    partitaFindFirstMock.mockResolvedValue({ numero: 12 });
+
+    const result = await prossimoNumeroPartitaTorneo("edizione-1");
+
+    expect(result).toBe(13);
   });
 });
 

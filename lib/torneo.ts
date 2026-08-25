@@ -194,10 +194,6 @@ export async function cancellaSquadraTorneo(id: string, categoriaTorneoId: strin
 // Action (app/app/(torneo)/torneo/actions.ts), stessa separazione dei
 // livelli.
 //
-// Ordinata per girone (via squadraCasa.girone - un incontro e' sempre tra
-// due Squadre dello stesso girone, l'ordinamento su una sola delle due
-// basta) e poi per nome delle due Squadre, cosi' la pagina puo' raggruppare
-// "Girone A poi Girone B" senza un raggruppamento applicativo separato.
 // Story 20.9: include ora anche lo SlotTorneo eventualmente assegnato (con
 // la sua Palestra) - serve sia a RisultatoPartitaTorneoForm.tsx (mostrare
 // etichetta/data/ora/Palestra dello Slot corrente) sia alla pagina pubblica
@@ -205,6 +201,12 @@ export async function cancellaSquadraTorneo(id: string, categoriaTorneoId: strin
 // chiamanti (risultati/page.tsx, tabellone/page.tsx, torneo/page.tsx,
 // generaTabelloneAction/generaFinaliSeCompletate) - mai una seconda query
 // separata da tenere allineata.
+// Story 20.11: orderBy semplificato a "numero" - dato che numero e' una
+// sequenza globale dell'Edizione assegnata per blocchi consecutivi per
+// girone/fase (prossimoNumeroPartitaTorneo sotto), ordinare per numero
+// produce gia' un raggruppamento naturale equivalente al precedente ordine
+// per girone/nome Squadra, con il vantaggio aggiuntivo di riflettere
+// l'ordine reale di generazione/gioco.
 export async function elencaPartiteTorneo(categoriaTorneoId: string) {
   return prisma.partitaTorneo.findMany({
     where: { categoriaTorneoId },
@@ -213,11 +215,7 @@ export async function elencaPartiteTorneo(categoriaTorneoId: string) {
       squadraOspite: true,
       slotTorneo: { include: { palestra: true } },
     },
-    orderBy: [
-      { squadraCasa: { girone: "asc" } },
-      { squadraCasa: { nome: "asc" } },
-      { squadraOspite: { nome: "asc" } },
-    ],
+    orderBy: [{ numero: "asc" }],
   });
 }
 
@@ -227,6 +225,26 @@ export async function elencaPartiteTorneo(categoriaTorneoId: string) {
 // inseriti.
 export async function contaPartiteTorneo(categoriaTorneoId: string) {
   return prisma.partitaTorneo.count({ where: { categoriaTorneoId } });
+}
+
+// Story 20.11 (Epic 20, Torneo Memorial): prossimo numero di gara
+// disponibile in un'Edizione - un'unica sequenza cross-Categoria che non
+// riparte mai tra girone e fasi successive (spec-20-11 Boundaries
+// "Always"). Legge il massimo numero gia' assegnato nell'Edizione e
+// incrementa da li': il chiamante (le 3 generazioni in
+// app/app/(torneo)/torneo/actions.ts) assegna poi N numeri consecutivi
+// localmente (questo valore, +1, +2, ...) prima di un'unica scrittura in
+// blocco - una sola lettura per generazione, mai una query per riga. Il
+// vero cancello contro una collisione tra due generazioni concorrenti (questo
+// e' un check-then-act non atomico) e' il vincolo @@unique([edizioneTorneoId,
+// numero]) a livello DB (prisma/schema.prisma), non questa funzione.
+export async function prossimoNumeroPartitaTorneo(edizioneTorneoId: string): Promise<number> {
+  const ultima = await prisma.partitaTorneo.findFirst({
+    where: { edizioneTorneoId },
+    orderBy: { numero: "desc" },
+    select: { numero: true },
+  });
+  return (ultima?.numero ?? 0) + 1;
 }
 
 // Story 20.4: guardia di idempotenza dedicata per generaTabelloneAction
@@ -257,12 +275,18 @@ export async function cancellaPartiteTorneo(categoriaTorneoId: string) {
 // tabellone opzionali - il default Prisma (GIRONE/null) copre il chiamante
 // esistente (generaCalendarioGironiAction, mai passa questi campi);
 // generaTabelloneAction/il side-effect di salvaRisultatoPartitaTorneoAction
-// li passano esplicitamente per le semifinali/finali.
+// li passano esplicitamente per le semifinali/finali. Story 20.11:
+// edizioneTorneoId/numero ora obbligatori (mai opzionali) - il chiamante
+// calcola sempre entrambi (prossimoNumeroPartitaTorneo sopra +
+// categoria.edizioneTorneoId gia' risolto) prima di invocare questa
+// funzione, nessun default silenzioso possibile per un numero di gara.
 export async function creaPartiteTorneo(
   righe: {
     categoriaTorneoId: string;
     squadraCasaId: string;
     squadraOspiteId: string;
+    edizioneTorneoId: string;
+    numero: number;
     fase?: FaseTorneo;
     tabellone?: TabelloneTorneo;
   }[]

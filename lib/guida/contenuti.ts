@@ -426,7 +426,10 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     // gioca ogni incontro (data, ora, Palestra) - assegnati a mano per il
     // girone, in automatico (se ce n'è uno libero) per semifinali/finali
     // appena vengono generate; lo Slot assegnato compare anche sulla pagina
-    // pubblica con il link "Naviga".
+    // pubblica con il link "Naviga". Story 20.11: ogni incontro generato
+    // (girone, semifinale, finale) riceve anche un numero di gara
+    // progressivo ("Gara N"), calcolato automaticamente, un'unica sequenza
+    // che attraversa l'intera Edizione senza mai ripartire tra fasi diverse.
     rotta: "/app/torneo",
     titolo: "Torneo",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
@@ -441,6 +444,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Dentro un'Edizione, in \"Slot orari/Palestre\" crei gli orari di gioco disponibili (etichetta libera, data, ora, Palestra, e la fase a cui sono riservati - girone, semifinale, finale vincenti o finale perdenti, con il tabellone 1°-4° o 5°-8° per queste ultime tre). Uno Slot già assegnato a un incontro non è cancellabile: rimuovi prima l'assegnazione.",
       "Sulla pagina \"Risultati e classifica\" (girone) e \"Tabellone semifinali/finali\", ogni incontro ha un menu per assegnargli uno degli Slot compatibili con la sua fase, oppure per togliere l'assegnazione esistente. Se scegli uno Slot già assegnato a un altro incontro, l'app te lo segnala e ti chiede conferma prima di sovrascriverlo - non c'è alcun blocco, solo un avviso.",
       "Quando generi il tabellone semifinali/finali o quando si generano da sole le finali, il sistema assegna in automatico uno Slot libero della fase giusta a ogni nuovo incontro, se ce n'è uno disponibile: nessun errore né blocco se non ce ne sono, l'incontro resta semplicemente senza Slot finché non ne assegni uno a mano.",
+      "Ogni incontro generato (di girone, semifinale o finale) mostra anche il proprio numero di gara (\"Gara N\"): una sequenza unica che attraversa l'intera Edizione, non ricomincia mai per Categoria né per fase, ed è sempre calcolata automaticamente - non è mai un campo che puoi modificare a mano.",
     ],
   },
 ];
