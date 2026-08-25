@@ -1,17 +1,34 @@
 "use client";
 
 import { useState, useActionState, useMemo } from "react";
-import { salvaRisultatoPartitaTorneoAction } from "../../../actions";
+import { salvaRisultatoPartitaTorneoAction, assegnaSlotPartitaTorneoAction } from "../../../actions";
 import {
   terzoSetNecessario as calcolaTerzoSetNecessario,
   formattaRisultatoPartitaTorneo,
 } from "@/lib/risultato-partita-torneo";
 import { IconaModifica } from "@/app/icone-azione-riga";
+import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
 import styles from "../../../torneo.module.css";
+
+// Story 20.9 (Epic 20, Torneo Memorial): dati minimi di uno SlotTorneo per
+// il <select> di assegnazione e per la visualizzazione dello Slot corrente
+// - stesso shape sia in slotDisponibili (prop) sia in partita.slotTorneo
+// (gia' assegnato).
+type SlotTorneoOpzione = {
+  id: string;
+  etichetta: string;
+  data: string;
+  ora: string;
+  palestra: { nome: string };
+};
 
 type Partita = {
   id: string;
   categoriaTorneoId: string;
+  fase: FaseTorneo;
+  tabellone: TabelloneTorneo | null;
+  slotTorneoId: string | null;
+  slotTorneo: SlotTorneoOpzione | null;
   squadraCasa: { id: string; nome: string };
   squadraOspite: { id: string; nome: string };
   set1Casa: number | null;
@@ -29,10 +46,31 @@ type Partita = {
 // due squadre inserite si sono spartite i primi due set (1-1) - solo
 // un'anteprima lato client per l'usabilita', il vero cancello resta
 // risultatoValido dentro salvaRisultatoPartitaTorneoAction.
-export function RisultatoPartitaTorneoForm({ partita }: { partita: Partita }) {
+// Story 20.9: nuovi prop slotDisponibili/slotOccupati - il genitore
+// (risultati/page.tsx, tabellone/page.tsx) filtra gia' slotDisponibili sulla
+// fase/tabellone di QUESTA specifica Partita, e passa l'insieme di
+// slotTorneoId gia' occupati da UN'ALTRA Partita della stessa Categoria (per
+// l'avviso window.confirm prima di sovrascrivere, spec-20-9 Design Notes).
+export function RisultatoPartitaTorneoForm({
+  partita,
+  slotDisponibili,
+  slotOccupati,
+}: {
+  partita: Partita;
+  slotDisponibili: SlotTorneoOpzione[];
+  slotOccupati: Set<string>;
+}) {
   const [inModifica, setInModifica] = useState(false);
   const [state, formAction, pending] = useActionState(
     salvaRisultatoPartitaTorneoAction,
+    undefined
+  );
+  // Story 20.9: useActionState INDIPENDENTE per il form "Slot", stessa riga/
+  // card, esito indipendente dal form risultato sopra (mirror del pattern
+  // gia' in uso in AtletaTabellaRiga.tsx/VoceMenuPubblicoRow.tsx, piu' form/
+  // useActionState sulla stessa riga).
+  const [slotState, slotFormAction, slotPending] = useActionState(
+    assegnaSlotPartitaTorneoAction,
     undefined
   );
 
@@ -115,6 +153,85 @@ export function RisultatoPartitaTorneoForm({ partita }: { partita: Partita }) {
           <IconaModifica />
         </button>
       </p>
+
+      {/* Story 20.9: assegnazione Slot (dove/quando si gioca) - form
+          indipendente (proprio useActionState sopra), sempre visibile,
+          nessun toggle "in modifica" (a differenza del risultato sopra: qui
+          non c'e' una vista sola-lettura da rivelare, il <select> stesso
+          mostra gia' l'assegnazione corrente). */}
+      <form
+        action={slotFormAction}
+        className={`${styles.formCompatto} ${styles.formInline}`}
+        onSubmit={(e) => {
+          const formData = new FormData(e.currentTarget);
+          const sceltoGrezzo = String(formData.get("slotTorneoId") ?? "");
+          // Avviso solo se lo Slot scelto e' DIVERSO da quello gia'
+          // assegnato a QUESTA Partita (altrimenti risottomettere lo stesso
+          // valore non e' una sovrascrittura) ED e' gia' occupato da
+          // un'altra Partita (spec-20-9 I/O matrix: "avviso esplicito prima
+          // di confermare la sovrascrittura", mai un blocco).
+          if (
+            sceltoGrezzo &&
+            sceltoGrezzo !== (partita.slotTorneoId ?? "") &&
+            slotOccupati.has(sceltoGrezzo)
+          ) {
+            if (
+              !window.confirm(
+                "Questo Slot è già assegnato a un altro incontro. Vuoi sovrascrivere l'assegnazione?"
+              )
+            ) {
+              e.preventDefault();
+            }
+          }
+        }}
+      >
+        <input type="hidden" name="id" value={partita.id} />
+        <input type="hidden" name="categoriaTorneoId" value={partita.categoriaTorneoId} />
+        <label htmlFor={`slot-${partita.id}`}>Slot</label>
+        <select
+          // Review fix (Blind Hunter, Story 20.9 - stesso bug gia' risolto
+          // in Story 9.35 per il campo Numero): defaultValue non si
+          // aggiorna dopo una riassegnazione riuscita (select non
+          // controllato, stessa istanza React prima/dopo revalidatePath) -
+          // un'altra scheda/Admin che riassegna/rimuove lo Slot restava
+          // invisibile qui finche' non si ricaricava la pagina a mano. La
+          // key include ora il valore stesso: quando partita.slotTorneoId
+          // cambia, React smonta/rimonta il <select>, riapplicando
+          // defaultValue al dato fresco.
+          key={partita.slotTorneoId ?? "nessuno"}
+          id={`slot-${partita.id}`}
+          name="slotTorneoId"
+          defaultValue={partita.slotTorneoId ?? ""}
+        >
+          <option value="">Nessuno</option>
+          {slotDisponibili.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.etichetta} — {s.data} {s.ora} — {s.palestra.nome}
+              {slotOccupati.has(s.id) && s.id !== partita.slotTorneoId ? " (occupato)" : ""}
+            </option>
+          ))}
+        </select>
+        <button disabled={slotPending} type="submit" className={styles.bottoneCompatto}>
+          {partita.slotTorneoId ? "Aggiorna Slot" : "Assegna Slot"}
+        </button>
+      </form>
+      {slotState && "error" in slotState && (
+        <p role="alert" className={styles.errore}>
+          {slotState.error.message}
+        </p>
+      )}
+      {slotState && "success" in slotState && (
+        <p role="status" className={styles.successo}>
+          Slot aggiornato.
+        </p>
+      )}
+      {partita.slotTorneo && (
+        <p className={styles.riepilogo}>
+          {partita.slotTorneo.etichetta} — {partita.slotTorneo.data} {partita.slotTorneo.ora} —{" "}
+          {partita.slotTorneo.palestra.nome}
+        </p>
+      )}
+
       {inModifica && (
         <form action={formAction} className={styles.form}>
           <input type="hidden" name="id" value={partita.id} />

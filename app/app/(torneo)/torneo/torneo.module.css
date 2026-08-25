@@ -308,3 +308,10 @@
   cursor: default;
   opacity: 0.6;
 }
+
+/* Story 20.9 (review fix, Blind Hunter): indirizzo Palestra in SlotTorneoRow.tsx,
+   testo secondario discreto accanto al nome. */
+.indirizzoPalestra {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}

@@ -24,6 +24,10 @@ const partitaCountMock = vi.fn();
 const partitaCreateManyMock = vi.fn();
 const partitaUpdateManyMock = vi.fn();
 const partitaDeleteManyMock = vi.fn();
+const slotFindManyMock = vi.fn();
+const slotFindUniqueMock = vi.fn();
+const slotCreateMock = vi.fn();
+const slotDeleteManyMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -57,6 +61,12 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: partitaUpdateManyMock,
       deleteMany: partitaDeleteManyMock,
     },
+    slotTorneo: {
+      findMany: slotFindManyMock,
+      findUnique: slotFindUniqueMock,
+      create: slotCreateMock,
+      deleteMany: slotDeleteManyMock,
+    },
   },
 }));
 
@@ -84,6 +94,12 @@ const {
   cancellaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
+  creaSlotTorneo,
+  elencaSlotTorneo,
+  trovaSlotTorneoPerId,
+  cancellaSlotTorneo,
+  assegnaSlotPartitaTorneo,
+  elencaSlotTorneoLiberi,
 } = await import("./torneo");
 
 beforeEach(() => {
@@ -109,6 +125,10 @@ beforeEach(() => {
   partitaCreateManyMock.mockReset();
   partitaUpdateManyMock.mockReset();
   partitaDeleteManyMock.mockReset();
+  slotFindManyMock.mockReset();
+  slotFindUniqueMock.mockReset();
+  slotCreateMock.mockReset();
+  slotDeleteManyMock.mockReset();
 });
 
 describe("elencaEdizioniTorneo", () => {
@@ -175,13 +195,13 @@ describe("creaEdizioneTorneo", () => {
 });
 
 describe("cancellaEdizioneTorneo", () => {
-  it("deletes atomically, guarded in the where clause against Categorie collegate", async () => {
+  it("deletes atomically, guarded in the where clause against Categorie e Slot collegati", async () => {
     edizioneDeleteManyMock.mockResolvedValue({ count: 1 });
 
     const result = await cancellaEdizioneTorneo("1");
 
     expect(edizioneDeleteManyMock).toHaveBeenCalledWith({
-      where: { id: "1", categorie: { none: {} } },
+      where: { id: "1", categorie: { none: {} }, slot: { none: {} } },
     });
     expect(result).toEqual({ count: 1 });
   });
@@ -363,7 +383,11 @@ describe("elencaPartiteTorneo", () => {
 
     expect(partitaFindManyMock).toHaveBeenCalledWith({
       where: { categoriaTorneoId: "categoria-1" },
-      include: { squadraCasa: true, squadraOspite: true },
+      include: {
+        squadraCasa: true,
+        squadraOspite: true,
+        slotTorneo: { include: { palestra: true } },
+      },
       orderBy: [
         { squadraCasa: { girone: "asc" } },
         { squadraCasa: { nome: "asc" } },
@@ -488,5 +512,131 @@ describe("cancellaPartiteTorneo", () => {
     const result = await cancellaPartiteTorneo("categoria-1");
 
     expect(result).toEqual({ count: 0 });
+  });
+});
+
+// Story 20.9 (Epic 20, Torneo Memorial): funzioni SlotTorneo - stesso stile
+// di mock/assert delle describe precedenti.
+describe("creaSlotTorneo", () => {
+  it("creates a Slot attached to the given Edizione", async () => {
+    const dati = {
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Campo 1 - Sabato mattina",
+      data: "2026-09-05",
+      ora: "09:00",
+      palestraId: "palestra-1",
+      fase: "GIRONE" as const,
+      tabellone: null,
+    };
+    const slot = { id: "slot-1", ...dati };
+    slotCreateMock.mockResolvedValue(slot);
+
+    const result = await creaSlotTorneo(dati);
+
+    expect(slotCreateMock).toHaveBeenCalledWith({ data: dati });
+    expect(result).toBe(slot);
+  });
+});
+
+describe("elencaSlotTorneo", () => {
+  it("returns only the Slot of the given Edizione, with Palestra incluso, ordinati per data poi ora", async () => {
+    const righe = [{ id: "slot-1", etichetta: "Campo 1", palestra: { nome: "Palestra A" } }];
+    slotFindManyMock.mockResolvedValue(righe);
+
+    const result = await elencaSlotTorneo("edizione-1");
+
+    expect(slotFindManyMock).toHaveBeenCalledWith({
+      where: { edizioneTorneoId: "edizione-1" },
+      include: { palestra: true },
+      orderBy: [{ data: "asc" }, { ora: "asc" }],
+    });
+    expect(result).toBe(righe);
+  });
+});
+
+describe("trovaSlotTorneoPerId", () => {
+  it("looks up a single Slot by id", async () => {
+    const slot = { id: "slot-1", etichetta: "Campo 1", edizioneTorneoId: "edizione-1" };
+    slotFindUniqueMock.mockResolvedValue(slot);
+
+    const result = await trovaSlotTorneoPerId("slot-1");
+
+    expect(slotFindUniqueMock).toHaveBeenCalledWith({ where: { id: "slot-1" } });
+    expect(result).toBe(slot);
+  });
+});
+
+describe("cancellaSlotTorneo", () => {
+  it("deletes only the Slot matching id and edizioneTorneoId, guarded against Partite collegate", async () => {
+    slotDeleteManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await cancellaSlotTorneo("slot-1", "edizione-1");
+
+    expect(slotDeleteManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-1", edizioneTorneoId: "edizione-1", partite: { none: {} } },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+});
+
+describe("assegnaSlotPartitaTorneo", () => {
+  it("updates only the Partita matching BOTH id and categoriaTorneoId with the given slotTorneoId", async () => {
+    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaSlotPartitaTorneo("partita-1", "categoria-1", "slot-1");
+
+    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
+      data: { slotTorneoId: "slot-1" },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+
+  it("accepts a null slotTorneoId to remove an existing assignment", async () => {
+    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaSlotPartitaTorneo("partita-1", "categoria-1", null);
+
+    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
+      data: { slotTorneoId: null },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+});
+
+describe("elencaSlotTorneoLiberi", () => {
+  it("returns only the Slot of the given fase/tabellone with no Partita collegata, ordered by data then ora", async () => {
+    const righe = [{ id: "slot-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4" }];
+    slotFindManyMock.mockResolvedValue(righe);
+
+    const result = await elencaSlotTorneoLiberi("edizione-1", "SEMIFINALE", "POSIZIONI_1_4");
+
+    expect(slotFindManyMock).toHaveBeenCalledWith({
+      where: {
+        edizioneTorneoId: "edizione-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        partite: { none: {} },
+      },
+      orderBy: [{ data: "asc" }, { ora: "asc" }],
+    });
+    expect(result).toBe(righe);
+  });
+
+  it("passes a null tabellone through for GIRONE Slot", async () => {
+    slotFindManyMock.mockResolvedValue([]);
+
+    await elencaSlotTorneoLiberi("edizione-1", "GIRONE", null);
+
+    expect(slotFindManyMock).toHaveBeenCalledWith({
+      where: {
+        edizioneTorneoId: "edizione-1",
+        fase: "GIRONE",
+        tabellone: null,
+        partite: { none: {} },
+      },
+      orderBy: [{ data: "asc" }, { ora: "asc" }],
+    });
   });
 });

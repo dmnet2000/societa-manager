@@ -9,6 +9,7 @@ import {
   trovaEdizioneTorneoPerId,
   creaEdizioneTorneo,
   cancellaEdizioneTorneo,
+  elencaCategorieTorneo,
   creaCategoriaTorneo,
   aggiornaCategoriaTorneo,
   cancellaCategoriaTorneo,
@@ -26,9 +27,17 @@ import {
   elencaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
+  creaSlotTorneo,
+  trovaSlotTorneoPerId,
+  trovaPalestraPerId,
+  cancellaSlotTorneo,
+  assegnaSlotPartitaTorneo,
+  elencaSlotTorneoLiberi,
 } from "@/lib/torneo";
 import { isSettimanaTorneoValida } from "@/lib/settimana-torneo";
 import { isGironeTorneoValido } from "@/lib/girone-torneo";
+import { isFaseTorneoValida } from "@/lib/fase-torneo";
+import { isTabelloneTorneoValido } from "@/lib/tabelloni-torneo";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import {
   risultatoValido,
@@ -164,10 +173,26 @@ export async function cancellaEdizioneTorneoAction(
           error: { code: "INTERNAL", message: "Impossibile cancellare l'Edizione. Riprova." },
         };
       }
+      // Review fix (Edge Case Hunter, Story 20.9): la guardia ora blocca su
+      // due relazioni distinte (Categorie o Slot) - disambigua quale delle
+      // due, invece di un messaggio unico che potrebbe indicare la causa
+      // sbagliata (l'Admin andrebbe a cercare Categorie da cancellare
+      // quando in realta' sono Slot residui, es. dopo "Cancella tutte le
+      // partite", Story 20.8, che svuota solo le Partite non gli Slot).
+      const categorie = await elencaCategorieTorneo(id);
+      if (categorie.length > 0) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Impossibile cancellare: questa Edizione ha ancora Categorie collegate.",
+          },
+        };
+      }
       return {
         error: {
           code: "VALIDATION",
-          message: "Impossibile cancellare: questa Edizione ha ancora Categorie collegate.",
+          message:
+            "Impossibile cancellare: questa Edizione ha ancora Slot orari collegati - cancellali prima dalla pagina Slot.",
         },
       };
     }
@@ -440,6 +465,193 @@ export async function cancellaCategoriaTorneoAction(
   }
 
   revalidatePath(`/app/torneo/${edizioneTorneoId}`);
+  return { success: true };
+}
+
+const ETICHETTA_SLOT_MAX = 100;
+
+type CampiSlotValidati = {
+  etichetta: string;
+  data: string;
+  ora: string;
+  palestraId: string;
+  fase: FaseTorneo;
+  tabellone: TabelloneTorneo | null;
+};
+
+// Story 20.9 (Epic 20, Torneo Memorial): validazione estratta (mirror
+// validaCampiCategoria sopra) - stesso principio del CHECK discriminato a
+// livello DB (fase = GIRONE <=> tabellone IS NULL, spec-20-9 Code Map/
+// migrazione), qui pero' con un messaggio VALIDATION esplicito PRIMA di
+// arrivare al database.
+function validaCampiSlot(
+  formData: FormData
+): { error: { code: string; message: string } } | { valori: CampiSlotValidati } {
+  const etichetta = String(formData.get("etichetta") ?? "").trim();
+  const data = String(formData.get("data") ?? "").trim();
+  const ora = String(formData.get("ora") ?? "").trim();
+  const palestraId = String(formData.get("palestraId") ?? "").trim();
+  const fase = String(formData.get("fase") ?? "");
+  const tabelloneGrezzo = String(formData.get("tabellone") ?? "").trim();
+
+  if (!etichetta) {
+    return { error: { code: "VALIDATION", message: "L'etichetta è obbligatoria." } };
+  }
+  if (etichetta.length > ETICHETTA_SLOT_MAX) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `L'etichetta non può superare i ${ETICHETTA_SLOT_MAX} caratteri.`,
+      },
+    };
+  }
+  if (!data) {
+    return { error: { code: "VALIDATION", message: "La data è obbligatoria." } };
+  }
+  // Review fix (Blind Hunter + Edge Case Hunter, convergenti): solo la
+  // non-vuotezza era verificata - un valore malformato (bypassando il
+  // widget <input type="date"> reale) veniva salvato e mostrato tale e
+  // quale, anche sulla pagina pubblica. Stesso principio "controllo di
+  // formato su un valore gia' non-vuoto" gia' applicato all'anno di
+  // EdizioneTorneo (regex su sole cifre) - qui il formato atteso e'
+  // AAAA-MM-GG (lo stesso prodotto da <input type="date">).
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    return {
+      error: { code: "VALIDATION", message: "La data deve essere nel formato AAAA-MM-GG." },
+    };
+  }
+  if (!ora) {
+    return { error: { code: "VALIDATION", message: "L'ora è obbligatoria." } };
+  }
+  // Stesso principio sopra, formato HH:MM prodotto da <input type="time">
+  // - qui in aggiunta un controllo di plausibilita' (ore 0-23, minuti
+  // 0-59), non solo di forma: "25:99" ha la forma giusta ma non e' un
+  // orario reale.
+  const oraMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(ora);
+  if (!oraMatch) {
+    return {
+      error: { code: "VALIDATION", message: "L'ora deve essere nel formato HH:MM (00:00-23:59)." },
+    };
+  }
+  if (!palestraId) {
+    return { error: { code: "VALIDATION", message: "La Palestra è obbligatoria." } };
+  }
+  if (!fase) {
+    return { error: { code: "VALIDATION", message: "La fase è obbligatoria." } };
+  }
+  if (!isFaseTorneoValida(fase)) {
+    return { error: { code: "VALIDATION", message: "Fase non valida." } };
+  }
+
+  // Stessa unione discriminata del CHECK DB (Story 20.4/spec-20-9): un
+  // incontro di girone non ha mai un tabellone, semifinali/finali lo
+  // richiedono sempre.
+  if (fase === "GIRONE") {
+    if (tabelloneGrezzo) {
+      return {
+        error: { code: "VALIDATION", message: "Un incontro di girone non ha un tabellone." },
+      };
+    }
+    return { valori: { etichetta, data, ora, palestraId, fase, tabellone: null } };
+  }
+
+  if (!tabelloneGrezzo) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il tabellone è obbligatorio per semifinali/finali.",
+      },
+    };
+  }
+  if (!isTabelloneTorneoValido(tabelloneGrezzo)) {
+    return { error: { code: "VALIDATION", message: "Tabellone non valido." } };
+  }
+
+  return { valori: { etichetta, data, ora, palestraId, fase, tabellone: tabelloneGrezzo } };
+}
+
+// Story 20.9 (Epic 20, Torneo Memorial): gestione riservata ad Admin/
+// Dirigente, stesso perimetro delle altre Server Action Torneo.
+export async function creaSlotTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  const validazione = validaCampiSlot(formData);
+  if ("error" in validazione) return validazione;
+  const { etichetta, data, ora, palestraId, fase, tabellone } = validazione.valori;
+
+  try {
+    // Mirror del controllo "Edizione non trovata" di creaCategoriaTorneoAction
+    // sopra: un edizioneTorneoId non piu' esistente (Edizione cancellata in
+    // un'altra scheda) violerebbe altrimenti solo il vincolo FK a livello di
+    // database.
+    const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+    if (!edizione) {
+      return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+    }
+
+    // Review fix (Blind Hunter + Edge Case Hunter, convergenti): stesso
+    // controllo esplicito appena fatto per edizioneTorneoId, ora anche per
+    // palestraId - prima si affidava solo al vincolo FK del DB.
+    const palestra = await trovaPalestraPerId(palestraId);
+    if (!palestra) {
+      return { error: { code: "VALIDATION", message: "Palestra non trovata." } };
+    }
+
+    await creaSlotTorneo({ edizioneTorneoId, etichetta, data, ora, palestraId, fase, tabellone });
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." } };
+  }
+
+  revalidatePath(`/app/torneo/${edizioneTorneoId}/slot`);
+  return { success: true };
+}
+
+// Delete scoped su id + edizioneTorneoId (mirror cancellaCategoriaTorneoAction
+// sopra) - su count === 0 disambigua "non trovato" da "bloccato da una
+// Partita collegata" con trovaSlotTorneoPerId, stesso schema.
+export async function cancellaSlotTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!id || !edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Slot non specificato." } };
+  }
+
+  try {
+    const risultato = await cancellaSlotTorneo(id, edizioneTorneoId);
+    if (risultato.count === 0) {
+      const slot = await trovaSlotTorneoPerId(id);
+      if (slot && slot.edizioneTorneoId === edizioneTorneoId) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Impossibile cancellare: questo Slot è già assegnato a un incontro.",
+          },
+        };
+      }
+      return { error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." } };
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile cancellare lo Slot. Riprova." } };
+  }
+
+  revalidatePath(`/app/torneo/${edizioneTorneoId}/slot`);
   return { success: true };
 }
 
@@ -887,6 +1099,58 @@ function vincitorePerdenteId(partita: {
     : { vincitoreId: partita.squadraOspiteId, perdenteId: partita.squadraCasaId };
 }
 
+// Story 20.9 (Epic 20, Torneo Memorial): auto-assegnazione best-effort di
+// uno Slot libero a ogni Partita appena generata di una data fase/tabellone
+// - chiamata da generaTabelloneAction (le 4 semifinali) e
+// generaFinaliSeCompletate (le 2 finali) subito dopo la creazione. Mai un
+// errore che blocchi la generazione (spec-20-9 Boundaries "Never", Design
+// Notes): un fallimento qui (nessuno Slot libero, o un errore DB
+// transitorio) e' loggato e ignorato in silenzio, la Partita resta
+// semplicemente senza Slot assegnato come oggi. Ordine deterministico
+// semplice (data/ora crescenti, via elencaSlotTorneoLiberi) - nessuna
+// logica di abbinamento intelligente tra specifiche Partite e specifici
+// Slot (mai richiesto da alcun AC).
+async function assegnaSlotAutomaticamente(
+  categoriaTorneoId: string,
+  edizioneTorneoId: string,
+  fase: FaseTorneo,
+  tabellone: TabelloneTorneo
+): Promise<void> {
+  try {
+    const [partite, slotLiberi] = await Promise.all([
+      elencaPartiteTorneo(categoriaTorneoId),
+      elencaSlotTorneoLiberi(edizioneTorneoId, fase, tabellone),
+    ]);
+    const partiteDaAssegnare = partite.filter(
+      (p) => p.fase === fase && p.tabellone === tabellone && !p.slotTorneoId
+    );
+    const numeroAssegnazioni = Math.min(partiteDaAssegnare.length, slotLiberi.length);
+    // Review fix (Blind Hunter + Verification Gap Reviewer): un try/catch
+    // unico attorno all'intero ciclo interrompeva silenziosamente TUTTE le
+    // assegnazioni successive al primo fallimento (es. un errore DB
+    // transitorio sulla seconda iterazione lasciava la terza/quarta Partita
+    // senza Slot, pur essendocene ancora di liberi) - ogni iterazione ora
+    // fallisce in isolamento, coerente con "best-effort per singola
+    // assegnazione", non "tutto o niente" sull'intero batch.
+    for (let i = 0; i < numeroAssegnazioni; i++) {
+      try {
+        await assegnaSlotPartitaTorneo(
+          partiteDaAssegnare[i].id,
+          categoriaTorneoId,
+          slotLiberi[i].id
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  } catch (err) {
+    // Best-effort: un fallimento qui (es. le due letture iniziali) non deve
+    // mai impedire la generazione del tabellone/delle finali (spec-20-9
+    // Design Notes) - solo loggato.
+    console.error(err);
+  }
+}
+
 // spec-20-4 Design Notes: side-effect di salvaRisultatoPartitaTorneoAction
 // sotto, MAI un'azione manuale separata (l'AC di epics.md dice
 // esplicitamente "vengono generate", voce passiva/automatica). Le due
@@ -895,8 +1159,13 @@ function vincitorePerdenteId(partita: {
 // vs perdenti (FINALE_PERDENTI, 3°/4° o 7°/8° posto). No-op silenzioso
 // (nessun errore, spec-20-4 I/O matrix) se l'altra semifinale non ha ancora
 // un risultato, o se le finali di questo tabellone esistono gia'.
+// Story 20.9: prende ora anche edizioneTorneoId (dal chiamante, che lo ha
+// gia' risolto) - serve alla nuova auto-assegnazione best-effort dello Slot
+// delle 2 finali appena generate, chiamata SOLO sul percorso di successo
+// (mai sui rami "no-op"/idempotenza sotto, che non hanno creato nulla).
 async function generaFinaliSeCompletate(
   categoriaTorneoId: string,
+  edizioneTorneoId: string,
   tabellone: TabelloneTorneo
 ): Promise<void> {
   const partite = await elencaPartiteTorneo(categoriaTorneoId);
@@ -961,6 +1230,12 @@ async function generaFinaliSeCompletate(
     }
     throw err;
   }
+
+  // Story 20.9: auto-assegnazione best-effort SOLO sul percorso di successo
+  // sopra (mai sui "return" di no-op/idempotenza) - le finali appena create
+  // davvero da questa chiamata.
+  await assegnaSlotAutomaticamente(categoriaTorneoId, edizioneTorneoId, "FINALE_VINCENTI", tabellone);
+  await assegnaSlotAutomaticamente(categoriaTorneoId, edizioneTorneoId, "FINALE_PERDENTI", tabellone);
 }
 
 // spec-20-4 Boundaries: il tabellone (le 4 semifinali) e' generato una sola
@@ -1088,6 +1363,23 @@ export async function generaTabelloneAction(
     ];
 
     await creaPartiteTorneo(righe);
+
+    // Story 20.9: auto-assegnazione best-effort di uno Slot libero alle 4
+    // semifinali appena generate, una chiamata per tabellone (POSIZIONI_1_4/
+    // POSIZIONI_5_8) - mai un errore che blocchi la generazione gia'
+    // avvenuta sopra (assegnaSlotAutomaticamente non propaga mai).
+    await assegnaSlotAutomaticamente(
+      categoriaTorneoId,
+      categoria.edizioneTorneoId,
+      "SEMIFINALE",
+      "POSIZIONI_1_4"
+    );
+    await assegnaSlotAutomaticamente(
+      categoriaTorneoId,
+      categoria.edizioneTorneoId,
+      "SEMIFINALE",
+      "POSIZIONI_5_8"
+    );
 
     revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
   } catch (err) {
@@ -1318,7 +1610,11 @@ export async function salvaRisultatoPartitaTorneoAction(
     // spec-20-4: side-effect di generazione automatica delle finali - SOLO
     // se la partita appena salvata e' davvero una semifinale.
     if (partitaAttuale && partitaAttuale.fase === "SEMIFINALE" && partitaAttuale.tabellone) {
-      await generaFinaliSeCompletate(categoriaTorneoId, partitaAttuale.tabellone);
+      await generaFinaliSeCompletate(
+        categoriaTorneoId,
+        categoria.edizioneTorneoId,
+        partitaAttuale.tabellone
+      );
     }
 
     // Entrambe le pagine che riusano questo Server Action (risultati/ per
@@ -1332,6 +1628,102 @@ export async function salvaRisultatoPartitaTorneoAction(
     return {
       error: { code: "INTERNAL", message: "Impossibile salvare il risultato. Riprova." },
     };
+  }
+
+  return { success: true };
+}
+
+// Story 20.9 (Epic 20, Torneo Memorial): assegnazione manuale (o rimozione,
+// slotTorneoId vuoto) di uno Slot a una Partita gia' esistente - usata sia
+// da risultati/ (girone) sia da tabellone/ (semifinali/finali),
+// RisultatoPartitaTorneoForm.tsx e' condiviso invariato (stesso principio di
+// salvaRisultatoPartitaTorneoAction sopra), proprio useActionState
+// indipendente dal form risultato sulla stessa riga. spec-20-9 Boundaries:
+// il server rilegge SEMPRE fase/tabellone reali della Partita (mai dal
+// client, che potrebbe aver filtrato male/mentito con un <select>
+// manomesso) e li confronta con quelli dello Slot scelto - un mismatch e'
+// VALIDATION esplicita. Nessun controllo server-side "Slot gia' occupato":
+// deciso in spec-20-9 Design Notes, l'avviso e' solo client-side
+// (window.confirm in RisultatoPartitaTorneoForm.tsx) - non c'e' alcun
+// vincolo di unicita' DB da rispettare (deciso in party mode) e
+// sovrascrivere un'assegnazione non e' un'operazione distruttiva
+// irreversibile.
+export async function assegnaSlotPartitaTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!id || !categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Incontro non specificato." } };
+  }
+
+  // Stringa vuota = rimuovi l'assegnazione esistente (spec-20-9 Code Map),
+  // non un valore mancante da rifiutare.
+  const slotTorneoIdGrezzo = String(formData.get("slotTorneoId") ?? "").trim();
+  const slotTorneoId = slotTorneoIdGrezzo || null;
+
+  try {
+    const categoria = await trovaCategoriaTorneoPerId(categoriaTorneoId);
+    if (!categoria) {
+      return { error: { code: "VALIDATION", message: "Categoria non trovata." } };
+    }
+
+    // Riletta PRIMA di scrivere (mai dal client) - serve sia per il
+    // controllo di coerenza fase/tabellone sotto sia per lo scoping
+    // id+categoriaTorneoId dell'update.
+    const partita = await trovaPartitaTorneoPerId(id);
+    if (!partita || partita.categoriaTorneoId !== categoriaTorneoId) {
+      return { error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." } };
+    }
+
+    if (slotTorneoId) {
+      const slot = await trovaSlotTorneoPerId(slotTorneoId);
+      if (!slot) {
+        return { error: { code: "VALIDATION", message: "Slot non trovato." } };
+      }
+      // spec-20-9 Boundaries/I/O matrix: uno Slot con fase/tabellone non
+      // corrispondenti alla Partita e' rifiutato esplicitamente - mai
+      // fidarsi che il client abbia filtrato correttamente la lista.
+      if (slot.fase !== partita.fase || slot.tabellone !== partita.tabellone) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Lo Slot selezionato non corrisponde alla fase di questo incontro.",
+          },
+        };
+      }
+      // Review fix (Blind Hunter): mancava il confronto sull'Edizione - uno
+      // Slot valido ma di un'ALTRA Edizione (id indovinato/riusato, scheda
+      // vecchia rimasta aperta) veniva accettato ogni volta che fase/
+      // tabellone combaciavano per caso (es. GIRONE/null combacia sempre).
+      // Mai fidarsi del client per lo scoping, stessa disciplina applicata
+      // sopra a fase/tabellone.
+      if (slot.edizioneTorneoId !== categoria.edizioneTorneoId) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Lo Slot selezionato appartiene a un'altra Edizione.",
+          },
+        };
+      }
+    }
+
+    const risultato = await assegnaSlotPartitaTorneo(id, categoriaTorneoId, slotTorneoId);
+    if (risultato.count === 0) {
+      return {
+        error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." },
+      };
+    }
+
+    revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/risultati`);
+    revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile assegnare lo Slot. Riprova." } };
   }
 
   return { success: true };

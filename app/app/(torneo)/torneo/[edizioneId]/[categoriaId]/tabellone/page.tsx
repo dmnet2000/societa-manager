@@ -4,6 +4,8 @@ import {
   trovaCategoriaTorneoPerId,
   elencaSquadreTorneo,
   elencaPartiteTorneo,
+  elencaSlotTorneo,
+  elencaSlotOccupatiEdizione,
 } from "@/lib/torneo";
 import { calcolaClassificaFinale } from "@/lib/classifica-finale-torneo";
 import { haRisultatoCompleto } from "@/lib/risultato-partita-torneo";
@@ -31,14 +33,21 @@ export default async function TabelloneTorneoPage({
 }) {
   const { edizioneId, categoriaId } = await params;
 
-  // Le quattro risoluzioni non dipendono l'una dall'altra - eseguite in
-  // Promise.all, stesso principio gia' stabilito altrove nel progetto.
-  const [ruoli, categoria, squadre, partite] = await Promise.all([
-    risolviRuoliPerAiutoContestuale(),
-    trovaCategoriaTorneoPerId(categoriaId),
-    elencaSquadreTorneo(categoriaId),
-    elencaPartiteTorneo(categoriaId),
-  ]);
+  // Le risoluzioni non dipendono l'una dall'altra - eseguite in Promise.all,
+  // stesso principio gia' stabilito altrove nel progetto. Story 20.9:
+  // elencaSlotTorneo e' scoped per edizioneId (gia' disponibile dai params).
+  const [ruoli, categoria, squadre, partite, slotTorneo, slotOccupatiEdizione] =
+    await Promise.all([
+      risolviRuoliPerAiutoContestuale(),
+      trovaCategoriaTorneoPerId(categoriaId),
+      elencaSquadreTorneo(categoriaId),
+      elencaPartiteTorneo(categoriaId),
+      elencaSlotTorneo(edizioneId),
+      // Review fix (Blind Hunter + Edge Case Hunter): stesso motivo di
+      // risultati/page.tsx - SlotTorneo e' condiviso tra tutte le Categorie
+      // dell'Edizione, l'insieme degli occupati deve coprirle tutte.
+      elencaSlotOccupatiEdizione(edizioneId),
+    ]);
 
   // Un id inesistente/gia' eliminato, O una Categoria esistente ma sotto
   // un'altra Edizione (edizioneId nell'URL non corrispondente) - 404 in
@@ -93,6 +102,19 @@ export default async function TabelloneTorneoPage({
   // posizionale qui da poter sbagliare.
   const classificaFinale = tabelloneGenerato ? calcolaClassificaFinale(partite) : null;
 
+  // Story 20.9: a differenza di risultati/page.tsx (un solo insieme di Slot
+  // GIRONE per tutta la pagina), qui fase/tabellone variano per Partita
+  // (SEMIFINALE/FINALE_VINCENTI/FINALE_PERDENTI x POSIZIONI_1_4/5_8) - gli
+  // Slot disponibili sono quindi filtrati per-Partita da questo helper.
+  // slotOccupati raccoglie gli slotTorneoId gia' assegnati a QUALUNQUE
+  // Partita dell'INTERA EDIZIONE (non solo di questa Categoria, review fix
+  // - vedi risultati/page.tsx) - serve solo all'avviso client-side "Slot
+  // gia' occupato".
+  function slotPerPartita(p: { fase: string; tabellone: string | null }) {
+    return slotTorneo.filter((s) => s.fase === p.fase && s.tabellone === p.tabellone);
+  }
+  const slotOccupati = new Set(slotOccupatiEdizione);
+
   return (
     <main>
       <Link className={styles.link} href={`/app/torneo/${edizioneId}/${categoriaId}`}>
@@ -138,7 +160,12 @@ export default async function TabelloneTorneoPage({
 
                 <h3>Semifinali</h3>
                 {semifinali.map((partita) => (
-                  <RisultatoPartitaTorneoForm key={partita.id} partita={partita} />
+                  <RisultatoPartitaTorneoForm
+                    key={partita.id}
+                    partita={partita}
+                    slotDisponibili={slotPerPartita(partita)}
+                    slotOccupati={slotOccupati}
+                  />
                 ))}
 
                 <h3>Finali</h3>
@@ -156,13 +183,21 @@ export default async function TabelloneTorneoPage({
                     {finaleVincenti && (
                       <>
                         <p className={styles.riepilogo}>{tabellone.etichettaVincenti}</p>
-                        <RisultatoPartitaTorneoForm partita={finaleVincenti} />
+                        <RisultatoPartitaTorneoForm
+                          partita={finaleVincenti}
+                          slotDisponibili={slotPerPartita(finaleVincenti)}
+                          slotOccupati={slotOccupati}
+                        />
                       </>
                     )}
                     {finalePerdenti && (
                       <>
                         <p className={styles.riepilogo}>{tabellone.etichettaPerdenti}</p>
-                        <RisultatoPartitaTorneoForm partita={finalePerdenti} />
+                        <RisultatoPartitaTorneoForm
+                          partita={finalePerdenti}
+                          slotDisponibili={slotPerPartita(finalePerdenti)}
+                          slotOccupati={slotOccupati}
+                        />
                       </>
                     )}
                   </>

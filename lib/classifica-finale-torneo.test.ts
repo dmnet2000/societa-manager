@@ -34,6 +34,7 @@ function partita(
     squadraOspite,
     fase,
     tabellone,
+    slotTorneoId: null,
     set1Casa: risultato.set1Casa,
     set1Ospite: risultato.set1Ospite,
     set2Casa: risultato.set2Casa,

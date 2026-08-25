@@ -4,6 +4,8 @@ import {
   trovaCategoriaTorneoPerId,
   elencaSquadreTorneo,
   elencaPartiteTorneo,
+  elencaSlotTorneo,
+  elencaSlotOccupatiEdizione,
 } from "@/lib/torneo";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
@@ -30,17 +32,27 @@ export default async function RisultatiTorneoPage({
 }) {
   const { edizioneId, categoriaId } = await params;
 
-  // Le tre risoluzioni non dipendono l'una dall'altra - eseguite in
-  // Promise.all, stesso principio gia' stabilito altrove nel progetto.
+  // Le risoluzioni non dipendono l'una dall'altra - eseguite in Promise.all,
+  // stesso principio gia' stabilito altrove nel progetto.
   // elencaSquadreTorneo/elencaPartiteTorneo su un categoriaId inesistente
   // restituiscono semplicemente un array vuoto, nessun problema a lanciarle
-  // in parallelo al controllo di esistenza sotto.
-  const [ruoli, categoria, squadre, partite] = await Promise.all([
-    risolviRuoliPerAiutoContestuale(),
-    trovaCategoriaTorneoPerId(categoriaId),
-    elencaSquadreTorneo(categoriaId),
-    elencaPartiteTorneo(categoriaId),
-  ]);
+  // in parallelo al controllo di esistenza sotto. Story 20.9: elencaSlotTorneo
+  // e' scoped per edizioneId (gia' disponibile dai params, nessuna
+  // dipendenza dalla Categoria).
+  const [ruoli, categoria, squadre, partite, slotTorneo, slotOccupatiEdizione] =
+    await Promise.all([
+      risolviRuoliPerAiutoContestuale(),
+      trovaCategoriaTorneoPerId(categoriaId),
+      elencaSquadreTorneo(categoriaId),
+      elencaPartiteTorneo(categoriaId),
+      elencaSlotTorneo(edizioneId),
+      // Review fix (Blind Hunter + Edge Case Hunter): SlotTorneo e' condiviso
+      // tra TUTTE le Categorie dell'Edizione - l'insieme degli "occupati"
+      // deve coprire l'intera Edizione, non solo questa Categoria, altrimenti
+      // due Categorie diverse potrebbero doppio-prenotare lo stesso Slot
+      // senza alcun avviso.
+      elencaSlotOccupatiEdizione(edizioneId),
+    ]);
 
   // Un id inesistente/gia' eliminato, O una Categoria esistente ma sotto
   // un'altra Edizione (edizioneId nell'URL non corrispondente) - 404 in
@@ -60,6 +72,16 @@ export default async function RisultatiTorneoPage({
   // parzialmente) - basta questo per decidere quale delle due viste
   // mostrare.
   const calendarioGenerato = partite.length > 0;
+
+  // Story 20.9: gli incontri di girone hanno sempre fase GIRONE/tabellone
+  // null - un solo insieme di Slot disponibili per tutta la pagina (a
+  // differenza di tabellone/page.tsx, dove fase/tabellone variano per
+  // Partita). slotOccupati raccoglie gli slotTorneoId gia' assegnati a
+  // QUALUNQUE Partita dell'INTERA EDIZIONE (non solo di questa Categoria,
+  // review fix sopra) - serve solo all'avviso client-side "Slot gia'
+  // occupato" (RisultatoPartitaTorneoForm.tsx).
+  const slotGirone = slotTorneo.filter((s) => s.fase === "GIRONE");
+  const slotOccupati = new Set(slotOccupatiEdizione);
 
   return (
     <main>
@@ -126,7 +148,12 @@ export default async function RisultatiTorneoPage({
                 <p className={styles.messaggioVuoto}>Nessun incontro in questo girone.</p>
               ) : (
                 partiteDelGirone.map((partita) => (
-                  <RisultatoPartitaTorneoForm key={partita.id} partita={partita} />
+                  <RisultatoPartitaTorneoForm
+                    key={partita.id}
+                    partita={partita}
+                    slotDisponibili={slotGirone}
+                    slotOccupati={slotOccupati}
+                  />
                 ))
               )}
 

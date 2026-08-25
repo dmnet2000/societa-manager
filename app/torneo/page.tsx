@@ -12,9 +12,57 @@ import { formattaRisultatoPartitaTorneo } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
 import { ETICHETTA_SETTIMANA } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import styles from "./torneo-pubblico.module.css";
+
+// Story 20.9 (Epic 20, Torneo Memorial): dati minimi dello Slot assegnato
+// (con la sua Palestra) per il blocco "dove/quando" mostrato su ogni
+// match-card pubblica - stesso shape restituito da elencaPartiteTorneo
+// (lib/torneo.ts, include: slotTorneo -> palestra).
+type SlotPubblico = {
+  etichetta: string;
+  data: string;
+  ora: string;
+  palestra: {
+    nome: string;
+    indirizzo: string | null;
+    latitudine: number | null;
+    longitudine: number | null;
+  };
+};
+
+// Mostrato dentro ogni match-card (girone/semifinale/finale) SOLO quando la
+// Partita ha uno Slot assegnato - "Naviga" riusa costruisciLinkNaviga TALE E
+// QUALE (lib/link-naviga-palestra.ts, gia' verificata dal vivo altrove nel
+// progetto, es. /calendario), null se la Palestra non ha ne' coordinate ne'
+// indirizzo (nessun link mostrato in quel caso, mai un href vuoto).
+function MetaSlot({ slotTorneo }: { slotTorneo: SlotPubblico | null }) {
+  if (!slotTorneo) {
+    return null;
+  }
+  const { etichetta, data, ora, palestra } = slotTorneo;
+  const linkNaviga = costruisciLinkNaviga(palestra);
+  return (
+    <div className={styles.metaSlot}>
+      <span>
+        {etichetta} · {data} {ora} · {palestra.nome}
+      </span>
+      {linkNaviga && (
+        <a
+          className={styles.linkNaviga}
+          href={linkNaviga}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Naviga verso ${palestra.nome}`}
+        >
+          Naviga
+        </a>
+      )}
+    </div>
+  );
+}
 
 // Story 20.6 (Epic 20, Torneo Memorial): ultima pagina pubblica dell'epica -
 // vetrina in sola lettura di quanto le Story 20.1-20.5 gestiscono
@@ -264,6 +312,7 @@ export default async function TorneoPubblicoPage() {
                                       <em>In programma</em>
                                     )}
                                   </div>
+                                  <MetaSlot slotTorneo={partita.slotTorneo} />
                                 </div>
                               ))}
                             </div>
@@ -320,6 +369,7 @@ export default async function TorneoPubblicoPage() {
                                       <em>In programma</em>
                                     )}
                                   </div>
+                                  <MetaSlot slotTorneo={partita.slotTorneo} />
                                 </div>
                               ))}
                               {finaleVincenti && (
@@ -337,6 +387,7 @@ export default async function TorneoPubblicoPage() {
                                       <em>In programma</em>
                                     )}
                                   </div>
+                                  <MetaSlot slotTorneo={finaleVincenti.slotTorneo} />
                                 </div>
                               )}
                               {finalePerdenti && (
@@ -354,6 +405,7 @@ export default async function TorneoPubblicoPage() {
                                       <em>In programma</em>
                                     )}
                                   </div>
+                                  <MetaSlot slotTorneo={finalePerdenti.slotTorneo} />
                                 </div>
                               )}
                             </div>

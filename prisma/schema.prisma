@@ -413,6 +413,11 @@ model Palestra {
   longitudine Float?
   createdAt   DateTime @default(now())
   campi       Campo[]
+  // Story 20.9 (Epic 20, Torneo Memorial): relazione inversa richiesta da
+  // Prisma per SlotTorneo.palestraId sotto - stesso trattamento di "campi"
+  // sopra, nessun impatto sul dominio Orari-Palestre (AD-2, quel modulo
+  // resta l'unico proprietario della mutazione di Palestra).
+  slotTorneo  SlotTorneo[]
 
   @@map("palestre")
 }
@@ -831,6 +836,10 @@ model EdizioneTorneo {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   categorie CategoriaTorneo[]
+  // Story 20.9: relazione inversa richiesta da Prisma per
+  // SlotTorneo.edizioneTorneoId sotto - stesso trattamento di "categorie"
+  // sopra.
+  slot      SlotTorneo[]
 
   @@map("edizioni_torneo")
 }
@@ -964,6 +973,16 @@ model PartitaTorneo {
   // gia' applicata a numeroMassimoSquadre).
   fase              FaseTorneo      @default(GIRONE)
   tabellone         TabelloneTorneo?
+  // Story 20.9: assegnazione opzionale di uno SlotTorneo (dove/quando si
+  // gioca) - null finche' nessuno Slot e' stato assegnato (a mano per il
+  // girone, in automatico per semifinali/finali al momento della
+  // generazione, spec-20-9 Intent). FK senza onDelete esplicito (default
+  // Prisma Restrict), stesso identico trattamento di ogni altra FK
+  // strutturale Torneo - nessun vincolo di unicita' (spec-20-9 Boundaries
+  // "Never": due Partite possono puntare allo stesso Slot, la protezione e'
+  // solo un avviso applicativo prima di sovrascrivere).
+  slotTorneoId      String?
+  slotTorneo        SlotTorneo?     @relation(fields: [slotTorneoId], references: [id])
   set1Casa          Int?
   set1Ospite        Int?
   set2Casa          Int?
@@ -981,4 +1000,46 @@ model PartitaTorneo {
   // silenziosamente i punti di una Squadra in classifica.
   @@unique([categoriaTorneoId, squadraCasaId, squadraOspiteId])
   @@map("partite_torneo")
+}
+
+// Story 20.9 (Epic 20, Torneo Memorial): "prenotazione per fase" - permette
+// di pianificare dove/quando si gioca un incontro PRIMA che esista (per
+// semifinali/finali, generate solo al completamento del girone/delle
+// semifinali sorelle) - decisione di party mode 2026-08-25 (spec-20-9
+// Intent), scartata l'alternativa "partite-placeholder" (avrebbe richiesto
+// squadraCasaId/squadraOspiteId nullable su PartitaTorneo sopra). fase/
+// tabellone riusano ESATTAMENTE gli enum di Story 20.4 (stessa unione
+// discriminata "fase = GIRONE <=> tabellone IS NULL", stesso vincolo CHECK a
+// livello DB - vedi la migrazione). palestraId e' una FK diretta verso il
+// modello Palestra esistente (Epic 2) - mai una nuova anagrafica. Non
+// protetta da RLS (AD-9), stesso trattamento delle altre entita' Torneo: RLS
+// abilitata senza alcuna policy (deny-all di default) + REVOKE esplicito da
+// "anon"/"authenticated" - accesso solo via Prisma diretto. Nessun vincolo
+// di unicita' DB che impedisca a due PartitaTorneo di puntare allo stesso
+// Slot (spec-20-9 Boundaries "Never", deciso in party mode) - la protezione
+// e' solo un avviso applicativo (window.confirm) prima di sovrascrivere, mai
+// un blocco server-side. "etichetta" e' testo libero (es. "Campo 1 - Sabato
+// mattina") - nessuna struttura imposta. data/ora String ("YYYY-MM-DD"/
+// "HH:MM"), non DateTime/@db.Time - stesso principio di Partita.data/
+// Slot.oraInizio, nessuna aritmetica di date/orari richiesta da questa
+// storia.
+model SlotTorneo {
+  id               String           @id @default(uuid())
+  edizioneTorneoId String
+  edizioneTorneo   EdizioneTorneo   @relation(fields: [edizioneTorneoId], references: [id])
+  etichetta        String
+  data             String
+  ora              String
+  palestraId       String
+  palestra         Palestra         @relation(fields: [palestraId], references: [id])
+  fase             FaseTorneo
+  tabellone        TabelloneTorneo?
+  createdAt        DateTime         @default(now())
+  // Relazione inversa verso PartitaTorneo.slotTorneoId sopra - usata dalla
+  // guardia di cancellazione (cancellaSlotTorneo, lib/torneo.ts: "partite:
+  // { none: {} } }", mirror cancellaSquadraTorneo) e dall'helper che trova
+  // gli Slot liberi per l'auto-assegnazione (elencaSlotTorneoLiberi).
+  partite          PartitaTorneo[]
+
+  @@map("slot_torneo")
 }

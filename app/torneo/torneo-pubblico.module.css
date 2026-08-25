@@ -245,3 +245,30 @@
 .blocoTabellone {
   margin-bottom: var(--space-4);
 }
+
+/* Story 20.9 (Epic 20, Torneo Memorial): riga Slot/Palestra + "Naviga"
+   dentro una .matchCard - composes .meta (stesso colore/dimensione della
+   riga risultato sopra) ma in riga flessibile con il link "Naviga", mirror
+   di .meta in calendario.module.css (che e' gia' flex li' perche' ospita
+   piu' span + link nella stessa card). */
+.metaSlot {
+  composes: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* Link "Naviga" dentro una .matchCard - mirror LETTERALE di .linkNaviga in
+   calendario.module.css (stesso sfondo scuro, stesso colore/focus-ring
+   contestuale). */
+.linkNaviga {
+  color: #eaf4fb;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}

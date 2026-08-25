@@ -33,6 +33,10 @@ function partita(
     // (calcolaClassificaGirone continua a non guardare questi due campi).
     fase: "GIRONE",
     tabellone: null,
+    // Story 20.9: slotTorneoId aggiunto al tipo PartitaTorneo - null qui,
+    // invariato per questi test scritti prima della Story 20.9
+    // (calcolaClassificaGirone continua a non guardare questo campo).
+    slotTorneoId: null,
     set1Casa: set1 ? set1[0] : null,
     set1Ospite: set1 ? set1[1] : null,
     set2Casa: set2 ? set2[0] : null,

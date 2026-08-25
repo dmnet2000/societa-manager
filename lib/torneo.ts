@@ -50,9 +50,17 @@ export async function creaEdizioneTorneo(anno: number, nome: string) {
 // cancellaSlot (app/(orari-palestre)/slot/actions.ts). Il chiamante
 // distingue "bloccata da Categorie collegate" da "non esiste più" con una
 // findUnique separata solo quando count === 0.
+// Review fix (Edge Case Hunter, Story 20.9): where esteso con
+// "slot: { none: {} } }" - la relazione slot (FK slot_torneo_edizioneTorneoId_fkey,
+// ON DELETE RESTRICT) non era coperta da questa guardia: un'Edizione senza
+// Categorie ma con Slot ancora presenti (es. mai assegnati a nessuna
+// Partita, o rimasti orfani dopo "Cancella tutte le partite", Story 20.8,
+// che svuota solo le Partite non gli Slot) falliva a livello DB, intercettata
+// solo dal catch generico "Impossibile cancellare l'Edizione. Riprova." -
+// nessun indizio che servisse prima cancellare gli Slot da /app/torneo/[id]/slot.
 export async function cancellaEdizioneTorneo(id: string) {
   return prisma.edizioneTorneo.deleteMany({
-    where: { id, categorie: { none: {} } },
+    where: { id, categorie: { none: {} }, slot: { none: {} } },
   });
 }
 
@@ -190,10 +198,21 @@ export async function cancellaSquadraTorneo(id: string, categoriaTorneoId: strin
 // due Squadre dello stesso girone, l'ordinamento su una sola delle due
 // basta) e poi per nome delle due Squadre, cosi' la pagina puo' raggruppare
 // "Girone A poi Girone B" senza un raggruppamento applicativo separato.
+// Story 20.9: include ora anche lo SlotTorneo eventualmente assegnato (con
+// la sua Palestra) - serve sia a RisultatoPartitaTorneoForm.tsx (mostrare
+// etichetta/data/ora/Palestra dello Slot corrente) sia alla pagina pubblica
+// (app/torneo/page.tsx, link "Naviga"). Un solo punto di lettura per tutti i
+// chiamanti (risultati/page.tsx, tabellone/page.tsx, torneo/page.tsx,
+// generaTabelloneAction/generaFinaliSeCompletate) - mai una seconda query
+// separata da tenere allineata.
 export async function elencaPartiteTorneo(categoriaTorneoId: string) {
   return prisma.partitaTorneo.findMany({
     where: { categoriaTorneoId },
-    include: { squadraCasa: true, squadraOspite: true },
+    include: {
+      squadraCasa: true,
+      squadraOspite: true,
+      slotTorneo: { include: { palestra: true } },
+    },
     orderBy: [
       { squadraCasa: { girone: "asc" } },
       { squadraCasa: { nome: "asc" } },
@@ -283,4 +302,120 @@ export async function aggiornaRisultatoPartitaTorneo(
     where: { id, categoriaTorneoId },
     data: dati,
   });
+}
+
+// Story 20.9 (Epic 20, Torneo Memorial): funzioni di lettura/scrittura per
+// SlotTorneo (prisma/schema.prisma) - stesso trattamento strutturale (AD-9)
+// di EdizioneTorneo/CategoriaTorneo/SquadraTorneo/PartitaTorneo sopra,
+// nessuna validazione qui (etichetta/data/ora obbligatorie, coerenza
+// fase/tabellone): vive nella Server Action (app/app/(torneo)/torneo/actions.ts),
+// stessa separazione dei livelli.
+// Review fix (Blind Hunter + Edge Case Hunter, convergenti): creaSlotTorneoAction
+// verificava esplicitamente l'esistenza dell'Edizione ma non della Palestra
+// (Epic 2, dominio diverso ma FK diretta qui) - un palestraId non piu'
+// esistente arrivava fino al vincolo FK del database, intercettato solo dal
+// catch generico "Impossibile creare lo Slot. Riprova." Mirror dello stesso
+// controllo gia' fatto per edizioneTorneoId.
+export async function trovaPalestraPerId(id: string) {
+  return prisma.palestra.findUnique({ where: { id } });
+}
+
+export async function creaSlotTorneo(dati: {
+  edizioneTorneoId: string;
+  etichetta: string;
+  data: string;
+  ora: string;
+  palestraId: string;
+  fase: FaseTorneo;
+  tabellone: TabelloneTorneo | null;
+}) {
+  return prisma.slotTorneo.create({ data: dati });
+}
+
+// Include la Palestra (nome/indirizzo/lat/lng) - servono al chiamante sia
+// per il <select> del form di assegnazione sia per il link "Naviga" della
+// pagina pubblica (costruisciLinkNaviga, lib/link-naviga-palestra.ts).
+// Ordinata per data/ora crescenti - stesso criterio deterministico usato
+// dall'auto-assegnazione (elencaSlotTorneoLiberi sotto).
+export async function elencaSlotTorneo(edizioneTorneoId: string) {
+  return prisma.slotTorneo.findMany({
+    where: { edizioneTorneoId },
+    include: { palestra: true },
+    orderBy: [{ data: "asc" }, { ora: "asc" }],
+  });
+}
+
+// Serve alla Server Action per disambiguare, su un cancellaSlotTorneo con
+// count 0, "Slot non trovato" da "bloccato da una Partita collegata" -
+// stesso identico ruolo di trovaSquadraTorneoPerId per
+// cancellaSquadraTorneoAction, e per verificare server-side (mai fidandosi
+// del client) che lo Slot scelto in assegnaSlotPartitaTorneoAction abbia
+// davvero fase/tabellone coerenti con la Partita.
+export async function trovaSlotTorneoPerId(id: string) {
+  return prisma.slotTorneo.findUnique({ where: { id } });
+}
+
+// Delete scoped su id + edizioneTorneoId insieme (stesso pattern
+// anti-mismatch di cancellaCategoriaTorneo/cancellaSquadraTorneo sopra),
+// guardia "partite: { none: {} } }" - uno Slot gia' assegnato a una Partita
+// non e' eliminabile (mirror cancellaSquadraTorneo, che rifiuta una Squadra
+// con partiteCasa/partiteOspite collegate).
+export async function cancellaSlotTorneo(id: string, edizioneTorneoId: string) {
+  return prisma.slotTorneo.deleteMany({
+    where: { id, edizioneTorneoId, partite: { none: {} } },
+  });
+}
+
+// Update scoped su id + categoriaTorneoId insieme (stesso pattern
+// anti-mismatch di aggiornaRisultatoPartitaTorneo sopra) - slotTorneoId puo'
+// essere null per RIMUOVERE un'assegnazione esistente (spec-20-9 Code Map),
+// non solo per assegnarne una nuova.
+export async function assegnaSlotPartitaTorneo(
+  id: string,
+  categoriaTorneoId: string,
+  slotTorneoId: string | null
+) {
+  return prisma.partitaTorneo.updateMany({
+    where: { id, categoriaTorneoId },
+    data: { slotTorneoId },
+  });
+}
+
+// Helper per trovare gli Slot liberi (nessuna Partita collegata) di una data
+// fase/tabellone, ordinati per data/ora crescenti (spec-20-9 Design Notes:
+// "nessuna logica di abbinamento intelligente", solo ordine deterministico
+// semplice) - usata sia dall'auto-assegnazione best-effort di
+// generaTabelloneAction/generaFinaliSeCompletate (app/app/(torneo)/torneo/actions.ts)
+// sia, potenzialmente, per segnalare la disponibilita' nel form manuale.
+export async function elencaSlotTorneoLiberi(
+  edizioneTorneoId: string,
+  fase: FaseTorneo,
+  tabellone: TabelloneTorneo | null
+) {
+  return prisma.slotTorneo.findMany({
+    where: { edizioneTorneoId, fase, tabellone, partite: { none: {} } },
+    orderBy: [{ data: "asc" }, { ora: "asc" }],
+  });
+}
+
+// Review fix (Blind Hunter + Edge Case Hunter, convergenti): SlotTorneo e'
+// scoped per Edizione, condiviso tra TUTTE le Categorie di quel weekend -
+// l'avviso "Slot gia' occupato" nelle pagine di gestione (risultati/tabellone)
+// costruiva l'insieme degli occupati solo dalle Partite della Categoria
+// APERTA in quel momento, quindi non vedeva mai un'occupazione da parte di
+// un'altra Categoria della stessa Edizione. Query cross-Categoria dedicata
+// (relazione categoriaTorneo->edizioneTorneoId, non un secondo giro su
+// elencaPartiteTorneo per-Categoria) - usata da entrambe le pagine invece
+// di derivare l'insieme dalle sole Partite gia' lette per la propria
+// Categoria.
+export async function elencaSlotOccupatiEdizione(
+  edizioneTorneoId: string
+): Promise<string[]> {
+  const righe = await prisma.partitaTorneo.findMany({
+    where: { categoriaTorneo: { edizioneTorneoId }, slotTorneoId: { not: null } },
+    select: { slotTorneoId: true },
+  });
+  return righe
+    .map((r) => r.slotTorneoId)
+    .filter((id): id is string => id !== null);
 }

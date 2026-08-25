@@ -1268,3 +1268,40 @@ development_status:
   # Riverificato: 118 file/1731 test verdi, tsc pulito, lint 0 errori,
   # build riuscita.
   20-8-cancellazione-partite-categoria: review
+
+  # Story 20.9 aggiunta 2026-08-25 su richiesta esplicita dell'utente,
+  # risolta in sessione di party mode (Mary/John/Sally/Winston/Amelia)
+  # prima di create-story. Nuova SlotTorneo (Edizione-scoped, riusa
+  # FaseTorneo/TabelloneTorneo, FK verso Palestra esistente Epic 2) +
+  # PartitaTorneo.slotTorneoId. Assegnazione manuale per il girone,
+  # automatica best-effort per semifinali/finali generate. Decisione presa
+  # in party mode: NO placeholder/squadre fantasma (opzione scartata,
+  # avrebbe richiesto squadraCasaId nullable). Nessuna implementazione
+  # ancora.
+  # Story 20.9 avviata 2026-08-25. Spec scritta: SlotTorneo (Edizione-scoped,
+  # riusa FaseTorneo/TabelloneTorneo + stesso CHECK discriminato di Story
+  # 20.4, FK verso Palestra esistente), PartitaTorneo.slotTorneoId.
+  # Assegnazione manuale (girone) + automatica best-effort (semifinali/
+  # finali generate). baseline_commit
+  # 95a260c38ff6ee04f246c12e22e3baac43a42722. Vedi
+  # spec-20-9-slot-orari-palestre-torneo.md.
+  # Story 20.9 chiusa 2026-08-25: implementata, review a 3 agenti
+  # (Blind Hunter/Edge Case Hunter/Verification Gap Reviewer) su diff
+  # isolato dal baseline, 9 finding patchati (fix piu' rilevante:
+  # slotOccupati calcolato per-Categoria mentre SlotTorneo e' condiviso
+  # per l'intera Edizione - due Categorie potevano sovrascriversi a
+  # vicenda uno Slot senza avviso; nuova elencaSlotOccupatiEdizione).
+  # Altri fix: scoping edizioneTorneoId mancante in
+  # assegnaSlotPartitaTorneoAction, Palestra inesistente non validata in
+  # creaSlotTorneoAction, nessuna validazione di formato data/ora,
+  # cancellaEdizioneTorneo non considerava la relazione slot (FK
+  # Restrict), select Slot con defaultValue stantio, indirizzo Palestra
+  # mai mostrato, try/catch per-batch invece che per-iterazione
+  # nell'auto-assegnazione. 7 item deferred (race TOCTOU su
+  # assegnazione concorrente, nessun lock; niente formattazione
+  # localizzata data/ora; altri minori) in deferred-work.md. Verifica:
+  # 1781 test verdi, tsc/lint/build/prisma validate puliti. Nessuna
+  # verifica manuale in ambiente locale (dev locale rotto, Prisma
+  # WASM + Windows). Vedi Spec Change Log in
+  # spec-20-9-slot-orari-palestre-torneo.md.
+  20-9-slot-orari-palestre-torneo: review

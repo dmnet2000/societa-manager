@@ -81,6 +81,15 @@ export default async function EdizioneTorneoPage({
         />
       </section>
 
+      {/* Story 20.9 (Epic 20, Torneo Memorial): link verso la gestione
+          Slot orari/Palestre dell'Edizione - mirror del link "Categorie"
+          nella riga Edizione di ../page.tsx. */}
+      <p className={styles.riepilogo}>
+        <Link className={styles.link} href={`/app/torneo/${edizione.id}/slot`}>
+          Slot orari/Palestre →
+        </Link>
+      </p>
+
       <section className={styles.sezione}>
         <h2>Nuova Categoria</h2>
         <NuovaCategoriaTorneoForm edizioneTorneoId={edizione.id} />
