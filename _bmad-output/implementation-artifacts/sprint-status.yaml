@@ -1305,3 +1305,39 @@ development_status:
   # WASM + Windows). Vedi Spec Change Log in
   # spec-20-9-slot-orari-palestre-torneo.md.
   20-9-slot-orari-palestre-torneo: review
+
+  # Story 20.10 aggiunta 2026-08-25 su richiesta esplicita dell'utente
+  # ("allinea il layout del sito esterno Torneo al resto delle pagine,
+  # magari piu' centrato e con lo stesso stile"). Pagina mai deployata
+  # in produzione, nessuna verifica visiva possibile - ambito chiarito
+  # con l'utente tramite domanda diretta (AskUserQuestion): confermato
+  # solo "rimuovere il riquadro bianco con ombra per Categoria"
+  # (.sezioneCategoria in torneo-pubblico.module.css, mirror del
+  # team-card di /squadre) per allinearsi allo stile "sezioni dirette
+  # sullo sfondo" gia' in uso in /calendario (.sezioneSettimana, nessun
+  # box). Esplicitamente FUORI scope: max-width centrato (nessuna
+  # pagina pubblica del sito lo ha oggi, non e' una divergenza) e ogni
+  # altro aspetto visivo. Nessuna implementazione ancora.
+  # Story 20.10 chiusa 2026-08-25: rimosso il riquadro bianco/ombra da
+  # .sezioneCategoria in torneo-pubblico.module.css, mantenuto solo
+  # margin-top (mirror esatto di .sezioneSettimana in
+  # calendario.module.css) - nessun altro file toccato. Review a 1
+  # agente (Blind Hunter/Edge Case Hunter/Verification Gap in
+  # sequenza, proporzionato alla dimensione) su diff isolato: nessun
+  # problema funzionale, solo 2 piccole imprecisioni testuali nello
+  # spec/commento patchate. Verifica: 1781 test verdi, tsc/lint/build
+  # puliti. Nessuna verifica visiva possibile (pagina mai deployata,
+  # dev locale rotto). Vedi Spec Change Log in
+  # spec-20-10-layout-pubblico-torneo-allineamento.md.
+  20-10-layout-pubblico-torneo-allineamento: review
+
+  # Story 20.11 aggiunta 2026-08-25 su richiesta esplicita dell'utente,
+  # arrivata mentre la 20.10 era in corso ("aggiungere nella
+  # generazione gare anche il numero della gara, basta un
+  # progressivo... segna come prossima storia da sistemare") - solo
+  # registrata come richiesto, nessuna spec/decisione ancora presa.
+  # Punti aperti da chiarire con l'utente prima di create-story: ambito
+  # della numerazione (per Categoria/Edizione/girone), se
+  # semifinali/finali proseguono la stessa sequenza, se e' editabile a
+  # mano. Prossima story da affrontare dopo la 20.10.
+  20-11-numero-progressivo-gare-torneo: backlog

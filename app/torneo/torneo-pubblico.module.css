@@ -49,15 +49,15 @@
   border-radius: 0;
 }
 
-/* components.team-card (mirror .schedaGruppo di squadre.module.css): sfondo
-   {colors.bianco}, nessun angolo arrotondato, ombra leggera - qui contenitore
-   di UNA Categoria (nome, gironi, incontri, tabellone), non di UNA Squadra. */
+/* Story 20.10: non più un "team-card" (sfondo bianco/ombra/padding proprio)
+   - mirror esatto di .sezioneSettimana in
+   calendario.module.css, la pagina pubblica di riferimento sullo stesso
+   registro "Poster Sportivo". Ogni Categoria (nome, gironi, incontri,
+   tabellone) siede ora direttamente sullo sfondo della pagina, separata
+   dalla successiva solo da questa spaziatura verticale - non da un
+   riquadro proprio. */
 .sezioneCategoria {
   margin-top: var(--space-8);
-  background: var(--color-surface);
-  border-radius: 0;
-  padding: var(--space-6);
-  box-shadow: 0 8px 24px rgba(15, 36, 56, 0.08);
 }
 
 .sezioneCategoria:first-of-type {

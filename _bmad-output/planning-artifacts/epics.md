@@ -3195,3 +3195,33 @@ so that possa organizzare in anticipo dove/quando si gioca ogni incontro, compre
 6. **And** ogni assegnazione di Slot (manuale o automatica) resta modificabile a mano in un secondo momento - se lo Slot scelto è già occupato da un'altra partita, l'Admin vede un avviso esplicito prima di confermare la sovrascrittura
 7. **Given** un Visitatore sulla pagina pubblica `/torneo` **When** un incontro ha uno Slot assegnato **Then** vede data, ora, nome della palestra e un link "Naviga" verso di essa (riuso di `costruisciLinkNaviga`)
 8. **And** nessuna regressione sulla generazione di calendario/tabellone/finali esistente (Story 20.3/20.4) se nessuno Slot è mai stato creato per l'Edizione - il torneo continua a funzionare esattamente come oggi
+
+### Story 20.10: Allineamento layout pubblico Torneo alle altre pagine pubbliche
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: "per il torneo ho il layout dell sito esterno vorrei allineare per favore il layout al resto delle pagine, magari più centrato e anche lo stile delle altre pagine". Non essendo la pagina ancora deployata in produzione (nessuna verifica visiva possibile - dev locale rotto), l'ambito esatto è stato chiarito con l'utente tramite domanda diretta: confrontando `app/torneo/torneo-pubblico.module.css` con `app/calendario/calendario.module.css` (pagina pubblica di riferimento, stesso registro "Poster Sportivo") è emersa una divergenza strutturale concreta - ogni Categoria del Torneo è avvolta in una "card" bianca con `box-shadow`/`padding`/`border-radius` (`.sezioneCategoria`, mirror del componente team-card di `/squadre`, Story 20.6), mentre `/calendario` mostra ogni sezione (Settimana) direttamente sullo sfondo della pagina, senza alcun riquadro - solo un'intestazione (`.titoloSettimana`) e spaziatura verticale. L'utente ha confermato che il problema è esattamente questo: rimuovere il riquadro bianco per Categoria.*
+
+As a Visitatore del sito pubblico,
+I want che la pagina `/torneo` abbia lo stesso stile "a sezioni sullo sfondo" delle altre pagine pubbliche (es. `/calendario`), invece di un riquadro bianco con ombra per ogni Categoria,
+so that il sito appaia visivamente coerente quando passo da una pagina pubblica all'altra.
+
+**Decisione (chiarita con l'utente, 2026-08-25):** solo la rimozione del riquadro bianco (`background`/`padding`/`border-radius`/`box-shadow` di `.sezioneCategoria`) è nello scope di questa storia - non un `max-width` centrato sul contenuto (nessuna pagina pubblica del sito lo ha oggi, `/torneo` compreso, quindi non è una divergenza da correggere) né altri aspetti visivi (font/colori/card-partita), esplicitamente esclusi dall'utente nella scelta tra le opzioni proposte.
+
+**Acceptance Criteria:**
+
+1. **Given** la pagina pubblica `/torneo` con una o più Categorie **When** viene renderizzata **Then** ogni sezione Categoria non ha più sfondo bianco/ombra/angoli arrotondati propri - il contenuto (titolo Categoria, gironi, tabellone) appare direttamente sullo sfondo della pagina, mirror strutturale di `.sezioneSettimana` in `/calendario`
+2. **And** la spaziatura verticale tra una Categoria e la successiva resta equivalente a quella già in uso tra le Settimane di `/calendario` (`margin-top`, nessun padding/riquadro a sostituirla)
+3. **And** nessuna altra classe CSS della pagina (`.matchCard`, `.tabellaClassifica`, `.titoloCategoria`, `.sezioneVolantino`, ecc.) viene alterata nell'aspetto - solo il contenitore `.sezioneCategoria` cambia
+4. **And** nessuna regressione sulla pagina interna amministrativa (`app/app/(torneo)/torneo/...`) - questa storia tocca solo `app/torneo/torneo-pubblico.module.css` (pagina pubblica), mai `app/app/(torneo)/torneo/torneo.module.css` (già un modulo separato, Story 20.6 Boundaries)
+
+### Story 20.11: Numero progressivo delle gare del Torneo
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente mentre la 20.10 era in corso: "serve aggiungere nella generazione gare anche il numero della gara (basta un progressivo) segna come prossima storia da sistemare" - solo registrata, non ancora specificata/implementata, come richiesto esplicitamente ("segna come prossima storia").)*
+
+As a Admin (o Dirigente),
+I want che ogni `PartitaTorneo` generata (girone, semifinale, finale) abbia un numero di gara progressivo,
+so that io e i Visitatori possiamo riferirci a un incontro specifico per numero (es. "Gara 3"), come già avviene per le gare importate da un Campionato federale (`Partita.garaNumero`, Story 10.2 - riferimento terminologico, non necessariamente lo stesso meccanismo: lì è una stringa esterna importata dal file federale, qui va generato internamente come un semplice intero progressivo).
+
+**Punti aperti da risolvere in fase di spec (non ancora decisi):**
+- Ambito della numerazione progressiva: per Categoria, per Edizione (cross-categoria), o per girone/fase? Il weekend ospita più Categorie in parallelo (stesso principio già emerso per `SlotTorneo`, Story 20.9) - va chiarito con l'utente prima di implementare.
+- Le semifinali/finali (generate in un secondo momento, non tutte insieme al girone) proseguono la stessa sequenza del girone o hanno una numerazione propria?
+- Il numero è editabile a mano dall'Admin o è sempre calcolato automaticamente alla generazione?
