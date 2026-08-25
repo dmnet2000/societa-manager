@@ -1226,3 +1226,21 @@ development_status:
   # un Admin/Site Manager). Riverificato: 116 file/1677 test verdi, tsc
   # pulito, lint 0 errori, build riuscita (/torneo registrata).
   20-6-sezione-pubblica-torneo: review
+
+  # Story 20.7 aggiunta 2026-08-25 su richiesta esplicita dell'utente:
+  # campo Nome per EdizioneTorneo, oltre all'Anno. Obbligatorio (chiarito
+  # via AskUserQuestion), backfill "Torneo Memorial" per le Edizioni
+  # esistenti, mostrato insieme all'Anno ovunque compare "Edizione {anno}".
+  # Nessuna implementazione ancora.
+  # Story 20.7 chiusa 2026-08-25. Campo EdizioneTorneo.nome (obbligatorio,
+  # backfill "Torneo Memorial"), propagato in form di creazione, elenco,
+  # titoli interno/pubblico, dialog di cancellazione, alt volantino, guida
+  # in-app. Review a 3 livelli: 6 patch (nome propagato a
+  # EliminaEdizioneTorneoForm/VolantinoTorneoForm/torneo pubblico, guida
+  # in-app aggiornata, limite 100 caratteri server-side aggiunto, test
+  # mancanti su trim/whitespace/limite/ordine di validazione), 2 item
+  # deferiti (deferred-work.md: rischio sequenza migrazione/deploy - stessa
+  # classe gia' accettata nell'epica, trim non copre whitespace Unicode -
+  # limite preesistente). Riverificato: 118 file/1722 test verdi, tsc
+  # pulito, lint 0 errori, build riuscita, prisma validate ok.
+  20-7-nome-edizione-torneo: review

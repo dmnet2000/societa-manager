@@ -21,6 +21,16 @@ export function NuovaEdizioneTorneoForm() {
     <form ref={formRef} action={formAction}>
       <div className={styles.campiRiga}>
         <div className={styles.campo}>
+          <label htmlFor="nuova-edizione-nome">Nome</label>
+          <input
+            id="nuova-edizione-nome"
+            name="nome"
+            type="text"
+            maxLength={100}
+            required
+          />
+        </div>
+        <div className={styles.campo}>
           <label htmlFor="nuova-edizione-anno">Anno</label>
           <input
             id="nuova-edizione-anno"

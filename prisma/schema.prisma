@@ -822,6 +822,12 @@ enum SettimanaTorneo {
 model EdizioneTorneo {
   id        String            @id @default(uuid())
   anno      Int               @unique
+  // Story 20.7: nome proprio dell'Edizione (obbligatorio, deciso con
+  // l'utente) - distinto dall'Anno, nessun vincolo di unicita' (due
+  // Edizioni possono condividere lo stesso Nome). Immutabile dopo la
+  // creazione, stesso trattamento di "anno" (nessuna azione di modifica
+  // per EdizioneTorneo, solo creazione/cancellazione).
+  nome      String
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   categorie CategoriaTorneo[]

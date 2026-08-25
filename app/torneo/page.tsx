@@ -118,7 +118,9 @@ export default async function TorneoPubblicoPage() {
     <>
       <HeaderPubblico />
       <main className={styles.main}>
-        <h1 className={styles.titolo}>Torneo Memorial {edizione.anno}</h1>
+        <h1 className={styles.titolo}>
+          {edizione.nome} {edizione.anno}
+        </h1>
 
         {/* Nessun placeholder se il volantino non e' presente (mirror
             /squadre "messaggio esplicito invece di area vuota", qui pero'
@@ -137,7 +139,7 @@ export default async function TorneoPubblicoPage() {
               src={`${urlPubblicoVolantinoTorneo(supabase, edizione.id)}?v=${encodeURIComponent(
                 volantino.aggiornatoIl ?? ""
               )}`}
-              alt={`Volantino del Torneo Memorial, edizione ${edizione.anno}`}
+              alt={`Volantino del Torneo, edizione "${edizione.nome}" ${edizione.anno}`}
             />
           </section>
         )}

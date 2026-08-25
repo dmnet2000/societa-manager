@@ -426,7 +426,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     titolo: "Torneo",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
-      "Qui gestisci le Edizioni del Torneo Memorial (una per anno) e, dentro ciascuna, le sue Categorie (nome, settimana 1 o 2, numero massimo di squadre da 2 a 8).",
+      "Qui gestisci le Edizioni del Torneo (nome e anno, entrambi obbligatori - due Edizioni possono condividere lo stesso nome, l'anno resta l'unico identificativo univoco) e, dentro ciascuna, le sue Categorie (nome, settimana 1 o 2, numero massimo di squadre da 2 a 8).",
       "Apri un'Edizione dall'elenco per vedere/gestire le sue Categorie. Un'Edizione non è eliminabile finché ha Categorie collegate: elimina prima quelle.",
       "Dentro un'Edizione, in \"Volantino\" carichi l'immagine di sfondo/manifesto del Torneo (PNG o JPEG, fino a 2MB): caricarne una nuova sostituisce sempre quella precedente. Il volantino, le squadre iscritte, la classifica di girone, gli incontri e il tabellone dell'edizione più recente sono visibili a tutti sulla pagina pubblica /torneo, senza bisogno di accedere.",
       "Apri una Categoria dall'elenco per iscrivere le squadre partecipanti (nome, referente e contatto opzionali) e ripartirle sui due gironi A e B, fino al numero massimo impostato per quella Categoria. Anche una Categoria con squadre iscritte non è eliminabile: elimina prima quelle.",

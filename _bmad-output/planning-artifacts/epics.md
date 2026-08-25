@@ -3135,3 +3135,18 @@ So that possa seguire il torneo organizzato dalla società senza dover chiedere 
 **And** finché una Categoria non ha ancora risultati registrati, la sezione mostra le squadre iscritte senza classifica (nessun errore, nessuna tabella vuota fuorviante)
 
 **And** la sezione segue lo stesso sistema di design "Poster Sportivo" già in uso nel resto del sito pubblico (DESIGN.md/EXPERIENCE.md, 2026-08-13) - nessuno stile ad hoc
+
+### Story 20.7: Nome dell'Edizione del Torneo
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: "per il torneo ho anno come edizione, servirebbe aggiungere il nome del torneo". Chiarito con l'utente via AskUserQuestion lo stesso giorno: campo obbligatorio fin da subito - anche per le Edizioni già esistenti (backfill "Torneo Memorial", il nome dell'epica stessa) - mostrato insieme all'anno ovunque oggi compare solo "Edizione {anno}".)*
+
+As a Admin (o Dirigente),
+I want assegnare un Nome a ciascuna Edizione del Torneo, non solo l'anno,
+so that edizioni diverse possano distinguersi anche per nome (es. dedicate a una persona o a uno sponsor), non solo per l'anno in cui si svolgono.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Dirigente su `/app/torneo` **When** crea una nuova Edizione **Then** deve specificare sia l'Anno sia il Nome (entrambi obbligatori) - il salvataggio è rifiutato se il Nome è vuoto
+2. **And** l'elenco Edizioni su `/app/torneo`, il titolo della pagina di dettaglio `/app/torneo/[edizioneId]`, e il titolo della sezione pubblica `/torneo` mostrano tutti Nome e Anno insieme (es. "Memorial Mario Rossi 2027")
+3. **And** le Edizioni già esistenti al momento del deploy di questa storia ricevono un Nome di backfill ("Torneo Memorial") - nessuna resta senza nome
+4. **And** nessuna regressione sul vincolo di unicità esistente sull'Anno (Story 20.1) - il Nome non introduce un vincolo di unicità proprio, due Edizioni possono avere lo stesso Nome

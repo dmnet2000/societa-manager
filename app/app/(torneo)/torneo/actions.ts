@@ -89,9 +89,27 @@ export async function creaEdizioneTorneoAction(
       },
     };
   }
+  // Story 20.7: Nome obbligatorio (deciso con l'utente). Validato dopo
+  // l'anno: stesso ordine "prima il campo che c'era gia', poi il nuovo" gia'
+  // seguito quando Volantino/altri campi sono stati aggiunti in questa
+  // stessa epica. Review fix (Edge Case Hunter + Blind Hunter): un limite
+  // massimo (100, stesso valore del maxLength lato client sul form) e' ora
+  // imposto anche qui - senza, un FormData manomesso poteva bypassare il
+  // maxLength del widget e salvare un nome arbitrariamente lungo, poi
+  // renderizzato senza troncamento in un <h1> (titolo pagina interna e
+  // pubblica).
+  const nome = String(formData.get("nome") ?? "").trim();
+  if (!nome) {
+    return { error: { code: "VALIDATION", message: "Il nome è obbligatorio." } };
+  }
+  if (nome.length > 100) {
+    return {
+      error: { code: "VALIDATION", message: "Il nome non può superare i 100 caratteri." },
+    };
+  }
 
   try {
-    await creaEdizioneTorneo(anno);
+    await creaEdizioneTorneo(anno, nome);
   } catch (err) {
     // Vincolo @unique su "anno" (prisma/schema.prisma) - un'Edizione gia'
     // esistente per lo stesso anno viene rifiutata come errore utente

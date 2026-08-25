@@ -11,9 +11,11 @@ import styles from "./torneo.module.css";
 // resta nella Server Action, questo e' solo un secondo avviso lato client).
 export function EliminaEdizioneTorneoForm({
   edizioneId,
+  nome,
   anno,
 }: {
   edizioneId: string;
+  nome: string;
   anno: number;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -26,8 +28,13 @@ export function EliminaEdizioneTorneoForm({
       action={formAction}
       onSubmit={(e) => {
         if (
+          // Review fix (Edge Case Hunter + Blind Hunter, Story 20.7): il
+          // dialog mostrava solo l'anno, non il nome - con piu' Edizioni
+          // che condividono lo stesso nome ma anni diversi (ammesso
+          // esplicitamente, nessun vincolo di unicita' su nome), l'Admin
+          // non aveva conferma di QUALE Edizione stesse per cancellare.
           !window.confirm(
-            `Cancellare l'Edizione ${anno}? L'operazione non è reversibile.`
+            `Cancellare l'Edizione "${nome}" ${anno}? L'operazione non è reversibile.`
           )
         ) {
           e.preventDefault();
@@ -39,7 +46,7 @@ export function EliminaEdizioneTorneoForm({
         disabled={pending}
         type="submit"
         className={styles.bottoneSecondario}
-        aria-label={`Cancella l'Edizione ${anno}`}
+        aria-label={`Cancella l'Edizione "${nome}" ${anno}`}
       >
         Cancella
       </button>

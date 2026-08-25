@@ -41,8 +41,8 @@ export async function trovaEdizioneTorneoCorrente() {
   return prisma.edizioneTorneo.findFirst({ orderBy: { anno: "desc" } });
 }
 
-export async function creaEdizioneTorneo(anno: number) {
-  return prisma.edizioneTorneo.create({ data: { anno } });
+export async function creaEdizioneTorneo(anno: number, nome: string) {
+  return prisma.edizioneTorneo.create({ data: { anno, nome } });
 }
 
 // Cancellazione atomica (deleteMany con where composto, non

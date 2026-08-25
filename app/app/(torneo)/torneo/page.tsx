@@ -35,6 +35,7 @@ export default async function TorneoPage() {
           <table className={styles.tabella}>
             <thead>
               <tr>
+                <th>Nome</th>
                 <th>Anno</th>
                 <th>Categorie</th>
                 <th>Azioni</th>
@@ -43,6 +44,7 @@ export default async function TorneoPage() {
             <tbody>
               {edizioni.map((edizione) => (
                 <tr key={edizione.id}>
+                  <td>{edizione.nome}</td>
                   <td>{edizione.anno}</td>
                   <td>
                     <Link className={styles.link} href={`/app/torneo/${edizione.id}`}>
@@ -52,7 +54,11 @@ export default async function TorneoPage() {
                     </Link>
                   </td>
                   <td>
-                    <EliminaEdizioneTorneoForm edizioneId={edizione.id} anno={edizione.anno} />
+                    <EliminaEdizioneTorneoForm
+                      edizioneId={edizione.id}
+                      nome={edizione.nome}
+                      anno={edizione.anno}
+                    />
                   </td>
                 </tr>
               ))}

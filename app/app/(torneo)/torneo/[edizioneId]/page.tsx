@@ -65,7 +65,7 @@ export default async function EdizioneTorneoPage({
         ← Torna alle Edizioni
       </Link>
       <TitoloPagina
-        titolo={`Edizione ${edizione.anno}`}
+        titolo={`${edizione.nome} ${edizione.anno}`}
         contenuto={contenutoPerRotta("/app/torneo", ruoli)}
       />
 
@@ -73,6 +73,7 @@ export default async function EdizioneTorneoPage({
         <h2>Volantino</h2>
         <VolantinoTorneoForm
           edizioneTorneoId={edizione.id}
+          edizioneNome={edizione.nome}
           edizioneAnno={edizione.anno}
           volantinoEsiste={volantino.esiste}
           volantinoUrl={urlPubblicoVolantinoTorneo(supabase, edizione.id)}

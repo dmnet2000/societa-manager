@@ -12,12 +12,14 @@ import styles from "../torneo.module.css";
 // mostrare la versione precedente dopo una sostituzione.
 export function VolantinoTorneoForm({
   edizioneTorneoId,
+  edizioneNome,
   edizioneAnno,
   volantinoEsiste,
   volantinoUrl,
   volantinoAggiornatoIl,
 }: {
   edizioneTorneoId: string;
+  edizioneNome: string;
   edizioneAnno: number;
   volantinoEsiste: boolean;
   volantinoUrl: string;
@@ -43,7 +45,7 @@ export function VolantinoTorneoForm({
         <img
           className={styles.anteprimaVolantino}
           src={`${volantinoUrl}?v=${encodeURIComponent(volantinoAggiornatoIl ?? "")}`}
-          alt={`Volantino del Torneo, edizione ${edizioneAnno}`}
+          alt={`Volantino del Torneo, edizione "${edizioneNome}" ${edizioneAnno}`}
         />
       )}
       <form

@@ -109,7 +109,7 @@ beforeEach(() => {
 
 describe("elencaEdizioniTorneo", () => {
   it("returns all Edizioni ordered by anno descending, with the Categorie count", async () => {
-    const righe = [{ id: "1", anno: 2027, _count: { categorie: 2 } }];
+    const righe = [{ id: "1", anno: 2027, nome: "Memorial Mario Rossi", _count: { categorie: 2 } }];
     edizioneFindManyMock.mockResolvedValue(righe);
 
     const result = await elencaEdizioniTorneo();
@@ -124,7 +124,7 @@ describe("elencaEdizioniTorneo", () => {
 
 describe("trovaEdizioneTorneoPerId", () => {
   it("looks up a single Edizione by id", async () => {
-    const edizione = { id: "1", anno: 2027 };
+    const edizione = { id: "1", anno: 2027, nome: "Memorial Mario Rossi" };
     edizioneFindUniqueMock.mockResolvedValue(edizione);
 
     const result = await trovaEdizioneTorneoPerId("1");
@@ -138,7 +138,7 @@ describe("trovaEdizioneTorneoCorrente", () => {
   // Story 20.6: "Edizione corrente" = anno piu' alto - stesso criterio di
   // elencaEdizioniTorneo (orderBy anno desc), qui findFirst.
   it("returns the Edizione with the highest anno", async () => {
-    const edizione = { id: "1", anno: 2027 };
+    const edizione = { id: "1", anno: 2027, nome: "Memorial Mario Rossi" };
     edizioneFindFirstMock.mockResolvedValue(edizione);
 
     const result = await trovaEdizioneTorneoCorrente();
@@ -157,13 +157,15 @@ describe("trovaEdizioneTorneoCorrente", () => {
 });
 
 describe("creaEdizioneTorneo", () => {
-  it("creates an Edizione with the given anno", async () => {
-    const edizione = { id: "1", anno: 2027 };
+  it("creates an Edizione with the given anno and nome", async () => {
+    const edizione = { id: "1", anno: 2027, nome: "Memorial Mario Rossi" };
     edizioneCreateMock.mockResolvedValue(edizione);
 
-    const result = await creaEdizioneTorneo(2027);
+    const result = await creaEdizioneTorneo(2027, "Memorial Mario Rossi");
 
-    expect(edizioneCreateMock).toHaveBeenCalledWith({ data: { anno: 2027 } });
+    expect(edizioneCreateMock).toHaveBeenCalledWith({
+      data: { anno: 2027, nome: "Memorial Mario Rossi" },
+    });
     expect(result).toBe(edizione);
   });
 });

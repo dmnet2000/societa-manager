@@ -234,12 +234,103 @@ describe("creaEdizioneTorneoAction", () => {
     expect(creaEdizioneTorneoMock).not.toHaveBeenCalled();
   });
 
+  // Story 20.7: Nome obbligatorio, validato dopo l'anno.
+  it("returns a validation error when nome is missing", async () => {
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome è obbligatorio." },
+    });
+    expect(creaEdizioneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Blind Hunter): il .trim() e' pensato apposta per
+  // intercettare una stringa di soli spazi - solo "" era testato finora.
+  it("returns a validation error when nome is only whitespace", async () => {
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "   " })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome è obbligatorio." },
+    });
+    expect(creaEdizioneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (Blind Hunter): il comportamento di trim non era mai
+  // verificato - il valore passato a creaEdizioneTorneo deve essere gia'
+  // ripulito dagli spazi ai margini.
+  it("trims nome before passing it to creaEdizioneTorneo", async () => {
+    creaEdizioneTorneoMock.mockResolvedValue({
+      id: "edizione-1",
+      anno: 2027,
+      nome: "Memorial Mario Rossi",
+    });
+
+    await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "  Memorial Mario Rossi  " })
+    );
+
+    expect(creaEdizioneTorneoMock).toHaveBeenCalledWith(2027, "Memorial Mario Rossi");
+  });
+
+  // Review fix (Edge Case Hunter + Blind Hunter): nessun limite di
+  // lunghezza server-side esisteva prima di questa patch - un FormData
+  // manomesso poteva bypassare il maxLength=100 del widget.
+  it("returns a validation error when nome exceeds 100 characters", async () => {
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "a".repeat(101) })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome non può superare i 100 caratteri." },
+    });
+    expect(creaEdizioneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts nome of exactly 100 characters", async () => {
+    creaEdizioneTorneoMock.mockResolvedValue({ id: "edizione-1", anno: 2027, nome: "a".repeat(100) });
+
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "a".repeat(100) })
+    );
+
+    expect(result).toEqual({ success: true });
+  });
+
+  // Review fix (Verification Gap Reviewer): la combinazione "anno invalido
+  // + nome vuoto" non era mai stata testata - documenta che l'errore
+  // sull'anno ha sempre priorita' (return anticipato), coerente con
+  // l'ordine di validazione server anche se nel form il campo Nome compare
+  // visivamente prima di Anno.
+  it("reports the anno error first when both anno and nome are invalid", async () => {
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "0", nome: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "L'anno deve essere tra 2000 e 2100." },
+    });
+    expect(creaEdizioneTorneoMock).not.toHaveBeenCalled();
+  });
+
   it("returns a validation error, not INTERNAL, when the year already exists (P2002)", async () => {
     creaEdizioneTorneoMock.mockRejectedValue(
       Object.assign(new Error("Unique constraint failed"), { code: "P2002" })
     );
 
-    const result = await creaEdizioneTorneoAction(undefined, buildFormData({ anno: "2027" }));
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "Memorial Mario Rossi" })
+    );
 
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Esiste già un'Edizione per l'anno 2027." },
@@ -247,19 +338,29 @@ describe("creaEdizioneTorneoAction", () => {
   });
 
   it("creates the Edizione (AC #1)", async () => {
-    creaEdizioneTorneoMock.mockResolvedValue({ id: "edizione-1", anno: 2027 });
+    creaEdizioneTorneoMock.mockResolvedValue({
+      id: "edizione-1",
+      anno: 2027,
+      nome: "Memorial Mario Rossi",
+    });
 
-    const result = await creaEdizioneTorneoAction(undefined, buildFormData({ anno: "2027" }));
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "Memorial Mario Rossi" })
+    );
 
     expect(result).toEqual({ success: true });
-    expect(creaEdizioneTorneoMock).toHaveBeenCalledWith(2027);
+    expect(creaEdizioneTorneoMock).toHaveBeenCalledWith(2027, "Memorial Mario Rossi");
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo");
   });
 
   it("returns a friendly error, no crash, on an unexpected failure", async () => {
     creaEdizioneTorneoMock.mockRejectedValue(new Error("db down"));
 
-    const result = await creaEdizioneTorneoAction(undefined, buildFormData({ anno: "2027" }));
+    const result = await creaEdizioneTorneoAction(
+      undefined,
+      buildFormData({ anno: "2027", nome: "Memorial Mario Rossi" })
+    );
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare l'Edizione. Riprova." },
