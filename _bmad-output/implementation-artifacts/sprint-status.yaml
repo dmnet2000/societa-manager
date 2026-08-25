@@ -1367,3 +1367,23 @@ development_status:
   # verifica manuale (Epic 20 mai deployata, dev locale rotto). Vedi
   # Spec Change Log in spec-20-11-numero-progressivo-gare-torneo.md.
   20-11-numero-progressivo-gare-torneo: review
+
+  # Story 20.12 avviata 2026-08-25 su richiesta esplicita dell'utente
+  # ("gli stessi slot per tutte le palestre per la parte a gironi"),
+  # chiarita con AskUserQuestion: creazione automatica su TUTTE le
+  # Palestre esistenti (mai una selezione client), solo per fase
+  # GIRONE - semifinali/finali invariate. Nessuna modifica di schema/
+  # migrazione, solo logica applicativa + UI. baseline_commit
+  # 15f578401c08dcc485ad6d08099e1cf9ef7843ab. Vedi
+  # spec-20-12-slot-girone-tutte-palestre.md.
+  # Story 20.12 chiusa 2026-08-25: implementata direttamente (nessuna
+  # delega ad agente, nessuna modifica di schema/migrazione). Review a
+  # 3 agenti su diff isolato (675 righe): nessun bug, 1 gap di test
+  # patchato (ordine messaggio errore quando fase e palestraId sono
+  # entrambi vuoti insieme), 1 segnalazione rigettata (nessun test di
+  # componente per NuovoSlotTorneoForm - gap sistemico gia' accettato
+  # in tutta la sessione). Verifica: 1795 test verdi, tsc/lint/build
+  # puliti. Nessuna verifica manuale (Epic 20 mai deployata, dev
+  # locale rotto). Vedi Spec Change Log in
+  # spec-20-12-slot-girone-tutte-palestre.md.
+  20-12-slot-girone-tutte-palestre: review

@@ -3235,3 +3235,24 @@ so that io e i Visitatori possiamo riferirci a un incontro specifico per numero 
 5. **And** il numero non è mai editabile a mano in nessun form - è sempre calcolato automaticamente al momento della generazione
 6. **And** ogni incontro (calendario/tabellone lato Admin, pagina pubblica `/torneo`) mostra il proprio numero ("Gara N")
 7. **And** una collisione di numero dovuta a generazioni concorrenti (rara, race accettata a basso rischio come altrove nell'epica) è rifiutata da un vincolo unico a livello DB e restituisce un messaggio esplicito che invita a riprovare, mai confuso con il messaggio "calendario/tabellone già generato"
+
+### Story 20.12: Creazione Slot di girone su tutte le Palestre in un solo passaggio
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: "per la gestione degli slot vorrei avere gli stessi slot per tutte le palestre per la parte a gironi". Chiarito con l'utente tramite `AskUserQuestion`: creazione automatica su TUTTE le Palestre esistenti (non una selezione multipla manuale), solo per la fase GIRONE - semifinali/finali restano invariate, un solo Slot = una sola Palestra scelta a mano.)*
+
+As a Admin (o Dirigente),
+I want che creare uno Slot orario per la fase a gironi (etichetta/data/ora) generi automaticamente uno Slot identico per OGNI Palestra già censita nel gestionale, in un solo invio del form,
+so that non debba ripetere la stessa creazione manualmente una volta per ciascuna Palestra disponibile in parallelo quel giorno/ora (es. 4 gare in contemporanea il sabato pomeriggio su 4 palestre diverse).
+
+**Decisioni (chiarite con l'utente, 2026-08-25):**
+1. Solo per la fase GIRONE - il form non chiede più la Palestra quando la fase scelta è GIRONE.
+2. "Tutte le Palestre" = tutte le righe già censite nel gestionale al momento della creazione (stesso modello `Palestra` di Epic 2, nessuna nuova anagrafica) - letto sempre server-side, mai fidandosi di una lista/selezione inviata dal client.
+3. Semifinali/finali restano invariate: un solo Slot, una sola Palestra scelta esplicitamente a mano, come oggi.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin/Dirigente sulla pagina Slot di un'Edizione **When** sceglie la fase GIRONE nel form di creazione **Then** il campo Palestra non è più richiesto/mostrato
+2. **Given** lo stesso form, fase GIRONE, etichetta/data/ora compilate **When** viene inviato **Then** viene creato uno SlotTorneo per CIASCUNA Palestra esistente nel gestionale, tutti con la stessa etichetta/data/ora/fase GIRONE/tabellone nullo
+3. **Given** nessuna Palestra ancora censita nel gestionale **When** l'Admin tenta di creare uno Slot di girone **Then** l'operazione è rifiutata con un messaggio esplicito ("nessuna Palestra configurata"), non un salvataggio silenzioso di zero righe
+4. **Given** lo stesso form **When** la fase scelta è semifinale o finale **Then** il comportamento resta invariato - il campo Palestra è richiesto, un solo Slot viene creato per la Palestra scelta
+5. **And** ogni Slot creato in blocco resta una riga `SlotTorneo` indipendente, cancellabile singolarmente come oggi (nessuna cancellazione/modifica di gruppo introdotta da questa storia)

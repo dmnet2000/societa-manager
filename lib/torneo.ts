@@ -356,6 +356,41 @@ export async function creaSlotTorneo(dati: {
   return prisma.slotTorneo.create({ data: dati });
 }
 
+// Story 20.12 (Epic 20, Torneo Memorial): scorciatoia di creazione per la
+// fase GIRONE - un weekend di torneo ospita piu' partite in parallelo,
+// una per Palestra disponibile, tutte alla stessa etichetta/data/ora
+// (spec-20-12 Intent). L'elenco delle Palestre e' SEMPRE riletto qui,
+// server-side - mai fidandosi di una lista/selezione inviata dal client
+// (stessa disciplina "mai fidarsi del client per lo scoping" gia'
+// applicata in tutta l'epica). Nessuna nuova entita' "gruppo di Slot": le
+// righe create restano indipendenti, cancellabili singolarmente come ogni
+// altro SlotTorneo (spec-20-12 Design Notes). Se non esiste ancora
+// nessuna Palestra, nessuna query di scrittura viene eseguita - il
+// chiamante (creaSlotTorneoAction) traduce { count: 0 } in un errore
+// esplicito, mai un salvataggio silenzioso di zero righe.
+export async function creaSlotTorneoPerTutteLePalestre(dati: {
+  edizioneTorneoId: string;
+  etichetta: string;
+  data: string;
+  ora: string;
+}) {
+  const palestre = await prisma.palestra.findMany({ select: { id: true } });
+  if (palestre.length === 0) {
+    return { count: 0 };
+  }
+  return prisma.slotTorneo.createMany({
+    data: palestre.map((p) => ({
+      edizioneTorneoId: dati.edizioneTorneoId,
+      etichetta: dati.etichetta,
+      data: dati.data,
+      ora: dati.ora,
+      palestraId: p.id,
+      fase: "GIRONE" as const,
+      tabellone: null,
+    })),
+  });
+}
+
 // Include la Palestra (nome/indirizzo/lat/lng) - servono al chiamante sia
 // per il <select> del form di assegnazione sia per il link "Naviga" della
 // pagina pubblica (costruisciLinkNaviga, lib/link-naviga-palestra.ts).

@@ -28,7 +28,9 @@ const partitaDeleteManyMock = vi.fn();
 const slotFindManyMock = vi.fn();
 const slotFindUniqueMock = vi.fn();
 const slotCreateMock = vi.fn();
+const slotCreateManyMock = vi.fn();
 const slotDeleteManyMock = vi.fn();
+const palestraFindManyMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -67,7 +69,11 @@ vi.mock("@/lib/prisma", () => ({
       findMany: slotFindManyMock,
       findUnique: slotFindUniqueMock,
       create: slotCreateMock,
+      createMany: slotCreateManyMock,
       deleteMany: slotDeleteManyMock,
+    },
+    palestra: {
+      findMany: palestraFindManyMock,
     },
   },
 }));
@@ -98,6 +104,7 @@ const {
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
   creaSlotTorneo,
+  creaSlotTorneoPerTutteLePalestre,
   elencaSlotTorneo,
   trovaSlotTorneoPerId,
   cancellaSlotTorneo,
@@ -132,7 +139,9 @@ beforeEach(() => {
   slotFindManyMock.mockReset();
   slotFindUniqueMock.mockReset();
   slotCreateMock.mockReset();
+  slotCreateManyMock.mockReset();
   slotDeleteManyMock.mockReset();
+  palestraFindManyMock.mockReset();
 });
 
 describe("elencaEdizioniTorneo", () => {
@@ -578,6 +587,75 @@ describe("creaSlotTorneo", () => {
 
     expect(slotCreateMock).toHaveBeenCalledWith({ data: dati });
     expect(result).toBe(slot);
+  });
+});
+
+// Story 20.12 (Epic 20, Torneo Memorial): scorciatoia di creazione per la
+// fase GIRONE - un solo invio crea uno Slot per OGNI Palestra esistente,
+// mai per una sola scelta dal client (spec-20-12 Intent).
+describe("creaSlotTorneoPerTutteLePalestre", () => {
+  it("creates one Slot per existing Palestra, same etichetta/data/ora/fase GIRONE", async () => {
+    palestraFindManyMock.mockResolvedValue([
+      { id: "palestra-1" },
+      { id: "palestra-2" },
+      { id: "palestra-3" },
+    ]);
+    slotCreateManyMock.mockResolvedValue({ count: 3 });
+
+    const result = await creaSlotTorneoPerTutteLePalestre({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+    });
+
+    expect(palestraFindManyMock).toHaveBeenCalledWith({ select: { id: true } });
+    expect(slotCreateManyMock).toHaveBeenCalledWith({
+      data: [
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-1",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-2",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-3",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+      ],
+    });
+    expect(result).toEqual({ count: 3 });
+  });
+
+  it("returns count 0 without writing anything when no Palestra exists yet", async () => {
+    palestraFindManyMock.mockResolvedValue([]);
+
+    const result = await creaSlotTorneoPerTutteLePalestre({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+    });
+
+    expect(result).toEqual({ count: 0 });
+    expect(slotCreateManyMock).not.toHaveBeenCalled();
   });
 });
 

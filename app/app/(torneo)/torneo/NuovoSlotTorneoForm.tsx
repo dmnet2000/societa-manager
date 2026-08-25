@@ -47,6 +47,11 @@ export function NuovoSlotTorneoForm({
   }, [state]);
 
   const mostraTabellone = fase !== "" && fase !== "GIRONE";
+  // Story 20.12: per la fase GIRONE il form non chiede piu' la Palestra -
+  // creaSlotTorneoAction crea uno Slot per OGNI Palestra esistente in quel
+  // caso (spec-20-12 Intent). Il campo torna visibile/obbligatorio per ogni
+  // altra fase, comportamento invariato di Story 20.9.
+  const mostraPalestra = fase !== "GIRONE";
 
   return (
     <form ref={formRef} action={formAction}>
@@ -70,19 +75,21 @@ export function NuovoSlotTorneoForm({
           <label htmlFor="nuovo-slot-ora">Ora</label>
           <input id="nuovo-slot-ora" name="ora" type="time" required />
         </div>
-        <div className={styles.campo}>
-          <label htmlFor="nuovo-slot-palestra">Palestra</label>
-          <select id="nuovo-slot-palestra" name="palestraId" required defaultValue="">
-            <option value="" disabled>
-              Seleziona...
-            </option>
-            {palestre.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
+        {mostraPalestra && (
+          <div className={styles.campo}>
+            <label htmlFor="nuovo-slot-palestra">Palestra</label>
+            <select id="nuovo-slot-palestra" name="palestraId" required defaultValue="">
+              <option value="" disabled>
+                Seleziona...
               </option>
-            ))}
-          </select>
-        </div>
+              {palestre.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className={styles.campo}>
           <label htmlFor="nuovo-slot-fase">Fase</label>
           <select
@@ -118,6 +125,11 @@ export function NuovoSlotTorneoForm({
           </div>
         )}
       </div>
+      {fase === "GIRONE" && (
+        <p className={styles.riepilogo}>
+          Verrà creato uno Slot per ciascuna Palestra già censita nel gestionale.
+        </p>
+      )}
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>
           {state.error.message}

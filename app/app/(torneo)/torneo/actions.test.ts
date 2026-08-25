@@ -34,6 +34,7 @@ const elencaPartiteTorneoMock = vi.fn();
 const aggiornaRisultatoPartitaTorneoMock = vi.fn();
 const trovaPartitaTorneoPerIdMock = vi.fn();
 const creaSlotTorneoMock = vi.fn();
+const creaSlotTorneoPerTutteLePalestreMock = vi.fn();
 const trovaSlotTorneoPerIdMock = vi.fn();
 const cancellaSlotTorneoMock = vi.fn();
 const assegnaSlotPartitaTorneoMock = vi.fn();
@@ -85,6 +86,7 @@ vi.mock("@/lib/torneo", () => ({
   aggiornaRisultatoPartitaTorneo: aggiornaRisultatoPartitaTorneoMock,
   trovaPartitaTorneoPerId: trovaPartitaTorneoPerIdMock,
   creaSlotTorneo: creaSlotTorneoMock,
+  creaSlotTorneoPerTutteLePalestre: creaSlotTorneoPerTutteLePalestreMock,
   trovaSlotTorneoPerId: trovaSlotTorneoPerIdMock,
   cancellaSlotTorneo: cancellaSlotTorneoMock,
   assegnaSlotPartitaTorneo: assegnaSlotPartitaTorneoMock,
@@ -210,6 +212,12 @@ beforeEach(() => {
     tabellone: null,
   });
   creaSlotTorneoMock.mockReset();
+  creaSlotTorneoPerTutteLePalestreMock.mockReset();
+  // Story 20.12: default "successo" per non dover ripetere il mock in ogni
+  // singolo test di validazione che riusa campiSlotGironeValidi (fase
+  // GIRONE) solo per arrivare fino in fondo alla Server Action - il valore
+  // esatto del conteggio non e' rilevante per quei test.
+  creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 1 });
   trovaSlotTorneoPerIdMock.mockReset();
   cancellaSlotTorneoMock.mockReset();
   assegnaSlotPartitaTorneoMock.mockReset();
@@ -3150,15 +3158,32 @@ describe("creaSlotTorneoAction", () => {
     });
   });
 
-  it("returns a validation error when palestraId is missing", async () => {
+  // Story 20.12: per la fase GIRONE la Palestra non e' piu' un campo del
+  // form (creato per TUTTE le Palestre esistenti) - questo controllo si
+  // applica quindi solo a semifinali/finali, mirror di
+  // campiSlotSemifinaleValidi invece del fixture di girone usato prima di
+  // questa storia.
+  it("returns a validation error when palestraId is missing (semifinale/finale only, AC #4)", async () => {
     const result = await creaSlotTorneoAction(
       undefined,
-      buildFormData({ ...campiSlotGironeValidi, palestraId: "" })
+      buildFormData({ ...campiSlotSemifinaleValidi, palestraId: "" })
     );
 
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "La Palestra è obbligatoria." },
     });
+  });
+
+  // Story 20.12 (AC #1): per la fase GIRONE palestraId non e' mai
+  // richiesto, anche se assente/vuoto dal form - nessun errore, il campo
+  // e' semplicemente ignorato.
+  it("does not require palestraId for a GIRONE Slot (AC #1)", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, palestraId: "" })
+    );
+
+    expect(result).toEqual({ success: true });
   });
 
   it("returns a validation error when fase is missing", async () => {
@@ -3170,6 +3195,25 @@ describe("creaSlotTorneoAction", () => {
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "La fase è obbligatoria." },
     });
+  });
+
+  // Edge Case Hunter (review, Story 20.12): il riordino di validaCampiSlot
+  // (fase nota PRIMA di decidere se palestraId e' obbligatorio) cambia
+  // quale messaggio vince se entrambi i campi mancano insieme - mirror del
+  // test analogo gia' in uso per creaEdizioneTorneoAction ("reports the
+  // anno error first when both anno and nome are invalid"), qui blocca a
+  // livello di test l'ordine corretto contro una futura regressione.
+  it("reports the fase error first when both fase and palestraId are missing (semifinale/finale fixture)", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, fase: "", palestraId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La fase è obbligatoria." },
+    });
+    expect(creaSlotTorneoMock).not.toHaveBeenCalled();
+    expect(creaSlotTorneoPerTutteLePalestreMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when fase is not a valid enum value", async () => {
@@ -3236,11 +3280,17 @@ describe("creaSlotTorneoAction", () => {
 
   // Review fix (Blind Hunter + Edge Case Hunter, convergenti): stesso
   // controllo esplicito di "Edizione non trovata" appena sopra, ora anche
-  // per la Palestra - prima si affidava solo al vincolo FK del DB.
-  it("returns a validation error, not a generic INTERNAL, when the Palestra no longer exists", async () => {
+  // per la Palestra - prima si affidava solo al vincolo FK del DB. Story
+  // 20.12: trovaPalestraPerId non viene piu' interpellato affatto per il
+  // girone (creaSlotTorneoPerTutteLePalestre rilegge da se' l'elenco) -
+  // questo test resta quindi valido solo per semifinali/finali.
+  it("returns a validation error, not a generic INTERNAL, when the Palestra no longer exists (semifinale/finale)", async () => {
     trovaPalestraPerIdMock.mockResolvedValue(null);
 
-    const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData(campiSlotSemifinaleValidi)
+    );
 
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Palestra non trovata." },
@@ -3293,8 +3343,6 @@ describe("creaSlotTorneoAction", () => {
   });
 
   it("accepts a valid boundary time (23:59)", async () => {
-    creaSlotTorneoMock.mockResolvedValue({ id: "slot-1" });
-
     const result = await creaSlotTorneoAction(
       undefined,
       buildFormData({ ...campiSlotGironeValidi, ora: "23:59" })
@@ -3303,22 +3351,42 @@ describe("creaSlotTorneoAction", () => {
     expect(result).toEqual({ success: true });
   });
 
-  it("creates a GIRONE Slot with tabellone null and revalidates the Slot page", async () => {
-    creaSlotTorneoMock.mockResolvedValue({ id: "slot-1" });
+  // Story 20.12 (AC #2): un solo invio per il girone crea uno Slot per
+  // OGNI Palestra esistente - creaSlotTorneo (singola Palestra) non viene
+  // piu' chiamato affatto in questo caso, palestraId del form (presente in
+  // campiSlotSemifinaleValidi per compatibilita' col fixture condiviso, ma
+  // ignorato) non compare nella chiamata.
+  it("creates a Slot for every Palestra when fase is GIRONE, not a single one (AC #2)", async () => {
+    creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 3 });
 
     const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
 
     expect(result).toEqual({ success: true });
-    expect(creaSlotTorneoMock).toHaveBeenCalledWith({
+    expect(creaSlotTorneoPerTutteLePalestreMock).toHaveBeenCalledWith({
       edizioneTorneoId: "edizione-1",
       etichetta: "Campo 1 - Sabato mattina",
       data: "2026-09-05",
       ora: "09:00",
-      palestraId: "palestra-1",
-      fase: "GIRONE",
-      tabellone: null,
     });
+    expect(creaSlotTorneoMock).not.toHaveBeenCalled();
+    expect(trovaPalestraPerIdMock).not.toHaveBeenCalled();
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1/slot");
+  });
+
+  // Story 20.12 (AC #3): nessuna Palestra censita - rifiutato con un
+  // messaggio esplicito, non un salvataggio silenzioso di zero righe.
+  it("rejects GIRONE Slot creation when no Palestra exists yet (AC #3)", async () => {
+    creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 0 });
+
+    const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Nessuna Palestra configurata: aggiungine una prima di creare uno Slot di girone.",
+      },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
   it("creates a SEMIFINALE Slot with the given tabellone", async () => {
@@ -3341,10 +3409,23 @@ describe("creaSlotTorneoAction", () => {
     });
   });
 
-  it("returns a friendly error, no crash, when the create fails", async () => {
-    creaSlotTorneoMock.mockRejectedValue(new Error("db down"));
+  it("returns a friendly error, no crash, when the create fails (GIRONE)", async () => {
+    creaSlotTorneoPerTutteLePalestreMock.mockRejectedValue(new Error("db down"));
 
     const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the create fails (semifinale/finale)", async () => {
+    creaSlotTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData(campiSlotSemifinaleValidi)
+    );
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." },

@@ -29,6 +29,7 @@ import {
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
   creaSlotTorneo,
+  creaSlotTorneoPerTutteLePalestre,
   trovaSlotTorneoPerId,
   trovaPalestraPerId,
   cancellaSlotTorneo,
@@ -471,14 +472,20 @@ export async function cancellaCategoriaTorneoAction(
 
 const ETICHETTA_SLOT_MAX = 100;
 
-type CampiSlotValidati = {
-  etichetta: string;
-  data: string;
-  ora: string;
-  palestraId: string;
-  fase: FaseTorneo;
-  tabellone: TabelloneTorneo | null;
-};
+// Story 20.12: unione discriminata su "fase" - il ramo GIRONE non porta
+// mai palestraId (creaSlotTorneoAction crea uno Slot per OGNI Palestra
+// esistente in quel caso, mai per una sola scelta dal form, spec-20-12
+// Intent); il ramo non-GIRONE resta identico a prima di questa storia.
+type CampiSlotValidati =
+  | { etichetta: string; data: string; ora: string; fase: "GIRONE"; tabellone: null }
+  | {
+      etichetta: string;
+      data: string;
+      ora: string;
+      palestraId: string;
+      fase: Exclude<FaseTorneo, "GIRONE">;
+      tabellone: TabelloneTorneo;
+    };
 
 // Story 20.9 (Epic 20, Torneo Memorial): validazione estratta (mirror
 // validaCampiCategoria sopra) - stesso principio del CHECK discriminato a
@@ -534,9 +541,6 @@ function validaCampiSlot(
       error: { code: "VALIDATION", message: "L'ora deve essere nel formato HH:MM (00:00-23:59)." },
     };
   }
-  if (!palestraId) {
-    return { error: { code: "VALIDATION", message: "La Palestra è obbligatoria." } };
-  }
   if (!fase) {
     return { error: { code: "VALIDATION", message: "La fase è obbligatoria." } };
   }
@@ -545,17 +549,23 @@ function validaCampiSlot(
   }
 
   // Stessa unione discriminata del CHECK DB (Story 20.4/spec-20-9): un
-  // incontro di girone non ha mai un tabellone, semifinali/finali lo
-  // richiedono sempre.
+  // incontro di girone non ha mai un tabellone. Story 20.12: la fase deve
+  // essere nota PRIMA di poter decidere se palestraId e' obbligatorio -
+  // per GIRONE non lo e' MAI (creato per tutte le Palestre esistenti),
+  // quindi il controllo "palestraId obbligatorio" e' spostato nel ramo
+  // else sotto, mai eseguito qui.
   if (fase === "GIRONE") {
     if (tabelloneGrezzo) {
       return {
         error: { code: "VALIDATION", message: "Un incontro di girone non ha un tabellone." },
       };
     }
-    return { valori: { etichetta, data, ora, palestraId, fase, tabellone: null } };
+    return { valori: { etichetta, data, ora, fase, tabellone: null } };
   }
 
+  if (!palestraId) {
+    return { error: { code: "VALIDATION", message: "La Palestra è obbligatoria." } };
+  }
   if (!tabelloneGrezzo) {
     return {
       error: {
@@ -587,7 +597,7 @@ export async function creaSlotTorneoAction(
 
   const validazione = validaCampiSlot(formData);
   if ("error" in validazione) return validazione;
-  const { etichetta, data, ora, palestraId, fase, tabellone } = validazione.valori;
+  const { etichetta, data, ora } = validazione.valori;
 
   try {
     // Mirror del controllo "Edizione non trovata" di creaCategoriaTorneoAction
@@ -599,15 +609,37 @@ export async function creaSlotTorneoAction(
       return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
     }
 
-    // Review fix (Blind Hunter + Edge Case Hunter, convergenti): stesso
-    // controllo esplicito appena fatto per edizioneTorneoId, ora anche per
-    // palestraId - prima si affidava solo al vincolo FK del DB.
-    const palestra = await trovaPalestraPerId(palestraId);
-    if (!palestra) {
-      return { error: { code: "VALIDATION", message: "Palestra non trovata." } };
+    // Story 20.12: per il girone non esiste una singola Palestra scelta dal
+    // form - uno Slot viene creato per OGNI Palestra esistente (spec-20-12
+    // Intent). Per ogni altra fase il percorso resta quello di Story 20.9,
+    // invariato.
+    if (validazione.valori.fase === "GIRONE") {
+      const risultato = await creaSlotTorneoPerTutteLePalestre({
+        edizioneTorneoId,
+        etichetta,
+        data,
+        ora,
+      });
+      if (risultato.count === 0) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Nessuna Palestra configurata: aggiungine una prima di creare uno Slot di girone.",
+          },
+        };
+      }
+    } else {
+      const { palestraId, fase, tabellone } = validazione.valori;
+      // Review fix (Blind Hunter + Edge Case Hunter, convergenti, Story
+      // 20.9): stesso controllo esplicito appena fatto per edizioneTorneoId,
+      // ora anche per palestraId - prima si affidava solo al vincolo FK del
+      // DB.
+      const palestra = await trovaPalestraPerId(palestraId);
+      if (!palestra) {
+        return { error: { code: "VALIDATION", message: "Palestra non trovata." } };
+      }
+      await creaSlotTorneo({ edizioneTorneoId, etichetta, data, ora, palestraId, fase, tabellone });
     }
-
-    await creaSlotTorneo({ edizioneTorneoId, etichetta, data, ora, palestraId, fase, tabellone });
   } catch (err) {
     console.error(err);
     return { error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." } };
