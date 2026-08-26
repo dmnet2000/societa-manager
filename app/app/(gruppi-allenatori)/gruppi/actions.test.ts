@@ -1433,7 +1433,9 @@ describe("creaEAssegnaAtleta", () => {
       expect.anything(),
       expect.objectContaining({
         codiceFiscale: "RSSMRA85M01H501U",
-        nome: "Rossi Maria",
+        // Story 9.36: cognome/nome sanificati in maiuscolo prima della
+        // concatenazione, stessa convenzione gia' in uso per codiceFiscale.
+        nome: "ROSSI MARIA",
         sesso: "M",
         email: "maria@example.com",
         cellulare: "3331234567",
@@ -1459,6 +1461,42 @@ describe("creaEAssegnaAtleta", () => {
     // questa action e vedono anche /gruppi, non solo /i-miei-gruppi.
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("leaves cognome/nome unchanged when already fully uppercase (Story 9.36 AC #2)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-gia-maiuscola");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat-gia-maiuscola" });
+    creaNotificaMock.mockResolvedValue(undefined);
+
+    await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, cognome: "ROSSI", nome: "MARIA" })
+    );
+
+    expect(creaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ nome: "ROSSI MARIA" })
+    );
+  });
+
+  it("uppercases accented/extended letters without errors (Story 9.36)", async () => {
+    gruppoFindUniqueMock.mockResolvedValue({ annoAgonisticoId: "anno-1" });
+    atletaMaybeSingleMock.mockResolvedValue({ data: null, error: null });
+    creaAtletaMock.mockResolvedValue("nuova-atleta-accenti");
+    gruppoAtletaUpsertMock.mockResolvedValue({ id: "gat-accenti" });
+    creaNotificaMock.mockResolvedValue(undefined);
+
+    await creaEAssegnaAtleta(
+      undefined,
+      buildFormData({ ...campiValidi, cognome: "città", nome: "José" })
+    );
+
+    expect(creaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ nome: "CITTÀ JOSÉ" })
+    );
   });
 
   it("treats email/cellulare as null when omitted (comportamento opzionale)", async () => {

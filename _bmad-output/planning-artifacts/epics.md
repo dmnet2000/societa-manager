@@ -1572,6 +1572,25 @@ so that non resti bloccato per sempre un account fantasma e la persona (Atleta/G
 4. **And** un Utente già confermato (con almeno un accesso riuscito) non è un bersaglio valido per questa correzione — l'azione non è disponibile o viene rifiutata esplicitamente, per non confondere questo flusso con un cambio email generico
 5. **And** nessuna regressione sul flusso di registrazione esistente (Story 1.1/11.4), sul reinvio del link a parità di email (già in produzione), né sulle altre azioni Admin esistenti (`impostaAttivoUtente`/`aggiornaRuoliUtente`/`reimpostaPasswordFissaUtente`) — suite Vitest invariata
 
+### Story 9.39: Normalizzazione in maiuscolo delle Atlete già esistenti in anagrafica
+
+*(Aggiunta post-apertura epica — 2026-08-26, richiesta esplicita dell'utente subito dopo la Story 9.36: "ma hai sistemato anche a DB che siano tutti in uppercase anche quelli esistenti?". Chiarito con l'utente via `AskUserQuestion`: solo `Atleta`, non `Allenatore` (che oggi non è mai stato sanificato nemmeno in creazione, asimmetria nota e accettata da Story 9.5/epic-9-context.md, fuori scope qui).)*
+
+As a Admin (o chiunque consulti l'anagrafica Atlete),
+I want che anche le Atlete già registrate prima della Story 9.36 abbiano Cognome/Nome in maiuscolo, non solo quelle create da ora in poi,
+so that l'intera anagrafica sia coerente, senza un mix permanente tra righe vecchie (maiuscole/minuscole miste) e nuove (sempre maiuscole).
+
+**Contesto tecnico:** Story 9.36 sanifica solo la creazione di una *nuova* Atleta (`creaEAssegnaAtleta`) — nessun backfill dei record già esistenti era nello scope di quella storia (deferred esplicitamente in `deferred-work.md`). Questa storia introduce una migrazione Prisma **solo di dati** (nessuna modifica di schema): `UPDATE "atlete" SET "nome" = UPPER("nome");` — mirror del pattern di backfill già usato in questo progetto per una colonna esistente (es. Story 20.7, backfill `EdizioneTorneo.nome`). Operazione idempotente (rieseguirla su righe già maiuscole non cambia nulla) e senza via di ritorno (la capitalizzazione originale non viene preservata da nessuna parte) — da applicare in produzione con `prisma migrate deploy` dall'utente stesso, stesso limite di questa sessione già incontrato per ogni altra migrazione (nessuna istanza Supabase locale disponibile per eseguirla o verificarla dal vivo).
+
+**Ambito di questa storia**: solo `Atleta.nome`. `Allenatore.nome` resta esplicitamente fuori scope (mai sanificato nemmeno in creazione, decisione esplicita dell'utente in fase di creazione di questa storia — un'eventuale story simmetrica per Allenatore andrebbe valutata a parte).
+
+**Acceptance Criteria:**
+
+1. **Given** il database di produzione con Atlete già esistenti create prima della Story 9.36 **When** la migrazione viene applicata (`prisma migrate deploy`) **Then** ogni riga `Atleta.nome` risulta interamente in maiuscolo, indipendentemente da come era scritta prima
+2. **And** una riga già interamente in maiuscolo non cambia (operazione idempotente, nessun effetto collaterale visibile)
+3. **And** nessuna colonna diversa da `nome` viene toccata (email/cellulare/Codice Fiscale restano invariati) — nessuna modifica di schema, solo dati
+4. **And** nessuna regressione su alcuna vista/query esistente che legge `Atleta.nome` (elenco Atlete, drill-down, `/squadre` pubblica) — il campo resta una singola stringa `"COGNOME NOME"`, stesso formato di sempre, solo in maiuscolo
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

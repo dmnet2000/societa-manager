@@ -539,8 +539,11 @@ export async function creaEAssegnaAtleta(
   if (forbidden) return forbidden;
 
   const gruppoId = String(formData.get("gruppoId") ?? "");
-  const cognome = String(formData.get("cognome") ?? "").trim();
-  const nome = String(formData.get("nome") ?? "").trim();
+  // Story 9.36: sanificati in maiuscolo, stessa convenzione gia' in uso per
+  // codiceFiscale sotto - l'anagrafica Atleta resta coerente indipendentemente
+  // da come l'operatore digita i dati.
+  const cognome = String(formData.get("cognome") ?? "").trim().toUpperCase();
+  const nome = String(formData.get("nome") ?? "").trim().toUpperCase();
   const dataNascitaGrezza = String(formData.get("dataNascita") ?? "").trim();
   const codiceFiscale = String(formData.get("codiceFiscale") ?? "")
     .trim()

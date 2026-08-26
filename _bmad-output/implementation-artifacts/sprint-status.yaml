@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-26-2026 09:30"
+last_updated: "08-26-2026 11:25"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -499,7 +499,7 @@ development_status:
   # esclusi); import federale (Story 1.3) esplicitamente fuori scope,
   # pipeline indipendente. Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-36-sanificazione-maiuscolo-nuova-atleta: backlog
+  9-36-sanificazione-maiuscolo-nuova-atleta: review
 
   # Story 9.37 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # possibilita' di modificare nome e categoria di un Gruppo gia' creato.
@@ -534,6 +534,16 @@ development_status:
   # giro, mai esercitato prima. Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
   9-38-correzione-email-utente-non-confermato: review
+
+  # Story 9.39 aggiunta su richiesta esplicita dell'utente (2026-08-26),
+  # subito dopo la Story 9.36: "ma hai sistemato anche a DB che siano tutti
+  # in uppercase anche quelli esistenti?". Chiarito via AskUserQuestion:
+  # solo Atleta, non Allenatore (mai sanificato nemmeno in creazione,
+  # asimmetria nota e accettata, fuori scope). Migrazione Prisma solo dati
+  # (UPDATE "atlete" SET "nome" = UPPER("nome")), nessuna modifica di
+  # schema - mirror del backfill gia' usato in Story 20.7. Solo la story
+  # scritta ora, nessuna implementazione. Status: backlog.
+  9-39-normalizzazione-maiuscolo-atlete-esistenti: review
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
