@@ -6,6 +6,7 @@ const edizioneFindManyMock = vi.fn();
 const edizioneFindUniqueMock = vi.fn();
 const edizioneFindFirstMock = vi.fn();
 const edizioneCreateMock = vi.fn();
+const edizioneUpdateMock = vi.fn();
 const edizioneDeleteManyMock = vi.fn();
 const categoriaFindManyMock = vi.fn();
 const categoriaFindUniqueMock = vi.fn();
@@ -39,6 +40,7 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: edizioneFindUniqueMock,
       findFirst: edizioneFindFirstMock,
       create: edizioneCreateMock,
+      update: edizioneUpdateMock,
       deleteMany: edizioneDeleteManyMock,
     },
     categoriaTorneo: {
@@ -83,6 +85,7 @@ const {
   trovaEdizioneTorneoPerId,
   trovaEdizioneTorneoCorrente,
   creaEdizioneTorneo,
+  aggiornaNomiSettimaneTorneo,
   cancellaEdizioneTorneo,
   elencaCategorieTorneo,
   trovaCategoriaTorneoPerId,
@@ -117,6 +120,7 @@ beforeEach(() => {
   edizioneFindUniqueMock.mockReset();
   edizioneFindFirstMock.mockReset();
   edizioneCreateMock.mockReset();
+  edizioneUpdateMock.mockReset();
   edizioneDeleteManyMock.mockReset();
   categoriaFindManyMock.mockReset();
   categoriaFindUniqueMock.mockReset();
@@ -202,6 +206,22 @@ describe("creaEdizioneTorneo", () => {
 
     expect(edizioneCreateMock).toHaveBeenCalledWith({
       data: { anno: 2027, nome: "Memorial Mario Rossi" },
+    });
+    expect(result).toBe(edizione);
+  });
+});
+
+describe("aggiornaNomiSettimaneTorneo", () => {
+  it("updates the Edizione's nomeSettimana1/nomeSettimana2 by id", async () => {
+    const dati = { nomeSettimana1: "Under 14/16", nomeSettimana2: null };
+    const edizione = { id: "edizione-1", anno: 2027, ...dati };
+    edizioneUpdateMock.mockResolvedValue(edizione);
+
+    const result = await aggiornaNomiSettimaneTorneo("edizione-1", dati);
+
+    expect(edizioneUpdateMock).toHaveBeenCalledWith({
+      where: { id: "edizione-1" },
+      data: dati,
     });
     expect(result).toBe(edizione);
   });

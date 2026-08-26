@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-26-2026 14:05"
+last_updated: "08-26-2026 15:28"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -1469,7 +1469,7 @@ development_status:
   # la "sezione dedicata" (nuovo form nella pagina admin /torneo esistente
   # ipotizzato come piu' naturale, da confermare con l'utente). Solo la
   # story scritta ora, nessuna implementazione. Status: backlog.
-  20-13-nome-settimane-torneo: backlog
+  20-13-nome-settimane-torneo: review
 
   # Story 20.14 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "non mi piace la visualizzazione terrei lo sfondo come le altre

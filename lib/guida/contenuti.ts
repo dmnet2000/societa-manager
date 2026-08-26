@@ -433,6 +433,9 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     // (girone, semifinale, finale) riceve anche un numero di gara
     // progressivo ("Gara N"), calcolato automaticamente, un'unica sequenza
     // che attraversa l'intera Edizione senza mai ripartire tra fasi diverse.
+    // Story 20.13: dentro un'Edizione, "Nomi delle Settimane" imposta un
+    // nome personalizzato al posto dell'etichetta generica "Settimana 1"/
+    // "Settimana 2", ovunque venga mostrata (admin e pagina pubblica).
     rotta: "/app/torneo",
     titolo: "Torneo",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
@@ -440,6 +443,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui gestisci le Edizioni del Torneo (nome e anno, entrambi obbligatori - due Edizioni possono condividere lo stesso nome, l'anno resta l'unico identificativo univoco) e, dentro ciascuna, le sue Categorie (nome, settimana 1 o 2, numero massimo di squadre da 2 a 8).",
       "Apri un'Edizione dall'elenco per vedere/gestire le sue Categorie. Un'Edizione non è eliminabile finché ha Categorie collegate: elimina prima quelle.",
       "Dentro un'Edizione, in \"Volantino\" carichi l'immagine di sfondo/manifesto del Torneo (PNG o JPEG, fino a 2MB): caricarne una nuova sostituisce sempre quella precedente. Il volantino, le squadre iscritte, la classifica di girone, gli incontri e il tabellone dell'edizione più recente sono visibili a tutti sulla pagina pubblica /torneo, senza bisogno di accedere.",
+      "Dentro un'Edizione, in \"Nomi delle Settimane\" puoi dare un nome proprio (es. \"Under 14/16\", fino a 100 caratteri) a Settimana 1 e/o Settimana 2: dove impostato, quel nome sostituisce l'etichetta generica ovunque la Settimana è mostrata (elenco Categorie, dettaglio Categoria, pagina pubblica /torneo). Un campo lasciato vuoto non blocca nulla: resta l'etichetta generica \"Settimana 1\"/\"Settimana 2\".",
       "Apri una Categoria dall'elenco per iscrivere le squadre partecipanti (nome, referente e contatto opzionali) e ripartirle sui due gironi A e B, fino al numero massimo impostato per quella Categoria. Anche una Categoria con squadre iscritte non è eliminabile: elimina prima quelle.",
       "Dentro una Categoria, apri \"Risultati e classifica\" per generare il calendario degli incontri di girone (tutti contro tutti dentro ciascun girone, generabile una sola volta e solo con almeno 2 squadre per girone) e inserire il punteggio set per set di ogni incontro (al meglio dei 3 set). Il sistema calcola da solo l'esito e i punti dell'incontro, e la classifica di ciascun girone si aggiorna subito ogni volta che modifichi un risultato.",
       "Da \"Tabellone semifinali/finali\" genera il tabellone di posizionamento (una sola volta, quando entrambi i gironi hanno almeno 4 squadre e una classifica completa): crea le semifinali 1°A-2°B/1°B-2°A per il tabellone 1°-4° e 3°A-4°B/3°B-4°A per il 5°-8°. Non serve generare le finali a mano: appena hai inserito il risultato di entrambe le semifinali di uno stesso tabellone, il sistema crea da solo la finale vincenti e quella perdenti. La classifica finale 1°-8° compare in fondo alla pagina non appena tutti gli incontri del tabellone hanno un risultato.",

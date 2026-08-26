@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trovaCategoriaTorneoPerId, elencaSquadreTorneo } from "@/lib/torneo";
-import { ETICHETTA_SETTIMANA } from "@/lib/settimana-torneo";
+import {
+  trovaCategoriaTorneoPerId,
+  elencaSquadreTorneo,
+  trovaEdizioneTorneoPerId,
+} from "@/lib/torneo";
+import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
@@ -23,15 +27,19 @@ export default async function CategoriaTorneoPage({
 }) {
   const { edizioneId, categoriaId } = await params;
 
-  // Le tre risoluzioni non dipendono l'una dall'altra - eseguite in
+  // Le quattro risoluzioni non dipendono l'una dall'altra - eseguite in
   // Promise.all, stesso principio gia' stabilito in
   // [edizioneId]/page.tsx. elencaSquadreTorneo su un categoriaId
   // inesistente restituisce semplicemente un array vuoto, nessun problema a
-  // lanciarla in parallelo al controllo di esistenza sotto.
-  const [ruoli, categoria, squadre] = await Promise.all([
+  // lanciarla in parallelo al controllo di esistenza sotto. Story 20.13:
+  // trovaEdizioneTorneoPerId aggiunta ora che questa pagina mostra l'etichetta
+  // di Settimana personalizzata (etichettaSettimanaPersonalizzata, sotto) -
+  // prima non caricava mai l'Edizione, solo la Categoria.
+  const [ruoli, categoria, squadre, edizione] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
     trovaCategoriaTorneoPerId(categoriaId),
     elencaSquadreTorneo(categoriaId),
+    trovaEdizioneTorneoPerId(edizioneId),
   ]);
 
   // Un id inesistente/gia' eliminato (link obsoleto, doppia scheda con
@@ -39,8 +47,11 @@ export default async function CategoriaTorneoPage({
   // un'altra Edizione (edizioneId nell'URL non corrispondente - stesso
   // principio anti-mismatch gia' applicato alle Server Action scoped su
   // id+parent) - 404 in entrambi i casi, stesso comportamento di ogni altra
-  // pagina di dettaglio del progetto raggiunta per id.
-  if (!categoria || categoria.edizioneTorneoId !== edizioneId) {
+  // pagina di dettaglio del progetto raggiunta per id. Story 20.13:
+  // un'Edizione non trovata (caso limite: cancellata concorrentemente tra la
+  // verifica del vincolo FK e questa lettura) e' trattata allo stesso modo -
+  // mai un crash su edizione.nomeSettimana1/2 sotto.
+  if (!categoria || categoria.edizioneTorneoId !== edizioneId || !edizione) {
     notFound();
   }
 
@@ -57,7 +68,7 @@ export default async function CategoriaTorneoPage({
           gia' iscritte rispetto al massimo, invece di far scoprire il
           limite solo dopo un tentativo rifiutato. */}
       <p className={styles.riepilogo}>
-        {ETICHETTA_SETTIMANA[categoria.settimana]} · {squadre.length} /{" "}
+        {etichettaSettimanaPersonalizzata(categoria.settimana, edizione)} · {squadre.length} /{" "}
         {categoria.numeroMassimoSquadre} squadre iscritte
       </p>
 

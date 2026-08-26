@@ -10,7 +10,7 @@ import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import { calcolaClassificaFinale } from "@/lib/classifica-finale-torneo";
 import { formattaRisultatoPartitaTorneo } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
-import { ETICHETTA_SETTIMANA } from "@/lib/settimana-torneo";
+import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { HeaderPubblico } from "../HeaderPubblico";
@@ -221,7 +221,7 @@ export default async function TorneoPubblicoPage() {
                   {categoria.nome}
                 </h2>
                 <p className={styles.etichettaSettimana}>
-                  {ETICHETTA_SETTIMANA[categoria.settimana]}
+                  {etichettaSettimanaPersonalizzata(categoria.settimana, edizione)}
                 </p>
 
                 {GIRONI_TORNEO.map((girone) => {

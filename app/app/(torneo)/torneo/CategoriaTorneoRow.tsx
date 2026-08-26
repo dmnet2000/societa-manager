@@ -3,7 +3,7 @@
 import { useState, useActionState } from "react";
 import Link from "next/link";
 import { aggiornaCategoriaTorneoAction, cancellaCategoriaTorneoAction } from "./actions";
-import { SETTIMANE_TORNEO, ETICHETTA_SETTIMANA } from "@/lib/settimana-torneo";
+import { SETTIMANE_TORNEO, etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { IconaModifica, IconaCancella } from "@/app/icone-azione-riga";
 import type { SettimanaTorneo } from "@prisma/client";
 import styles from "./torneo.module.css";
@@ -16,12 +16,26 @@ type Categoria = {
   edizioneTorneoId: string;
 };
 
+// Story 20.13: solo i due campi che servono a etichettaSettimanaPersonalizzata
+// - non l'intera Edizione (nessun altro campo e' usato qui), stesso principio
+// "solo i campi necessari" gia' seguito per Categoria sopra.
+type EdizioneNomiSettimane = {
+  nomeSettimana1: string | null;
+  nomeSettimana2: string | null;
+};
+
 // Story 20.1 (Epic 20, Torneo Memorial): mirror di SlotRow.tsx
 // (app/(orari-palestre)/slot) - riga di tabella con toggle sola-lettura/
 // modifica inline, useActionState per update/delete, azionePending
 // condiviso, ricollasso automatico alla vista dopo un salvataggio riuscito
 // ("adjust state during render", non un useEffect con setState).
-export function CategoriaTorneoRow({ categoria }: { categoria: Categoria }) {
+export function CategoriaTorneoRow({
+  categoria,
+  edizione,
+}: {
+  categoria: Categoria;
+  edizione: EdizioneNomiSettimane;
+}) {
   const [inModifica, setInModifica] = useState(false);
   const [modificaState, modificaAction, modificaPending] = useActionState(
     aggiornaCategoriaTorneoAction,
@@ -77,7 +91,7 @@ export function CategoriaTorneoRow({ categoria }: { categoria: Categoria }) {
             {categoria.nome}
           </Link>
         </td>
-        <td>{ETICHETTA_SETTIMANA[categoria.settimana]}</td>
+        <td>{etichettaSettimanaPersonalizzata(categoria.settimana, edizione)}</td>
         <td>{categoria.numeroMassimoSquadre}</td>
         <td>
           <button
