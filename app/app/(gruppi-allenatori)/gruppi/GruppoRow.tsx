@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { assegnaAllenatore, assegnaAtleta, creaEAssegnaAtleta } from "./actions";
+import {
+  aggiornaGruppoAction,
+  assegnaAllenatore,
+  assegnaAtleta,
+  creaEAssegnaAtleta,
+} from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
 import { AtletaTabellaRiga, type AtletaConStato } from "./AtletaTabellaRiga";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
@@ -37,6 +42,34 @@ export function GruppoRow({
   fotoUrl: string;
   fotoAggiornataIl: string | null;
 }) {
+  // Story 9.37: toggle sola-lettura/modifica per nome/categoria del
+  // Gruppo, mirror di CategoriaTorneoRow.tsx (Story 20.1) - stessa
+  // "adjust state during render" per ricollassare al successo, invece di
+  // un useEffect con setState.
+  const [inModificaGruppo, setInModificaGruppo] = useState(false);
+  const [modificaGruppoState, modificaGruppoAction, modificaGruppoPending] =
+    useActionState(aggiornaGruppoAction, undefined);
+  // Review fix (Blind Hunter + Edge Case Hunter, convergenza): senza un
+  // flag di visibilita' dedicato, un errore di un tentativo precedente
+  // riapparirebbe subito riaprendo "Modifica" dopo "Annulla" - modificaGruppoState
+  // (useActionState) resta invariato quando si chiude/riapre il form, il
+  // toggle inModificaGruppo cambia solo la porzione di JSX renderizzata, non
+  // smonta questo componente. Stesso identico fix gia' applicato in
+  // CategoriaTorneoRow.tsx (erroreModificaVisibile).
+  const [ultimoModificaGruppoState, setUltimoModificaGruppoState] =
+    useState(modificaGruppoState);
+  const [erroreModificaGruppoVisibile, setErroreModificaGruppoVisibile] =
+    useState(false);
+  if (modificaGruppoState !== ultimoModificaGruppoState) {
+    setUltimoModificaGruppoState(modificaGruppoState);
+    if (modificaGruppoState && "success" in modificaGruppoState) {
+      setInModificaGruppo(false);
+      setErroreModificaGruppoVisibile(false);
+    } else if (modificaGruppoState && "error" in modificaGruppoState) {
+      setErroreModificaGruppoVisibile(true);
+    }
+  }
+
   const [allenatoreState, allenatoreFormAction, allenatorePending] =
     useActionState(assegnaAllenatore, undefined);
   const allenatoreFormRef = useRef<HTMLFormElement>(null);
@@ -97,8 +130,85 @@ export function GruppoRow({
     <>
       <tr className={styles.rigaPrincipale}>
         <td>{gruppo.nome}</td>
-        <td>{gruppo.categoria}</td>
+        <td>
+          {/* Review fix (Blind Hunter): bottone testuale invece dell'icona
+              di icone-azione-riga.tsx (mirror parziale e deliberato di
+              CategoriaTorneoRow.tsx) - la rigaPrincipale ha solo 2 colonne
+              (Nome/Categoria, Story 9.33), aggiungere una terza colonna
+              "azioni" avrebbe richiesto aggiornare ogni colSpan={2} usato
+              altrove in questo file (rigaAtlete/rigaAllenatori/
+              rigaFotoSquadra) - un bottone testuale dentro la cella
+              esistente evita quella cascata invasiva. */}
+          {gruppo.categoria}{" "}
+          <button
+            type="button"
+            className={styles.bottoneCompatto}
+            onClick={() => {
+              setInModificaGruppo(true);
+              setErroreModificaGruppoVisibile(false);
+            }}
+            disabled={inModificaGruppo}
+            aria-label={`Modifica ${gruppo.nome}`}
+          >
+            Modifica
+          </button>
+        </td>
       </tr>
+      {inModificaGruppo && (
+        <tr className={styles.rigaModificaGruppo}>
+          <td colSpan={2}>
+            <form action={modificaGruppoAction} className={styles.formModificaGruppo}>
+              <input type="hidden" name="id" value={gruppo.id} />
+              <div className={styles.campo}>
+                <label htmlFor={`gruppo-nome-${gruppo.id}`}>Nome</label>
+                <input
+                  id={`gruppo-nome-${gruppo.id}`}
+                  name="nome"
+                  type="text"
+                  defaultValue={gruppo.nome}
+                  required
+                />
+              </div>
+              <div className={styles.campo}>
+                <label htmlFor={`gruppo-categoria-${gruppo.id}`}>Categoria</label>
+                <input
+                  id={`gruppo-categoria-${gruppo.id}`}
+                  name="categoria"
+                  type="text"
+                  defaultValue={gruppo.categoria}
+                  required
+                />
+              </div>
+              {erroreModificaGruppoVisibile &&
+                modificaGruppoState &&
+                "error" in modificaGruppoState && (
+                  <p role="alert" className={styles.errore}>
+                    {modificaGruppoState.error.message}
+                  </p>
+                )}
+              <div className={styles.azioniCompatto}>
+                <button
+                  disabled={modificaGruppoPending}
+                  type="submit"
+                  className={styles.bottone}
+                  aria-label={`Salva ${gruppo.nome}`}
+                >
+                  Salva
+                </button>
+                <button
+                  type="button"
+                  disabled={modificaGruppoPending}
+                  className={styles.bottoneSecondario}
+                  onClick={() => setInModificaGruppo(false)}
+                  aria-label={`Annulla la modifica di ${gruppo.nome}`}
+                >
+                  Annulla
+                </button>
+              </div>
+            </form>
+          </td>
+        </tr>
+      )}
       <tr className={styles.rigaAtlete}>
         <td colSpan={2}>
           <span className={styles.etichettaRigaEstesa}>Atlete:</span>

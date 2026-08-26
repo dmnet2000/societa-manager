@@ -120,6 +120,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
+      "Puoi correggere nome e categoria di un Gruppo già creato con \"Modifica\", accanto alla categoria di ogni riga - non serve cancellare e ricreare il Gruppo per sistemare un errore di inserimento.",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
       "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
       "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/slot.",

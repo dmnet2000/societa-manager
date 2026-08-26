@@ -9,6 +9,7 @@ const requireRuoloMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const gruppoCreateMock = vi.fn();
+const gruppoUpdateMock = vi.fn();
 const gruppoFindUniqueMock = vi.fn();
 const gruppoAggregateMock = vi.fn();
 const gruppoAllenatoreCreateMock = vi.fn();
@@ -40,6 +41,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     gruppo: {
       create: gruppoCreateMock,
+      update: gruppoUpdateMock,
       findUnique: gruppoFindUniqueMock,
       aggregate: gruppoAggregateMock,
     },
@@ -99,6 +101,7 @@ vi.mock("next/cache", () => ({
 
 const {
   creaGruppo,
+  aggiornaGruppoAction,
   assegnaAllenatore,
   rimuoviAllenatore,
   assegnaAtleta,
@@ -286,6 +289,122 @@ describe("creaGruppo", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare il Gruppo. Riprova." },
+    });
+  });
+});
+
+describe("aggiornaGruppoAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "Under 13", categoria: "Under 13" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(gruppoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when id is missing", async () => {
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "", nome: "Under 13", categoria: "Under 13" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non specificato." },
+    });
+    expect(gruppoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when nome is missing", async () => {
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "  ", categoria: "Under 13" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome del Gruppo è obbligatorio." },
+    });
+    expect(gruppoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error naming the categoria, not the nome, when categoria is missing", async () => {
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "Under 13", categoria: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La categoria del Gruppo è obbligatoria." },
+    });
+    expect(gruppoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("updates nome/categoria and revalidates /app/gruppi, /app/i-miei-gruppi and /app/foto-squadre (AC #1)", async () => {
+    gruppoUpdateMock.mockResolvedValue({ id: "g1" });
+
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "Under 14", categoria: "Under 14" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(gruppoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "g1" },
+      data: { nome: "Under 14", categoria: "Under 14" },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+    // Review fix (Verification Gap Reviewer): /app/foto-squadre mostra
+    // anche nome/categoria di ogni Gruppo, stesso motivo gia' documentato
+    // per caricaFotoSquadraAction.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/foto-squadre");
+  });
+
+  it("trims nome/categoria before persisting", async () => {
+    gruppoUpdateMock.mockResolvedValue({ id: "g1" });
+
+    await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "  Under 14  ", categoria: "  Under 14  " })
+    );
+
+    expect(gruppoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "g1" },
+      data: { nome: "Under 14", categoria: "Under 14" },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the update fails", async () => {
+    gruppoUpdateMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g1", nome: "Under 14", categoria: "Under 14" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare il Gruppo. Riprova." },
+    });
+  });
+
+  it("returns a dedicated 'not found' message, no generic retry, when the Gruppo no longer exists (Prisma P2025)", async () => {
+    gruppoUpdateMock.mockRejectedValue(Object.assign(new Error("not found"), { code: "P2025" }));
+
+    const result = await aggiornaGruppoAction(
+      undefined,
+      buildFormData({ id: "g-cancellato", nome: "Under 14", categoria: "Under 14" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Gruppo non trovato." },
     });
   });
 });

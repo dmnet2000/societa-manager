@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-26-2026 11:25"
+last_updated: "08-26-2026 14:05"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -514,7 +514,7 @@ development_status:
   # semplice (GruppoRow.tsx oggi mostra nome/categoria come testo piatto,
   # nessuna icona di modifica). Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-37-modifica-nome-categoria-gruppo: backlog
+  9-37-modifica-nome-categoria-gruppo: review
 
   # Story 9.38 aggiunta su richiesta esplicita dell'utente (2026-08-26),
   # discussa in sessione di party mode (Mary/John/Sally/Winston/Amelia):

@@ -175,6 +175,73 @@ export async function creaGruppo(
   return { success: true };
 }
 
+// Story 9.37: modifica di un Gruppo gia' esistente - stesso perimetro di
+// Ruolo di creaGruppo (ADMIN/DIRIGENTE), mirror del pattern update-singola-
+// entita' gia' stabilito da aggiornaPalestra (palestre/actions.ts): valida,
+// aggiorna, nessun controllo di duplicato (creaGruppo stesso non lo fa).
+export async function aggiornaGruppoAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const nome = String(formData.get("nome") ?? "").trim();
+  const categoria = String(formData.get("categoria") ?? "").trim();
+
+  if (!id) {
+    return { error: { code: "VALIDATION", message: "Gruppo non specificato." } };
+  }
+  // Stesso motivo di creaGruppo: due controlli distinti, mai un unico
+  // messaggio generico che confonderebbe nome vuoto con categoria vuota.
+  if (!nome) {
+    return {
+      error: { code: "VALIDATION", message: "Il nome del Gruppo è obbligatorio." },
+    };
+  }
+  if (!categoria) {
+    return {
+      error: { code: "VALIDATION", message: "La categoria del Gruppo è obbligatoria." },
+    };
+  }
+
+  try {
+    await prisma.gruppo.update({ where: { id }, data: { nome, categoria } });
+  } catch (err) {
+    // Review fix (Blind Hunter): un Gruppo cancellato nel frattempo (o un id
+    // manomesso) fa fallire prisma.gruppo.update con "record non trovato"
+    // (Prisma P2025) - mostrare "Riprova" sarebbe fuorviante, un nuovo
+    // tentativo non potrebbe mai riuscire. Stesso principio di distinguere
+    // questo caso gia' seguito altrove nel file (es. impostaNumeroAtletaAction).
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      err.code === "P2025"
+    ) {
+      return {
+        error: { code: "VALIDATION", message: "Gruppo non trovato." },
+      };
+    }
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile aggiornare il Gruppo. Riprova." },
+    };
+  }
+
+  // Il Gruppo modificato e' visibile anche su /app/i-miei-gruppi (Allenatore
+  // assegnato) - stesso doppio revalidatePath gia' usato da
+  // creaEAssegnaAtleta per lo stesso motivo. Review fix (Verification Gap
+  // Reviewer): terza revalidatePath verso /app/foto-squadre, stesso identico
+  // motivo gia' documentato per caricaFotoSquadraAction poco sotto in questo
+  // file - quella pagina mostra anche nome/categoria di ogni Gruppo.
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
+  revalidatePath("/app/foto-squadre");
+  return { success: true };
+}
+
 // AC #1/#2: FR-7 ammette Dirigente o Admin. GruppoAllenatore non e'
 // protetta da RLS (AD-9) - Prisma diretto, stesso pattern di creaGruppo.
 export async function assegnaAllenatore(
