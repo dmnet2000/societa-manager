@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import type { Ruolo } from "@prisma/client";
 import {
   aggiornaRuoliUtente,
+  correggiEmailUtenteAction,
   impostaAttivoUtente,
   reimpostaPasswordFissaUtente,
 } from "./actions";
@@ -24,6 +25,7 @@ type Utente = {
   email: string;
   attivo: boolean;
   ruoli: Ruolo[];
+  emailConfermata: boolean;
 };
 
 export function UtenteRow({ utente }: { utente: Utente }) {
@@ -35,6 +37,10 @@ export function UtenteRow({ utente }: { utente: Utente }) {
   const [isTogglePending, startToggleTransition] = useTransition();
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
   const [isResetPasswordPending, startResetPasswordTransition] = useTransition();
+  const [correggiEmailState, correggiEmailAction, correggiEmailPending] = useActionState(
+    correggiEmailUtenteAction,
+    undefined
+  );
 
   function toggleAttivo() {
     setAttivoError(null);
@@ -142,6 +148,59 @@ export function UtenteRow({ utente }: { utente: Utente }) {
           <p role="alert" className={styles.errore}>
             {resetPasswordError}
           </p>
+        )}
+      </td>
+      <td>
+        {/* Story 9.38: solo per un Utente mai confermato - emailConfermata
+            calcolato in page.tsx (listUsers() una tantum) decide solo se
+            mostrare il form, l'azione server-side rifiuta comunque da sola
+            un bersaglio gia' confermato (il server non si fida mai del
+            client). */}
+        {!utente.emailConfermata && (
+          <form
+            action={correggiEmailAction}
+            onSubmit={(event) => {
+              // Review fix: stesso argine di reimpostaPassword() sopra
+              // (window.confirm) - anche questa azione sovrascrive
+              // silenziosamente una credenziale (l'email) e reinvia subito
+              // un nuovo link, non deve poter partire da un click
+              // accidentale.
+              if (
+                !window.confirm(
+                  `Correggere l'email di ${utente.email}? Verrà inviato un nuovo link di conferma al nuovo indirizzo.`
+                )
+              ) {
+                event.preventDefault();
+              }
+            }}
+            className={styles.formCompatto}
+          >
+            <input type="hidden" name="utenteId" value={utente.id} />
+            <input
+              type="email"
+              name="nuovaEmail"
+              placeholder="Nuova email"
+              required
+              aria-label={`Nuova email per ${utente.email}`}
+            />
+            {correggiEmailState && "error" in correggiEmailState && (
+              <p role="alert" className={styles.errore}>
+                {correggiEmailState.error.message}
+              </p>
+            )}
+            {correggiEmailState && "success" in correggiEmailState && (
+              <p role="status" className={styles.successo}>
+                Email corretta e link reinviato.
+              </p>
+            )}
+            <button
+              disabled={correggiEmailPending}
+              type="submit"
+              className={styles.bottoneCompatto}
+            >
+              Correggi email
+            </button>
+          </form>
         )}
       </td>
     </tr>

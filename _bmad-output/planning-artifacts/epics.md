@@ -1515,6 +1515,63 @@ so that le Atlete abbiano un numero riconoscibile, coerente con la stagione in c
 4. **And** un'Atleta senza Numero impostato resta valida in ogni vista esistente (elenco Atlete, drill-down, presenze) — nessuna regressione, il campo è sempre facoltativo
 5. **And** rimuovere un'Atleta da un Gruppo (Story 9.14, `deleteMany` su `GruppoAtleta`) cancella anche il Numero associato, essendo lo stesso record — nessuna azione aggiuntiva richiesta
 
+### Story 9.36: Sanificazione in maiuscolo di Cognome/Nome nella creazione di una nuova Atleta
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: quando si crea una nuova Atleta, i dati testuali vanno salvati a database in maiuscolo, sanificando quelli che non lo sono già.)*
+
+As a Admin, Dirigente o Allenatore che crea una nuova Atleta da `/gruppi` o `/i-miei-gruppi`,
+I want che Cognome e Nome inseriti vengano normalizzati in maiuscolo prima del salvataggio,
+so that l'anagrafica Atleta resti coerente indipendentemente da come l'operatore digita i dati, stessa convenzione già in uso per il Codice Fiscale.
+
+**Contesto tecnico:** la Server Action condivisa `creaEAssegnaAtleta` (`app/app/(gruppi-allenatori)/gruppi/actions.ts` righe ~542-549, Story 9.18/9.28) oggi normalizza in maiuscolo solo `codiceFiscale` (`.toUpperCase()`); `cognome`, `nome`, `email`, `cellulare` vengono solo `.trim()`-ati, mai maiuscolizzati. Il valore finale scritto su `Atleta.nome` è la concatenazione `` `${cognome} ${nome}` `` (riga 665) — la sanificazione va quindi applicata a monte, sui due campi separati, prima della concatenazione. **Ambito di questa storia**: solo Cognome/Nome — email/cellulare sono dati di contatto, non anagrafici, e restano invariati (non è un'informazione da normalizzare in maiuscolo). Fuori scope l'import federale (Story 1.3, `import-atlete/parser.ts`), che ha una propria pipeline di normalizzazione indipendente e riceve dati già in maiuscolo dall'export federale.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin, Dirigente o Allenatore che compila il form "Nuova Atleta" (`creaEAssegnaAtleta`) con Cognome e/o Nome contenenti lettere minuscole (es. "rossi", "Maria") **When** invia il form **Then** l'Atleta viene creata con `nome` salvato interamente in maiuscolo (es. "ROSSI MARIA")
+2. **And** se Cognome/Nome sono già interamente in maiuscolo, il comportamento resta invariato (nessuna regressione)
+3. **And** nessuna regressione sulla validazione esistente (Cognome/Nome obbligatori, formato Codice Fiscale, sesso derivato) né sugli altri campi (email, cellulare, Codice Fiscale — già normalizzato) — suite Vitest invariata
+4. **And** nessuna regressione sulla creazione Atleta da Onboarding-Import (Story 1.3/1.7), che resta un percorso indipendente e non viene toccata da questa storia
+
+### Story 9.37: Modifica di nome e categoria di un Gruppo esistente
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: possibilità di modificare il nome del Gruppo e la categoria.)*
+
+As a Admin o Dirigente su `/gruppi`,
+I want poter correggere il nome e/o la categoria di un Gruppo già creato,
+so that possa sistemare un errore di inserimento senza dover cancellare e ricreare il Gruppo, perdendo Allenatori/Atlete/Slot/Campionati già assegnati.
+
+**Contesto tecnico:** oggi `app/app/(gruppi-allenatori)/gruppi/actions.ts` ha solo `creaGruppo` (righe 113-172, `requireRuolo(["ADMIN","DIRIGENTE"])`, Prisma diretto — `Gruppo` non è protetto da RLS, AD-9) — nessuna `aggiornaGruppo` esiste. Mirror diretto del pattern update-singola-entità già stabilito in questo progetto: `aggiornaPalestra` (`app/app/(orari-palestre)/palestre/actions.ts` righe 111-146 — `requireRuolo` → validazione → `prisma.gruppo.update({ where: { id }, data: {...} })` → errore `INTERNAL` generico → `revalidatePath("/app/gruppi")`) e `aggiornaCampionato` (Story 10.8, stesso principio). Nessun vincolo di unicità su `Gruppo.nome`/`categoria` in `prisma/schema.prisma` — `creaGruppo` stesso non verifica duplicati, comportamento da preservare identico in modifica.
+
+**Decisione aperta da chiarire in fase di creazione storia**: `GruppoRow.tsx` mostra oggi nome/categoria come semplice testo nella `rigaPrincipale` (`<td>{gruppo.nome}</td><td>{gruppo.categoria}</td>`, righe 98-100, Story 9.33) — nessuna icona/toggle di modifica esiste in quella riga, a differenza di `SlotRow.tsx`/`AllenatoreRow.tsx`/`PartitaRow.tsx` (Story 15.5/9.30/10.4) che già usano il pattern condiviso "riga sola-lettura ↔ modifica" con `icone-azione-riga.tsx`. Da decidere in sviluppo se riusare quel pattern o un form inline più semplice.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente su `/gruppi` **When** modifica nome e/o categoria di un Gruppo esistente **Then** i nuovi valori sono salvati e visibili senza reload, senza alcun impatto su Allenatori/Atlete/Slot/Campionati già assegnati a quel Gruppo (`id` invariato, nessuna FK coinvolta)
+2. **And** nome e categoria restano entrambi obbligatori (stesso vincolo di `creaGruppo`) — un valore vuoto viene rifiutato con un messaggio chiaro specifico per ciascun campo, nessuna scrittura
+3. **And** nessun controllo di duplicato è imposto — stesso comportamento già accettato oggi da `creaGruppo`, che non verifica duplicati nome+categoria nella stessa stagione
+4. **And** un Allenatore (non Admin/Dirigente) non ha accesso a questa modifica — stesso perimetro di autorizzazione già stabilito da `creaGruppo` (`requireRuolo(["ADMIN","DIRIGENTE"])`)
+5. **And** nessuna regressione sulla creazione di un Gruppo (Story 2.2), sull'assegnazione Allenatori/Atlete (Story 2.3/2.4/9.15/9.18/9.28) né sull'ordine di visualizzazione `/squadre` (Story 19.15) — suite Vitest invariata
+
+### Story 9.38: Correzione dell'email di un Utente non ancora confermato, da parte dell'Admin
+
+*(Aggiunta post-apertura epica — 2026-08-26, richiesta esplicita dell'utente, discussa in sessione di party mode (Mary/John/Sally/Winston/Amelia) prima di scrivere la storia: "se un'atleta registrandosi sbaglia la mail come posso fare per sistemarla? non arriva ovviamente il link cosa proponi?". Analisi di party mode: un secondo tentativo di registrazione con l'email corretta tecnicamente già "funziona" oggi (nessun vincolo blocca un secondo aggancio `GenitoreAtleta` alla stessa Atleta), ma lascia per sempre un Utente Supabase Auth fantasma (mai confermato) sotto l'email sbagliata, e può duplicare la coda di conferma Admin per Ruoli sensibili (Spec "Gate di conferma Admin"). L'utente ha scelto di scrivere solo questa storia (fix lato Admin) per ora, lasciando un eventuale percorso self-service a una storia futura separata, più delicata da progettare (autenticazione di chi non ha ancora un account confermato).)*
+
+As a Admin,
+I want poter correggere l'indirizzo email di un Utente che si è registrato ma non ha mai confermato l'account (probabile errore di battitura, il link di conferma non gli è mai potuto arrivare), e far ripartire da lì l'invio del link di conferma verso l'indirizzo corretto,
+so that non resti bloccato per sempre un account fantasma e la persona (Atleta/Genitore/Allenatore) possa completare la registrazione senza dover ripetere da zero l'intero flusso, lasciando un duplicato orfano nel sistema.
+
+**Contesto tecnico (verificato nel codice in sessione di party mode):** `app/(onboarding-import)/registrati/actions.ts` non invia mai l'email nativa di Supabase — crea l'Utente Supabase Auth via `generateLink({type:"signup"})` (Story 11.4), poi costruisce da sé il link (`/conferma-registrazione?token_hash=...`, righe 413-432) e lo spedisce con l'SMTP applicativo tramite `inviaEmail` (righe 449-459, `lib/email/invia-email.ts`). Un Admin che si limitasse a correggere l'email su Supabase senza rifare esplicitamente questo invio **non farebbe arrivare alcuna mail** — i due passaggi (correzione email + rigenerazione/invio del link) sono entrambi necessari, non uno solo. Mirror diretto del pattern già in produzione `reimpostaPasswordFissaUtente` (`app/app/(amministrazione)/admin/actions.ts` riga 245-282: `requireRuolo("ADMIN")` → risoluzione server-side di `supabaseAuthId` da `utenteId` (mai accettato dal form) → `admin.auth.admin.updateUserById(...)` → gestione errore) — stessa identica famiglia di chiamata Admin API, stesso file. **Stesso blocco di sicurezza già stabilito da quella storia (Story 9.11, righe 261-277)**: un Admin non può eseguire questa correzione su un bersaglio Admin (rischio di presa di controllo di un altro account Admin tramite il canale email — chi controlla l'email controlla anche un futuro "password dimenticata", stesso principio, rischio anche maggiore). **Punto da verificare empiricamente in sviluppo, non da assumere**: se `generateLink({type:"signup"})` su un Utente Supabase esistente-ma-non-confermato continua a funzionare correttamente subito dopo un `updateUserById` che gli ha appena cambiato l'email nello stesso giro (il percorso di reinvio a parità di email, righe 272-289 dello stesso file, è già in produzione e funzionante — questa storia lo esercita per la prima volta immediatamente dopo un cambio email).
+
+**Ambito di questa storia**: solo un Utente che non ha **mai** confermato l'account (nessuna sessione mai stabilita) — cambiare l'email di un Utente già attivo/confermato che vuole aggiornare il proprio indirizzo è una feature diversa, esplicitamente fuori scope, da valutare eventualmente in una storia separata. Il percorso self-service (senza passare dall'Admin) è anch'esso esplicitamente fuori scope — discusso in party mode, rimandato a una storia futura per la maggiore complessità di autenticazione di chi non ha ancora un account confermato.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin su `/app/admin` che individua un Utente mai confermato (probabile email sbagliata in fase di registrazione) **When** inserisce un nuovo indirizzo email e conferma la correzione **Then** l'email dell'Utente su Supabase Auth viene aggiornata, un nuovo link di conferma viene generato e spedito (via SMTP applicativo, stesso formato/testo già in uso in `registrati/actions.ts`) al **nuovo** indirizzo
+2. **And** se il bersaglio della correzione ha il Ruolo Admin, l'operazione è rifiutata con un messaggio chiaro — stesso blocco già stabilito da `reimpostaPasswordFissaUtente` (Story 9.11) per lo stesso principio di rischio
+3. **And** se il nuovo indirizzo inserito è già in uso da un altro Utente, l'operazione è rifiutata con un messaggio chiaro, nessuna scrittura parziale (né su Supabase Auth né altrove)
+4. **And** un Utente già confermato (con almeno un accesso riuscito) non è un bersaglio valido per questa correzione — l'azione non è disponibile o viene rifiutata esplicitamente, per non confondere questo flusso con un cambio email generico
+5. **And** nessuna regressione sul flusso di registrazione esistente (Story 1.1/11.4), sul reinvio del link a parità di email (già in produzione), né sulle altre azioni Admin esistenti (`impostaAttivoUtente`/`aggiornaRuoliUtente`/`reimpostaPasswordFissaUtente`) — suite Vitest invariata
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -3256,3 +3313,75 @@ so that non debba ripetere la stessa creazione manualmente una volta per ciascun
 3. **Given** nessuna Palestra ancora censita nel gestionale **When** l'Admin tenta di creare uno Slot di girone **Then** l'operazione è rifiutata con un messaggio esplicito ("nessuna Palestra configurata"), non un salvataggio silenzioso di zero righe
 4. **Given** lo stesso form **When** la fase scelta è semifinale o finale **Then** il comportamento resta invariato - il campo Palestra è richiesto, un solo Slot viene creato per la Palestra scelta
 5. **And** ogni Slot creato in blocco resta una riga `SlotTorneo` indipendente, cancellabile singolarmente come oggi (nessuna cancellazione/modifica di gruppo introdotta da questa storia)
+
+### Story 20.13: Nome personalizzato delle Settimane del Torneo
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: possibilità di precaricare, in una sezione dedicata, il nome delle Settimane del torneo.)*
+
+As a Admin (o Dirigente),
+I want poter impostare un nome proprio per Settimana 1 e Settimana 2 di un'Edizione del Torneo (es. la data reale del weekend, o un'etichetta descrittiva), in una sezione dedicata separata dalla gestione delle Categorie,
+so that il pubblico e gli altri operatori vedano un'etichetta significativa invece della generica "Settimana 1"/"Settimana 2" che oggi è fissa e non personalizzabile.
+
+**Contesto tecnico:** `SettimanaTorneo` (`prisma/schema.prisma` righe 807-810) è oggi un enum a due soli valori (`SETTIMANA_1`, `SETTIMANA_2`) — l'etichetta mostrata ovunque (pagina admin `/torneo`, pagina pubblica `/torneo`) viene da una mappa statica hardcoded (`lib/settimana-torneo.ts`, `ETICHETTA_SETTIMANA`: `"Settimana 1"`/`"Settimana 2"`), non da un dato modificabile. Il concetto di Settimana è scoped per `EdizioneTorneo` (non per Categoria — mirror dello stesso scoping già usato da `SlotTorneo`, Story 20.9), quindi il nome personalizzato va anch'esso legato a `EdizioneTorneo`: due nuovi campi opzionali (es. `nomeSettimana1`, `nomeSettimana2` — fallback sull'etichetta generica esistente se non impostati, nessuna migrazione dati necessaria sulle Edizioni già create). Mirror diretto del pattern già stabilito da Story 20.7 (`EdizioneTorneo.nome`, campo testuale editabile in una form dedicata). **Decisione aperta da chiarire in fase di creazione storia**: dove vive esattamente la "sezione dedicata" richiesta dall'utente — un nuovo form/riquadro nella pagina admin `/torneo` esistente (accanto a dove si crea/modifica il nome dell'Edizione, Story 20.7) sembra la soluzione più naturale, ma va confermato che non si intenda una pagina/tab separata.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin o Dirigente sulla sezione dedicata dell'Edizione del Torneo **When** imposta o modifica il nome di Settimana 1 e/o Settimana 2 **Then** il nuovo nome è salvato e visibile senza reload
+2. **And** un'Edizione senza nome personalizzato impostato per una Settimana continua a mostrare l'etichetta generica esistente ("Settimana 1"/"Settimana 2") — nessuna regressione, il campo è sempre facoltativo
+3. **And** il nome personalizzato, se impostato, sostituisce l'etichetta generica ovunque la Settimana è oggi mostrata (pagina admin `/torneo` — righe/select Categoria, `CategoriaTorneoRow.tsx` — e pagina pubblica `/torneo`, incluse le etichette `tabellone.label`)
+4. **And** stesso perimetro di autorizzazione già in uso in tutto il modulo Torneo (`requireRuolo(["ADMIN","DIRIGENTE"])`) — nessuna modifica al modello di autorizzazione esistente
+5. **And** nessuna regressione sulla creazione/modifica delle Categorie (Story 20.1/20.2, che continuano a referenziare `SettimanaTorneo` invariato come enum) né sulla generazione di calendario/tabelloni (Story 20.3/20.4) — suite Vitest invariata
+
+### Story 20.14: Contenuti centrati nella pagina pubblica del Torneo
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente dopo ulteriore verifica dal vivo: "non mi piace la visualizzazione terrei lo sfondo come le altre pagine. e centrerei i contenuti". Riapre parzialmente una decisione presa in Story 20.10 (in stato `review`), che aveva escluso esplicitamente un `max-width` centrato: "nessuna pagina pubblica del sito lo ha oggi, `/torneo` compreso, quindi non è una divergenza da correggere". L'utente ora chiede esplicitamente il contrario per questa pagina.)*
+
+As a Visitatore del sito pubblico,
+I want che il contenuto della pagina `/torneo` sia centrato, con lo sfondo mantenuto coerente con le altre pagine pubbliche (stesso esito già cercato da Story 20.10),
+so that la pagina non appaia sbilanciata a piena larghezza su schermi ampi.
+
+**Contesto tecnico:** verificato nel codice — **nessuna pagina pubblica del sito** (`/`, `/calendario`, `/squadre`, `/staff`, `/contatti`) applica oggi un contenitore centrato a livello di pagina (solo singoli blocchi interni hanno un `max-width` isolato, es. `.heroCta` in `home-pubblica.module.css`, non l'intera pagina) — introdurre un contenitore centrato per `/torneo` sarebbe quindi la prima occorrenza di questo pattern sul sito pubblico, non un allineamento a uno standard già esistente altrove. **Decisione aperta da chiarire in fase di creazione storia**: se il centraggio va limitato alla sola pagina `/torneo` (scope minimo, richiesta letterale dell'utente) o se va introdotto come pattern condiviso da retrofittare anche sulle altre pagine pubbliche per coerenza — da confermare esplicitamente con l'utente, non assumere. Il "mantenere lo sfondo come le altre pagine" risulta già nello scope di Story 20.10 (rimozione riquadro bianco per Categoria) — questa storia riverifica solo che l'esito visivo corrisponda davvero a quanto atteso una volta deployato (Story 20.10 non ha mai avuto verifica visiva dal vivo, dev locale rotto).
+
+**Acceptance Criteria:**
+
+1. **Given** la pagina pubblica `/torneo` su schermi larghi (desktop) **When** viene renderizzata **Then** il contenuto principale (Edizione, Categorie, gironi, tabellone) è contenuto in un blocco centrato di larghezza massima, non disteso a piena larghezza dello schermo
+2. **And** su schermi stretti (mobile) il comportamento resta invariato rispetto a oggi — il centraggio non introduce alcuna regressione responsive
+3. **And** lo sfondo della pagina resta coerente con le altre pagine pubbliche del sito (nessun riquadro/ombra propri per sezione, esito già cercato da Story 20.10) — verificato dal vivo dopo il deploy, non solo in sandbox
+4. **And** nessuna regressione sulla pagina interna amministrativa (`app/app/(torneo)/torneo/...`) — questa storia tocca solo `app/torneo/torneo-pubblico.module.css`/`app/torneo/page.tsx` (pagina pubblica)
+
+### Story 20.15: Vista tabellare delle squadre iscritte per Girone
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: "i gironi in visualizzazione li vorrei sotto forma tabellare con le squadre sulle righe: |girone a|girone b|......|girone x|".)*
+
+As a Visitatore del sito pubblico,
+I want vedere le squadre iscritte a ciascun Girone di una Categoria in un'unica tabella, con una colonna per Girone e le squadre elencate sulle righe,
+so that possa confrontare a colpo d'occhio la composizione di tutti i Gironi di una Categoria, invece di scorrere sezioni separate una sotto l'altra.
+
+**Contesto tecnico:** verificato nel codice — `app/torneo/page.tsx` (righe 227-265) itera oggi `GIRONI_TORNEO` (`lib/girone-torneo.ts`, oggi solo `GIRONE_A`/`GIRONE_B`) e renderizza, quando il calendario di girone non è ancora stato generato, un `<section>` distinto per Girone con un `<ul className={styles.listaSquadre}>` proprio — Gironi impilati verticalmente, non affiancati. Questa storia sostituisce quella lista impilata con un'unica `<table>`: un `<th>` per Girone (`girone.label`, es. "Girone A"/"Girone B") come intestazione di colonna, le Squadre di quel Girone elencate nelle righe sottostanti della stessa colonna. **Ambito di questa storia**: solo l'elenco "squadre iscritte" (il ramo `!calendarioGenerato`, oggi una semplice lista senza classifica) — la tabella classifica già esistente (righe 267-289, con colonne Punti/Partite giocate/Set vinti/Set persi per singolo Girone) resta invariata, non è nello scope letterale della richiesta ("le squadre sulle righe", senza altri dati). **Decisione aperta da chiarire in fase di creazione storia**: come gestire Gironi con un numero diverso di Squadre iscritte (celle vuote nelle righe in eccesso per il Girone più numeroso) — da confermare, nessuna assunzione implicita. La pagina admin (`app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/page.tsx`, `SquadraTorneoRow.tsx`) resta esplicitamente fuori scope: è una vista di gestione CRUD (creazione/modifica/cancellazione Squadra), non una visualizzazione di sola lettura, stesso principio già stabilito da Story 20.10 per l'area amministrativa.
+
+**Acceptance Criteria:**
+
+1. **Given** una Categoria con Squadre iscritte in più Gironi e calendario di girone non ancora generato **When** la pagina pubblica `/torneo` la renderizza **Then** le Squadre sono mostrate in un'unica tabella con una colonna per Girone (intestazione = nome Girone) e le Squadre elencate come righe sotto la rispettiva colonna
+2. **And** un Girone senza Squadre iscritte mostra la propria colonna vuota (o un'indicazione esplicita "nessuna squadra"), non una colonna mancante — la struttura a colonne resta stabile indipendentemente dal numero di iscritte
+3. **And** una Categoria senza alcuna Squadra iscritta in nessun Girone mantiene il messaggio esistente ("Nessuna squadra iscritta in questo girone" o equivalente), nessuna tabella vuota fuorviante
+4. **And** nessuna regressione sulla tabella classifica esistente (mostrata solo a calendario generato) né sull'elenco partite/incontri di ciascun Girone — entrambi restano invariati, fuori scope di questa storia
+5. **And** nessuna regressione sulla pagina admin di gestione Squadre (`SquadraTorneoRow.tsx`) — non toccata da questa storia
+
+### Story 20.16: Punti realizzati nei set e nuovo criterio di spareggio (quoziente set/punti) nella classifica di girone
+
+*(Aggiunta post-apertura epica — 2026-08-25, richiesta esplicita dell'utente: "aggiungi anche i punti in classifica sommando i punti fatti nei vari set. in caso di parità di quoziente set si valuta il quoziente punti".)*
+
+As a Visitatore del sito pubblico (o Admin/Dirigente/Allenatore su `/app/torneo`),
+I want vedere in classifica di girone anche il totale dei punti realizzati nei set giocati, e vedere gli spareggi decisi per quoziente set (e quoziente punti a ulteriore parità) invece che per set vinti assoluti,
+so that la classifica rifletta un criterio di spareggio più fine, coerente con la prassi pallavolistica reale, invece del solo conteggio di set vinti.
+
+**Contesto tecnico:** `calcolaClassificaGirone` (`lib/classifica-girone-torneo.ts`) espone oggi `RigaClassifica { punti, setVinti, setPersi, partiteGiocate }` — `punti` è il punteggio di classifica per incontro (3/2/1/0, regolamento Story 20.3), **non** la somma dei punti realizzati nei singoli set (25-20 ecc.) richiesta ora: quel dato grezzo esiste già su ogni `PartitaTorneo` (`set1Casa`/`set1Ospite`/`set2Casa`/`set2Ospite`/`set3Casa`/`set3Ospite`), ma non viene mai sommato. **Collisione di nomenclatura da chiarire in fase di creazione storia**: la tabella (sia pubblica `app/torneo/page.tsx` righe 268-289, sia admin `.../risultati/page.tsx` righe 161-182) ha già una colonna intitolata "Punti" per il punteggio di classifica — il nuovo dato (somma punti-set) necessita di un'etichetta distinta (es. "Punti realizzati"/"Punti fatti") per non creare ambiguità con la colonna esistente, non assumere quale delle due si chiami "Punti" senza conferma. **Ordinamento attuale** (Story 20.3 AC, riga 74-78 della funzione): punti classifica desc → **set vinti assoluti** desc → nome alfabetico. Questa storia **riapre** il secondo criterio: sostituirlo con il **quoziente set** (`setVinti / setPersi`), e aggiungere un terzo criterio, il **quoziente punti** (`puntiFatti / puntiSubiti`), applicato solo a parità di quoziente set, prima del fallback alfabetico finale (invariato). **Punto aperto da confermare in sviluppo**: comportamento dei quozienti a denominatore zero (una squadra con `setPersi = 0` o `puntiSubiti = 0`, es. tutte le partite vinte 2-0) — nessuna assunzione implicita, da decidere esplicitamente (es. trattarlo come quoziente massimo/`Infinity` ordinato in cima, non un errore di divisione silenzioso).
+
+**Acceptance Criteria:**
+
+1. **Given** una Categoria con partite di girone concluse **When** la classifica di girone viene calcolata **Then** ogni riga espone anche il totale dei punti realizzati nei set giocati (somma di tutti i punteggi-set a favore) e dei punti subiti, mostrati in una nuova colonna con etichetta distinta dalla colonna "Punti" di classifica esistente
+2. **And** a parità di punti-classifica, l'ordinamento usa il quoziente set (`setVinti / setPersi`) invece del numero assoluto di set vinti — comportamento che sostituisce quello stabilito in Story 20.3
+3. **And** a ulteriore parità di quoziente set, l'ordinamento usa il quoziente punti (`puntiFatti / puntiSubiti`) come criterio successivo
+4. **And** a parità anche di quoziente punti, il fallback alfabetico esistente resta invariato come ultimo criterio deterministico
+5. **And** nessuna regressione sulla classifica finale (`calcolaClassificaFinale`, Story 20.4) — calcolata su un meccanismo di tabellone a eliminazione diretta indipendente, non tocca alcun criterio di spareggio
+6. **And** entrambe le viste che mostrano la classifica di girone (pagina pubblica `/torneo` e pagina admin `.../risultati`) riflettono la nuova colonna e il nuovo ordinamento in modo identico — nessuna delle due resta con la vecchia logica

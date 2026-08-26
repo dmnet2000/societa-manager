@@ -378,6 +378,8 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui gestisci gli account utente della società: crei nuovi utenti, assegni o togli Ruoli, attivi o disattivi un account.",
       "Un utente disattivato non può più accedere all'app, ma i suoi dati storici (es. presenze registrate) restano invariati.",
+      "Se un Utente ha sbagliato a digitare l'email in fase di registrazione e non ha mai confermato l'account, compare qui il campo \"Correggi email\": corregge l'indirizzo e reinvia subito un nuovo link di conferma. Disponibile solo finché l'Utente non ha mai confermato l'account.",
+      "\"Correggi email\" rifiuta sempre un bersaglio con Ruolo Admin (usa un altro account per correggere quello), e rifiuta anche se il nuovo indirizzo è già in uso da un altro Utente.",
     ],
   },
   {

@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-19-2026 17:20"
+last_updated: "08-26-2026 09:30"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -487,6 +487,53 @@ development_status:
   # Riverificato: 118 file/1708 test verdi, tsc pulito, lint 0 errori,
   # build riuscita.
   9-35-numero-maglia-atleta-stagione: review
+
+  # Story 9.36 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # quando si crea una nuova Atleta, Cognome e Nome vanno sanificati in
+  # maiuscolo prima del salvataggio (stessa convenzione gia' in uso per il
+  # Codice Fiscale in creaEAssegnaAtleta). Verificato nel codice: solo
+  # codiceFiscale viene oggi normalizzato (.toUpperCase()) in
+  # app/app/(gruppi-allenatori)/gruppi/actions.ts righe ~542-549 - cognome/
+  # nome/email/cellulare sono solo trim()-ati. Scope limitato a
+  # Cognome/Nome (email/cellulare sono dati di contatto, non anagrafici,
+  # esclusi); import federale (Story 1.3) esplicitamente fuori scope,
+  # pipeline indipendente. Solo la story scritta ora, nessuna
+  # implementazione. Status: backlog.
+  9-36-sanificazione-maiuscolo-nuova-atleta: backlog
+
+  # Story 9.37 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # possibilita' di modificare nome e categoria di un Gruppo gia' creato.
+  # Verificato nel codice: app/app/(gruppi-allenatori)/gruppi/actions.ts ha
+  # oggi solo creaGruppo, nessuna aggiornaGruppo - mirror diretto del
+  # pattern gia' stabilito da aggiornaPalestra
+  # (app/app/(orari-palestre)/palestre/actions.ts). Nessun vincolo di
+  # unicita' su Gruppo.nome/categoria in schema.prisma, comportamento da
+  # preservare identico in modifica. Punto lasciato esplicitamente aperto
+  # per lo sviluppo: se riusare il pattern "riga sola-lettura/modifica"
+  # gia' in SlotRow/AllenatoreRow/PartitaRow o un form inline piu'
+  # semplice (GruppoRow.tsx oggi mostra nome/categoria come testo piatto,
+  # nessuna icona di modifica). Solo la story scritta ora, nessuna
+  # implementazione. Status: backlog.
+  9-37-modifica-nome-categoria-gruppo: backlog
+
+  # Story 9.38 aggiunta su richiesta esplicita dell'utente (2026-08-26),
+  # discussa in sessione di party mode (Mary/John/Sally/Winston/Amelia):
+  # "se un'atleta registrandosi sbaglia la mail come posso fare per
+  # sistemarla? non arriva ovviamente il link cosa proponi?". Verificato
+  # nel codice: registrati/actions.ts non invia mai l'email nativa
+  # Supabase - costruisce il link a mano (token_hash) e lo spedisce con
+  # l'SMTP applicativo (inviaEmail) - un Admin che cambiasse solo l'email
+  # su Supabase senza rifare questo invio non farebbe arrivare nulla.
+  # Mirror di reimpostaPasswordFissaUtente (admin/actions.ts, Story 9.11)
+  # incluso lo stesso blocco di sicurezza su bersaglio Admin. Scope
+  # limitato a Utenti mai confermati - percorso self-service (senza
+  # Admin) discusso e rimandato esplicitamente a una storia futura
+  # separata, piu' delicata (autenticazione di chi non ha ancora un
+  # account confermato). Punto da verificare in sviluppo: generateLink
+  # dopo un updateUserById che ha appena cambiato l'email nello stesso
+  # giro, mai esercitato prima. Solo la story scritta ora, nessuna
+  # implementazione. Status: backlog.
+  9-38-correzione-email-utente-non-confermato: review
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -1401,3 +1448,59 @@ development_status:
   # locale rotto). Vedi Spec Change Log in
   # spec-20-12-slot-girone-tutte-palestre.md.
   20-12-slot-girone-tutte-palestre: review
+
+  # Story 20.13 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # possibilita' di precaricare, in una sezione dedicata, il nome delle
+  # Settimane del Torneo (oggi "Settimana 1"/"Settimana 2" e' un'etichetta
+  # statica hardcoded in lib/settimana-torneo.ts, derivata dall'enum
+  # SettimanaTorneo - nessun campo modificabile esiste). Mirror del
+  # pattern gia' stabilito da Story 20.7 (EdizioneTorneo.nome). Punto
+  # lasciato esplicitamente aperto per lo sviluppo: dove vive esattamente
+  # la "sezione dedicata" (nuovo form nella pagina admin /torneo esistente
+  # ipotizzato come piu' naturale, da confermare con l'utente). Solo la
+  # story scritta ora, nessuna implementazione. Status: backlog.
+  20-13-nome-settimane-torneo: backlog
+
+  # Story 20.14 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # "non mi piace la visualizzazione terrei lo sfondo come le altre
+  # pagine. e centrerei i contenuti" - riapre parzialmente la decisione di
+  # Story 20.10 (in review) che aveva escluso un max-width centrato.
+  # Verificato: nessuna pagina pubblica del sito ha oggi un contenitore
+  # centrato a livello di pagina - introdurlo per /torneo sarebbe la prima
+  # occorrenza. Punto aperto per lo sviluppo: se limitare il centraggio
+  # alla sola /torneo o estenderlo come pattern condiviso alle altre
+  # pagine pubbliche. Solo la story scritta ora, nessuna implementazione.
+  # Status: backlog.
+  20-14-contenuti-centrati-torneo-pubblico: backlog
+
+  # Story 20.15 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # "i gironi in visualizzazione li vorrei sotto forma tabellare con le
+  # squadre sulle righe: |girone a|girone b|......|girone x|". Verificato
+  # nel codice: app/torneo/page.tsx (righe 227-265) mostra oggi le
+  # squadre iscritte per Girone in sezioni impilate verticalmente (una
+  # <ul> per Girone), non affiancate - da sostituire con un'unica tabella
+  # con una colonna per Girone. Scope limitato al solo elenco "squadre
+  # iscritte" (ramo senza calendario generato) - la tabella classifica
+  # esistente resta invariata, fuori scope letterale della richiesta.
+  # Punto aperto: gestione Gironi con numero diverso di squadre iscritte
+  # (celle vuote). Solo la story scritta ora, nessuna implementazione.
+  # Status: backlog.
+  20-15-vista-tabellare-squadre-gironi: backlog
+
+  # Story 20.16 aggiunta su richiesta esplicita dell'utente (2026-08-25):
+  # "aggiungi anche i punti in classifica sommando i punti fatti nei vari
+  # set. in caso di parita' di quoziente set si valuta il quoziente
+  # punti". Verificato nel codice: calcolaClassificaGirone
+  # (lib/classifica-girone-torneo.ts) non somma mai i punti-set grezzi
+  # (set1Casa/set2Casa/set3Casa ecc., gia' disponibili su PartitaTorneo);
+  # l'ordinamento attuale (Story 20.3 AC) usa set vinti ASSOLUTI come
+  # spareggio, non un quoziente - questa storia riapre esplicitamente
+  # quella decisione (quoziente set, poi quoziente punti, poi alfabetico
+  # invariato). Collisione di nomenclatura segnalata: la colonna "Punti"
+  # esistente e' il punteggio di classifica (3/2/1/0), non la somma dei
+  # punti-set - serve un'etichetta distinta, da confermare. Punto aperto:
+  # comportamento dei quozienti a denominatore zero. Tocca sia la vista
+  # pubblica (/torneo) sia quella admin (.../risultati), entrambe basate
+  # sulla stessa funzione pura. Solo la story scritta ora, nessuna
+  # implementazione. Status: backlog.
+  20-16-quoziente-set-punti-classifica-girone: backlog

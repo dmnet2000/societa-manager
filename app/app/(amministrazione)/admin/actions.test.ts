@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const createUserMock = vi.fn();
 const updateUserByIdMock = vi.fn();
+const getUserByIdMock = vi.fn();
+const generateLinkMock = vi.fn();
 const utenteCreateMock = vi.fn();
 const utenteUpdateMock = vi.fn();
 const utenteCountMock = vi.fn();
@@ -11,10 +13,19 @@ const sincronizzaRuoliMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const requireRuoloMock = vi.fn();
 const getUserMock = vi.fn();
+const headersMock = vi.fn();
+const inviaEmailMock = vi.fn();
 
 vi.mock("@/lib/auth-admin/client", () => ({
   createAdminClient: () => ({
-    auth: { admin: { createUser: createUserMock, updateUserById: updateUserByIdMock } },
+    auth: {
+      admin: {
+        createUser: createUserMock,
+        updateUserById: updateUserByIdMock,
+        getUserById: getUserByIdMock,
+        generateLink: generateLinkMock,
+      },
+    },
   }),
 }));
 
@@ -52,8 +63,25 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { creaUtente, impostaAttivoUtente, aggiornaRuoliUtente, reimpostaPasswordFissaUtente } =
-  await import("./actions");
+vi.mock("next/headers", () => ({
+  headers: headersMock,
+}));
+
+vi.mock("@/lib/email/invia-email", () => ({
+  inviaEmail: inviaEmailMock,
+}));
+
+const {
+  creaUtente,
+  impostaAttivoUtente,
+  aggiornaRuoliUtente,
+  reimpostaPasswordFissaUtente,
+  correggiEmailUtenteAction,
+} = await import("./actions");
+
+function buildHeaders(entries: Record<string, string>) {
+  return new Map(Object.entries(entries));
+}
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData();
@@ -120,6 +148,20 @@ describe("autorizzazione (comune alle 3 Server Action)", () => {
     });
 
     const result = await reimpostaPasswordFissaUtente(undefined, "u1");
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("correggiEmailUtenteAction restituisce FORBIDDEN e non chiama Supabase se il chiamante non e' Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
     expect(updateUserByIdMock).not.toHaveBeenCalled();
@@ -554,5 +596,423 @@ describe("aggiornaRuoliUtente", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile aggiornare i Ruoli. Riprova." },
     });
+  });
+});
+
+describe("correggiEmailUtenteAction", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    utenteFindUniqueOrThrowMock.mockReset();
+    updateUserByIdMock.mockReset();
+    getUserByIdMock.mockReset();
+    generateLinkMock.mockReset();
+    utenteUpdateMock.mockReset();
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
+    headersMock.mockReset();
+    headersMock.mockResolvedValue(
+      buildHeaders({ host: "app.esempio.it", "x-forwarded-proto": "https" })
+    );
+    inviaEmailMock.mockReset();
+    revalidatePathMock.mockReset();
+  });
+
+  it("returns VALIDATION and touches nothing when nuovaEmail is empty", async () => {
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Inserisci un indirizzo email valido." },
+    });
+    expect(utenteFindUniqueOrThrowMock).not.toHaveBeenCalled();
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION and touches nothing when nuovaEmail has no '@'", async () => {
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "nonvalida" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Inserisci un indirizzo email valido." },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["a@", "@b.it", "a@@b.it", "a@b", "a b@esempio.it"])(
+    "returns VALIDATION for a grossly malformed email: %s (review fix - a bare '@' check was too weak)",
+    async (nuovaEmailNonValida) => {
+      const result = await correggiEmailUtenteAction(
+        undefined,
+        buildFormData({ utenteId: "u1", nuovaEmail: nuovaEmailNonValida })
+      );
+
+      expect(result).toEqual({
+        error: { code: "VALIDATION", message: "Inserisci un indirizzo email valido." },
+      });
+      expect(updateUserByIdMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it("returns a friendly error, no crash, when the Utente does not exist", async () => {
+    utenteFindUniqueOrThrowMock.mockRejectedValue(new Error("not found"));
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile correggere l'email. Riprova." },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a target Utente who is Admin (account-takeover prevention), no Supabase call", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-admin1",
+      ruoli: [{ ruolo: "ADMIN" }],
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Non puoi correggere l'email di un altro Admin con questa funzione.",
+      },
+    });
+    expect(getUserByIdMock).not.toHaveBeenCalled();
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when getUserById fails", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({ data: { user: null }, error: { message: "boom" } });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile correggere l'email. Riprova." },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a target Utente who has already confirmed the account, no writes", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: "2026-01-01T00:00:00Z" } },
+      error: null,
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Questo Utente ha già confermato l'account: questa funzione corregge solo un'email mai confermata.",
+      },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+    expect(utenteUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the new email is already in use by another Utente (updateUserById returns email_exists), no Prisma write", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({
+      error: { code: "email_exists", message: "email already in use" },
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "gia-in-uso@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile correggere l'email: verifica che non sia già in uso da un altro Utente.",
+      },
+    });
+    expect(utenteUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses when updateUserById returns user_already_exists (defensive dual-check, mirror creaUtente)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({
+      error: { code: "user_already_exists", message: "email already in use" },
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "gia-in-uso@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile correggere l'email: verifica che non sia già in uso da un altro Utente.",
+      },
+    });
+    expect(utenteUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic INTERNAL error (not the duplicate-email message) when updateUserById fails for an unrelated reason", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({
+      error: { code: "over_request_rate_limit", message: "rate limited" },
+    });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile correggere l'email. Riprova." },
+    });
+    expect(utenteUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("corrects the email on Supabase + Prisma, regenerates and resends the confirmation link (happy path)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+    utenteUpdateMock.mockResolvedValue({});
+    generateLinkMock.mockResolvedValue({
+      data: { properties: { hashed_token: "tok123" } },
+      error: null,
+    });
+    inviaEmailMock.mockResolvedValue(undefined);
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(updateUserByIdMock).toHaveBeenCalledWith("auth-u1", {
+      email: "corretta@example.com",
+    });
+    expect(utenteUpdateMock).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { email: "corretta@example.com" },
+    });
+    expect(generateLinkMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "signup", email: "corretta@example.com" })
+    );
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinatario: "corretta@example.com",
+        testo: expect.stringContaining(
+          "https://app.esempio.it/conferma-registrazione?token_hash=tok123"
+        ),
+      })
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
+  });
+
+  it("normalizes nuovaEmail to lowercase before using it anywhere (Supabase, Prisma, link, invio)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+    utenteUpdateMock.mockResolvedValue({});
+    generateLinkMock.mockResolvedValue({
+      data: { properties: { hashed_token: "tok123" } },
+      error: null,
+    });
+    inviaEmailMock.mockResolvedValue(undefined);
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "  Corretta@Example.COM  " })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(updateUserByIdMock).toHaveBeenCalledWith("auth-u1", {
+      email: "corretta@example.com",
+    });
+    expect(utenteUpdateMock).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { email: "corretta@example.com" },
+    });
+    expect(generateLinkMock).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "corretta@example.com" })
+    );
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destinatario: "corretta@example.com" })
+    );
+  });
+
+  it("returns INTERNAL, no crash, when prisma.utente.update rejects after Supabase was already updated - no generateLink/inviaEmail", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+    utenteUpdateMock.mockRejectedValue(new Error("db down"));
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message:
+          "Email corretta su Supabase ma non nel database: contatta l'assistenza tecnica.",
+      },
+    });
+    expect(generateLinkMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("returns EMAIL_NON_INVIATA when generateLink fails - email already corrected, no rollback", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+    utenteUpdateMock.mockResolvedValue({});
+    generateLinkMock.mockResolvedValue({ data: {}, error: { message: "boom" } });
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "EMAIL_NON_INVIATA",
+        message:
+          "Email corretta ma impossibile generare il nuovo link di conferma. Ripeti la correzione con la stessa email per riprovare.",
+      },
+    });
+    // L'email e' gia' stata corretta su Supabase+Prisma - nessun rollback.
+    expect(utenteUpdateMock).toHaveBeenCalledTimes(1);
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+    // Review fix: revalidatePath comunque, la pagina Admin deve riflettere
+    // subito la nuova email anche quando il resto del flusso fallisce.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
+  });
+
+  it("returns EMAIL_NON_INVIATA when inviaEmail throws (SMTP unreachable) - email already corrected, no rollback", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      email: "vecchia@example.com",
+      supabaseAuthId: "auth-u1",
+      ruoli: [{ ruolo: "ATLETA" }],
+    });
+    getUserByIdMock.mockResolvedValue({
+      data: { user: { email_confirmed_at: null } },
+      error: null,
+    });
+    updateUserByIdMock.mockResolvedValue({ error: null });
+    utenteUpdateMock.mockResolvedValue({});
+    generateLinkMock.mockResolvedValue({
+      data: { properties: { hashed_token: "tok123" } },
+      error: null,
+    });
+    inviaEmailMock.mockRejectedValue(new Error("CONFIGURAZIONE_SMTP_MANCANTE"));
+
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "corretta@example.com" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "EMAIL_NON_INVIATA",
+        message:
+          "Email corretta ma impossibile inviare il nuovo link di conferma. Ripeti la correzione con la stessa email per riprovare.",
+      },
+    });
+    expect(utenteUpdateMock).toHaveBeenCalledTimes(1);
+    // Review fix: stesso motivo del test precedente (ramo generateLink).
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
   });
 });
