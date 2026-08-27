@@ -5,7 +5,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoUtenteForm } from "./NuovoUtenteForm";
-import { UtenteRow } from "./UtenteRow";
+import { ElencoUtenti } from "./ElencoUtenti";
 import styles from "./admin.module.css";
 
 // Pagina di gestione utenti con dati mutabili in tempo reale (creazione,
@@ -56,6 +56,23 @@ export default async function AdminPage() {
     listaUtentiAuth.data?.users ?? []
   );
 
+  // Story 9.40: shape-ato qui (Server Component) - ElencoUtenti (Client
+  // Component) riceve l'array gia' pronto, stesso schema gia' stabilito da
+  // conferma-certificati/page.tsx + ListaConfermati.tsx per lo stesso
+  // identico bisogno (dati risolti server-side, interattivita' di
+  // ordinamento client-side).
+  const utentiShapeati = utenti.map((utente) => ({
+    id: utente.id,
+    email: utente.email,
+    attivo: utente.attivo,
+    ruoli: utente.ruoli.map((r) => r.ruolo),
+    // Fail-safe: se l'Utente Auth non e' stato trovato in listUsers() per
+    // qualche motivo, tratta come confermato - non mostrare il form di
+    // correzione invece di rischiare di mostrarlo per un Utente in realta'
+    // gia' confermato.
+    emailConfermata: emailConfermataPerAuthId.get(utente.supabaseAuthId) ?? true,
+  }));
+
   return (
     <main>
       <TitoloPagina
@@ -70,45 +87,7 @@ export default async function AdminPage() {
 
       <section className={styles.sezione}>
         <h2>Utenti</h2>
-        <div className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Ruoli</th>
-                <th>Stato</th>
-                <th></th>
-                <th></th>
-                <th>Correggi email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {utenti.map((utente) => {
-                const ruoli = utente.ruoli.map((r) => r.ruolo);
-                return (
-                  <UtenteRow
-                    // Include i Ruoli nella key: forza il remount (e quindi il
-                    // refresh delle checkbox non controllate) quando cambiano.
-                    key={`${utente.id}:${ruoli.join(",")}`}
-                    utente={{
-                      id: utente.id,
-                      email: utente.email,
-                      attivo: utente.attivo,
-                      ruoli,
-                      // Fail-safe: se l'Utente Auth non e' stato trovato in
-                      // listUsers() per qualche motivo, tratta come
-                      // confermato - non mostrare il form di correzione
-                      // invece di rischiare di mostrarlo per un Utente in
-                      // realta' gia' confermato.
-                      emailConfermata:
-                        emailConfermataPerAuthId.get(utente.supabaseAuthId) ?? true,
-                    }}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ElencoUtenti utenti={utentiShapeati} />
       </section>
     </main>
   );

@@ -198,3 +198,84 @@
   cursor: default;
   opacity: 0.6;
 }
+
+/* Story 9.40: vista sola-lettura dei Ruoli (etichette + pulsante Modifica)
+   affiancati sulla stessa riga della cella. */
+.ruoliVista {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Story 9.40: pulsante icona "Modifica" per i Ruoli - mirror di
+   .iconaBottone di torneo.module.css (Story 20.1), stesso pattern icona +
+   aria-label/title. Touch target 44px impostato direttamente su
+   min-width/min-height del bottone (non delegato al genitore .ruoliVista,
+   che pure e' flex) - stessa lezione gia' documentata in slot.module.css:
+   min-height sul solo contenitore non basta se align-items:center, va sul
+   figlio cliccabile. Review fix (Blind Hunter): il commento precedente
+   descriveva erroneamente il genitore immediato come un <td>, quando e'
+   .ruoliVista. */
+.iconaBottone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  cursor: pointer;
+}
+
+.iconaBottone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.iconaBottone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Story 9.40: contenitore per le azioni della colonna unificata "Funzioni"
+   (Disattiva/Riattiva + Reimposta password, oppure Salva Ruoli + Annulla
+   nel form di modifica) - affiancate con un piccolo gap, ciascuna con il
+   proprio paragrafo d'errore sotto se presente in un <div> dedicato. */
+.funzioni {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Story 9.40: barra dei 2 pulsanti di ordinamento ("Ruolo"/"Stato") sopra la
+   tabella Utenti - mirror di .headerConfermati/.bottoneOrdina di
+   conferma-certificati.module.css (Story 9.25), adattata ai token gia' in
+   uso in questo file. Allineata a sinistra (non a destra come
+   .headerConfermati): qui sopra un'intera tabella multi-colonna, non sopra
+   una singola colonna badge. */
+.barraOrdinamento {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.bottoneOrdina {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.bottoneOrdina:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

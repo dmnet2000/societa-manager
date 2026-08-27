@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-27-2026 09:00"
+last_updated: "08-27-2026 10:00"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -563,7 +563,36 @@ development_status:
   # piu' di uno contemporaneamente. Richiesta esplicita dell'utente: "non
   # sviluppare ma solo aggiungere" - solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-40-vista-compatta-admin-utenti: backlog
+  # Story 9.40 avviata 2026-08-27. Punti aperti risolti con l'utente
+  # (AskUserQuestion): toggle inline (non popup/modale, mirror Story 9.30/
+  # CategoriaTorneoRow.tsx); priorita' Ruolo = ordine di RUOLI_VALIDI
+  # (lib/ruoli.ts), un Utente con piu' Ruoli usa l'indice piu' basso. Spec
+  # scritta: nuovo Client Component ElencoUtenti.tsx (mirror ListaConfermati.
+  # tsx/Story 9.25) per l'ordinamento client-side, UtenteRow.tsx con toggle
+  # sola-lettura/modifica, colonne Disattiva/Reimposta password unificate
+  # sotto "Funzioni", nuove funzioni pure in lib/ordina-utenti-per-ruolo-
+  # stato.ts. baseline_commit a032d3003d46851574454b05b7750967a456d7ca. Vedi
+  # spec-9-40-vista-compatta-admin-utenti.md.
+  # Story 9.40 chiusa 2026-08-27: implementata (agente in background, un
+  # primo tentativo si e' bloccato senza restituire un report - verificato
+  # manualmente che il lavoro era comunque completo e corretto prima di
+  # procedere alla review, nessun ritentativo necessario). Review a 3
+  # agenti (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer):
+  # nessun bug bloccante, 1 bug reale convergente (segnalato
+  # indipendentemente da 2 reviewer su 3) - un errore di salvataggio Ruoli
+  # restava visibile a tempo indeterminato dopo "Annulla" + "Modifica",
+  # stesso bug gia' risolto in passato per il pattern gemello
+  # (CategoriaTorneoRow.tsx, Story 20.1) ma non riportato qui - patchato. 2
+  # patch cosmetiche (commento impreciso sul touch target, costruzione O(n²)
+  # ridondante dell'indice di priorita'). Resto dei finding scartato perche'
+  # gia' coerente col precedente diretto (nessuno stato visivo sui pulsanti
+  # di ordinamento, etichette minimali), pattern preesistente non
+  # aggravato, o comportamento impossibile dato l'enum Prisma chiuso.
+  # Verifica: 1867 test verdi, tsc/lint puliti. Nessuna verifica manuale dal
+  # vivo (dev locale rotto) - demandata esplicitamente all'utente
+  # post-deploy. Vedi Spec Change Log in
+  # spec-9-40-vista-compatta-admin-utenti.md.
+  9-40-vista-compatta-admin-utenti: review
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
