@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-27-2026 08:25"
+last_updated: "08-27-2026 09:00"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -544,6 +544,26 @@ development_status:
   # schema - mirror del backfill gia' usato in Story 20.7. Solo la story
   # scritta ora, nessuna implementazione. Status: backlog.
   9-39-normalizzazione-maiuscolo-atlete-esistenti: review
+
+  # Story 9.40 aggiunta su richiesta esplicita dell'utente (2026-08-27):
+  # vista piu' compatta per l'elenco Utenti in /app/admin - solo i Ruoli
+  # assegnati mostrati in sola lettura (non piu' 7 checkbox sempre visibili),
+  # pulsante "Modifica" (icona matita, IconaModifica esistente) per aprire
+  # l'editor dei Ruoli, colonne "Disattiva"/"Reimposta password" unificate
+  # sotto un'unica colonna "Funzioni" insieme al pulsante Modifica,
+  # ordinamento della lista per Ruolo/Stato. Verificato nel codice:
+  # UtenteRow.tsx mostra oggi sempre il gruppo di 7 checkbox, nessun
+  # ordinamento lato client esiste sulla pagina (solo orderBy email
+  # server-side). 2 punti aperti da confermare in fase di creazione story
+  # (non assunti): "finestrella" suggerisce un vero popup/modale - pattern
+  # mai usato in nessuna pagina del progetto ad oggi - contro il pattern
+  # gia' stabilito "toggle inline sola-lettura/modifica" di Story 9.30/15.5/
+  # CategoriaTorneoRow.tsx, mirror piu' diretto ma non testualmente quello
+  # richiesto; criterio di ordinamento per Ruolo quando un Utente ne ha
+  # piu' di uno contemporaneamente. Richiesta esplicita dell'utente: "non
+  # sviluppare ma solo aggiungere" - solo la story scritta ora, nessuna
+  # implementazione. Status: backlog.
+  9-40-vista-compatta-admin-utenti: backlog
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
