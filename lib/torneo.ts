@@ -30,6 +30,20 @@ export async function trovaEdizioneTorneoPerId(id: string) {
   return prisma.edizioneTorneo.findUnique({ where: { id } });
 }
 
+// Story 20.13 (Epic 20, Torneo Memorial): mirror semplice di
+// prisma.edizioneTorneo.update - nessuno scope-parent da verificare qui,
+// EdizioneTorneo e' l'entita' di primo livello (a differenza di
+// aggiornaCategoriaTorneo/aggiornaSquadraTorneo sotto, sempre scoped anche
+// sul genitore). Il chiamante (Server Action) verifica gia' l'esistenza
+// dell'Edizione prima di invocare questa funzione, stesso principio di
+// caricaVolantinoTorneoAction.
+export async function aggiornaNomiSettimaneTorneo(
+  edizioneTorneoId: string,
+  dati: { nomeSettimana1: string | null; nomeSettimana2: string | null }
+) {
+  return prisma.edizioneTorneo.update({ where: { id: edizioneTorneoId }, data: dati });
+}
+
 // Story 20.6: "Edizione corrente" per la sezione pubblica del Torneo (nuova
 // nozione, nessun campo "corrente" esplicito in EdizioneTorneo) - stesso
 // criterio "anno piu' alto" gia' implicito nell'ordinamento di

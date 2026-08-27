@@ -134,14 +134,14 @@ model MisurazioneAtleta {
 // registra con lo stesso Codice Fiscale (Story 1.1 registrati/actions.ts) -
 // l'aggancio lo valorizza, nessun record duplicato.
 model Allenatore {
-  id            String             @id @default(uuid())
-  nome          String
-  cognome       String
-  codiceFiscale String             @unique
-  utenteId      String?            @unique
-  utente        Utente?            @relation(fields: [utenteId], references: [id], onDelete: SetNull)
-  createdAt     DateTime           @default(now())
-  gruppi        GruppoAllenatore[]
+  id              String             @id @default(uuid())
+  nome            String
+  cognome         String
+  codiceFiscale   String             @unique
+  utenteId        String?            @unique
+  utente          Utente?            @relation(fields: [utenteId], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+  gruppi          GruppoAllenatore[]
   // Story 19.12 (Epic 19, Ruolo Site Manager): gestiti da /app/staff-descrizioni
   // (SITE_MANAGER+ADMIN+DIRIGENTE), mostrati su /staff (sito pubblico) solo
   // quando presenti. "ruoliAggiuntivi" e' la prima occorrenza di un array
@@ -149,7 +149,7 @@ model Allenatore {
   // scartata esplicitamente (decisione di analisi): queste etichette non
   // servono condivise/riutilizzate tra Allenatori diversi.
   descrizione     String?
-  ruoliAggiuntivi String[]         @default([])
+  ruoliAggiuntivi String[]           @default([])
 
   @@map("allenatori")
 }
@@ -406,12 +406,12 @@ model ConfigurazioneApplicazione {
 // (Story 1.4) e AnnoAgonistico (Story 1.6). Struttura permanente, nessun
 // riferimento all'Anno Agonistico (a differenza di Gruppo/Iscrizione, AD-8).
 model Palestra {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   nome        String
   indirizzo   String?
   latitudine  Float?
   longitudine Float?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime     @default(now())
   campi       Campo[]
   // Story 20.9 (Epic 20, Torneo Memorial): relazione inversa richiesta da
   // Prisma per SlotTorneo.palestraId sotto - stesso trattamento di "campi"
@@ -825,25 +825,33 @@ enum SettimanaTorneo {
 // vincolo alle "Categorie con squadre iscritte" - SquadraTorneo non esiste
 // ancora, arriva con la Story 20.2).
 model EdizioneTorneo {
-  id        String            @id @default(uuid())
-  anno      Int               @unique
+  id             String            @id @default(uuid())
+  anno           Int               @unique
   // Story 20.7: nome proprio dell'Edizione (obbligatorio, deciso con
   // l'utente) - distinto dall'Anno, nessun vincolo di unicita' (due
   // Edizioni possono condividere lo stesso Nome). Immutabile dopo la
   // creazione, stesso trattamento di "anno" (nessuna azione di modifica
   // per EdizioneTorneo, solo creazione/cancellazione).
-  nome      String
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  categorie CategoriaTorneo[]
+  nome           String
+  // Story 20.13: nome personalizzato per ciascuna delle due Settimane del
+  // Torneo (facoltativo) - fallback sull'etichetta generica esistente
+  // (ETICHETTA_SETTIMANA, lib/settimana-torneo.ts) se null, mai una stringa
+  // vuota persistita (spec-20-13 I/O matrix). SettimanaTorneo (l'enum) resta
+  // invariato: questi due campi sono solo l'etichetta mostrata, non toccano
+  // la creazione/modifica delle Categorie.
+  nomeSettimana1 String?
+  nomeSettimana2 String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  categorie      CategoriaTorneo[]
   // Story 20.9: relazione inversa richiesta da Prisma per
   // SlotTorneo.edizioneTorneoId sotto - stesso trattamento di "categorie"
   // sopra.
-  slot      SlotTorneo[]
+  slot           SlotTorneo[]
   // Story 20.11: relazione inversa richiesta da Prisma per
   // PartitaTorneo.edizioneTorneoId sotto - stesso trattamento di
   // "categorie"/"slot" sopra.
-  partite   PartitaTorneo[]
+  partite        PartitaTorneo[]
 
   @@map("edizioni_torneo")
 }
@@ -960,9 +968,9 @@ enum TabelloneTorneo {
 // SquadraTorneo senza onDelete esplicito (default Prisma Restrict) - stesso
 // identico trattamento delle FK Torneo precedenti.
 model PartitaTorneo {
-  id                String          @id @default(uuid())
+  id                String           @id @default(uuid())
   categoriaTorneoId String
-  categoriaTorneo   CategoriaTorneo @relation(fields: [categoriaTorneoId], references: [id])
+  categoriaTorneo   CategoriaTorneo  @relation(fields: [categoriaTorneoId], references: [id])
   // Story 20.11: denormalizzato da categoriaTorneo.edizioneTorneoId -
   // necessario per esprimere @@unique([edizioneTorneoId, numero]) sotto
   // senza attraversare la FK verso categorie_torneo (un vincolo @@unique in
@@ -973,7 +981,7 @@ model PartitaTorneo {
   // epica). FK senza onDelete esplicito (default Prisma Restrict), stesso
   // trattamento di ogni altra FK strutturale Torneo.
   edizioneTorneoId  String
-  edizioneTorneo    EdizioneTorneo  @relation(fields: [edizioneTorneoId], references: [id])
+  edizioneTorneo    EdizioneTorneo   @relation(fields: [edizioneTorneoId], references: [id])
   // Story 20.11: numero di gara progressivo, calcolato SEMPRE server-side al
   // momento della generazione (prossimoNumeroPartitaTorneo, lib/torneo.ts) -
   // mai un input manuale dell'Admin. Un'unica sequenza per l'intera
@@ -986,9 +994,9 @@ model PartitaTorneo {
   // epica.
   numero            Int
   squadraCasaId     String
-  squadraCasa       SquadraTorneo   @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
+  squadraCasa       SquadraTorneo    @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
   squadraOspiteId   String
-  squadraOspite     SquadraTorneo   @relation("PartiteOspite", fields: [squadraOspiteId], references: [id])
+  squadraOspite     SquadraTorneo    @relation("PartiteOspite", fields: [squadraOspiteId], references: [id])
   // Story 20.4: distingue un incontro di girone (fase GIRONE, tabellone
   // nullo, comportamento invariato dalla Story 20.3) da una
   // semifinale/finale del tabellone di posizionamento, generato da
@@ -997,7 +1005,7 @@ model PartitaTorneo {
   // solo per fase GIRONE - nessun vincolo CHECK a livello DB per questa
   // coerenza (stessa filosofia "il vero cancello e' nella Server Action"
   // gia' applicata a numeroMassimoSquadre).
-  fase              FaseTorneo      @default(GIRONE)
+  fase              FaseTorneo       @default(GIRONE)
   tabellone         TabelloneTorneo?
   // Story 20.9: assegnazione opzionale di uno SlotTorneo (dove/quando si
   // gioca) - null finche' nessuno Slot e' stato assegnato (a mano per il
@@ -1008,15 +1016,15 @@ model PartitaTorneo {
   // "Never": due Partite possono puntare allo stesso Slot, la protezione e'
   // solo un avviso applicativo prima di sovrascrivere).
   slotTorneoId      String?
-  slotTorneo        SlotTorneo?     @relation(fields: [slotTorneoId], references: [id])
+  slotTorneo        SlotTorneo?      @relation(fields: [slotTorneoId], references: [id])
   set1Casa          Int?
   set1Ospite        Int?
   set2Casa          Int?
   set2Ospite        Int?
   set3Casa          Int?
   set3Ospite        Int?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   // Review fix (Edge Case Hunter, Story 20.3): rete di sicurezza a livello
   // DB contro la generazione duplicata della stessa coppia (la guardia di

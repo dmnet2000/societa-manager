@@ -8,6 +8,7 @@ import { validaFileImmagine } from "@/lib/storage/validazione-immagine";
 import {
   trovaEdizioneTorneoPerId,
   creaEdizioneTorneo,
+  aggiornaNomiSettimaneTorneo,
   cancellaEdizioneTorneo,
   elencaCategorieTorneo,
   creaCategoriaTorneo,
@@ -36,7 +37,7 @@ import {
   assegnaSlotPartitaTorneo,
   elencaSlotTorneoLiberi,
 } from "@/lib/torneo";
-import { isSettimanaTorneoValida } from "@/lib/settimana-torneo";
+import { isSettimanaTorneoValida, NOME_SETTIMANA_MAX } from "@/lib/settimana-torneo";
 import { isGironeTorneoValido } from "@/lib/girone-torneo";
 import { isFaseTorneoValida } from "@/lib/fase-torneo";
 import { isTabelloneTorneoValido } from "@/lib/tabelloni-torneo";
@@ -260,6 +261,76 @@ export async function caricaVolantinoTorneoAction(
   }
 
   revalidatePath(`/app/torneo/${edizione.id}`);
+  return { success: true };
+}
+
+// Story 20.13 (Epic 20, Torneo Memorial): gestione riservata ad Admin/
+// Dirigente, stesso perimetro delle altre Server Action Torneo. Entrambi i
+// campi sono facoltativi (spec-20-13 Boundaries "Always") - una stringa
+// vuota dopo trim diventa null, mai una stringa vuota persistita, stesso
+// principio gia' applicato a referente/contatto in validaCampiSquadra sopra.
+// Nessuna guardia su SettimanaTorneo (l'enum) qui: questa Server Action
+// tocca solo l'etichetta mostrata, mai la creazione/modifica delle
+// Categorie.
+export async function aggiornaNomiSettimaneAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  const nomeSettimana1Grezzo = String(formData.get("nomeSettimana1") ?? "").trim();
+  const nomeSettimana2Grezzo = String(formData.get("nomeSettimana2") ?? "").trim();
+  if (nomeSettimana1Grezzo.length > NOME_SETTIMANA_MAX) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il nome della Settimana 1 non può superare i ${NOME_SETTIMANA_MAX} caratteri.`,
+      },
+    };
+  }
+  if (nomeSettimana2Grezzo.length > NOME_SETTIMANA_MAX) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il nome della Settimana 2 non può superare i ${NOME_SETTIMANA_MAX} caratteri.`,
+      },
+    };
+  }
+  const nomeSettimana1 = nomeSettimana1Grezzo || null;
+  const nomeSettimana2 = nomeSettimana2Grezzo || null;
+
+  // Mirror del controllo "Edizione non trovata" di caricaVolantinoTorneoAction
+  // sopra: un edizioneTorneoId non piu' esistente (Edizione cancellata in
+  // un'altra scheda, campo nascosto stantio) viene rifiutato esplicitamente
+  // qui, prima dell'aggiornamento.
+  const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+  if (!edizione) {
+    return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+  }
+
+  try {
+    await aggiornaNomiSettimaneTorneo(edizione.id, { nomeSettimana1, nomeSettimana2 });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare i nomi delle Settimane. Riprova.",
+      },
+    };
+  }
+
+  // Revalida sia la pagina di dettaglio Edizione (admin, dove il form vive)
+  // sia la pagina pubblica del Torneo (spec-20-13 Code Map) - entrambe
+  // mostrano l'etichetta di Settimana derivata da questi due campi.
+  revalidatePath(`/app/torneo/${edizione.id}`);
+  revalidatePath("/torneo");
   return { success: true };
 }
 

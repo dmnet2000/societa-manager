@@ -9,6 +9,7 @@ import { leggiInfoVolantinoTorneo, urlPubblicoVolantinoTorneo } from "@/lib/stor
 import { NuovaCategoriaTorneoForm } from "../NuovaCategoriaTorneoForm";
 import { CategoriaTorneoRow } from "../CategoriaTorneoRow";
 import { VolantinoTorneoForm } from "./VolantinoTorneoForm";
+import { NomiSettimaneTorneoForm } from "./NomiSettimaneTorneoForm";
 import styles from "../torneo.module.css";
 
 // Story 20.1 (Epic 20, Torneo Memorial): mirror di
@@ -81,6 +82,20 @@ export default async function EdizioneTorneoPage({
         />
       </section>
 
+      {/* Story 20.13 (Epic 20, Torneo Memorial): nome personalizzato per
+          ciascuna delle due Settimane del Torneo - mirror diretto della
+          sezione "Volantino" sopra, accanto ad essa. Entrambi i campi sono
+          facoltativi (fallback sull'etichetta generica esistente se non
+          impostati). */}
+      <section className={styles.sezione}>
+        <h2>Nomi delle Settimane</h2>
+        <NomiSettimaneTorneoForm
+          edizioneTorneoId={edizione.id}
+          nomeSettimana1={edizione.nomeSettimana1}
+          nomeSettimana2={edizione.nomeSettimana2}
+        />
+      </section>
+
       {/* Story 20.9 (Epic 20, Torneo Memorial): link verso la gestione
           Slot orari/Palestre dell'Edizione - mirror del link "Categorie"
           nella riga Edizione di ../page.tsx. */}
@@ -111,7 +126,7 @@ export default async function EdizioneTorneoPage({
             </thead>
             <tbody>
               {categorie.map((categoria) => (
-                <CategoriaTorneoRow key={categoria.id} categoria={categoria} />
+                <CategoriaTorneoRow key={categoria.id} categoria={categoria} edizione={edizione} />
               ))}
             </tbody>
           </table>

@@ -10,7 +10,16 @@
    mirror, hex letterali commentati con il nome del token DESIGN.md
    d'origine, eccezione solo per i valori con hex identico gia' verificati. */
 
+/* Story 20.14: contenuto centrato su schermi larghi - unica eccezione
+   esplicita e confermata con l'utente al "mirror stilistico" dichiarato sopra
+   (le pagine gemelle /calendario e /squadre restano a piena larghezza, nessun
+   retrofit). 1000px riusa lo stesso valore gia' stabilito come "larghezza
+   massima di pagina" per il portale interno (app/globals.css, .contenuto >
+   main, Story 9.3) - non lo stesso selettore/pattern condiviso, solo lo
+   stesso numero. */
 .main {
+  max-width: 1000px;
+  margin: 0 auto;
   padding: var(--space-8) var(--space-6);
 }
 
@@ -108,26 +117,6 @@
   color: var(--color-text-secondary);
 }
 
-.listaSquadre {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.8;
-  color: var(--color-text-primary);
-}
-
-.listaSquadre li {
-  padding: var(--space-1) 0;
-  border-bottom: 1px solid #e6ebef;
-}
-
-.listaSquadre li:last-child {
-  border-bottom: none;
-}
-
 .tabellaClassifica {
   width: 100%;
   border-collapse: collapse;
@@ -144,6 +133,38 @@
 }
 
 .tabellaClassifica th {
+  font-weight: 700;
+  color: #5b6472;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* Story 20.15: tabella condivisa a livello di Categoria per il ramo
+   "calendario non generato" (un Girone per colonna) - mirror esatto di
+   .tabellaClassifica/th,td/th sopra, con l'aggiunta di margin-top: nome
+   dedicato (non riuso diretto di .tabellaClassifica) perche' semanticamente
+   non e' una classifica - nessun dato di classifica mostrato, solo nomi
+   Squadra. margin-top: var(--space-6) = stessa spaziatura di .sezioneGirone,
+   che questa tabella sostituisce in questo stato (nessun wrapper <section>
+   aggiuntivo necessario). */
+.tabellaSquadreGironi {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-4);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.tabellaSquadreGironi th,
+.tabellaSquadreGironi td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid #e6ebef;
+}
+
+.tabellaSquadreGironi th {
   font-weight: 700;
   color: #5b6472;
   text-transform: uppercase;

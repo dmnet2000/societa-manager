@@ -51,6 +51,14 @@ export const PUBLIC_ROUTES = [
   "/calendario",
   "/staff",
   "/contatti",
+  // Story 20.6 (Epic 20, Torneo Memorial): /torneo dimenticata qui al
+  // momento dell'introduzione della pagina pubblica - stesso identico bug
+  // gia' corretto per /squadre,/calendario,/staff,/contatti in Story 18.7
+  // (vedi commento sopra): senza questa voce un Visitatore anonimo che
+  // clicca "Torneo" nel menu pubblico (app/NavPubblica.tsx, voce aggiunta
+  // dalla migrazione 20260825010000_add_torneo_voce_menu_pubblico) veniva
+  // reindirizzato a /accedi invece di vedere la pagina pubblica.
+  "/torneo",
 ];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte

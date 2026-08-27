@@ -10,7 +10,7 @@ import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import { calcolaClassificaFinale } from "@/lib/classifica-finale-torneo";
 import { formattaRisultatoPartitaTorneo } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
-import { ETICHETTA_SETTIMANA } from "@/lib/settimana-torneo";
+import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { HeaderPubblico } from "../HeaderPubblico";
@@ -211,6 +211,15 @@ export default async function TorneoPubblicoPage() {
             // finche' le 4 finali non hanno tutte un risultato completo.
             const classificaFinale = tabelloneGenerato ? calcolaClassificaFinale(partite) : null;
 
+            // Story 20.15: precalcolato una sola volta a livello di
+            // Categoria (non dentro il loop GIRONI_TORNEO.map sotto, che ora
+            // serve solo al ramo calendarioGenerato) - ogni cella della
+            // tabella condivisa del ramo !calendarioGenerato deve conoscere
+            // sia il proprio Girone (colonna) sia il proprio indice di riga.
+            const squadrePerGirone = GIRONI_TORNEO.map((girone) =>
+              squadre.filter((s) => s.girone === girone.value)
+            );
+
             return (
               <section
                 key={categoria.id}
@@ -221,111 +230,155 @@ export default async function TorneoPubblicoPage() {
                   {categoria.nome}
                 </h2>
                 <p className={styles.etichettaSettimana}>
-                  {ETICHETTA_SETTIMANA[categoria.settimana]}
+                  {etichettaSettimanaPersonalizzata(categoria.settimana, edizione)}
                 </p>
 
-                {GIRONI_TORNEO.map((girone) => {
-                  // Never: solo nome/girone di ogni Squadra sono pubblici -
-                  // referente/contatto non vengono mai letti/renderizzati
-                  // qui (dati di contatto personali di un referente di club
-                  // esterno).
-                  const squadreDelGirone = squadre.filter((s) => s.girone === girone.value);
-                  const partiteDelGirone = partite.filter(
-                    (p) => p.fase === "GIRONE" && p.squadraCasa.girone === girone.value
-                  );
-                  const classifica = calendarioGenerato
-                    ? calcolaClassificaGirone(squadreDelGirone, partiteDelGirone)
-                    : [];
+                {calendarioGenerato ? (
+                  GIRONI_TORNEO.map((girone) => {
+                    // Never: solo nome/girone di ogni Squadra sono pubblici -
+                    // referente/contatto non vengono mai letti/renderizzati
+                    // qui (dati di contatto personali di un referente di club
+                    // esterno).
+                    const squadreDelGirone = squadre.filter((s) => s.girone === girone.value);
+                    const partiteDelGirone = partite.filter(
+                      (p) => p.fase === "GIRONE" && p.squadraCasa.girone === girone.value
+                    );
+                    const classifica = calcolaClassificaGirone(squadreDelGirone, partiteDelGirone);
 
-                  return (
-                    <section
-                      key={girone.value}
-                      className={styles.sezioneGirone}
-                      aria-labelledby={`girone-${categoria.id}-${girone.value}`}
-                    >
-                      <h3
-                        id={`girone-${categoria.id}-${girone.value}`}
-                        className={styles.titoloGirone}
+                    return (
+                      <section
+                        key={girone.value}
+                        className={styles.sezioneGirone}
+                        aria-labelledby={`girone-${categoria.id}-${girone.value}`}
                       >
-                        {girone.label}
-                      </h3>
+                        <h3
+                          id={`girone-${categoria.id}-${girone.value}`}
+                          className={styles.titoloGirone}
+                        >
+                          {girone.label}
+                        </h3>
 
-                      {squadreDelGirone.length === 0 ? (
-                        <p className={styles.messaggioSezione}>
-                          Nessuna squadra iscritta in questo girone.
-                        </p>
-                      ) : !calendarioGenerato ? (
-                        // Categoria senza calendario di girone generato:
-                        // elenco Squadre iscritte, nessuna tabella
-                        // classifica/incontri vuota fuorviante (I/O matrix).
-                        <ul className={styles.listaSquadre}>
-                          {squadreDelGirone.map((s) => (
-                            <li key={s.id}>{s.nome}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <>
-                          <table className={styles.tabellaClassifica}>
-                            <thead>
-                              <tr>
-                                <th>Squadra</th>
-                                <th>Punti</th>
-                                <th>Partite giocate</th>
-                                <th>Set vinti</th>
-                                <th>Set persi</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {classifica.map((riga) => (
-                                <tr key={riga.squadra.id}>
-                                  <td>{riga.squadra.nome}</td>
-                                  <td>{riga.punti}</td>
-                                  <td>{riga.partiteGiocate}</td>
-                                  <td>{riga.setVinti}</td>
-                                  <td>{riga.setPersi}</td>
+                        {squadreDelGirone.length === 0 ? (
+                          <p className={styles.messaggioSezione}>
+                            Nessuna squadra iscritta in questo girone.
+                          </p>
+                        ) : (
+                          <>
+                            <table className={styles.tabellaClassifica}>
+                              <thead>
+                                <tr>
+                                  {/* Review fix (Blind Hunter, Story 20.16): scope="col"
+                                      aggiunto a tutte le intestazioni per coerenza con
+                                      .tabellaSquadreGironi (Story 20.15), che gia' lo usa. */}
+                                  <th scope="col">Squadra</th>
+                                  <th scope="col">Punti</th>
+                                  <th scope="col">Partite giocate</th>
+                                  <th scope="col">Set vinti</th>
+                                  <th scope="col">Set persi</th>
+                                  <th scope="col">Punti fatti</th>
+                                  <th scope="col">Punti subiti</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {classifica.map((riga) => (
+                                  <tr key={riga.squadra.id}>
+                                    <td>{riga.squadra.nome}</td>
+                                    <td>{riga.punti}</td>
+                                    <td>{riga.partiteGiocate}</td>
+                                    <td>{riga.setVinti}</td>
+                                    <td>{riga.setPersi}</td>
+                                    <td>{riga.puntiFatti}</td>
+                                    <td>{riga.puntiSubiti}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
 
-                          {partiteDelGirone.length === 0 ? (
-                            // Review fix (Blind Hunter): mirror del messaggio
-                            // esplicito gia' in uso nella pagina interna
-                            // (risultati/page.tsx) per lo stesso caso - un
-                            // calendario generato ma senza incontri per
-                            // questo specifico girone non deve lasciare
-                            // un'area vuota senza spiegazione.
-                            <p className={styles.messaggioSezione}>
-                              Nessun incontro in questo girone.
-                            </p>
-                          ) : (
-                            <div className={styles.matchGrid}>
-                              {partiteDelGirone.map((partita) => (
-                                <div className={styles.matchCard} key={partita.id}>
-                                  {/* Story 20.11: numero di gara progressivo
-                                      dell'Edizione, sempre calcolato
-                                      server-side. */}
-                                  <div className={styles.numeroGara}>Gara {partita.numero}</div>
-                                  <div className={styles.squadre}>
-                                    <span>{partita.squadraCasa.nome}</span>
-                                    <span className={styles.vs}>vs</span>
-                                    <span>{partita.squadraOspite.nome}</span>
+                            {partiteDelGirone.length === 0 ? (
+                              // Review fix (Blind Hunter): mirror del messaggio
+                              // esplicito gia' in uso nella pagina interna
+                              // (risultati/page.tsx) per lo stesso caso - un
+                              // calendario generato ma senza incontri per
+                              // questo specifico girone non deve lasciare
+                              // un'area vuota senza spiegazione.
+                              <p className={styles.messaggioSezione}>
+                                Nessun incontro in questo girone.
+                              </p>
+                            ) : (
+                              <div className={styles.matchGrid}>
+                                {partiteDelGirone.map((partita) => (
+                                  <div className={styles.matchCard} key={partita.id}>
+                                    {/* Story 20.11: numero di gara progressivo
+                                        dell'Edizione, sempre calcolato
+                                        server-side. */}
+                                    <div className={styles.numeroGara}>Gara {partita.numero}</div>
+                                    <div className={styles.squadre}>
+                                      <span>{partita.squadraCasa.nome}</span>
+                                      <span className={styles.vs}>vs</span>
+                                      <span>{partita.squadraOspite.nome}</span>
+                                    </div>
+                                    <div className={styles.meta}>
+                                      {formattaRisultatoPartitaTorneo(partita) ?? (
+                                        <em>In programma</em>
+                                      )}
+                                    </div>
+                                    <MetaSlot slotTorneo={partita.slotTorneo} />
                                   </div>
-                                  <div className={styles.meta}>
-                                    {formattaRisultatoPartitaTorneo(partita) ?? (
-                                      <em>In programma</em>
-                                    )}
-                                  </div>
-                                  <MetaSlot slotTorneo={partita.slotTorneo} />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </section>
-                  );
-                })}
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </section>
+                    );
+                  })
+                ) : squadre.length === 0 ? (
+                  // Story 20.15: nessuna Squadra iscritta in nessun Girone di
+                  // questa Categoria - stesso messaggio testuale esistente,
+                  // una sola volta a livello di Categoria (mai una tabella
+                  // con tutte le colonne vuote).
+                  <p className={styles.messaggioSezione}>
+                    Nessuna squadra iscritta in questo girone.
+                  </p>
+                ) : (
+                  // Story 20.15: calendario di girone non ancora generato -
+                  // tabella condivisa a livello di Categoria, un Girone per
+                  // colonna, richiesta esplicita dell'utente ("i gironi in
+                  // visualizzazione li vorrei sotto forma tabellare con le
+                  // squadre sulle righe"). Celle senza una Squadra
+                  // corrispondente (righe in eccesso di un Girone piu' corto,
+                  // o un Girone interamente senza Squadre) restano semplici
+                  // celle <td> vuote - nessun testo placeholder (deciso in
+                  // fase di pianificazione, Ask First).
+                  <table className={styles.tabellaSquadreGironi}>
+                    <thead>
+                      <tr>
+                        {GIRONI_TORNEO.map((girone) => (
+                          <th key={girone.value} scope="col">
+                            {girone.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({
+                        length: Math.max(...squadrePerGirone.map((arr) => arr.length)),
+                      }).map((_, indiceRiga) => (
+                        <tr key={indiceRiga}>
+                          {squadrePerGirone.map((squadreDelGirone, indiceGirone) => (
+                            // Review fix (Blind Hunter): key su girone.value
+                            // (stabile), non sull'indice di array - coerente
+                            // con la key gia' usata sopra sull'<th> dello
+                            // stesso Girone.
+                            <td key={GIRONI_TORNEO[indiceGirone].value}>
+                              {squadreDelGirone[indiceRiga]?.nome ?? null}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
 
                 <section
                   className={styles.sezioneTabellone}

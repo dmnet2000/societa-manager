@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-26-2026 14:05"
+last_updated: "08-27-2026 08:25"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -1304,6 +1304,15 @@ development_status:
   # modifica di codice (NavPubblica.tsx gia' legge dinamicamente da
   # voci_menu_pubblico, Story 19.8). Riverificato: 118 file/1722 test
   # verdi, prisma validate ok.
+  # Bug fix 2026-08-26 su segnalazione dell'utente ("da sloggato seleziono
+  # torneo mi chiede di loggarmi"): /torneo era stata dimenticata in
+  # PUBLIC_ROUTES (lib/auth/route-guard.ts) al momento dell'introduzione
+  # della pagina pubblica - stesso identico bug gia' corretto per
+  # /squadre,/calendario,/staff,/contatti in Story 18.7 (login-wall
+  # silenzioso su un menu che promette contenuto pubblico). Aggiunta
+  # "/torneo" a PUBLIC_ROUTES + test dedicato in route-decision.test.ts
+  # (mirror del test Story 18.7, ma qui la pagina pubblica esiste gia'
+  # dietro il path). Verificato: 1853 test verdi, tsc pulito.
   20-6-sezione-pubblica-torneo: review
 
   # Story 20.7 aggiunta 2026-08-25 su richiesta esplicita dell'utente:
@@ -1469,7 +1478,7 @@ development_status:
   # la "sezione dedicata" (nuovo form nella pagina admin /torneo esistente
   # ipotizzato come piu' naturale, da confermare con l'utente). Solo la
   # story scritta ora, nessuna implementazione. Status: backlog.
-  20-13-nome-settimane-torneo: backlog
+  20-13-nome-settimane-torneo: review
 
   # Story 20.14 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "non mi piace la visualizzazione terrei lo sfondo come le altre
@@ -1481,7 +1490,29 @@ development_status:
   # alla sola /torneo o estenderlo come pattern condiviso alle altre
   # pagine pubbliche. Solo la story scritta ora, nessuna implementazione.
   # Status: backlog.
-  20-14-contenuti-centrati-torneo-pubblico: backlog
+  # Story 20.14 avviata 2026-08-26. Punto aperto risolto con l'utente
+  # (AskUserQuestion): scope limitato alla sola pagina /torneo, nessun
+  # retrofit sulle altre pagine pubbliche. Spec scritta: max-width:1000px +
+  # margin:0 auto sul solo .main di torneo-pubblico.module.css, stesso
+  # valore gia' stabilito come "larghezza massima di pagina" per il
+  # portale interno (app/globals.css, .contenuto > main, Story 9.3) -
+  # riusato come valore, non come selettore/pattern condiviso. baseline_commit
+  # 89c040e7c57dc0babc7e294e93d767114516096f. Vedi
+  # spec-20-14-contenuti-centrati-torneo-pubblico.md.
+  # Story 20.14 chiusa 2026-08-26: implementata (agente in background su
+  # diff isolato di 3 righe). Review a 3 agenti (Blind Hunter, Edge Case
+  # Hunter, Verification Gap Reviewer): nessun bug, 2 patch cosmetiche/
+  # documentali applicate (commento Story 20.14 + provenienza del valore
+  # 1000px aggiunto sopra .main; margin-left/margin-right:auto -> margin:0
+  # auto shorthand), 7 segnalazioni scartate perche' gia' decise dallo
+  # scope confermato con l'utente o non applicabili (header/footer
+  # pubblici restano piena larghezza per design, matchGrid/tabellaClassifica
+  # verificati fluidi senza overflow, guida in-app verificata senza voci
+  # sull'aspetto della pagina). Verifica: 1852 test verdi, tsc/lint/build
+  # puliti. Nessuna verifica manuale dal vivo (Epic 20 mai deployata, dev
+  # locale rotto) - demandata esplicitamente all'utente post-deploy (AC #3).
+  # Vedi Spec Change Log in spec-20-14-contenuti-centrati-torneo-pubblico.md.
+  20-14-contenuti-centrati-torneo-pubblico: review
 
   # Story 20.15 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "i gironi in visualizzazione li vorrei sotto forma tabellare con le
@@ -1495,7 +1526,31 @@ development_status:
   # Punto aperto: gestione Gironi con numero diverso di squadre iscritte
   # (celle vuote). Solo la story scritta ora, nessuna implementazione.
   # Status: backlog.
-  20-15-vista-tabellare-squadre-gironi: backlog
+  # Story 20.15 avviata 2026-08-27. Punto aperto risolto con l'utente
+  # (AskUserQuestion): celle senza una Squadra corrispondente (righe in
+  # eccesso di un Girone piu' corto, o un Girone interamente senza Squadre)
+  # restano sempre semplici celle vuote, nessun testo placeholder. Spec
+  # scritta: nel ramo "calendario non generato" di app/torneo/page.tsx, il
+  # loop per-Girone sostituito da un'unica tabella a livello di Categoria
+  # (colonne = Gironi via GIRONI_TORNEO, righe = Math.max delle Squadre per
+  # Girone). Nuova classe CSS .tabellaSquadreGironi (mirror di
+  # .tabellaClassifica). baseline_commit
+  # 89c040e7c57dc0babc7e294e93d767114516096f. Vedi
+  # spec-20-15-vista-tabellare-squadre-gironi.md.
+  # Story 20.15 chiusa 2026-08-27: implementata (agente in background su
+  # diff isolato). Review a 3 agenti (Blind Hunter, Edge Case Hunter,
+  # Verification Gap Reviewer): nessun bug, 2 patch applicate (rimosso CSS
+  # morto .listaSquadre - unico consumer <ul> rimosso da questa storia; key
+  # delle <td> corretta da indice di array a girone.value, coerente con
+  # l'<th>), il resto dei finding scartato perche' gia' deciso
+  # esplicitamente in fase di pianificazione (messaggio riusato, celle
+  # vuote senza placeholder, nome CSS dedicato) o pattern preesistente
+  # (nessun test di rendering su app/, enum Prisma che esclude valori di
+  # girone invalidi). Verifica: 1853 test verdi, tsc/lint puliti. Nessuna
+  # verifica manuale dal vivo (Epic 20 mai deployata, dev locale rotto) -
+  # demandata esplicitamente all'utente post-deploy. Vedi Spec Change Log
+  # in spec-20-15-vista-tabellare-squadre-gironi.md.
+  20-15-vista-tabellare-squadre-gironi: review
 
   # Story 20.16 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "aggiungi anche i punti in classifica sommando i punti fatti nei vari
@@ -1513,4 +1568,30 @@ development_status:
   # pubblica (/torneo) sia quella admin (.../risultati), entrambe basate
   # sulla stessa funzione pura. Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  20-16-quoziente-set-punti-classifica-girone: backlog
+  # Story 20.16 avviata 2026-08-27. Punti aperti risolti con l'utente
+  # (AskUserQuestion): due colonne separate "Punti fatti"/"Punti subiti"
+  # (mirror Set vinti/Set persi, non una colonna combinata); denominatore
+  # zero (incluso 0 partite giocate) -> quoziente Infinity. Spec scritta:
+  # somma punti-set grezzi spostata in esitoPartita (lib/risultato-partita-
+  # torneo.ts), nuovo comparator in calcolaClassificaGirone (punti ->
+  # quoziente set -> quoziente punti -> alfabetico), nuove colonne su
+  # entrambe le tabelle classifica (pubblica+admin). baseline_commit
+  # 89c040e7c57dc0babc7e294e93d767114516096f. Vedi
+  # spec-20-16-quoziente-set-punti-classifica-girone.md.
+  # Story 20.16 chiusa 2026-08-27: implementata (agente in background su
+  # diff isolato). Review a 3 agenti (Blind Hunter, Edge Case Hunter,
+  # Verification Gap Reviewer): nessun bug bloccante, 1 caso limite reale
+  # trovato (Edge Case Hunter: una squadra senza partite giocate batte in
+  # spareggio una squadra che ha perso tutto 0-2, entrambe a 0 punti) -
+  # sottoposto esplicitamente all'utente, confermato "va bene cosi'"
+  # (nessuna modifica). 2 patch applicate (guida in-app aggiornata con le
+  # nuove colonne/criterio - violava la regola permanente del progetto;
+  # scope="col" aggiunto a tutte le intestazioni di entrambe le tabelle
+  # classifica per coerenza con la tabella della Story 20.15). 1 finding
+  # reale ma fuori scope stretto deferito (tabella classifica passata da 5
+  # a 7 colonne senza overflow-x sul breakpoint mobile esistente - gap
+  # pre-esistente, solo aggravato). Verifica: 1857 test verdi, tsc/lint
+  # puliti. Nessuna verifica manuale dal vivo (Epic 20 mai deployata, dev
+  # locale rotto) - demandata esplicitamente all'utente post-deploy. Vedi
+  # Spec Change Log in spec-20-16-quoziente-set-punti-classifica-girone.md.
+  20-16-quoziente-set-punti-classifica-girone: review

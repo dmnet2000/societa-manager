@@ -161,11 +161,16 @@ export default async function RisultatiTorneoPage({
               <table className={styles.tabella}>
                 <thead>
                   <tr>
-                    <th>Squadra</th>
-                    <th>Punti</th>
-                    <th>Partite giocate</th>
-                    <th>Set vinti</th>
-                    <th>Set persi</th>
+                    {/* Review fix (Blind Hunter, Story 20.16): scope="col"
+                        aggiunto a tutte le intestazioni per coerenza con
+                        .tabellaSquadreGironi (Story 20.15), che gia' lo usa. */}
+                    <th scope="col">Squadra</th>
+                    <th scope="col">Punti</th>
+                    <th scope="col">Partite giocate</th>
+                    <th scope="col">Set vinti</th>
+                    <th scope="col">Set persi</th>
+                    <th scope="col">Punti fatti</th>
+                    <th scope="col">Punti subiti</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,6 +181,8 @@ export default async function RisultatiTorneoPage({
                       <td>{riga.partiteGiocate}</td>
                       <td>{riga.setVinti}</td>
                       <td>{riga.setPersi}</td>
+                      <td>{riga.puntiFatti}</td>
+                      <td>{riga.puntiSubiti}</td>
                     </tr>
                   ))}
                 </tbody>

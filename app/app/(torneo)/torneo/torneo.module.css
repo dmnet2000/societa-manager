@@ -280,6 +280,12 @@
   flex-direction: row;
   align-items: center;
   min-width: 0;
+  /* Review fix (Blind Hunter, Story 20.13): NomiSettimaneTorneoForm.tsx ha
+     due campi (non uno solo, come VolantinoTorneoForm) e non ha un
+     ancestor con flex-wrap a proteggerlo - senza questo, su viewport
+     stretti i due gruppi campo + bottone possono uscire orizzontalmente
+     invece di andare a capo. */
+  flex-wrap: wrap;
 }
 
 .formInline label {

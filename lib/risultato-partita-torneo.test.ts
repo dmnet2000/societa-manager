@@ -86,6 +86,8 @@ describe("esitoPartita", () => {
       setVintiOspite: 0,
       puntiCasa: 3,
       puntiOspite: 0,
+      puntiFattiCasa: 50,
+      puntiFattiOspite: 38,
     });
   });
 
@@ -95,6 +97,8 @@ describe("esitoPartita", () => {
       setVintiOspite: 2,
       puntiCasa: 0,
       puntiOspite: 3,
+      puntiFattiCasa: 38,
+      puntiFattiOspite: 50,
     });
   });
 
@@ -110,6 +114,8 @@ describe("esitoPartita", () => {
       setVintiOspite: 1,
       puntiCasa: 2,
       puntiOspite: 1,
+      puntiFattiCasa: 60,
+      puntiFattiOspite: 55,
     });
   });
 
@@ -125,6 +131,8 @@ describe("esitoPartita", () => {
       setVintiOspite: 2,
       puntiCasa: 1,
       puntiOspite: 2,
+      puntiFattiCasa: 55,
+      puntiFattiOspite: 60,
     });
   });
 });

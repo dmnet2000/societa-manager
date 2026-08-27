@@ -90,6 +90,12 @@ export type EsitoPartita = {
   setVintiOspite: number;
   puntiCasa: number;
   puntiOspite: number;
+  // Story 20.16 (Epic 20, Torneo Memorial): somma dei punteggi-set grezzi
+  // (es. set1Casa+set2Casa+(set3Casa ?? 0)) - nuovo criterio di spareggio
+  // "quoziente punti" in calcolaClassificaGirone, distinto dal punteggio
+  // dell'incontro (puntiCasa/puntiOspite sopra, 3/2/1/0).
+  puntiFattiCasa: number;
+  puntiFattiOspite: number;
 };
 
 // Deriva l'esito (2-0/2-1/1-2/0-2) e i punti dell'incontro (3/2/1/0) SOLO da
@@ -105,12 +111,16 @@ export function esitoPartita(
 
   let setVintiCasa = 0;
   let setVintiOspite = 0;
+  let puntiFattiCasa = 0;
+  let puntiFattiOspite = 0;
   for (const s of set) {
     if (s.casa > s.ospite) {
       setVintiCasa += 1;
     } else {
       setVintiOspite += 1;
     }
+    puntiFattiCasa += s.casa;
+    puntiFattiOspite += s.ospite;
   }
 
   // Punti dell'incontro secondo il regolamento citato in epics.md Story
@@ -131,7 +141,7 @@ export function esitoPartita(
     puntiOspite = 3;
   }
 
-  return { setVintiCasa, setVintiOspite, puntiCasa, puntiOspite };
+  return { setVintiCasa, setVintiOspite, puntiCasa, puntiOspite, puntiFattiCasa, puntiFattiOspite };
 }
 
 // Story 20.6 (Epic 20, Torneo Memorial): estratta da RisultatoPartitaTorneoForm.tsx

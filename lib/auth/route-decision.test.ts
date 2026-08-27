@@ -94,6 +94,16 @@ describe("getRouteDecision", () => {
     }
   );
 
+  // Bug report utente (2026-08-26): /torneo era stata dimenticata in
+  // PUBLIC_ROUTES al momento della sua introduzione (Story 20.6) -
+  // esattamente lo stesso bug gia' corretto sopra per Story 18.7, ma qui la
+  // pagina pubblica reale esiste gia' dietro il path (a differenza del test
+  // 18.7 sopra, che copriva 4 rotte ancora senza pagina).
+  it("allows unauthenticated access to '/torneo' (menu pubblico, la pagina pubblica esiste gia' - Story 20.6)", async () => {
+    expect(await getRouteDecision("/torneo", false, [])).toEqual({ action: "allow" });
+    expect(isPublicRoute("/torneo")).toBe(true);
+  });
+
   // Review fix (Blind Hunter, Story 18.1): usava "/" prima che diventasse
   // pubblica (Story 18.1) - il test era diventato ridondante col test
   // pubblico appena sopra e non copriva piu' nessun caso di autenticazione

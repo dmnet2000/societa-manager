@@ -23,3 +23,29 @@ const SETTIMANE_VALIDE_SET = new Set<string>(SETTIMANE_TORNEO.map((s) => s.value
 export function isSettimanaTorneoValida(value: string): value is SettimanaTorneo {
   return SETTIMANE_VALIDE_SET.has(value);
 }
+
+// Story 20.13 (review fix, Blind Hunter): costante condivisa tra
+// aggiornaNomiSettimaneAction (validazione server-side) e
+// NomiSettimaneTorneoForm (attributo maxLength) - prima duplicata come
+// letterale in entrambi i punti, rischio di drift silenzioso se il limite
+// cambiasse in un solo posto. Vive qui (non in actions.ts, "use server") per
+// essere importabile anche dal Client Component.
+export const NOME_SETTIMANA_MAX = 100;
+
+// Story 20.13 (Epic 20, Torneo Memorial): etichetta mostrata per una
+// Settimana, con fallback su ETICHETTA_SETTIMANA (generica) quando l'Edizione
+// non ha impostato un nome personalizzato - ETICHETTA_SETTIMANA resta la
+// fonte di verita' statica (una costante globale condivisa), renderla
+// dinamica per-Edizione ne romperebbe la natura. Una stringa presente ma
+// tutta whitespace (es. campo lasciato con soli spazi) conta come "non
+// impostata", stesso trattamento di ogni altro campo di testo opzionale del
+// progetto (trim prima del controllo di vuotezza).
+export function etichettaSettimanaPersonalizzata(
+  settimana: SettimanaTorneo,
+  edizione: { nomeSettimana1: string | null; nomeSettimana2: string | null }
+): string {
+  const nomePersonalizzato =
+    settimana === "SETTIMANA_1" ? edizione.nomeSettimana1 : edizione.nomeSettimana2;
+  const nomeTrim = nomePersonalizzato?.trim();
+  return nomeTrim ? nomeTrim : ETICHETTA_SETTIMANA[settimana];
+}

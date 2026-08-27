@@ -61,8 +61,24 @@ describe("calcolaClassificaGirone", () => {
     const classifica = calcolaClassificaGirone(squadre, partite);
 
     expect(classifica).toEqual([
-      { squadra: squadre[0], punti: 0, setVinti: 0, setPersi: 0, partiteGiocate: 0 },
-      { squadra: squadre[1], punti: 0, setVinti: 0, setPersi: 0, partiteGiocate: 0 },
+      {
+        squadra: squadre[0],
+        punti: 0,
+        setVinti: 0,
+        setPersi: 0,
+        partiteGiocate: 0,
+        puntiFatti: 0,
+        puntiSubiti: 0,
+      },
+      {
+        squadra: squadre[1],
+        punti: 0,
+        setVinti: 0,
+        setPersi: 0,
+        partiteGiocate: 0,
+        puntiFatti: 0,
+        puntiSubiti: 0,
+      },
     ]);
   });
 
@@ -163,5 +179,110 @@ describe("calcolaClassificaGirone", () => {
     // Solo la partita di girone conta - se la semifinale non fosse
     // scartata, Alfa avrebbe 6 punti/4 set vinti invece di 3/2.
     expect(alfa).toMatchObject({ punti: 3, setVinti: 2, setPersi: 0, partiteGiocate: 1 });
+  });
+
+  // Story 20.16 (spec-20-16, I/O Edge-Case Matrix riga 1): a parita' di
+  // punti-classifica, il quoziente set (setVinti/setPersi) sostituisce i set
+  // vinti assoluti come secondo criterio di spareggio.
+  it("a parita' di punti-classifica, ordina per quoziente set (setVinti/setPersi) discendente", () => {
+    const squadre = [
+      squadra("sA", "A"),
+      squadra("sB", "B"),
+      squadra("sC", "C"),
+      squadra("sD", "D"),
+    ];
+    const partite = [
+      // A: match1 vinto 2-0 (3pt, 2sv/0sp) + match2 vinto 2-1 (2pt, 2sv/1sp)
+      // = 5pt, quoziente set 4/1 = 4.0
+      partita("p1", "sA", "sC", [25, 20], [25, 18]),
+      partita("p2", "sA", "sC", [25, 20], [20, 25], [15, 10]),
+      // B: due 2-1 vinti (2pt+2pt, 2sv/1sp ciascuno) + un 1-2 perso (1pt,
+      // 1sv/2sp) = 5pt, quoziente set 5/4 = 1.25
+      partita("p3", "sB", "sD", [25, 20], [20, 25], [15, 10]),
+      partita("p4", "sB", "sD", [25, 20], [20, 25], [15, 10]),
+      partita("p5", "sB", "sD", [25, 20], [20, 25], [10, 15]),
+    ];
+
+    const classifica = calcolaClassificaGirone(squadre, partite);
+
+    // Stessi 5 punti per A e B: A (quoziente set 4.0) prima di B (1.25).
+    expect(classifica.map((r) => r.squadra.nome)).toEqual(["A", "B", "D", "C"]);
+  });
+
+  // Story 20.16 (spec-20-16, riga 2): a parita' di punti-classifica E di
+  // quoziente set, il quoziente punti (puntiFatti/puntiSubiti) decide.
+  it("a parita' di punti-classifica e quoziente set, ordina per quoziente punti discendente", () => {
+    const squadre = [
+      squadra("sE", "E"),
+      squadra("sF", "F"),
+      squadra("sG", "G"),
+      squadra("sH", "H"),
+    ];
+    const partite = [
+      // E batte G 2-0 con largo margine (50 punti fatti / 20 subiti)
+      partita("p1", "sE", "sG", [25, 10], [25, 10]),
+      // F batte H 2-0 di misura (50 punti fatti / 46 subiti)
+      partita("p2", "sF", "sH", [25, 23], [25, 23]),
+    ];
+
+    const classifica = calcolaClassificaGirone(squadre, partite);
+
+    // E e F: stessi 3pt, entrambe setPersi=0 (quoziente set Infinity, pari)
+    // -> decide il quoziente punti: E (50/20=2.5) prima di F (50/46=1.09).
+    // G e H: stessi 0pt, quoziente set 0/2=0 (pari) -> quoziente punti:
+    // H (46/50=0.92) prima di G (20/50=0.4).
+    expect(classifica.map((r) => r.squadra.nome)).toEqual(["E", "F", "H", "G"]);
+  });
+
+  // Story 20.16 (spec-20-16, riga 3): setPersi = 0 (tutte le partite vinte
+  // 2-0) produce un quoziente set Infinity - la squadra si posiziona in
+  // cima al proprio gruppo di spareggio invece di generare un errore.
+  it("una squadra con setPersi=0 (quoziente set Infinity) si posiziona in cima al gruppo di spareggio", () => {
+    const squadre = [
+      squadra("sI", "I"),
+      squadra("sJ", "J"),
+      squadra("sM", "M"),
+      squadra("sN", "N"),
+    ];
+    const partite = [
+      // I: due 2-0 vinti (setPersi=0 su tutta la stagione) = 6pt
+      partita("p1", "sI", "sM", [25, 10], [25, 10]),
+      partita("p2", "sI", "sM", [25, 10], [25, 10]),
+      // J: tre 2-1 vinti (quoziente set finito 6/3=2.0) = 6pt
+      partita("p3", "sJ", "sN", [25, 20], [20, 25], [15, 10]),
+      partita("p4", "sJ", "sN", [25, 20], [20, 25], [15, 10]),
+      partita("p5", "sJ", "sN", [25, 20], [20, 25], [15, 10]),
+    ];
+
+    const classifica = calcolaClassificaGirone(squadre, partite);
+
+    // Stessi 6 punti per I e J: I (setPersi=0, quoziente Infinity) prima di
+    // J (quoziente set finito 2.0) - nessun errore/NaN generato.
+    expect(classifica.map((r) => r.squadra.nome)).toEqual(["I", "J", "N", "M"]);
+  });
+
+  // Story 20.16 (spec-20-16, riga 4): una squadra senza alcuna partita
+  // giocata ha entrambi i quozienti Infinity (0/0) - a parita' di
+  // punti-classifica (0) con una squadra che ha gia' giocato e perso,
+  // vince comunque il confronto Infinity > quoziente finito, senza
+  // generare NaN ne' eccezioni (Infinity - Infinity non viene mai valutato
+  // perche' il comparator confronta prima per disuguaglianza).
+  it("una squadra senza partite giocate (quozienti Infinity) non genera NaN a parita' di punti con una squadra gia' sconfitta", () => {
+    const squadre = [squadra("sP", "P (senza partite)"), squadra("sQ", "Q"), squadra("sF2", "Filler")];
+    const partite = [
+      // Q perde 0-2: 0pt, quoziente set 0/2=0, quoziente punti 25/50=0.5
+      partita("p1", "sQ", "sF2", [10, 25], [15, 25]),
+    ];
+
+    const classifica = calcolaClassificaGirone(squadre, partite);
+    const p = classifica.find((r) => r.squadra.id === "sP")!;
+    const q = classifica.find((r) => r.squadra.id === "sQ")!;
+
+    expect(p).toMatchObject({ punti: 0, setVinti: 0, setPersi: 0, puntiFatti: 0, puntiSubiti: 0 });
+    expect(q).toMatchObject({ punti: 0, setVinti: 0, setPersi: 2, puntiFatti: 25, puntiSubiti: 50 });
+    // P (quoziente set Infinity) prima di Q (quoziente set 0), nessun crash.
+    expect(classifica.map((r) => r.squadra.id).indexOf("sP")).toBeLessThan(
+      classifica.map((r) => r.squadra.id).indexOf("sQ")
+    );
   });
 });

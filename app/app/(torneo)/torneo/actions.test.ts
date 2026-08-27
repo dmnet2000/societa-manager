@@ -13,6 +13,7 @@ const requireRuoloMock = vi.fn();
 const trovaEdizioneTorneoPerIdMock = vi.fn();
 const trovaPalestraPerIdMock = vi.fn();
 const creaEdizioneTorneoMock = vi.fn();
+const aggiornaNomiSettimaneTorneoMock = vi.fn();
 const cancellaEdizioneTorneoMock = vi.fn();
 const creaCategoriaTorneoMock = vi.fn();
 const aggiornaCategoriaTorneoMock = vi.fn();
@@ -65,6 +66,7 @@ vi.mock("@/lib/torneo", () => ({
   trovaEdizioneTorneoPerId: trovaEdizioneTorneoPerIdMock,
   trovaPalestraPerId: trovaPalestraPerIdMock,
   creaEdizioneTorneo: creaEdizioneTorneoMock,
+  aggiornaNomiSettimaneTorneo: aggiornaNomiSettimaneTorneoMock,
   cancellaEdizioneTorneo: cancellaEdizioneTorneoMock,
   creaCategoriaTorneo: creaCategoriaTorneoMock,
   aggiornaCategoriaTorneo: aggiornaCategoriaTorneoMock,
@@ -99,6 +101,7 @@ vi.mock("next/cache", () => ({
 
 const {
   creaEdizioneTorneoAction,
+  aggiornaNomiSettimaneAction,
   cancellaEdizioneTorneoAction,
   creaCategoriaTorneoAction,
   aggiornaCategoriaTorneoAction,
@@ -163,6 +166,7 @@ beforeEach(() => {
   trovaPalestraPerIdMock.mockReset();
   trovaPalestraPerIdMock.mockResolvedValue({ id: "palestra-1", nome: "Palestra Comunale" });
   creaEdizioneTorneoMock.mockReset();
+  aggiornaNomiSettimaneTorneoMock.mockReset();
   cancellaEdizioneTorneoMock.mockReset();
   creaCategoriaTorneoMock.mockReset();
   aggiornaCategoriaTorneoMock.mockReset();
@@ -676,6 +680,155 @@ describe("caricaVolantinoTorneoAction", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile caricare il volantino. Riprova." },
+    });
+  });
+});
+
+describe("aggiornaNomiSettimaneAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", nomeSettimana1: "Under 14/16" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(aggiornaNomiSettimaneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when edizioneTorneoId is missing", async () => {
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ nomeSettimana1: "Under 14/16" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Edizione non specificata." },
+    });
+    expect(aggiornaNomiSettimaneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when nomeSettimana1 exceeds 100 characters", async () => {
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", nomeSettimana1: "a".repeat(101) })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il nome della Settimana 1 non può superare i 100 caratteri.",
+      },
+    });
+    expect(aggiornaNomiSettimaneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION when nomeSettimana2 exceeds 100 characters", async () => {
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", nomeSettimana2: "a".repeat(101) })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il nome della Settimana 2 non può superare i 100 caratteri.",
+      },
+    });
+    expect(aggiornaNomiSettimaneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Edizione no longer exists", async () => {
+    trovaEdizioneTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-inesistente", nomeSettimana1: "Under 14/16" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Edizione non trovata." },
+    });
+    expect(aggiornaNomiSettimaneTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("saves both names and revalidates both the admin and the public page (AC #1)", async () => {
+    aggiornaNomiSettimaneTorneoMock.mockResolvedValue({});
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        nomeSettimana1: "Under 14/16",
+        nomeSettimana2: "Under 18/Senior",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaNomiSettimaneTorneoMock).toHaveBeenCalledWith("edizione-1", {
+      nomeSettimana1: "Under 14/16",
+      nomeSettimana2: "Under 18/Senior",
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/torneo");
+  });
+
+  it("converts an empty field to null instead of persisting an empty string (I/O matrix)", async () => {
+    aggiornaNomiSettimaneTorneoMock.mockResolvedValue({});
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        nomeSettimana1: "  ",
+        nomeSettimana2: "Under 18/Senior",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaNomiSettimaneTorneoMock).toHaveBeenCalledWith("edizione-1", {
+      nomeSettimana1: null,
+      nomeSettimana2: "Under 18/Senior",
+    });
+  });
+
+  it("trims surrounding whitespace from a valid name before persisting (review fix, Blind Hunter)", async () => {
+    aggiornaNomiSettimaneTorneoMock.mockResolvedValue({});
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        nomeSettimana1: "  Under 14/16  ",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaNomiSettimaneTorneoMock).toHaveBeenCalledWith("edizione-1", {
+      nomeSettimana1: "Under 14/16",
+      nomeSettimana2: null,
+    });
+  });
+
+  it("returns a friendly error, no crash, when the update throws", async () => {
+    aggiornaNomiSettimaneTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiornaNomiSettimaneAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", nomeSettimana1: "Under 14/16" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare i nomi delle Settimane. Riprova.",
+      },
     });
   });
 });
