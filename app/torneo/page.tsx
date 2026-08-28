@@ -12,6 +12,7 @@ import { formattaRisultatoPartitaTorneo } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
 import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
+import { ordinaPartitePerSlot } from "@/lib/ordina-partite-per-slot";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
@@ -240,8 +241,15 @@ export default async function TorneoPubblicoPage() {
                     // qui (dati di contatto personali di un referente di club
                     // esterno).
                     const squadreDelGirone = squadre.filter((s) => s.girone === girone.value);
-                    const partiteDelGirone = partite.filter(
-                      (p) => p.fase === "GIRONE" && p.squadraCasa.girone === girone.value
+                    // Story 20.17: ordinate per data/ora dello Slot assegnato
+                    // (le Partite senza Slot finiscono in fondo) prima del
+                    // rendering della griglia - calcolaClassificaGirone sotto
+                    // e' order-indipendente (aggrega e basta), nessun impatto
+                    // sulla classifica.
+                    const partiteDelGirone = ordinaPartitePerSlot(
+                      partite.filter(
+                        (p) => p.fase === "GIRONE" && p.squadraCasa.girone === girone.value
+                      )
                     );
                     const classifica = calcolaClassificaGirone(squadreDelGirone, partiteDelGirone);
 
@@ -397,7 +405,10 @@ export default async function TorneoPubblicoPage() {
                         const partiteTabellone = partite.filter(
                           (p) => p.tabellone === tabellone.value
                         );
-                        const semifinali = partiteTabellone.filter((p) => p.fase === "SEMIFINALE");
+                        // Story 20.17: stesso ordinamento per Slot della griglia di girone.
+                        const semifinali = ordinaPartitePerSlot(
+                          partiteTabellone.filter((p) => p.fase === "SEMIFINALE")
+                        );
                         const finaleVincenti = partiteTabellone.find(
                           (p) => p.fase === "FINALE_VINCENTI"
                         );

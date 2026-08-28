@@ -3426,3 +3426,21 @@ so that la classifica rifletta un criterio di spareggio più fine, coerente con 
 4. **And** a parità anche di quoziente punti, il fallback alfabetico esistente resta invariato come ultimo criterio deterministico
 5. **And** nessuna regressione sulla classifica finale (`calcolaClassificaFinale`, Story 20.4) — calcolata su un meccanismo di tabellone a eliminazione diretta indipendente, non tocca alcun criterio di spareggio
 6. **And** entrambe le viste che mostrano la classifica di girone (pagina pubblica `/torneo` e pagina admin `.../risultati`) riflettono la nuova colonna e il nuovo ordinamento in modo identico — nessuna delle due resta con la vecchia logica
+
+### Story 20.17: Sfondo grigio chiaro su `/torneo` e ordinamento delle griglie incontri per Slot
+
+*(Aggiunta post-apertura epica — 2026-08-28, richiesta esplicita dell'utente dopo verifica dal vivo del deploy: "mi serve poi modificare lo sfondo della sezione torneo come quello di tutte le altre pagine. poi per la griglia delle partite ordinale per data/ora dello slot". Verificato dal vivo con lo strumento browser: `/torneo` e `/calendario` hanno oggi lo stesso sfondo bianco identico (Story 20.10 già confermata corretta), ma le pagine pubbliche non sono uniformi tra loro — `/squadre` è l'unica con uno sfondo grigio chiaro (`#F2F5F7`, dietro le proprie card bianche). Chiarito con l'utente (AskUserQuestion): il riferimento voluto è proprio quello di `/squadre`, applicato solo a `/torneo` (non un retrofit delle altre pagine pubbliche).)*
+
+As a Visitatore del sito pubblico,
+I want che lo sfondo di `/torneo` sia coerente con `/squadre` (grigio chiaro, non bianco), e che gli incontri nelle griglie (gironi e semifinali) siano ordinati per data/ora dello Slot assegnato invece che per ordine di generazione,
+so that la pagina sia visivamente coerente col resto del sito e gli incontri già programmati siano immediatamente leggibili in ordine cronologico.
+
+**Contesto tecnico:** `app/torneo/torneo-pubblico.module.css` (`.main`) non ha oggi alcun `background` esplicito (eredita il bianco globale) - `app/squadre/squadre.module.css` (`.main`) usa invece `background: #f2f5f7` letterale ({colors.grigio-chiaro}, Story 18.12). `SlotTorneo.data`/`.ora` (`prisma/schema.prisma`) sono stringhe già in formato lessicograficamente ordinabile (stesso principio già sfruttato da `elencaSlotTorneo`, `lib/torneo.ts`: `orderBy: [{ data: "asc" }, { ora: "asc" }]`) - le griglie incontri (`.matchGrid`, sia per Girone sia per Semifinali in `app/torneo/page.tsx`) mostrano oggi le `PartitaTorneo` nell'ordine restituito dalla query, non per data/ora Slot. Una Partita può non avere ancora uno Slot assegnato (`slotTorneo: null`, mostra "In programma" senza data/ora) - chiarito con l'utente (AskUserQuestion): finisce sempre in fondo, dopo tutte quelle con Slot.
+
+**Acceptance Criteria:**
+
+1. **Given** la pagina pubblica `/torneo` **When** viene renderizzata **Then** lo sfondo del contenuto è grigio chiaro (`#F2F5F7`, stesso valore di `/squadre`), non più bianco — `/calendario`/`/staff`/`/contatti` restano bianche, invariate
+2. **And** gli incontri di una griglia di Girone con Slot assegnato sono ordinati per data crescente, poi ora crescente
+3. **And** lo stesso ordinamento si applica alla griglia delle Semifinali
+4. **And** un incontro senza Slot assegnato è sempre mostrato dopo tutti quelli con Slot nella stessa griglia
+5. **And** nessuna regressione sulla pagina interna amministrativa (`app/app/(torneo)/torneo/...`) — questa storia tocca solo `app/torneo/torneo-pubblico.module.css`/`app/torneo/page.tsx` (pagina pubblica)

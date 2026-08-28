@@ -16,11 +16,18 @@
    retrofit). 1000px riusa lo stesso valore gia' stabilito come "larghezza
    massima di pagina" per il portale interno (app/globals.css, .contenuto >
    main, Story 9.3) - non lo stesso selettore/pattern condiviso, solo lo
-   stesso numero. */
+   stesso numero.
+   Story 20.17 (richiesta esplicita dell'utente, verificata dal vivo dopo il
+   deploy): {colors.grigio-chiaro} #F2F5F7, stesso valore letterale gia' in
+   uso su /squadre (squadre.module.css, Story 18.12 - "DESIGN.md elenca
+   esplicitamente 'sezione Squadre' tra le superfici a sfondo grigio-chiaro
+   dedicato"). /calendario, /staff, /contatti restano bianche (invariate,
+   fuori scope di questa richiesta - solo /torneo confermata con l'utente). */
 .main {
   max-width: 1000px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
+  background: #f2f5f7;
 }
 
 /* {typography.display-section} - stesso token del titolo di /calendario e

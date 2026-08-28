@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-27-2026 10:00"
+last_updated: "08-28-2026 08:30"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -1644,3 +1644,28 @@ development_status:
   # locale rotto) - demandata esplicitamente all'utente post-deploy. Vedi
   # Spec Change Log in spec-20-16-quoziente-set-punti-classifica-girone.md.
   20-16-quoziente-set-punti-classifica-girone: review
+
+  # Story 20.17 aggiunta E chiusa 2026-08-28, richiesta esplicita
+  # dell'utente dopo verifica dal vivo del deploy ("mi serve poi modificare
+  # lo sfondo della sezione torneo come quello di tutte le altre pagine.
+  # poi per la griglia delle partite ordinale per data/ora dello slot").
+  # Verificato dal vivo col browser (societa-manager.dmnet2000.workers.dev):
+  # /torneo e /calendario hanno lo stesso sfondo bianco (Story 20.10 gia'
+  # corretta), ma le pagine pubbliche non sono uniformi - solo /squadre ha
+  # sfondo grigio chiaro #F2F5F7. Punti aperti risolti con l'utente
+  # (AskUserQuestion): riferimento voluto = /squadre, solo su /torneo
+  # (nessun retrofit altre pagine); Partite senza Slot in fondo alla
+  # griglia. Implementata direttamente (nessun agente in background, nessun
+  # nuovo worktree - lavoro proseguito nello stesso worktree/branch della
+  # Story 9.40, su richiesta esplicita dell'utente di non isolarsi di
+  # nuovo per ogni story). background:#f2f5f7 su .main
+  # (torneo-pubblico.module.css); nuova funzione pura
+  # lib/ordina-partite-per-slot.ts (SlotTorneo.data/ora sono stringhe gia'
+  # ordinabili, stesso principio di elencaSlotTorneo) applicata alla
+  # griglia di Girone e a quella Semifinali in app/torneo/page.tsx.
+  # Verifica: 1873 test verdi (6 nuovi), tsc/lint puliti. Nessuna review a
+  # 3 agenti (diff minimo, cambio proporzionato: 1 riga CSS + 1 funzione
+  # pura di ~15 righe + 2 punti di applicazione). Nessuna verifica manuale
+  # dal vivo del NUOVO comportamento (non ancora deployato) - demandata
+  # all'utente dopo il prossimo deploy.
+  20-17-sfondo-torneo-e-ordinamento-slot: review
