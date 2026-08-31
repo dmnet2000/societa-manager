@@ -35,7 +35,7 @@ const elencaPartiteTorneoMock = vi.fn();
 const aggiornaRisultatoPartitaTorneoMock = vi.fn();
 const trovaPartitaTorneoPerIdMock = vi.fn();
 const creaSlotTorneoMock = vi.fn();
-const creaSlotTorneoPerTutteLePalestreMock = vi.fn();
+const creaSlotTorneoPerSelezioneMock = vi.fn();
 const trovaSlotTorneoPerIdMock = vi.fn();
 const cancellaSlotTorneoMock = vi.fn();
 const assegnaSlotPartitaTorneoMock = vi.fn();
@@ -88,7 +88,7 @@ vi.mock("@/lib/torneo", () => ({
   aggiornaRisultatoPartitaTorneo: aggiornaRisultatoPartitaTorneoMock,
   trovaPartitaTorneoPerId: trovaPartitaTorneoPerIdMock,
   creaSlotTorneo: creaSlotTorneoMock,
-  creaSlotTorneoPerTutteLePalestre: creaSlotTorneoPerTutteLePalestreMock,
+  creaSlotTorneoPerSelezione: creaSlotTorneoPerSelezioneMock,
   trovaSlotTorneoPerId: trovaSlotTorneoPerIdMock,
   cancellaSlotTorneo: cancellaSlotTorneoMock,
   assegnaSlotPartitaTorneo: assegnaSlotPartitaTorneoMock,
@@ -119,10 +119,18 @@ const {
   assegnaSlotPartitaTorneoAction,
 } = await import("./actions");
 
-function buildFormData(fields: Record<string, string>, file?: File | null) {
+// Story 20.18: valori tipo string[] ora accettati (non solo string) - la
+// checklist Palestra x Campo della fase GIRONE invia piu' valori sotto lo
+// stesso nome "selezioneSlotGirone" (un <input type="checkbox"> per riga),
+// letti lato server con formData.getAll(), non formData.get().
+function buildFormData(fields: Record<string, string | string[]>, file?: File | null) {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
-    formData.append(key, value);
+    if (Array.isArray(value)) {
+      for (const v of value) formData.append(key, v);
+    } else {
+      formData.append(key, value);
+    }
   }
   if (file) formData.append("file", file);
   return formData;
@@ -216,12 +224,13 @@ beforeEach(() => {
     tabellone: null,
   });
   creaSlotTorneoMock.mockReset();
-  creaSlotTorneoPerTutteLePalestreMock.mockReset();
-  // Story 20.12: default "successo" per non dover ripetere il mock in ogni
+  creaSlotTorneoPerSelezioneMock.mockReset();
+  // Story 20.18: default "successo" per non dover ripetere il mock in ogni
   // singolo test di validazione che riusa campiSlotGironeValidi (fase
   // GIRONE) solo per arrivare fino in fondo alla Server Action - il valore
-  // esatto del conteggio non e' rilevante per quei test.
-  creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 1 });
+  // esatto del conteggio/nessunaPalestraCensita non e' rilevante per quei
+  // test.
+  creaSlotTorneoPerSelezioneMock.mockResolvedValue({ count: 1, nessunaPalestraCensita: false });
   trovaSlotTorneoPerIdMock.mockReset();
   cancellaSlotTorneoMock.mockReset();
   assegnaSlotPartitaTorneoMock.mockReset();
@@ -3220,6 +3229,11 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
 
 // Story 20.9 (Epic 20, Torneo Memorial): SlotTorneo - stesso stile delle
 // describe precedenti.
+// Story 20.18: palestraId non e' piu' letto per il ramo GIRONE (resta qui
+// solo per compatibilita' col fixture condiviso con campiSlotSemifinaleValidi,
+// ignorato) - selezioneSlotGirone e' invece il campo che conta ora, un
+// array (checkbox multiple sotto lo stesso nome), formato
+// "palestraId|campoId" (campoId vuoto = nessun Campo).
 const campiSlotGironeValidi = {
   edizioneTorneoId: "edizione-1",
   etichetta: "Campo 1 - Sabato mattina",
@@ -3227,6 +3241,7 @@ const campiSlotGironeValidi = {
   ora: "09:00",
   palestraId: "palestra-1",
   fase: "GIRONE",
+  selezioneSlotGirone: ["palestra-1|"],
 };
 
 const campiSlotSemifinaleValidi = {
@@ -3366,7 +3381,7 @@ describe("creaSlotTorneoAction", () => {
       error: { code: "VALIDATION", message: "La fase è obbligatoria." },
     });
     expect(creaSlotTorneoMock).not.toHaveBeenCalled();
-    expect(creaSlotTorneoPerTutteLePalestreMock).not.toHaveBeenCalled();
+    expect(creaSlotTorneoPerSelezioneMock).not.toHaveBeenCalled();
   });
 
   it("returns a validation error when fase is not a valid enum value", async () => {
@@ -3434,8 +3449,8 @@ describe("creaSlotTorneoAction", () => {
   // Review fix (Blind Hunter + Edge Case Hunter, convergenti): stesso
   // controllo esplicito di "Edizione non trovata" appena sopra, ora anche
   // per la Palestra - prima si affidava solo al vincolo FK del DB. Story
-  // 20.12: trovaPalestraPerId non viene piu' interpellato affatto per il
-  // girone (creaSlotTorneoPerTutteLePalestre rilegge da se' l'elenco) -
+  // 20.12/20.18: trovaPalestraPerId non viene piu' interpellato affatto per
+  // il girone (creaSlotTorneoPerSelezione rilegge da se' l'elenco) -
   // questo test resta quindi valido solo per semifinali/finali.
   it("returns a validation error, not a generic INTERNAL, when the Palestra no longer exists (semifinale/finale)", async () => {
     trovaPalestraPerIdMock.mockResolvedValue(null);
@@ -3504,32 +3519,115 @@ describe("creaSlotTorneoAction", () => {
     expect(result).toEqual({ success: true });
   });
 
-  // Story 20.12 (AC #2): un solo invio per il girone crea uno Slot per
-  // OGNI Palestra esistente - creaSlotTorneo (singola Palestra) non viene
-  // piu' chiamato affatto in questo caso, palestraId del form (presente in
-  // campiSlotSemifinaleValidi per compatibilita' col fixture condiviso, ma
-  // ignorato) non compare nella chiamata.
-  it("creates a Slot for every Palestra when fase is GIRONE, not a single one (AC #2)", async () => {
-    creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 3 });
+  // Story 20.18: la fase GIRONE legge ora la checklist selezioneSlotGirone
+  // (formData.getAll, non un singolo palestraId) - ogni valore
+  // "palestraId|campoId" e' parsato e passato a creaSlotTorneoPerSelezione
+  // tale e quale (il filtro contro l'insieme valido vive li', non qui).
+  // creaSlotTorneo (percorso singola-Palestra) non viene piu' chiamato
+  // affatto in questo caso.
+  it("parses selezioneSlotGirone into { palestraId, campoId } pairs and forwards them to creaSlotTorneoPerSelezione", async () => {
+    creaSlotTorneoPerSelezioneMock.mockResolvedValue({ count: 2, nessunaPalestraCensita: false });
 
-    const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({
+        ...campiSlotGironeValidi,
+        selezioneSlotGirone: ["palestra-1|campo-1", "palestra-1|campo-2"],
+      })
+    );
 
     expect(result).toEqual({ success: true });
-    expect(creaSlotTorneoPerTutteLePalestreMock).toHaveBeenCalledWith({
+    expect(creaSlotTorneoPerSelezioneMock).toHaveBeenCalledWith({
       edizioneTorneoId: "edizione-1",
       etichetta: "Campo 1 - Sabato mattina",
       data: "2026-09-05",
       ora: "09:00",
+      selezioni: [
+        { palestraId: "palestra-1", campoId: "campo-1" },
+        { palestraId: "palestra-1", campoId: "campo-2" },
+      ],
     });
     expect(creaSlotTorneoMock).not.toHaveBeenCalled();
     expect(trovaPalestraPerIdMock).not.toHaveBeenCalled();
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1/slot");
   });
 
-  // Story 20.12 (AC #3): nessuna Palestra censita - rifiutato con un
-  // messaggio esplicito, non un salvataggio silenzioso di zero righe.
-  it("rejects GIRONE Slot creation when no Palestra exists yet (AC #3)", async () => {
-    creaSlotTorneoPerTutteLePalestreMock.mockResolvedValue({ count: 0 });
+  // I/O matrix (spec-20-18): "Palestra senza Campi censiti, riga sola
+  // Palestra selezionata" -> campoId vuoto ("palestraId|") mappato a null,
+  // mai stringa vuota.
+  it("maps an empty campoId (Palestra without Campi) to null, not an empty string", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, selezioneSlotGirone: ["palestra-2|"] })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaSlotTorneoPerSelezioneMock).toHaveBeenCalledWith(
+      expect.objectContaining({ selezioni: [{ palestraId: "palestra-2", campoId: null }] })
+    );
+  });
+
+  // Selezione parziale (spec-20-18 I/O matrix): un solo Campo su due
+  // selezionati - la checklist invia una sola riga, non entrambe.
+  it("forwards only the selected row when only one of two Campi is checked", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, selezioneSlotGirone: ["palestra-1|campo-1"] })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaSlotTorneoPerSelezioneMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selezioni: [{ palestraId: "palestra-1", campoId: "campo-1" }],
+      })
+    );
+  });
+
+  // Un valore senza alcun separatore "|" (dato manomesso/malformato) e'
+  // trattato come un solo palestraId senza Campo - la vera guardia (scartare
+  // una combinazione inesistente) vive server-side in
+  // creaSlotTorneoPerSelezione (lib/torneo.test.ts), non in questo parsing.
+  it("treats a value with no '|' separator as a bare palestraId with no campoId", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, selezioneSlotGirone: ["valore-manomesso"] })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaSlotTorneoPerSelezioneMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selezioni: [{ palestraId: "valore-manomesso", campoId: null }],
+      })
+    );
+  });
+
+  // I/O matrix: "tutte le righe deselezionate" -> selezione vuota inviata,
+  // creaSlotTorneoPerSelezione(count:0, nessunaPalestraCensita:false) - un
+  // messaggio diverso da "nessuna Palestra censita" (test successivo),
+  // stesso count 0 ma causa diversa (spec-20-18 Design Notes).
+  it("rejects GIRONE Slot creation with a friendly message when the selection is empty", async () => {
+    creaSlotTorneoPerSelezioneMock.mockResolvedValue({ count: 0, nessunaPalestraCensita: false });
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, selezioneSlotGirone: [] })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Seleziona almeno un Campo o una Palestra per generare gli Slot di girone.",
+      },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  // Nessuna Palestra censita (comportamento Story 20.12 invariato, ora
+  // segnalato da nessunaPalestraCensita invece che dal solo count) -
+  // rifiutato con un messaggio esplicito, non un salvataggio silenzioso di
+  // zero righe.
+  it("rejects GIRONE Slot creation when no Palestra exists yet", async () => {
+    creaSlotTorneoPerSelezioneMock.mockResolvedValue({ count: 0, nessunaPalestraCensita: true });
 
     const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
 
@@ -3563,7 +3661,7 @@ describe("creaSlotTorneoAction", () => {
   });
 
   it("returns a friendly error, no crash, when the create fails (GIRONE)", async () => {
-    creaSlotTorneoPerTutteLePalestreMock.mockRejectedValue(new Error("db down"));
+    creaSlotTorneoPerSelezioneMock.mockRejectedValue(new Error("db down"));
 
     const result = await creaSlotTorneoAction(undefined, buildFormData(campiSlotGironeValidi));
 

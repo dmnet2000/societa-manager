@@ -21,6 +21,12 @@ type Slot = {
   // qui era ristretto al solo nome, l'indirizzo veniva letto ma mai
   // mostrato in nessuna vista Admin.
   palestra: { nome: string; indirizzo: string | null };
+  // Story 20.18 (Epic 20, Torneo Memorial): Campo opzionale - null per una
+  // Palestra senza Campi censiti o per un vecchio Slot creato prima di
+  // questa storia (spec-20-18 Boundaries "Always": ovunque un SlotTorneo con
+  // Campo assegnato viene mostrato, il nome del Campo compare accanto al
+  // nome della Palestra).
+  campo: { nome: string } | null;
 };
 
 // Story 20.9 (Epic 20, Torneo Memorial): mirror di CategoriaTorneoRow.tsx,
@@ -51,6 +57,7 @@ export function SlotTorneoRow({ slot }: { slot: Slot }) {
       <td>{slot.ora}</td>
       <td>
         {slot.palestra.nome}
+        {slot.campo && ` - ${slot.campo.nome}`}
         {slot.palestra.indirizzo && (
           <span className={styles.indirizzoPalestra}> — {slot.palestra.indirizzo}</span>
         )}

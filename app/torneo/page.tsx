@@ -32,6 +32,12 @@ type SlotPubblico = {
     latitudine: number | null;
     longitudine: number | null;
   };
+  // Story 20.18 (Epic 20, Torneo Memorial): Campo opzionale - null per una
+  // Palestra senza Campi censiti (spec-20-18 Boundaries "Always": il nome
+  // del Campo compare sempre accanto al nome della Palestra, ovunque uno
+  // SlotTorneo con Campo assegnato viene mostrato - qui anche sulla pagina
+  // pubblica).
+  campo: { nome: string } | null;
 };
 
 // Mostrato dentro ogni match-card (girone/semifinale/finale) SOLO quando la
@@ -43,12 +49,13 @@ function MetaSlot({ slotTorneo }: { slotTorneo: SlotPubblico | null }) {
   if (!slotTorneo) {
     return null;
   }
-  const { etichetta, data, ora, palestra } = slotTorneo;
+  const { etichetta, data, ora, palestra, campo } = slotTorneo;
   const linkNaviga = costruisciLinkNaviga(palestra);
   return (
     <div className={styles.metaSlot}>
       <span>
         {etichetta} · {data} {ora} · {palestra.nome}
+        {campo && ` - ${campo.nome}`}
       </span>
       {linkNaviga && (
         <a

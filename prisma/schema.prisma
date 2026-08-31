@@ -427,12 +427,16 @@ model Palestra {
 // orario, su Campi diversi (AC #4) - nessun vincolo qui lo impedisce; la
 // gestione dei conflitti sugli Slot e' fuori scope (Story 2.5).
 model Campo {
-  id         String   @id @default(uuid())
+  id         String       @id @default(uuid())
   nome       String
   palestraId String
-  palestra   Palestra @relation(fields: [palestraId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  palestra   Palestra     @relation(fields: [palestraId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
   slot       Slot[]
+  // Story 20.18 (Epic 20, Torneo Memorial): relazione inversa richiesta da
+  // Prisma per SlotTorneo.campoId sotto - stesso trattamento di "slot" sopra
+  // (Slot "normale", Epic 2), nessun impatto sul dominio Orari-Palestre (AD-2).
+  slotTorneo SlotTorneo[]
 
   @@map("campi")
 }
@@ -1076,6 +1080,16 @@ model SlotTorneo {
   ora              String
   palestraId       String
   palestra         Palestra         @relation(fields: [palestraId], references: [id])
+  // Story 20.18 (Epic 20, Torneo Memorial): FK opzionale verso Campo (Epic 2,
+  // riuso diretto - mai una nuova anagrafica) - una Palestra a doppio campo
+  // puo' cosi' ospitare due SlotTorneo paralleli sullo stesso orario, uno per
+  // Campo, per due incontri in contemporanea (spec-20-18 Intent). null quando
+  // la Palestra non ha Campi censiti (comportamento pre-esistente,
+  // invariato) o per il percorso di creazione singola (semifinali/finali,
+  // Story 20.9), mai toccato da questa storia. Nessun onDelete esplicito
+  // (default Postgres/Prisma: Restrict), mirror palestraId sopra.
+  campoId          String?
+  campo            Campo?           @relation(fields: [campoId], references: [id])
   fase             FaseTorneo
   tabellone        TabelloneTorneo?
   createdAt        DateTime         @default(now())

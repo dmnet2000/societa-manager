@@ -324,7 +324,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-28-2026 08:30"
+last_updated: "08-30-2026 18:57"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -1669,3 +1669,36 @@ development_status:
   # dal vivo del NUOVO comportamento (non ancora deployato) - demandata
   # all'utente dopo il prossimo deploy.
   20-17-sfondo-torneo-e-ordinamento-slot: review
+
+  # Story 20.18 aggiunta 2026-08-30, richiesta esplicita dell'utente: "per
+  # le palestre in fase di generazione degli slot, bisogna aggiugere i
+  # campi. esempio ho una palestra che ha la possibilita' di usare doppio
+  # campo (nella sezione palestre e' stato inserito il campo) ma anche la
+  # possibilita' di sceglierne solo uno". Verificato nel codice: SlotTorneo
+  # (Story 20.9) e' FK diretta verso Palestra, mai verso Campo (a
+  # differenza dello Slot "normale", Epic 2, campoId FK verso Campo) - la
+  # generazione in blocco (Story 20.12) genera un solo Slot per Palestra,
+  # ignorando i Campi. Punti aperti risolti con l'utente (AskUserQuestion):
+  # ambito limitato al solo flusso di generazione in blocco (20.12, fase
+  # GIRONE), form di creazione singola (semifinali/finali) invariato;
+  # selezione granulare riga-per-Campo prima della generazione (non
+  # tutto/niente per Palestra) - esempio dell'utente: "saba campo1, saba
+  # campo2, berto campo1, berto campo2, potrei scegliere saba campo1 e
+  # saba campo due mentre per il berto un solo campo". Vedi epics.md#Story
+  # 20.18. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in questo giro.
+  # Story 20.18 chiusa 2026-08-30: implementata (agente in background), poi
+  # review a 3 agenti in parallelo (Blind Hunter/Edge Case Hunter/
+  # Verification Gap Reviewer) su diff isolato dal baseline (978 righe).
+  # Nessun bug/gap di intent - 6 patch applicate (fix piu' rilevante: dedup
+  # delle selezioni Palestra/Campo prima dell'insert, convergenza
+  # indipendente di tutti e 3 i reviewer; select invece di include sulla
+  # query Palestre; fieldset/legend per a11y sulla checklist; export +
+  # test della funzione pura che genera le righe; intestazione tabella
+  # aggiornata; encoding "palestraId|campoId" estratto in un helper
+  # condiviso lib/selezione-slot-girone.ts). Vedi Spec Change Log in
+  # spec-20-18-campi-palestre-generazione-blocco-slot.md. Verifica: 3762+
+  # test verdi (2 falliti pre-esistenti e non correlati, worktree Story
+  # 9.40), tsc/lint/build/prisma validate puliti. Nessuna verifica manuale
+  # dal vivo (ambiente locale rotto, Epic 20 mai deployata) - demandata
+  # all'utente dopo il prossimo deploy.
+  20-18-campi-palestre-generazione-blocco-slot: review

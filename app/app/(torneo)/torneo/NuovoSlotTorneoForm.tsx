@@ -4,9 +4,31 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { creaSlotTorneoAction } from "./actions";
 import { FASI_TORNEO } from "@/lib/fase-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
+import { codificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 import styles from "./torneo.module.css";
 
-type Palestra = { id: string; nome: string };
+type Palestra = { id: string; nome: string; campi: { id: string; nome: string }[] };
+
+// Story 20.18 (Epic 20, Torneo Memorial): una riga selezionabile per
+// ciascun Campo di ciascuna Palestra, o una sola riga "sola Palestra" se non
+// ha Campi censiti (spec-20-18 Intent) - calcolata una sola volta a partire
+// dalla stessa prop "palestre" usata anche dal <select> non-GIRONE sotto.
+// Esportata (review fix, Verification Gap Reviewer): funzione pura senza
+// alcuna dipendenza da React, testata a se' in NuovoSlotTorneoForm.test.ts
+// senza rendering/DOM, mirror dello stile "test di logica pura" gia' in uso
+// per ogni funzione di lib/.
+export type RigaSelezioneGirone = { valore: string; etichetta: string };
+
+export function calcolaRigheSelezioneGirone(palestre: Palestra[]): RigaSelezioneGirone[] {
+  return palestre.flatMap((p) =>
+    p.campi.length === 0
+      ? [{ valore: codificaSelezioneSlotGirone(p.id, null), etichetta: p.nome }]
+      : p.campi.map((c) => ({
+          valore: codificaSelezioneSlotGirone(p.id, c.id),
+          etichetta: `${p.nome} - ${c.nome}`,
+        }))
+  );
+}
 
 // Story 20.9 (Epic 20, Torneo Memorial): mirror di NuovaCategoriaTorneoForm.tsx
 // - form di creazione, reset automatico dopo un salvataggio riuscito. Il
@@ -47,11 +69,14 @@ export function NuovoSlotTorneoForm({
   }, [state]);
 
   const mostraTabellone = fase !== "" && fase !== "GIRONE";
-  // Story 20.12: per la fase GIRONE il form non chiede piu' la Palestra -
-  // creaSlotTorneoAction crea uno Slot per OGNI Palestra esistente in quel
-  // caso (spec-20-12 Intent). Il campo torna visibile/obbligatorio per ogni
-  // altra fase, comportamento invariato di Story 20.9.
+  // Story 20.12: per la fase GIRONE il form non chiede piu' la Palestra
+  // tramite un <select> singolo. Il campo torna visibile/obbligatorio per
+  // ogni altra fase, comportamento invariato di Story 20.9.
   const mostraPalestra = fase !== "GIRONE";
+  // Story 20.18: righe Palestra x Campo per la checklist GIRONE - ricalcolate
+  // a ogni render (nessuna dipendenza costosa, solo un flatMap su un elenco
+  // gia' in memoria).
+  const righeSelezioneGirone = calcolaRigheSelezioneGirone(palestre);
 
   return (
     <form ref={formRef} action={formAction}>
@@ -126,9 +151,35 @@ export function NuovoSlotTorneoForm({
         )}
       </div>
       {fase === "GIRONE" && (
-        <p className={styles.riepilogo}>
-          Verrà creato uno Slot per ciascuna Palestra già censita nel gestionale.
-        </p>
+        // Review fix (Blind Hunter): la checklist e' ora dentro un
+        // <fieldset>/<legend> - senza, ogni checkbox veniva annunciata da
+        // uno screen reader isolata, senza alcun gruppo/etichetta comune.
+        <fieldset className={`${styles.campo} ${styles.fieldsetSenzaBordo}`}>
+          <legend>Campi e Palestre per la fase a gironi</legend>
+          <p className={styles.riepilogo}>
+            Seleziona i Campi (o le Palestre senza Campi censiti) per cui creare uno Slot:
+            deseleziona quelli che non ti servono.
+          </p>
+          {righeSelezioneGirone.length === 0 ? (
+            <p className={styles.messaggioVuoto}>Nessuna Palestra configurata nel gestionale.</p>
+          ) : (
+            <ul className={styles.checklistSelezioneGirone}>
+              {righeSelezioneGirone.map((riga) => (
+                <li key={riga.valore}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="selezioneSlotGirone"
+                      value={riga.valore}
+                      defaultChecked
+                    />
+                    {riga.etichetta}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </fieldset>
       )}
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>

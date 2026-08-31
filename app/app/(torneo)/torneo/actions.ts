@@ -30,7 +30,7 @@ import {
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
   creaSlotTorneo,
-  creaSlotTorneoPerTutteLePalestre,
+  creaSlotTorneoPerSelezione,
   trovaSlotTorneoPerId,
   trovaPalestraPerId,
   cancellaSlotTorneo,
@@ -41,6 +41,7 @@ import { isSettimanaTorneoValida, NOME_SETTIMANA_MAX } from "@/lib/settimana-tor
 import { isGironeTorneoValido } from "@/lib/girone-torneo";
 import { isFaseTorneoValida } from "@/lib/fase-torneo";
 import { isTabelloneTorneoValido } from "@/lib/tabelloni-torneo";
+import { decodificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import {
   risultatoValido,
@@ -680,22 +681,42 @@ export async function creaSlotTorneoAction(
       return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
     }
 
-    // Story 20.12: per il girone non esiste una singola Palestra scelta dal
-    // form - uno Slot viene creato per OGNI Palestra esistente (spec-20-12
-    // Intent). Per ogni altra fase il percorso resta quello di Story 20.9,
-    // invariato.
+    // Story 20.18: per il girone non esiste piu' una singola Palestra scelta
+    // dal form - l'Admin seleziona una checklist di righe Palestra x Campo
+    // (NuovoSlotTorneoForm.tsx), preselezionata di default con TUTTE le
+    // combinazioni esistenti (spec-20-18 Intent). Ogni valore e' codificato
+    // "palestraId|campoId" (decodificaSelezioneSlotGirone,
+    // lib/selezione-slot-girone.ts - stessa convenzione condivisa con
+    // NuovoSlotTorneoForm.tsx/creaSlotTorneoPerSelezione, non una terza
+    // reimplementazione locale) - parsato qui, mai fidandosi che il client
+    // l'abbia costruito onestamente: creaSlotTorneoPerSelezione ricalcola da
+    // se' l'insieme valido e scarta ogni riga che non vi corrisponde. Per
+    // ogni altra fase il percorso resta quello di Story 20.9, invariato.
     if (validazione.valori.fase === "GIRONE") {
-      const risultato = await creaSlotTorneoPerTutteLePalestre({
+      const selezioni = formData
+        .getAll("selezioneSlotGirone")
+        .map((valoreGrezzo) => decodificaSelezioneSlotGirone(String(valoreGrezzo)));
+
+      const risultato = await creaSlotTorneoPerSelezione({
         edizioneTorneoId,
         etichetta,
         data,
         ora,
+        selezioni,
       });
-      if (risultato.count === 0) {
+      if (risultato.nessunaPalestraCensita) {
         return {
           error: {
             code: "VALIDATION",
             message: "Nessuna Palestra configurata: aggiungine una prima di creare uno Slot di girone.",
+          },
+        };
+      }
+      if (risultato.count === 0) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Seleziona almeno un Campo o una Palestra per generare gli Slot di girone.",
           },
         };
       }

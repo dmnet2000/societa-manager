@@ -20,6 +20,11 @@ type SlotTorneoOpzione = {
   data: string;
   ora: string;
   palestra: { nome: string };
+  // Story 20.18 (Epic 20, Torneo Memorial): Campo opzionale - null per una
+  // Palestra senza Campi censiti (spec-20-18 Boundaries "Always": il nome
+  // del Campo compare sempre accanto al nome della Palestra, ovunque uno
+  // SlotTorneo con Campo assegnato viene mostrato).
+  campo: { nome: string } | null;
 };
 
 type Partita = {
@@ -213,6 +218,7 @@ export function RisultatoPartitaTorneoForm({
           {slotDisponibili.map((s) => (
             <option key={s.id} value={s.id}>
               {s.etichetta} — {s.data} {s.ora} — {s.palestra.nome}
+              {s.campo && ` - ${s.campo.nome}`}
               {slotOccupati.has(s.id) && s.id !== partita.slotTorneoId ? " (occupato)" : ""}
             </option>
           ))}
@@ -235,6 +241,7 @@ export function RisultatoPartitaTorneoForm({
         <p className={styles.riepilogo}>
           {partita.slotTorneo.etichetta} — {partita.slotTorneo.data} {partita.slotTorneo.ora} —{" "}
           {partita.slotTorneo.palestra.nome}
+          {partita.slotTorneo.campo && ` - ${partita.slotTorneo.campo.nome}`}
         </p>
       )}
 

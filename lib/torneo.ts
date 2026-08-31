@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { SettimanaTorneo, GironeTorneo, FaseTorneo, TabelloneTorneo } from "@prisma/client";
+import { codificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 
 // Story 20.1 (Epic 20, Torneo Memorial): funzioni di lettura/scrittura per
 // EdizioneTorneo/CategoriaTorneo (prisma/schema.prisma) - tabelle
@@ -221,13 +222,17 @@ export async function cancellaSquadraTorneo(id: string, categoriaTorneoId: strin
 // produce gia' un raggruppamento naturale equivalente al precedente ordine
 // per girone/nome Squadra, con il vantaggio aggiuntivo di riflettere
 // l'ordine reale di generazione/gioco.
+// Story 20.18: include esteso con "campo: true" accanto a "palestra: true" -
+// lo SlotTorneo eventualmente assegnato porta ora anche il proprio Campo
+// (opzionale), mostrato ovunque questa funzione alimenta una vista
+// (RisultatoPartitaTorneoForm.tsx, app/torneo/page.tsx).
 export async function elencaPartiteTorneo(categoriaTorneoId: string) {
   return prisma.partitaTorneo.findMany({
     where: { categoriaTorneoId },
     include: {
       squadraCasa: true,
       squadraOspite: true,
-      slotTorneo: { include: { palestra: true } },
+      slotTorneo: { include: { palestra: true, campo: true } },
     },
     orderBy: [{ numero: "asc" }],
   });
@@ -370,50 +375,106 @@ export async function creaSlotTorneo(dati: {
   return prisma.slotTorneo.create({ data: dati });
 }
 
-// Story 20.12 (Epic 20, Torneo Memorial): scorciatoia di creazione per la
-// fase GIRONE - un weekend di torneo ospita piu' partite in parallelo,
-// una per Palestra disponibile, tutte alla stessa etichetta/data/ora
-// (spec-20-12 Intent). L'elenco delle Palestre e' SEMPRE riletto qui,
-// server-side - mai fidandosi di una lista/selezione inviata dal client
-// (stessa disciplina "mai fidarsi del client per lo scoping" gia'
-// applicata in tutta l'epica). Nessuna nuova entita' "gruppo di Slot": le
-// righe create restano indipendenti, cancellabili singolarmente come ogni
-// altro SlotTorneo (spec-20-12 Design Notes). Se non esiste ancora
-// nessuna Palestra, nessuna query di scrittura viene eseguita - il
-// chiamante (creaSlotTorneoAction) traduce { count: 0 } in un errore
+// Story 20.18 (Epic 20, Torneo Memorial): sostituisce
+// creaSlotTorneoPerTutteLePalestre (Story 20.12) - un weekend di torneo
+// ospita piu' partite in parallelo, ma ora fino a una per CAMPO (non solo
+// per Palestra): una Palestra a doppio campo puo' ospitare due Slot
+// paralleli sullo stesso orario (spec-20-18 Intent). L'insieme
+// Palestra x Campo valido e' SEMPRE ricalcolato qui, server-side - mai
+// fidandosi delle "selezioni" inviate dal client (stessa disciplina "mai
+// fidarsi del client per lo scoping" gia' applicata in tutta l'epica, Story
+// 20.12 inclusa): ogni selezione ricevuta viene scartata silenziosamente se
+// non corrisponde a una combinazione Palestra/Campo davvero esistente (id
+// inesistente, Campo cancellato nel frattempo, o Campo che non appartiene
+// alla Palestra indicata - tampering o dato stantio, mai un errore per
+// riga). codificaSelezioneSlotGirone (lib/selezione-slot-girone.ts, stessa
+// convenzione "palestraId|campoId" riusata da NuovoSlotTorneoForm.tsx e
+// actions.ts) costruisce sia le chiavi dell'insieme valido sia quelle delle
+// selezioni ricevute - un'unica fonte di verita' per l'encoding, non tre
+// copie della stessa stringa template. Nessuna nuova entita' "gruppo di
+// Slot": le righe create restano indipendenti, cancellabili singolarmente
+// come ogni altro SlotTorneo (mirror Story 20.12 Design Notes). Review fix
+// (Edge Case Hunter): le selezioni sono deduplicate PRIMA del filtro/mapping
+// (Map keyed sulla stessa codifica) - una combinazione Palestra/Campo valida
+// inviata due volte (form manomesso, doppio submit non impedito lato
+// client) produceva altrimenti due righe SlotTorneo identiche invece di una
+// sola. { count, nessunaPalestraCensita } invece del solo { count } di
+// prima: distingue "0 Palestre esistono affatto" (nessunaPalestraCensita:
+// true, messaggio dedicato) da "selezione vuota o interamente scartata dal
+// filtro" (nessunaPalestraCensita: false, count: 0) - la causa non e'
+// altrimenti recuperabile dal solo conteggio (spec-20-18 Design Notes). Il
+// chiamante (creaSlotTorneoAction) traduce entrambi i casi in un errore
 // esplicito, mai un salvataggio silenzioso di zero righe.
-export async function creaSlotTorneoPerTutteLePalestre(dati: {
+export async function creaSlotTorneoPerSelezione(dati: {
   edizioneTorneoId: string;
   etichetta: string;
   data: string;
   ora: string;
+  selezioni: { palestraId: string; campoId: string | null }[];
 }) {
-  const palestre = await prisma.palestra.findMany({ select: { id: true } });
+  // Review fix (Verification Gap Reviewer): select invece di include - solo
+  // "id" di Palestra e "id" di Campo sono mai letti qui, include avrebbe
+  // tirato dentro nome/indirizzo/latitudine/longitudine/createdAt di ogni
+  // Palestra per niente.
+  const palestre = await prisma.palestra.findMany({
+    select: { id: true, campi: { select: { id: true } } },
+  });
   if (palestre.length === 0) {
-    return { count: 0 };
+    return { count: 0, nessunaPalestraCensita: true };
   }
-  return prisma.slotTorneo.createMany({
-    data: palestre.map((p) => ({
+
+  const combinazioniValide = new Set<string>();
+  for (const p of palestre) {
+    if (p.campi.length === 0) {
+      combinazioniValide.add(codificaSelezioneSlotGirone(p.id, null));
+    } else {
+      for (const c of p.campi) {
+        combinazioniValide.add(codificaSelezioneSlotGirone(p.id, c.id));
+      }
+    }
+  }
+
+  // Review fix (Edge Case Hunter): dedup PRIMA del filtro, keyed sulla
+  // stessa codifica delle combinazioni valide sopra - una Map preserva la
+  // prima occorrenza di ciascuna combinazione, scartando i duplicati esatti
+  // senza alterarne l'ordine di invio.
+  const selezioniUniche = new Map<string, { palestraId: string; campoId: string | null }>();
+  for (const s of dati.selezioni) {
+    selezioniUniche.set(codificaSelezioneSlotGirone(s.palestraId, s.campoId), s);
+  }
+
+  const righe = Array.from(selezioniUniche.entries())
+    .filter(([chiave]) => combinazioniValide.has(chiave))
+    .map(([, s]) => ({
       edizioneTorneoId: dati.edizioneTorneoId,
       etichetta: dati.etichetta,
       data: dati.data,
       ora: dati.ora,
-      palestraId: p.id,
+      palestraId: s.palestraId,
+      campoId: s.campoId,
       fase: "GIRONE" as const,
       tabellone: null,
-    })),
-  });
+    }));
+
+  if (righe.length === 0) {
+    return { count: 0, nessunaPalestraCensita: false };
+  }
+
+  const risultato = await prisma.slotTorneo.createMany({ data: righe });
+  return { count: risultato.count, nessunaPalestraCensita: false };
 }
 
-// Include la Palestra (nome/indirizzo/lat/lng) - servono al chiamante sia
-// per il <select> del form di assegnazione sia per il link "Naviga" della
-// pagina pubblica (costruisciLinkNaviga, lib/link-naviga-palestra.ts).
-// Ordinata per data/ora crescenti - stesso criterio deterministico usato
-// dall'auto-assegnazione (elencaSlotTorneoLiberi sotto).
+// Include la Palestra (nome/indirizzo/lat/lng) e il Campo (Story 20.18,
+// opzionale) - servono al chiamante sia per il <select> del form di
+// assegnazione sia per il link "Naviga" della pagina pubblica
+// (costruisciLinkNaviga, lib/link-naviga-palestra.ts, che legge solo la
+// Palestra). Ordinata per data/ora crescenti - stesso criterio
+// deterministico usato dall'auto-assegnazione (elencaSlotTorneoLiberi
+// sotto).
 export async function elencaSlotTorneo(edizioneTorneoId: string) {
   return prisma.slotTorneo.findMany({
     where: { edizioneTorneoId },
-    include: { palestra: true },
+    include: { palestra: true, campo: true },
     orderBy: [{ data: "asc" }, { ora: "asc" }],
   });
 }

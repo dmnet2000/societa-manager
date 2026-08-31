@@ -25,14 +25,17 @@ export default async function SlotTorneoPage({
 
   // Le risoluzioni non dipendono l'una dall'altra - eseguite in Promise.all,
   // stesso principio gia' stabilito altrove nel progetto (mirror
-  // [edizioneId]/page.tsx). prisma.palestra.findMany({orderBy:{nome:"asc"}})
-  // e' lo stesso pattern gia' in uso in app/(orari-palestre)/orari/page.tsx
-  // per popolare un elenco a discesa di Palestre.
+  // [edizioneId]/page.tsx). Story 20.18: include esteso con "campi" (stesso
+  // pattern gia' in uso in app/(orari-palestre)/palestre/page.tsx) - serve
+  // alla checklist Palestra x Campo di NuovoSlotTorneoForm.tsx.
   const [ruoli, edizione, slot, palestre] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
     trovaEdizioneTorneoPerId(edizioneId),
     elencaSlotTorneo(edizioneId),
-    prisma.palestra.findMany({ orderBy: { nome: "asc" } }),
+    prisma.palestra.findMany({
+      orderBy: { nome: "asc" },
+      include: { campi: { orderBy: { nome: "asc" } } },
+    }),
   ]);
 
   // Un id inesistente/gia' eliminato (link obsoleto, doppia scheda con
@@ -68,7 +71,10 @@ export default async function SlotTorneoPage({
                 <th>Etichetta</th>
                 <th>Data</th>
                 <th>Ora</th>
-                <th>Palestra</th>
+                {/* Story 20.18 (review fix, Blind Hunter): rinominata da
+                    "Palestra" - la cella puo' ora mostrare anche il Campo
+                    ("Palestra - Campo", SlotTorneoRow.tsx). */}
+                <th>Palestra / Campo</th>
                 <th>Fase</th>
                 <th>Azioni</th>
               </tr>

@@ -107,7 +107,7 @@ const {
   aggiornaRisultatoPartitaTorneo,
   trovaPartitaTorneoPerId,
   creaSlotTorneo,
-  creaSlotTorneoPerTutteLePalestre,
+  creaSlotTorneoPerSelezione,
   elencaSlotTorneo,
   trovaSlotTorneoPerId,
   cancellaSlotTorneo,
@@ -423,7 +423,7 @@ describe("elencaPartiteTorneo", () => {
       include: {
         squadraCasa: true,
         squadraOspite: true,
-        slotTorneo: { include: { palestra: true } },
+        slotTorneo: { include: { palestra: true, campo: true } },
       },
       orderBy: [{ numero: "asc" }],
     });
@@ -610,26 +610,36 @@ describe("creaSlotTorneo", () => {
   });
 });
 
-// Story 20.12 (Epic 20, Torneo Memorial): scorciatoia di creazione per la
-// fase GIRONE - un solo invio crea uno Slot per OGNI Palestra esistente,
-// mai per una sola scelta dal client (spec-20-12 Intent).
-describe("creaSlotTorneoPerTutteLePalestre", () => {
-  it("creates one Slot per existing Palestra, same etichetta/data/ora/fase GIRONE", async () => {
+// Story 20.18 (Epic 20, Torneo Memorial): sostituisce
+// creaSlotTorneoPerTutteLePalestre (Story 20.12) - una riga per selezione
+// Palestra x Campo, l'insieme valido ricalcolato SEMPRE server-side (mai
+// fidandosi delle selezioni ricevute).
+describe("creaSlotTorneoPerSelezione", () => {
+  it("creates one SlotTorneo per selected combinazione Palestra/Campo, campoId incluso", async () => {
     palestraFindManyMock.mockResolvedValue([
-      { id: "palestra-1" },
-      { id: "palestra-2" },
-      { id: "palestra-3" },
+      { id: "palestra-1", campi: [{ id: "campo-1" }, { id: "campo-2" }] },
+      { id: "palestra-2", campi: [] },
     ]);
     slotCreateManyMock.mockResolvedValue({ count: 3 });
 
-    const result = await creaSlotTorneoPerTutteLePalestre({
+    const result = await creaSlotTorneoPerSelezione({
       edizioneTorneoId: "edizione-1",
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      selezioni: [
+        { palestraId: "palestra-1", campoId: "campo-1" },
+        { palestraId: "palestra-1", campoId: "campo-2" },
+        { palestraId: "palestra-2", campoId: null },
+      ],
     });
 
-    expect(palestraFindManyMock).toHaveBeenCalledWith({ select: { id: true } });
+    // Review fix (Verification Gap Reviewer): select invece di include - solo
+    // "id" di Palestra e "id" di Campo sono mai letti, mai l'intera riga
+    // Palestra (nome/indirizzo/latitudine/longitudine/createdAt).
+    expect(palestraFindManyMock).toHaveBeenCalledWith({
+      select: { id: true, campi: { select: { id: true } } },
+    });
     expect(slotCreateManyMock).toHaveBeenCalledWith({
       data: [
         {
@@ -638,6 +648,17 @@ describe("creaSlotTorneoPerTutteLePalestre", () => {
           data: "2026-09-05",
           ora: "15:00",
           palestraId: "palestra-1",
+          campoId: "campo-1",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-1",
+          campoId: "campo-2",
           fase: "GIRONE",
           tabellone: null,
         },
@@ -647,48 +668,172 @@ describe("creaSlotTorneoPerTutteLePalestre", () => {
           data: "2026-09-05",
           ora: "15:00",
           palestraId: "palestra-2",
-          fase: "GIRONE",
-          tabellone: null,
-        },
-        {
-          edizioneTorneoId: "edizione-1",
-          etichetta: "Sabato pomeriggio",
-          data: "2026-09-05",
-          ora: "15:00",
-          palestraId: "palestra-3",
+          campoId: null,
           fase: "GIRONE",
           tabellone: null,
         },
       ],
     });
-    expect(result).toEqual({ count: 3 });
+    expect(result).toEqual({ count: 3, nessunaPalestraCensita: false });
   });
 
-  it("returns count 0 without writing anything when no Palestra exists yet", async () => {
-    palestraFindManyMock.mockResolvedValue([]);
+  // I/O matrix (spec-20-18): "Palestra con 2 Campi, un solo Campo
+  // selezionato" -> 1 SlotTorneo creato con quel campoId.
+  it("creates only the selected Campo when only one of two is chosen", async () => {
+    palestraFindManyMock.mockResolvedValue([
+      { id: "palestra-1", campi: [{ id: "campo-1" }, { id: "campo-2" }] },
+    ]);
+    slotCreateManyMock.mockResolvedValue({ count: 1 });
 
-    const result = await creaSlotTorneoPerTutteLePalestre({
+    const result = await creaSlotTorneoPerSelezione({
       edizioneTorneoId: "edizione-1",
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      selezioni: [{ palestraId: "palestra-1", campoId: "campo-1" }],
     });
 
-    expect(result).toEqual({ count: 0 });
+    expect(slotCreateManyMock).toHaveBeenCalledWith({
+      data: [
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-1",
+          campoId: "campo-1",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+      ],
+    });
+    expect(result).toEqual({ count: 1, nessunaPalestraCensita: false });
+  });
+
+  // I/O matrix: "Selezione manomessa (id inesistente o combinazione
+  // Palestra/Campo non valida)" -> riga ignorata, mai creata.
+  it("silently discards a selection with a Campo that does not belong to the given Palestra", async () => {
+    palestraFindManyMock.mockResolvedValue([
+      { id: "palestra-1", campi: [{ id: "campo-1" }] },
+      { id: "palestra-2", campi: [{ id: "campo-2" }] },
+    ]);
+    slotCreateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await creaSlotTorneoPerSelezione({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+      selezioni: [
+        { palestraId: "palestra-1", campoId: "campo-1" },
+        // campo-2 appartiene a palestra-2, non a palestra-1 - scartata.
+        { palestraId: "palestra-1", campoId: "campo-2" },
+        // id del tutto inesistente - scartata.
+        { palestraId: "palestra-inesistente", campoId: null },
+      ],
+    });
+
+    expect(slotCreateManyMock).toHaveBeenCalledWith({
+      data: [
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-1",
+          campoId: "campo-1",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+      ],
+    });
+    expect(result).toEqual({ count: 1, nessunaPalestraCensita: false });
+  });
+
+  // Review fix (Edge Case Hunter): una combinazione valida inviata due
+  // volte (form manomesso, o un doppio submit non impedito lato client)
+  // deve produrre UNA sola riga SlotTorneo, mai due righe identiche.
+  it("deduplicates a repeated selezione before writing (same combinazione sent twice)", async () => {
+    palestraFindManyMock.mockResolvedValue([
+      { id: "palestra-1", campi: [{ id: "campo-1" }] },
+    ]);
+    slotCreateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await creaSlotTorneoPerSelezione({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+      selezioni: [
+        { palestraId: "palestra-1", campoId: "campo-1" },
+        { palestraId: "palestra-1", campoId: "campo-1" },
+      ],
+    });
+
+    expect(slotCreateManyMock).toHaveBeenCalledWith({
+      data: [
+        {
+          edizioneTorneoId: "edizione-1",
+          etichetta: "Sabato pomeriggio",
+          data: "2026-09-05",
+          ora: "15:00",
+          palestraId: "palestra-1",
+          campoId: "campo-1",
+          fase: "GIRONE",
+          tabellone: null,
+        },
+      ],
+    });
+    expect(result).toEqual({ count: 1, nessunaPalestraCensita: false });
+  });
+
+  // I/O matrix: "tutte le righe deselezionate" -> selezione vuota, nessuna
+  // scrittura, nessunaPalestraCensita false (le Palestre esistono, solo la
+  // selezione e' vuota) - distingue questo caso da "0 Palestre esistono"
+  // sotto.
+  it("returns count 0 without writing anything when selezioni is empty but Palestre exist", async () => {
+    palestraFindManyMock.mockResolvedValue([{ id: "palestra-1", campi: [] }]);
+
+    const result = await creaSlotTorneoPerSelezione({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+      selezioni: [],
+    });
+
+    expect(result).toEqual({ count: 0, nessunaPalestraCensita: false });
+    expect(slotCreateManyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns count 0 with nessunaPalestraCensita true when no Palestra exists yet", async () => {
+    palestraFindManyMock.mockResolvedValue([]);
+
+    const result = await creaSlotTorneoPerSelezione({
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Sabato pomeriggio",
+      data: "2026-09-05",
+      ora: "15:00",
+      selezioni: [{ palestraId: "palestra-1", campoId: null }],
+    });
+
+    expect(result).toEqual({ count: 0, nessunaPalestraCensita: true });
     expect(slotCreateManyMock).not.toHaveBeenCalled();
   });
 });
 
 describe("elencaSlotTorneo", () => {
-  it("returns only the Slot of the given Edizione, with Palestra incluso, ordinati per data poi ora", async () => {
-    const righe = [{ id: "slot-1", etichetta: "Campo 1", palestra: { nome: "Palestra A" } }];
+  it("returns only the Slot of the given Edizione, with Palestra e Campo inclusi, ordinati per data poi ora", async () => {
+    const righe = [
+      { id: "slot-1", etichetta: "Campo 1", palestra: { nome: "Palestra A" }, campo: null },
+    ];
     slotFindManyMock.mockResolvedValue(righe);
 
     const result = await elencaSlotTorneo("edizione-1");
 
     expect(slotFindManyMock).toHaveBeenCalledWith({
       where: { edizioneTorneoId: "edizione-1" },
-      include: { palestra: true },
+      include: { palestra: true, campo: true },
       orderBy: [{ data: "asc" }, { ora: "asc" }],
     });
     expect(result).toBe(righe);
