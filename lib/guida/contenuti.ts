@@ -381,6 +381,17 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Un utente disattivato non può più accedere all'app, ma i suoi dati storici (es. presenze registrate) restano invariati.",
       "Se un Utente ha sbagliato a digitare l'email in fase di registrazione e non ha mai confermato l'account, compare qui il campo \"Correggi email\": corregge l'indirizzo e reinvia subito un nuovo link di conferma. Disponibile solo finché l'Utente non ha mai confermato l'account.",
       "\"Correggi email\" rifiuta sempre un bersaglio con Ruolo Admin (usa un altro account per correggere quello), e rifiuta anche se il nuovo indirizzo è già in uso da un altro Utente.",
+      "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin e Site Manager restano soggetti all'attivazione manuale da questa pagina.",
+    ],
+  },
+  {
+    rotta: "/app/precaricamento-ruoli",
+    titolo: "Precaricamento Segreteria/Dirigente",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui precarichi un'email con Ruolo Segreteria e/o Dirigente prima che la persona si registri: solo un'email precaricata per un Ruolo può completare la registrazione con quel Ruolo.",
+      "A differenza degli altri Ruoli, Segreteria e Dirigente non passano dal gate di conferma Admin: appena la registrazione supera il controllo di precaricamento, l'account parte già attivo, senza bisogno di attivarlo da /app/admin.",
+      "Una voce (email) con almeno un Ruolo già agganciato a un account registrato non è più modificabile né cancellabile: per correggere un'email sbagliata, cancellala (se non ancora agganciata) e ricreala.",
     ],
   },
   {

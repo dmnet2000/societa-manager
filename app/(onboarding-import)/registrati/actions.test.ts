@@ -12,6 +12,8 @@ const allenatoreUpdateMock = vi.fn();
 const trovaPerCodiceFiscaleMock = vi.fn();
 const genitoreAtletaCreateMock = vi.fn();
 const elencaEmailPerRuoloMock = vi.fn();
+const trovaPrecaricamentoRuoloMock = vi.fn();
+const precaricamentoRuoloUpdateManyMock = vi.fn();
 const createAdminClientMock = vi.fn(() => ({
   auth: { admin: { generateLink: generateLinkMock } },
 }));
@@ -31,6 +33,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     allenatore: { update: allenatoreUpdateMock },
     genitoreAtleta: { create: genitoreAtletaCreateMock },
+    precaricamentoRuolo: { updateMany: precaricamentoRuoloUpdateManyMock },
   },
 }));
 
@@ -62,6 +65,24 @@ vi.mock("@/lib/matching-codice-fiscale", async () => {
     trovaAllenatorePerCodiceFiscale: trovaAllenatorePerCodiceFiscaleMock,
     trovaPerCodiceFiscale: trovaPerCodiceFiscaleMock,
     isCodiceFiscaleValido,
+  };
+});
+
+// Spec 9.41 (precaricamento Segreteria/Dirigente): mock del modulo di
+// matching condiviso - normalizzaEmailRuolo resta l'implementazione reale
+// (semplice trim+lowercase, nessun bisogno di mockarla), solo
+// trovaPrecaricamentoRuolo e' mockato.
+vi.mock("@/lib/matching-email-ruolo", async () => {
+  const { normalizzaEmailRuolo } = await vi.importActual<
+    typeof import("@/lib/matching-email-ruolo/normalizza-email-ruolo")
+  >("@/lib/matching-email-ruolo/normalizza-email-ruolo");
+  const { RUOLI_BLOCCATI_SENZA_PRECARICAMENTO } = await vi.importActual<
+    typeof import("@/lib/matching-email-ruolo/ruoli-bloccati-senza-precaricamento")
+  >("@/lib/matching-email-ruolo/ruoli-bloccati-senza-precaricamento");
+  return {
+    trovaPrecaricamentoRuolo: trovaPrecaricamentoRuoloMock,
+    normalizzaEmailRuolo,
+    RUOLI_BLOCCATI_SENZA_PRECARICAMENTO,
   };
 });
 
@@ -124,6 +145,19 @@ describe("registrati", () => {
     elencaEmailPerRuoloMock.mockReset();
     elencaEmailPerRuoloMock.mockResolvedValue(["admin@example.com"]);
     createAdminClientMock.mockClear();
+    // Default: l'email e' gia' precaricata per qualunque Ruolo bloccato -
+    // la maggior parte dei test preesistenti seleziona DIRIGENTE/SEGRETERIA
+    // senza voler testare il blocco di precaricamento (Spec 9.41), coperto
+    // a parte nel describe dedicato sotto.
+    trovaPrecaricamentoRuoloMock.mockReset();
+    trovaPrecaricamentoRuoloMock.mockResolvedValue({
+      id: "precaricamento-default",
+      email: "default@example.com",
+      ruolo: "DIRIGENTE",
+      utenteId: null,
+    });
+    precaricamentoRuoloUpdateManyMock.mockReset();
+    precaricamentoRuoloUpdateManyMock.mockResolvedValue({ count: 1 });
   });
 
   it("returns an error when no ruolo is selected", async () => {
@@ -217,11 +251,13 @@ describe("registrati", () => {
     );
 
     expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+    // Spec 9.41: DIRIGENTE non e' piu' un Ruolo sensibile (gate sostituito
+    // dal precaricamento, superato di default nel beforeEach) - attivo:true.
     expect(utenteCreateMock).toHaveBeenCalledWith({
       data: {
         supabaseAuthId: "u3",
         email: "dup-ruolo@example.com",
-        attivo: false,
+        attivo: true,
         ruoli: { create: [{ ruolo: "DIRIGENTE" }] },
       },
     });
@@ -233,12 +269,16 @@ describe("registrati", () => {
     utenteCreateMock.mockResolvedValue({ id: "utente-u4" });
     sincronizzaRuoliMock.mockRejectedValue(new Error("app_metadata sync failed"));
 
+    // Spec 9.41: DIRIGENTE sostituito da SITE_MANAGER - non e' piu' un
+    // Ruolo sensibile (vedi commenti nel describe "gate di conferma"
+    // sotto), la notifica in questo test richiede un Ruolo che lo sia
+    // ancora.
     const result = await registrati(
       undefined,
       buildFormData({
         email: "orfano@example.com",
         password: "pw123456",
-        ruoli: ["DIRIGENTE"],
+        ruoli: ["SITE_MANAGER"],
       })
     );
 
@@ -251,7 +291,7 @@ describe("registrati", () => {
     // Review fix (Blind Hunter): la notifica agli Admin ora corre PRIMA di
     // sincronizzaRuoliAppMetadata (vedi gate di conferma sotto) - un
     // fallimento successivo non deve piu' inghiottirla in silenzio. Qui
-    // scatta comunque (Dirigente e' un Ruolo sensibile, un Admin attivo
+    // scatta comunque (Site Manager e' un Ruolo sensibile, un Admin attivo
     // esiste per default nel beforeEach): solo la mail di conferma sotto
     // (che richiede di superare sincronizzaRuoliAppMetadata) non parte.
     expect(inviaEmailMock).toHaveBeenCalledTimes(1);
@@ -274,11 +314,13 @@ describe("registrati", () => {
       })
     );
 
+    // Spec 9.41: DIRIGENTE non e' piu' un Ruolo sensibile - attivo:true
+    // (vedi commento gemello sopra).
     expect(utenteCreateMock).toHaveBeenCalledWith({
       data: {
         supabaseAuthId: "u2",
         email: "new@example.com",
-        attivo: false,
+        attivo: true,
         ruoli: {
           create: [{ ruolo: "ALLENATORE" }, { ruolo: "DIRIGENTE" }],
         },
@@ -1044,10 +1086,14 @@ describe("registrati", () => {
   });
 
   // Spec "Gate di conferma Admin per l'auto-registrazione di Ruoli
-  // sensibili": DIRIGENTE/SEGRETERIA/ADMIN/SITE_MANAGER non hanno alcun
-  // aggancio a un record preesistente via Codice Fiscale - registrati()
-  // deve crearli con attivo:false e notificare gli Admin attivi, tranne nel
-  // caso di bootstrap (nessun Admin attivo nel sistema).
+  // sensibili": ADMIN/SITE_MANAGER non hanno alcun aggancio a un record
+  // preesistente via Codice Fiscale ne' un precaricamento (Story 9.41) -
+  // registrati() deve crearli con attivo:false e notificare gli Admin
+  // attivi, tranne nel caso di bootstrap (nessun Admin attivo nel sistema).
+  // Review fix (Acceptance Auditor): DIRIGENTE/SEGRETERIA erano elencati qui
+  // ma non sono piu' sotto questo gate dalla Story 9.41 (sostituiti dal gate
+  // di precaricamento, testato a parte sotto) - commento disallineato dal
+  // corpo dei test, che gia' usa SITE_MANAGER al loro posto (vedi sotto).
   describe("gate di conferma per Ruoli sensibili", () => {
     it("keeps attivo:true and sends no Admin notification when only Ruoli with a Codice Fiscale hookup are selected", async () => {
       generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-1"));
@@ -1078,12 +1124,16 @@ describe("registrati", () => {
       utenteCountMock.mockResolvedValue(1);
       elencaEmailPerRuoloMock.mockResolvedValue(["admin1@example.com", "admin2@example.com"]);
 
+      // Spec 9.41: SEGRETERIA/DIRIGENTE non sono piu' "Ruoli sensibili"
+      // (sostituiti dal gate di precaricamento, testato a parte) - questo
+      // test usa ora SITE_MANAGER, l'unico Ruolo rimasto senza aggancio CF
+      // ne' precaricamento, per continuare a verificare il gate originale.
       const result = await registrati(
         undefined,
         buildFormData({
-          email: "nuova-segreteria@example.com",
+          email: "nuovo-site-manager@example.com",
           password: "pw123456",
-          ruoli: ["SEGRETERIA"],
+          ruoli: ["SITE_MANAGER"],
         })
       );
 
@@ -1150,12 +1200,15 @@ describe("registrati", () => {
       sincronizzaRuoliMock.mockResolvedValue(undefined);
       utenteCountMock.mockResolvedValue(1);
 
+      // Spec 9.41: DIRIGENTE sostituito da SITE_MANAGER (vedi commento
+      // gemello sopra) - resta comunque un Ruolo senza aggancio CF misto a
+      // uno con aggancio CF (ALLENATORE).
       const result = await registrati(
         undefined,
         buildFormData({
           email: "misto@example.com",
           password: "pw123456",
-          ruoli: ["ALLENATORE", "DIRIGENTE"],
+          ruoli: ["ALLENATORE", "SITE_MANAGER"],
         })
       );
 
@@ -1179,12 +1232,14 @@ describe("registrati", () => {
         }
       });
 
+      // Spec 9.41: DIRIGENTE sostituito da SITE_MANAGER (vedi commento
+      // gemello sopra nel primo test del describe).
       const result = await registrati(
         undefined,
         buildFormData({
           email: "notifica-fallita@example.com",
           password: "pw123456",
-          ruoli: ["DIRIGENTE"],
+          ruoli: ["SITE_MANAGER"],
         })
       );
 
@@ -1226,12 +1281,15 @@ describe("registrati", () => {
       utenteCountMock.mockResolvedValue(0);
       elencaEmailPerRuoloMock.mockResolvedValue([]);
 
+      // Spec 9.41: SEGRETERIA sostituita da SITE_MANAGER (vedi commento
+      // gemello sopra nel primo test del describe) - il limite documentato
+      // qui riguarda ancora un Ruolo sensibile diverso da Admin.
       const result = await registrati(
         undefined,
         buildFormData({
-          email: "segreteria-senza-admin@example.com",
+          email: "site-manager-senza-admin@example.com",
           password: "pw123456",
-          ruoli: ["SEGRETERIA"],
+          ruoli: ["SITE_MANAGER"],
         })
       );
 
@@ -1243,6 +1301,242 @@ describe("registrati", () => {
       expect(inviaEmailMock).toHaveBeenCalledWith(
         expect.objectContaining({ destinatario: [] })
       );
+    });
+  });
+
+  // Spec 9.41 "Precaricamento email per Segreteria e Dirigente (blocco
+  // registrazione)": a differenza del gate "Ruoli sensibili" sopra (che
+  // crea comunque l'account, attivo:false, in attesa di attivazione
+  // manuale), Segreteria/Dirigente sono bloccati PRIMA di generateLink -
+  // nessun account Supabase Auth creato per una registrazione rifiutata.
+  describe("precaricamento email per Segreteria/Dirigente (Spec 9.41)", () => {
+    it("rejects registration with Segreteria before generateLink when the email has no preloaded row for that Ruolo", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue(null);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "non-precaricata@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA"],
+        })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Questa email non è precaricata per il Ruolo Segreteria. Contatta un Admin.",
+        },
+      });
+      expect(trovaPrecaricamentoRuoloMock).toHaveBeenCalledWith(
+        "non-precaricata@example.com",
+        "SEGRETERIA"
+      );
+      expect(generateLinkMock).not.toHaveBeenCalled();
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects registration with Segreteria+Dirigente naming only the missing Ruolo when the email is preloaded for just one of them", async () => {
+      trovaPrecaricamentoRuoloMock.mockImplementation(async (_email: string, ruolo: string) =>
+        ruolo === "SEGRETERIA"
+          ? { id: "p1", email: "solo-segreteria@example.com", ruolo, utenteId: null }
+          : null
+      );
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "solo-segreteria@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA", "DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Questa email non è precaricata per il Ruolo Dirigente. Contatta un Admin.",
+        },
+      });
+      expect(generateLinkMock).not.toHaveBeenCalled();
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+    });
+
+    it("proceeds, creates the Utente attivo:true and claims the row when the email is preloaded for the selected Ruolo Segreteria", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue({
+        id: "p2",
+        email: "precaricata@example.com",
+        ruolo: "SEGRETERIA",
+        utenteId: null,
+      });
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("precarico-1"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-precarico-1" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "precaricata@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: true }) })
+      );
+      // Nessun gate "Ruoli sensibili" per Segreteria/Dirigente (sostituito
+      // dal precaricamento) - nessuna notifica agli Admin.
+      expect(elencaEmailPerRuoloMock).not.toHaveBeenCalled();
+      expect(precaricamentoRuoloUpdateManyMock).toHaveBeenCalledWith({
+        where: { email: "precaricata@example.com", ruolo: "SEGRETERIA", utenteId: null },
+        data: { utenteId: "utente-precarico-1" },
+      });
+    });
+
+    it("does not require any preloading for a non-blocked Ruolo selected alongside Segreteria (e.g. Allenatore)", async () => {
+      trovaPrecaricamentoRuoloMock.mockImplementation(async (_email: string, ruolo: string) =>
+        ruolo === "SEGRETERIA"
+          ? { id: "p3", email: "segreteria-allenatore@example.com", ruolo, utenteId: null }
+          : null
+      );
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("precarico-2"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-precarico-2" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "segreteria-allenatore@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA", "ALLENATORE"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      // Solo il Ruolo bloccato (Segreteria) viene controllato - Allenatore
+      // non passa mai da trovaPrecaricamentoRuolo.
+      expect(trovaPrecaricamentoRuoloMock).toHaveBeenCalledTimes(1);
+      expect(trovaPrecaricamentoRuoloMock).toHaveBeenCalledWith(
+        "segreteria-allenatore@example.com",
+        "SEGRETERIA"
+      );
+      expect(precaricamentoRuoloUpdateManyMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-runs the precaricamento check on a resend (always passes, rows still exist) but never re-runs the claim", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue({
+        id: "p4",
+        email: "reinvio-segreteria@example.com",
+        ruolo: "SEGRETERIA",
+        utenteId: "gia-agganciato",
+      });
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("reinvio-precarico"));
+      utenteFindUniqueMock.mockResolvedValue({ id: "utente-gia-creato-precarico" });
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "reinvio-segreteria@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(trovaPrecaricamentoRuoloMock).toHaveBeenCalledWith(
+        "reinvio-segreteria@example.com",
+        "SEGRETERIA"
+      );
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+      expect(precaricamentoRuoloUpdateManyMock).not.toHaveBeenCalled();
+    });
+
+    it("normalizes the email (trim) before checking preloading, matching what generateLink receives", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue(null);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "  spazi@example.com  ",
+          password: "pw123456",
+          ruoli: ["DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Questa email non è precaricata per il Ruolo Dirigente. Contatta un Admin.",
+        },
+      });
+      expect(trovaPrecaricamentoRuoloMock).toHaveBeenCalledWith("spazi@example.com", "DIRIGENTE");
+    });
+
+    // Review fix (Blind Hunter + Acceptance Auditor): "il Ruolo X, Y" era
+    // grammaticalmente errato con piu' di un Ruolo mancante - nessun test
+    // esercitava il caso doppio-mancante prima di questo fix.
+    it("rejects registration with Segreteria+Dirigente naming both missing Ruoli (plural) when neither is preloaded", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue(null);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "nessuna-precaricata@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA", "DIRIGENTE"],
+        })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Questa email non è precaricata per i Ruoli Segreteria, Dirigente. Contatta un Admin.",
+        },
+      });
+      expect(generateLinkMock).not.toHaveBeenCalled();
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+    });
+
+    // Review fix (Acceptance Auditor): scenario esplicito della matrice I/O
+    // congelata dello spec ("Registrazione con Segreteria+Admin, email
+    // precaricata solo per Segreteria, 0 Admin attivi -> bootstrap Admin:
+    // attivo:true per l'eccezione bootstrap, non per il precaricamento") -
+    // non ancora coperto da nessun test.
+    it("bootstraps the first ADMIN as attivo:true via the bootstrap exception (not the precaricamento gate) when combined with a preloaded Segreteria and zero active Admins", async () => {
+      trovaPrecaricamentoRuoloMock.mockResolvedValue({
+        id: "p5",
+        email: "bootstrap-segreteria@example.com",
+        ruolo: "SEGRETERIA",
+        utenteId: null,
+      });
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("bootstrap-precarico"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-bootstrap-precarico" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(0);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "bootstrap-segreteria@example.com",
+          password: "pw123456",
+          ruoli: ["SEGRETERIA", "ADMIN"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: true }) })
+      );
+      // Bootstrap (0 Admin attivi), non il precaricamento, spiega
+      // attivo:true qui - nessuna notifica agli Admin (bootstrap esenta).
+      expect(elencaEmailPerRuoloMock).not.toHaveBeenCalled();
+      expect(precaricamentoRuoloUpdateManyMock).toHaveBeenCalledWith({
+        where: { email: "bootstrap-segreteria@example.com", ruolo: "SEGRETERIA", utenteId: null },
+        data: { utenteId: "utente-bootstrap-precarico" },
+      });
     });
   });
 });

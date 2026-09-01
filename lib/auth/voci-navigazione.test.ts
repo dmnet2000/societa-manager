@@ -231,11 +231,12 @@ describe("filtraVociNavigazione", () => {
       expect.arrayContaining([
         "/app/admin",
         "/app/precaricamento-allenatori",
+        "/app/precaricamento-ruoli",
         "/app/permessi-accesso",
         "/app/permessi-certificati",
       ])
     );
-    expect(accounting).toHaveLength(4);
+    expect(accounting).toHaveLength(5);
 
     // Story 19.4: gruppo "Gestione sito" - Impostazioni/Sponsor/Foto squadre.
     // Story 19.7: quarta rotta, Menu pubblico. Story 19.15: quinta rotta,
@@ -510,6 +511,8 @@ describe("filtraVociNavigazione", () => {
   // PROTECTED_ROUTES (non in fondo all'array: AC #1 di Story 15.4 richiede
   // che "Accounting" resti l'ultima voce del menu) - nessun "gruppo"
   // assegnato, stesso principio di /app/sponsor/guida sopra.
+  // Story 9.41: /app/precaricamento-ruoli entra nel gruppo "Accounting",
+  // subito dopo /app/precaricamento-allenatori in PROTECTED_ROUTES.
   it("mantiene l'ordine completo di PROTECTED_ROUTES per Admin (voci dirette e nodi gruppo insieme)", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     expect(voci).toEqual([
@@ -555,6 +558,7 @@ describe("filtraVociNavigazione", () => {
         figlie: [
           { href: "/app/admin", label: "Amministrazione" },
           { href: "/app/precaricamento-allenatori", label: "Precaricamento allenatori" },
+          { href: "/app/precaricamento-ruoli", label: "Precaricamento Segreteria/Dirigente" },
           { href: "/app/permessi-accesso", label: "Permessi di accesso" },
           { href: "/app/permessi-certificati", label: "Permessi certificati" },
         ],
@@ -605,13 +609,17 @@ describe("filtraVociNavigazione", () => {
   // gruppo (quarta figlia) - l'esclusione originale (AC #3) era un
   // fraintendimento dell'appunto originale dell'utente, corretto su sua
   // richiesta esplicita.
-  it("Admin vede il gruppo Accounting con tutte e quattro le figlie, posizionato per ultimo", () => {
+  // Story 9.41 (2026-08-31): /precaricamento-ruoli e' entrata nel gruppo,
+  // subito dopo /precaricamento-allenatori (stesso ordine di dichiarazione
+  // in PROTECTED_ROUTES).
+  it("Admin vede il gruppo Accounting con tutte e cinque le figlie, posizionato per ultimo", () => {
     const voci = filtraVociNavigazione(["ADMIN"]);
     const gruppo = trovaGruppo(voci, "Accounting");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
       { href: "/app/admin", label: "Amministrazione" },
       { href: "/app/precaricamento-allenatori", label: "Precaricamento allenatori" },
+      { href: "/app/precaricamento-ruoli", label: "Precaricamento Segreteria/Dirigente" },
       { href: "/app/permessi-accesso", label: "Permessi di accesso" },
       { href: "/app/permessi-certificati", label: "Permessi certificati" },
     ]);

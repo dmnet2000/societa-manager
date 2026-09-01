@@ -209,6 +209,25 @@ describe("getRouteDecision", () => {
     ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
+  // Review fix (Verification Gap Reviewer, Story 9.41): /precaricamento-ruoli
+  // e' ADMIN-only hardcoded (nessun permessiConfigurabili, a differenza di
+  // /precaricamento-allenatori sopra) - mirror del pattern piu' semplice di
+  // /impostazioni sotto, nessun mock di rottaAbilitataPerRuolo necessario.
+  it("allows Admin on /precaricamento-ruoli (Story 9.41)", async () => {
+    expect(await getRouteDecision("/app/precaricamento-ruoli", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("redirects to /non-autorizzato on /precaricamento-ruoli for other roles, incluso Segreteria/Dirigente stessi (Story 9.41, ADMIN-only)", async () => {
+    expect(
+      await getRouteDecision("/app/precaricamento-ruoli", true, ["SEGRETERIA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
+    expect(
+      await getRouteDecision("/app/precaricamento-ruoli", true, ["DIRIGENTE"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
+  });
+
   it("allows Admin on /impostazioni (Story 9.24)", async () => {
     expect(await getRouteDecision("/app/impostazioni", true, ["ADMIN"])).toEqual({
       action: "allow",

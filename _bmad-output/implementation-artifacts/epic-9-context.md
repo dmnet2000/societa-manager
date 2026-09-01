@@ -45,39 +45,43 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - Story 9.38: Correzione dell'email di un Utente non confermato, da parte dell'Admin
 - Story 9.39: Normalizzazione in maiuscolo delle Atlete già esistenti in anagrafica
 - Story 9.40: Vista più compatta e ordinabile per l'elenco Utenti in /app/admin
+- Story 9.41: Precaricamento email per Segreteria e Dirigente (blocco registrazione)
 
 ## Requirements & Constraints
 
-- **Nessuna regressione, sempre.** Quasi ogni storia dell'epic vincola esplicitamente comportamento e suite Vitest esistenti a restare invariati sui casi non impattati — le modifiche sono additive/di presentazione, non riscritture.
-- **Niente cancellazione fisica di un'entità di dominio senza rete di sicurezza.** Il pattern consolidato del progetto per "rimuovere" qualcosa è un flag booleano (`attivo`) con disattiva/riattiva. Un hard-delete vero è permesso solo per tabelle di giunzione pure senza righe dipendenti (es. `GruppoAtleta`, `GruppoAllenatore`) oppure quando l'entità non ha alcun aggancio/dipendenza (es. Allenatore non collegato a un account e non assegnato a un Gruppo) — altrimenti l'operazione va bloccata con un messaggio esplicativo, mai una cancellazione silenziosa che rompe una FK o uno storico (Presenze, aggancio account).
-- **Autorizzazione a due livelli (difesa in profondità).** Ogni azione sensibile va bloccata sia a livello di route-guard sia dentro la Server Action stessa, non solo in UI. Un Allenatore agisce solo sul/i proprio/i Gruppo/i (verificato via `GruppoAllenatore`); un Admin non può eseguire operazioni ad alto rischio (reset password, correzione email) su un altro Admin, per evitare presa di controllo di un account pari grado.
-- **Nessun servizio esterno a pagamento** (vincolo NFR ereditato) — es. mappa Palestre via iframe Google Maps `output=embed` (gratuito, nessuna API key) invece della JS API con account di fatturazione.
+- **Nessuna regressione.** Quasi ogni storia vincola esplicitamente comportamento e suite Vitest esistenti a restare invariati sui casi non impattati — modifiche additive/di presentazione, non riscritture.
+- **Niente cancellazione fisica di un'entità di dominio senza rete di sicurezza.** Il pattern per "rimuovere" è un flag `attivo` con disattiva/riattiva. Hard-delete vero solo per tabelle di giunzione pure senza righe dipendenti (`GruppoAtleta`, `GruppoAllenatore`) o quando l'entità non ha alcun aggancio/dipendenza — altrimenti l'operazione va bloccata con messaggio esplicativo, mai una perdita silenziosa (FK, storico Presenze, aggancio account).
+- **Autorizzazione a due livelli (difesa in profondità).** Ogni azione sensibile bloccata sia a livello di route-guard sia dentro la Server Action, non solo in UI. Un Allenatore agisce solo sul/i proprio/i Gruppo/i (via `GruppoAllenatore`); un Admin non può eseguire operazioni ad alto rischio (reset password, correzione email) su un altro Admin.
+- **Nessun servizio esterno a pagamento** (NFR ereditato) — es. mappa Palestre via iframe Google Maps `output=embed` invece della JS API a pagamento.
+- **Controllo preventivo, non a posteriori, per un Ruolo "blindato" in registrazione**: se il dato di contatto (CF per Allenatore, email per Segreteria/Dirigente) non è precaricato da un Admin, l'intera registrazione è rifiutata prima di creare qualunque account — mai un account "a metà". Se la richiesta include anche Ruoli non bloccati, si accetta o rifiuta insieme.
 
 ## Technical Decisions
 
-- **Split dati AD-9 (invariato):** le tabelle protette da RLS (CertificatoMedico, Atleta, Presenza, Iscrizione, Notifica, ConfigurazioneSmtp) si leggono/scrivono via client Supabase autenticato; tutte le altre (Palestra, Campo, Slot, Gruppo, Allenatore, Utente, UtenteRuolo) via Prisma diretto con connessione privilegiata — nessuna policy RLS da toccare per queste ultime.
-- **AD-10 (proprietari di Atleta) esteso:** oltre a onboarding-import, `creaEAssegnaAtleta` (condivisa da `/i-miei-gruppi` e `/gruppi`) è ora un secondo punto autorizzato a creare campi identitari Atleta.
-- **Pattern "riga tabellare compatta con toggle sola-lettura/modifica"**, stabilito da `PartitaRow.tsx` e riusato/esteso via `SlotRow.tsx`, `AllenatoreRow.tsx`, `CategoriaTorneoRow.tsx`, `GruppoRow.tsx`: elenco reso come righe compatte in sola lettura; un'icona matita (componente condiviso `IconaModifica`, `app/icone-azione-riga.tsx`) porta in modifica inline **solo** quella riga; icona cestino con `window.confirm` per la cancellazione. Vincoli non negoziabili ereditati dalla code review di Story 15.5: area di tocco ≥44×44px anche quando l'icona visiva è più piccola, `aria-label`/`title` su ogni pulsante-icona. È il pattern di riferimento anche per richieste future analoghe ("vista più compatta"), da preferire a un vero popup/modale (mai usato nel progetto).
-- **Pattern drill-down/toggle on-demand**: badge o riepilogo cliccabile (`<button aria-expanded>`/`aria-controls`) che rivela un dettaglio (nomi, data di scadenza) solo al click, per non appesantire la vista di default — riusato più volte sui certificati (Vista Dirigente/Allenatore, badge scadenza).
-- **Ordinamento client-side minimale**: `useState` booleano + `useMemo` con una funzione di ordinamento pura, un solo criterio attivabile/disattivabile via bottone `aria-pressed` — non un ordinamento generico multi-colonna/direzione.
-- **Colori di stato**: `{colors.success}`/`{colors.warning}`/`{colors.danger}` (con relativi `-bg`) desaturati, mai allarmistici. Regola di default: mai `danger` a livello di singola riga/atleta (solo `warning`, anche per "scaduto"); eccezioni vanno esplicitamente motivate e documentate in `DESIGN.md` (es. sezione "Confermati" di `/conferma-certificati`, contesto di gestione attiva).
-- **Riquadro a larghezza massima** (`.pagina`/`.riquadro`, mirror di `/accedi`, `max-width` ~480px form / ~1000px pagina) per pagine il cui contenuto principale è un form autonomo — non per pagine tabella/lista, anche se contengono form secondari inline.
+- **Split dati AD-9 (invariato):** tabelle protette da RLS (CertificatoMedico, Atleta, Presenza, Iscrizione, Notifica, ConfigurazioneSmtp) via client Supabase autenticato; le altre (Palestra, Campo, Slot, Gruppo, Allenatore, Utente, UtenteRuolo) via Prisma diretto con connessione privilegiata.
+- **AD-10 (proprietari di Atleta) esteso:** oltre a onboarding-import, `creaEAssegnaAtleta` (condivisa `/i-miei-gruppi` + `/gruppi`) è un secondo punto autorizzato a creare campi identitari Atleta.
+- **Pattern "riga compatta con toggle sola-lettura/modifica"** (`PartitaRow.tsx` → `SlotRow.tsx`, `AllenatoreRow.tsx`, `CategoriaTorneoRow.tsx`, `GruppoRow.tsx`): righe compatte in sola lettura; icona matita condivisa (`IconaModifica`, `app/icone-azione-riga.tsx`) porta in modifica inline solo quella riga; icona cestino + `window.confirm` per cancellare. Vincoli non negoziabili: area di tocco ≥44×44px, `aria-label`/`title` su ogni pulsante-icona. Pattern di riferimento anche per richieste future di "vista più compatta", preferito a un popup/modale (mai usato nel progetto).
+- **Drill-down on-demand**: badge/riepilogo cliccabile (`aria-expanded`/`aria-controls`) che rivela un dettaglio solo al click, riusato più volte sui certificati.
+- **Ordinamento client-side minimale**: `useState` booleano + `useMemo` con funzione pura, un solo criterio attivabile via bottone `aria-pressed` — non ordinamento generico multi-colonna.
+- **Colori di stato**: `{colors.success}`/`{colors.warning}`/`{colors.danger}` desaturati. Default: mai `danger` a livello di singola riga/atleta (solo `warning`, anche per "scaduto"); eccezioni vanno motivate e documentate in `DESIGN.md`.
+- **Riquadro a larghezza massima** (`.pagina`/`.riquadro`, mirror `/accedi`) per pagine il cui contenuto principale è un form autonomo — mai per pagine tabella/lista.
 - **Formattazione data unica**: `toLocaleDateString("it-IT", { timeZone: "UTC" })`.
-- **Sanificazione maiuscolo**: già applicata al Codice Fiscale ovunque; estesa a Cognome/Nome di `Atleta` in creazione (9.36) e via backfill sui dati esistenti (9.39, migrazione solo-dati `UPDATE ... SET nome = UPPER(nome)`, idempotente). `Allenatore.nome` resta esplicitamente **non** sanificato — asimmetria nota e accettata, non un'omissione.
+- **Sanificazione maiuscolo**: già sul Codice Fiscale ovunque; estesa a Cognome/Nome `Atleta` in creazione (9.36) e via backfill (9.39, `UPDATE ... SET nome = UPPER(nome)`, idempotente). `Allenatore.nome` resta esplicitamente non sanificato.
+- **Pattern "voce precaricata → aggancio automatico → claim non riutilizzabile"**: stabilito per `Allenatore.codiceFiscale` (maiuscolo), generalizzato in 9.41 a un modello distinto per email Segreteria/Dirigente (trim+minuscolo). Voce agganciata: non più modificabile/cancellabile, mostrata come "Registrata" vs "Precaricata"; duplicati sulla stessa chiave sempre controllati.
 
 ## UX & Interaction Patterns
 
-- Navigazione: barra laterale verticale sticky sempre visibile su desktop, drawer/hamburger su mobile — inversione deliberata di una precedente decisione "solo barra orizzontale" di `EXPERIENCE.md` (documento aggiornato di conseguenza). Nessuno stack di più livelli di menu aperti insieme.
+- Navigazione: barra laterale sticky su desktop, drawer/hamburger su mobile — inverte deliberatamente la precedente scelta "solo barra orizzontale" di `EXPERIENCE.md` (aggiornato di conseguenza). Nessuno stack di più livelli di menu aperti insieme.
 - Menu profilo unico (logoff + modifica password) invece di azioni isolate in barra.
-- Pagine di impostazioni correlate (SMTP, Logo, Email Segreteria) raggruppate dietro una pagina-hub `/impostazioni` invece di sottomenu annidati — la navigazione resta una lista piatta.
-- Le liste/elenchi lunghi tendono verso righe compatte con azioni dietro icone (vedi pattern sopra) man mano che emergono richieste di "vista più compatta" (Allenatori, Gruppi, Utenti admin).
+- Pagine di impostazioni correlate raggruppate dietro una pagina-hub (`/impostazioni`) invece di sottomenu annidati — la navigazione resta una lista piatta.
+- Le liste lunghe tendono verso righe compatte con azioni dietro icone man mano che emergono richieste di "vista più compatta".
 
 ## Cross-Story Dependencies
 
-- 9.7 e 9.10 sono fix diretti di regressioni introdotte da 9.2 (cache di navigazione lato client dopo redirect/cambio pagina).
-- 9.4 (menu profilo) va sviluppata dopo 9.2 (barra laterale), per non ricostruire il posizionamento due volte.
-- 9.9 → 9.22 (restringe l'accesso a solo ADMIN) → 9.30 (restyle a riga compatta) insistono sulla stessa pagina `/precaricamento-allenatori`.
-- 9.14, 9.15, 9.18, 9.21, 9.28, 9.32, 9.33, 9.35, 9.36 condividono gli stessi componenti (`GruppoRow.tsx`, `AtletaTabellaRiga.tsx`, Server Action `creaEAssegnaAtleta`/`assegnaAtleta`) usati sia da `/gruppi` (Admin/Dirigente) sia da `/i-miei-gruppi` (Allenatore) — una modifica va quasi sempre propagata a entrambe le pagine consumer.
-- 9.19 → 9.23 → 9.25 → 9.27 → 9.34 formano una catena sullo stesso sottosistema certificati (`categorizzaStatoCertificato`, `GruppoCard.tsx`, `ListaConfermati.tsx`, `/conferma-certificati`).
-- 9.30 stabilisce il pattern "riga compatta + icona matita" poi richiamato esplicitamente come mirror da 9.37 (Gruppo) e 9.40 (elenco Utenti admin).
-- 9.38 e 9.39 nascono entrambe da follow-up diretti rispettivamente su una segnalazione utente e su 9.36.
+- 9.7 e 9.10 sono fix di regressioni introdotte da 9.2 (cache di navigazione lato client dopo redirect/cambio pagina).
+- 9.4 va sviluppata dopo 9.2, per non ricostruire il posizionamento due volte.
+- 9.9 → 9.22 (accesso solo ADMIN) → 9.30 (riga compatta) insistono sulla stessa pagina `/precaricamento-allenatori`.
+- 9.14, 9.15, 9.18, 9.21, 9.28, 9.32, 9.33, 9.35, 9.36 condividono gli stessi componenti (`GruppoRow.tsx`, `AtletaTabellaRiga.tsx`, `creaEAssegnaAtleta`/`assegnaAtleta`) usati sia da `/gruppi` sia da `/i-miei-gruppi` — una modifica va quasi sempre propagata a entrambe le pagine.
+- 9.19 → 9.23 → 9.25 → 9.27 → 9.34 formano una catena sullo stesso sottosistema certificati.
+- 9.30 stabilisce "riga compatta + icona matita", richiamato come mirror da 9.37 e 9.40.
+- 9.38 e 9.39 nascono da follow-up diretti (una segnalazione utente, e 9.36).
+- 9.41 fa da mirror strutturale di 9.9 su un modello/chiave diversi (email, non CF) e sostituisce, solo per Segreteria/Dirigente, il gate "Ruoli sensibili" a posteriori ancora usato per Admin/Site Manager.

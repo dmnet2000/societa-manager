@@ -1,3 +1,6 @@
+# last_updated: 2026-09-01 (Story 9.41 aggiunta 2026-08-31 su richiesta esplicita dell'utente ("vorrei avere in visualizzazione oltre che alla forma grafica delle partite un pulsante che mostra tutte le partite in forma tabellare" - Torneo Memorial, Epic 20), ambito chiarito via AskUserQuestion: solo /torneo pubblica, tabella unica per Categoria (Gironi+Semifinali+Finali insieme), coesistenza con la griglia grafica (mai un toggle che la nasconde) - vedi epics.md#Story 20.19. 20-19-vista-tabellare-tutti-incontri-torneo aggiunta in backlog, NESSUNA IMPLEMENTAZIONE ANCORA.)
+# last_updated: 2026-09-01 (Story 9.41: code review completata - bmad-code-review, 4 layer paralleli (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer, Acceptance Auditor) su diff isolato dal baseline. 0 decision-needed, 7 patch applicati e riverificati (fix piu' rilevante: nessun test getRouteDecision per /app/precaricamento-ruoli, a differenza di ogni altra rotta reale in PROTECTED_ROUTES - un ruoliAmmessi sbagliato sarebbe passato inosservato, esponendo l'elenco email precaricate; altri: pluralizzazione "i Ruoli" quando ne mancano 2, try/catch mancante sul loop di controllo precaricamento, guardia "Voce non trovata" su aggiornaPrecaricamentoRuolo, commento test obsoleto, test mancante per lo scenario bootstrap+precaricamento della matrice I/O congelata, deduplicazione di RUOLI_BLOCCATI_SENZA_PRECARICAMENTO in un nuovo modulo condiviso). 5 defer loggati in deferred-work.md (race TOCTOU su claim/aggiorna/cancella, nessuna validazione email server-side - tutti rischio gia' esplicitamente accettato altrove nel progetto per pattern analoghi, non introdotti da questa storia), 1 dismissed (invariante raggiungibile via un percorso aggiuntivo ma gia' gestito correttamente dalla guardia esistente). Vedi Spec Change Log in spec-9-41-precaricamento-email-segreteria-dirigente.md. Verifica finale: 1927/1927 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Status: review -> done (sprint-status), spec gia' 'done'. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy.)
+# last_updated: 2026-08-31 (Story 9.41: ripresa in una sessione successiva - implementazione trovata gia' presente sul working tree ma con la checklist dello spec ancora tutta non spuntata e il Prisma Client non rigenerato. Verificato codice contro lo spec riga per riga, coerente con Intent/Boundaries/Code Map. Corretti 3 test in lib/auth/voci-navigazione.test.ts non aggiornati con la nuova voce di menu, rigenerato il Prisma Client, rimosso un worktree residuo gia' confluito in main che inquinava i run Vitest completi. Verifica: 1922/1922 test Vitest, tsc/lint puliti, build riuscita. Status: in-progress -> done (spec), 9-41 in-progress -> review (sprint-status).)
 # last_updated: 2026-08-24 (Story 20.4: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 9 patch applicate e riverificate. Gap piu' significativo, convergente su tutti e 3 i reviewer: modificare un risultato di girone dopo la generazione del tabellone, o una semifinale dopo la generazione delle finali, lasciava silenziosamente stantii gli accoppiamenti/vincitori gia' derivati - bloccato esplicitamente (erroreModificaBloccata). Verification Gap ha trovato 2 punti di wiring a livello pagina senza alcun test capace di intercettare una regressione (filtro girone, abbinamento riga-tabellone della classifica finale) - risolti eliminando il rischio alla radice (calcolaClassificaGirone filtra fase internamente, calcolaClassificaFinale non prende piu' argomenti posizionali ma un solo array e deriva tutto dai dati). Anche: P2002 su generazione finali ora ri-verificato prima di trattarlo come idempotenza; due messaggi distinti per calendario mai generato vs incompleto; le due finali di un tabellone ora etichettate esplicitamente; bottone "Genera tabellone" disabilitato quando non generabile; GIRONE_A/B hardcoded sostituiti con GIRONI_TORNEO; haRisultatoCompleto (duplicata 5 volte) estratta come unica fonte di verita'; vincolo CHECK aggiunto in migrazione per l'unione discriminata fase/tabellone; copertura test asimmetrica del vincolo min-4-squadre corretta. 2 defer loggati in deferred-work.md (nessun recupero per un tabellone generato per errore, accoppiamento incidentale min-4/max-8), resto reject. Due bug propri scoperti applicando le patch: un'inversione vincitore/perdente in un test nuovo, e 2 test preesistenti che assumevano ancora il vecchio comportamento (nessun blocco) - riscritti. 115/115 file test, 1655/1655 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-4 in-progress -> review (sprint-status). Story 20.5 avviata subito dopo, stessa richiesta di procedere in sequenza.)
 # last_updated: 2026-08-24 (Story 20.3: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 8 patch applicate e riverificate. Tutti e 3 i reviewer hanno convergito indipendentemente su due gap reali: cancellare una Squadra con incontri gia' generati falliva a livello DB (nuova FK Restrict da PartitaTorneo) mostrando un fuorviante INTERNAL "Riprova" invece di un rifiuto esplicito - guardia aggiunta; cambiare il girone di una Squadra (azione di Story 20.2, mai toccata prima) dopo la generazione del calendario spostava silenziosamente i suoi incontri fuori dalla classifica del girone originale - bloccato esplicitamente. Anche: iscrivere una nuova Squadra dopo la generazione del calendario bloccato; vincolo unico + CHECK aggiunti alla migrazione (mai applicata altrove) come rete di sicurezza DB contro un doppio invio concorrente di "Genera calendario" (guardia applicativa gia' check-then-act, P2002 tradotto nello stesso messaggio); terzoSetNecessario duplicata a mano nel form estratta come funzione pura condivisa; bug UI "Annulla non resetta i campi" corretto; lib/torneo.ts trovato senza copertura test per le 4 nuove funzioni Partita durante la verifica propria (stessa classe di gap gia' vista in 20.1/20.2), aggiunta; trovaPartitaTorneoPerId (codice morto, mai chiamata) rimossa invece di testata. 1 defer loggato in deferred-work.md (etichette Casa/Ospite sempre alfabetiche, nessun significato reale per un torneo a sede unica), resto reject (incluso un falso positivo: esitoPartita non valida il proprio input per decisione esplicita gia' nel Code Map, l'unico chiamante reale valida sempre prima). Diff isolato correttamente dalla 20.1/20.2 gia' spedite (stesso pattern snapshot via git stash create). 114/114 file test, 1618/1618 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-3 in-progress -> review (sprint-status). Story 20.4 avviata subito dopo, stessa richiesta di procedere in sequenza.)
 # last_updated: 2026-08-23 (Story 20.2: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) - 0 intent_gap/bad_spec, 6 patch applicate e riverificate (SquadraTorneoRow.tsx/NuovaSquadraTorneoForm.tsx spostati da [edizioneId]/ a [edizioneId]/[categoriaId]/, colocati con l'unica pagina che li usa; edizioneTorneoId non piu' letto da un campo nascosto client mai verificato per update/delete Squadra, derivato lato server; lookup Categoria/conteggio in creaSquadraTorneoAction ora nello stesso try/catch della scrittura; aggiornaCategoriaTorneoAction (Story 20.1, mai toccata prima) ora rifiuta di abbassare il numero massimo sotto le Squadre gia' iscritte; riepilogo "N/max squadre iscritte" aggiunto alla pagina; nuovi test di confine/ramo mancante), 2 defer loggati in deferred-work.md (guardia sul massimo e' check-then-act non atomico, rischio accettato per basso traffico; nessun vincolo di unicita' sul nome Squadra), resto reject. Diff isolato correttamente dalla 20.1 gia' spedita (snapshot via git stash create, mai committato). 112/112 file test, 1562/1562 test Vitest, tsc/lint puliti, build riuscita. Status: in-review -> done (spec), 20-2 in-progress -> review (sprint-status). Story 20.3 avviata subito dopo, stessa richiesta di procedere in sequenza.)
@@ -324,7 +327,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "08-30-2026 18:57"
+last_updated: "08-31-2026 10:30"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -593,6 +596,64 @@ development_status:
   # post-deploy. Vedi Spec Change Log in
   # spec-9-40-vista-compatta-admin-utenti.md.
   9-40-vista-compatta-admin-utenti: review
+
+  # Story 9.41 aggiunta 2026-08-31, richiesta esplicita dell'utente: "per la
+  # registrazione del ruolo di segreteria e anche dirigente vorrei
+  # blindarlo creando come per l'allenatori con un precaricamento tramite
+  # email". Verificato nel codice: il precaricamento Allenatore (1.4/9.9/
+  # 9.22/9.30) e' in realta' basato sul Codice Fiscale, non sull'email -
+  # nessun campo email su Allenatore. Segreteria/Dirigente oggi non hanno
+  # alcun precaricamento: auto-registrazione + gate "Ruoli sensibili"
+  # (attivazione manuale Admin). Punti aperti risolti con l'utente
+  # (AskUserQuestion): blocco RIGIDO (registrazione rifiutata se l'email
+  # non e' precaricata per quel Ruolo, non solo "in attesa di
+  # approvazione"); meccanismo UNICO condiviso tra Segreteria e Dirigente
+  # (una pagina, un'email precaricabile per entrambi insieme). Sostituisce
+  # il gate "Ruoli sensibili" SOLO per questi due Ruoli (Admin/Site
+  # Manager invariati). Vedi epics.md#Story 9.41.
+  #
+  # Ripresa 2026-08-31 (sessione successiva): implementazione trovata gia'
+  # presente sul working tree (modello PrecaricamentoRuolo, moduli
+  # lib/matching-email-ruolo/, controllo pre-generateLink + claim in
+  # registrati/actions.ts, pagina /app/precaricamento-ruoli completa,
+  # route-guard + guida aggiornati) ma con la checklist dello spec ancora
+  # tutta non spuntata e il Prisma Client non rigenerato. Verificato codice
+  # contro lo spec riga per riga (schema, migrazione RLS/REVOKE, actions,
+  # UI) - coerente con Intent/Boundaries/Code Map, nessuna patch necessaria
+  # se non ai test. Corretti 3 test in lib/auth/voci-navigazione.test.ts
+  # (asserzioni sul gruppo "Accounting" non aggiornate con la nuova voce
+  # /app/precaricamento-ruoli) e rigenerato il Prisma Client (`npx prisma
+  # generate`, mai eseguito prima in questa sessione dopo l'aggiunta del
+  # model). Rimosso anche un worktree residuo
+  # (.claude/worktrees/story-9-40-admin-utenti-compatta) gia' interamente
+  # confluito in main, che inquinava i run Vitest completi con 2 fallimenti
+  # spuri (autorizzazione esplicita dell'utente). Verifica: 1922/1922 test
+  # Vitest, tsc/lint puliti, build riuscita (prisma validate ok). Manuale
+  # dal vivo non eseguibile (dev locale rotto) - demandata all'utente
+  # post-deploy, vedi spec.
+  #
+  # Code review 2026-08-31/09-01 (bmad-code-review, 4 layer paralleli - Blind
+  # Hunter, Edge Case Hunter, Verification Gap Reviewer, Acceptance Auditor -
+  # su diff isolato dal baseline). 0 decision-needed, 7 patch applicati (fix
+  # piu' rilevante: nessun test getRouteDecision per la rotta nuova
+  # /app/precaricamento-ruoli, a differenza di ogni altra rotta reale - un
+  # ruoliAmmessi sbagliato sarebbe passato inosservato; altri: pluralizzazione
+  # messaggio errore con 2 Ruoli mancanti, try/catch mancante sul loop di
+  # controllo precaricamento, guardia "Voce non trovata" su
+  # aggiornaPrecaricamentoRuolo, commento test obsoleto, test mancante per lo
+  # scenario bootstrap+precaricamento della matrice I/O congelata,
+  # deduplicazione di RUOLI_BLOCCATI_SENZA_PRECARICAMENTO in
+  # lib/matching-email-ruolo/), 5 defer loggati in deferred-work.md (race
+  # TOCTOU su claim/aggiorna/cancella e validazione email server-side - tutti
+  # rischio gia' esplicitamente accettato altrove nel progetto per pattern
+  # analoghi, non introdotti da questa storia), 1 dismissed (invariante
+  # raggiungibile via un percorso aggiuntivo ma gia' gestito correttamente
+  # dalla guardia esistente). Vedi Spec Change Log in
+  # spec-9-41-precaricamento-email-segreteria-dirigente.md. Verifica finale:
+  # 1927/1927 test Vitest (+13), tsc/lint puliti, build riuscita, prisma
+  # validate ok. Manuale dal vivo ancora non eseguibile (dev locale rotto) -
+  # demandata all'utente post-deploy.
+  9-41-precaricamento-email-segreteria-dirigente: done
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -1702,3 +1763,17 @@ development_status:
   # dal vivo (ambiente locale rotto, Epic 20 mai deployata) - demandata
   # all'utente dopo il prossimo deploy.
   20-18-campi-palestre-generazione-blocco-slot: review
+
+  # Story 20.19 aggiunta 2026-08-31, richiesta esplicita dell'utente: "vorrei
+  # avere in visualizzazione oltre che alla forma grafica delle partite un
+  # pulsante che mostra tutte le partite in forma tabellare". Chiarito con
+  # l'utente (AskUserQuestion): ambito limitato alla sola pagina pubblica
+  # /torneo (non le pagine admin); la tabella copre TUTTI gli incontri della
+  # Categoria insieme (Gironi + Semifinali + Finali), non una tabella per
+  # sezione; il pulsante affianca la griglia grafica esistente senza mai
+  # sostituirla (coesistenza, tabella nascosta finche' non premuto). Nessun
+  # nuovo dato: riusa numero/fase/squadraCasa/squadraOspite/slotTorneo/
+  # formattaRisultatoPartitaTorneo gia' letti da app/torneo/page.tsx. Vedi
+  # epics.md#Story 20.19. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in
+  # questo giro.
+  20-19-vista-tabellare-tutti-incontri-torneo: backlog

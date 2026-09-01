@@ -45,6 +45,9 @@ model Utente {
   ruoli          UtenteRuolo[]
   allenatore     Allenatore?
   genitoriAtlete GenitoreAtleta[]
+  // Story 9.41: lista (non "?") - un Utente puo' agganciare piu' righe di
+  // PrecaricamentoRuolo (una per Ruolo bloccato, es. Segreteria+Dirigente).
+  precaricamentiRuolo PrecaricamentoRuolo[]
 
   @@map("utenti")
 }
@@ -59,6 +62,24 @@ model UtenteRuolo {
 
   @@unique([utenteId, ruolo])
   @@map("utente_ruoli")
+}
+
+// Story 9.41: precaricamento email per i Ruoli Segreteria/Dirigente (blocco
+// preventivo della registrazione, mirror del precaricamento Allenatore via
+// Codice Fiscale, Story 1.4). Mirror strutturale di UtenteRuolo (una riga
+// per combinazione email+Ruolo), non di Allenatore: un Utente puo'
+// agganciare piu' righe (una per Ruolo), a differenza di Allenatore.utenteId
+// (@unique). "utenteId" mai @unique qui per questo motivo.
+model PrecaricamentoRuolo {
+  id        String   @id @default(uuid())
+  email     String
+  ruolo     Ruolo
+  utenteId  String?
+  utente    Utente?  @relation(fields: [utenteId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@unique([email, ruolo])
+  @@map("precaricamento_ruoli")
 }
 
 enum Sesso {

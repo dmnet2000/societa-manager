@@ -10,6 +10,11 @@ import {
   trovaAllenatorePerCodiceFiscale,
   trovaPerCodiceFiscale,
 } from "@/lib/matching-codice-fiscale";
+import {
+  normalizzaEmailRuolo,
+  trovaPrecaricamentoRuolo,
+  RUOLI_BLOCCATI_SENZA_PRECARICAMENTO,
+} from "@/lib/matching-email-ruolo";
 import { createAdminClient } from "@/lib/auth-admin/client";
 import { inviaEmail } from "@/lib/email/invia-email";
 import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
@@ -205,6 +210,49 @@ export async function registrati(
     atletaPropriaDaAgganciare = atletaPropria;
   }
 
+  // Story 9.41: controllo di precaricamento per Segreteria/Dirigente, PRIMA
+  // di generateLink (stesso ordine gia' seguito sopra per il CF obbligatorio
+  // di Genitore/Atleta) - mai un account Supabase Auth creato per una
+  // registrazione poi rifiutata. Tutti i Ruoli bloccati selezionati devono
+  // avere una riga precaricata: manca anche uno solo -> rifiutata, nominando
+  // il/i Ruolo/i mancante/i. Rieseguito anche su un reinvio (vedi Design
+  // Notes dello spec): innocuo, le righe precaricate esistono ancora.
+  const ruoliBloccatiSelezionati = ruoli.filter((r) =>
+    RUOLI_BLOCCATI_SENZA_PRECARICAMENTO.includes(r)
+  );
+  if (ruoliBloccatiSelezionati.length > 0) {
+    const ruoliMancanti: Ruolo[] = [];
+    try {
+      for (const ruolo of ruoliBloccatiSelezionati) {
+        const precaricamento = await trovaPrecaricamentoRuolo(email, ruolo);
+        if (!precaricamento) {
+          ruoliMancanti.push(ruolo);
+        }
+      }
+    } catch {
+      return {
+        error: {
+          code: "INTERNAL",
+          message: "Impossibile completare la registrazione. Riprova.",
+        },
+      };
+    }
+    if (ruoliMancanti.length > 0) {
+      // Review fix (Blind Hunter + Acceptance Auditor): "il Ruolo X, Y" era
+      // grammaticalmente errato quando mancava più di un Ruolo (articolo
+      // singolare con un elenco plurale) - "il/i" concorda ora col numero
+      // di Ruoli mancanti.
+      const etichettaRuoli = ruoliMancanti.map((r) => ETICHETTA_RUOLO[r]).join(", ");
+      const articolo = ruoliMancanti.length > 1 ? "i Ruoli" : "il Ruolo";
+      return {
+        error: {
+          code: "VALIDATION",
+          message: `Questa email non è precaricata per ${articolo} ${etichettaRuoli}. Contatta un Admin.`,
+        },
+      };
+    }
+  }
+
   // Story 11.4: generateLink (Admin API, service-role) invece di
   // supabase.auth.signUp() col client di sessione - crea comunque l'utente
   // Supabase Auth (non confermato) ma SENZA inviare l'email nativa di
@@ -299,7 +347,15 @@ export async function registrati(
       const numeroAdminAttivi = await prisma.utente.count({
         where: { attivo: true, ruoli: { some: { ruolo: "ADMIN" } } },
       });
-      const ruoloSensibile = ruoli.some((r) => !RUOLI_CON_AGGANCIO_CF.includes(r));
+      // Story 9.41: Segreteria/Dirigente escluse dal gate "Ruoli sensibili" -
+      // per loro il precaricamento (controllo gia' superato sopra) sostituisce
+      // interamente l'attivazione manuale Admin. Admin/Site Manager restano
+      // sensibili, invariato.
+      const ruoloSensibile = ruoli.some(
+        (r) =>
+          !RUOLI_CON_AGGANCIO_CF.includes(r) &&
+          !RUOLI_BLOCCATI_SENZA_PRECARICAMENTO.includes(r)
+      );
       // Eccezione bootstrap: se non esiste alcun Admin attivo (nessuno mai
       // registrato, o l'unico esistente e' stato disattivato), il nuovo
       // Admin parte attivo - altrimenti nessuno potrebbe mai confermare
@@ -351,6 +407,20 @@ export async function registrati(
 
       // AD-11: specchia i Ruoli su app_metadata per le letture edge-safe nel Proxy.
       await sincronizzaRuoliAppMetadata(data.user.id, ruoli);
+
+      // Story 9.41: claim delle righe PrecaricamentoRuolo per i Ruoli
+      // bloccati effettivamente selezionati - solo qui, nel ramo "prima
+      // creazione" (mai su un reinvio, stessa posizione del claim Allenatore
+      // sotto, nessun rischio di doppio claim su un retry). La guardia
+      // utenteId:null e' puramente difensiva (no-op per costruzione: il
+      // controllo sopra ha gia' verificato che le righe esistono, e non
+      // possono essere gia' agganciate - vedi Design Notes dello spec).
+      for (const ruolo of ruoliBloccatiSelezionati) {
+        await prisma.precaricamentoRuolo.updateMany({
+          where: { email: normalizzaEmailRuolo(email), ruolo, utenteId: null },
+          data: { utenteId: utente.id },
+        });
+      }
 
       // Story 1.4 AC #3/#4: aggancio a un Allenatore precaricato - solo se il
       // Ruolo Allenatore e' selezionato e viene fornito un Codice Fiscale. Se

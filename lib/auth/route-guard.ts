@@ -463,6 +463,17 @@ export const PROTECTED_ROUTES: {
     gruppo: "Accounting",
   },
   {
+    // Story 9.41: rotta nuova, ADMIN-only hardcoded (niente
+    // permessiConfigurabili - vedi Design Notes dello spec: nessun
+    // requisito lo chiede, stesso punto di partenza scelto per
+    // /precaricamento-allenatori alla sua introduzione, Story 9.22, prima
+    // della migrazione della Story 12.4). Stesso gruppo "Accounting".
+    prefix: "/app/precaricamento-ruoli",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Precaricamento Segreteria/Dirigente",
+    gruppo: "Accounting",
+  },
+  {
     // Story 12.1: pagina Admin-only di gestione dei permessi configurabili
     // per rotta (Epic 12) - ADMIN sempre escluso dalle righe configurabili
     // stesse (accesso pieno hardcoded), quindi questa rotta e' anch'essa
