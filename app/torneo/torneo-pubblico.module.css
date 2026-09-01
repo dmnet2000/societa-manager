@@ -10,10 +10,16 @@
    mirror, hex letterali commentati con il nome del token DESIGN.md
    d'origine, eccezione solo per i valori con hex identico gia' verificati. */
 
-/* Story 20.14: contenuto centrato su schermi larghi - unica eccezione
-   esplicita e confermata con l'utente al "mirror stilistico" dichiarato sopra
-   (le pagine gemelle /calendario e /squadre restano a piena larghezza, nessun
-   retrofit). 1000px riusa lo stesso valore gia' stabilito come "larghezza
+/* Story 20.14: contenuto centrato su schermi larghi - allora unica
+   eccezione esplicita e confermata con l'utente al "mirror stilistico"
+   dichiarato sopra (le pagine gemelle /calendario e /squadre restavano a
+   piena larghezza, nessun retrofit). Story 18.25 (2026-09-01, richiesta
+   esplicita dell'utente) ha poi esteso lo stesso trattamento SOLO a /squadre
+   (squadre.module.css .main) - la centratura di /torneo introdotta QUI non
+   e' toccata da quella storia. /calendario, /staff, /contatti restano
+   esplicitamente a piena larghezza (nessuna delle tre ha un max-width sul
+   proprio .main) - non rivalutate, fuori scope sia di questa storia sia
+   della 18.25. 1000px riusa lo stesso valore gia' stabilito come "larghezza
    massima di pagina" per il portale interno (app/globals.css, .contenuto >
    main, Story 9.3) - non lo stesso selettore/pattern condiviso, solo lo
    stesso numero.

@@ -4,12 +4,26 @@
    (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13).
    Nessun custom property nuovo in app/globals.css - hex letterali
    commentati, eccezione solo per i 4 valori con hex identico gia'
-   verificati nella storia. */
+   verificati nella storia. Story 18.25: .main guadagna un'eccezione di
+   larghezza (vedi sotto) - il resto della pagina resta piena larghezza. */
 
 /* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
    var(--color-surface-alt). DESIGN.md elenca esplicitamente "sezione
-   Squadre" tra le superfici a sfondo grigio-chiaro dedicato. */
+   Squadre" tra le superfici a sfondo grigio-chiaro dedicato.
+
+   Story 18.25 (richiesta esplicita dell'utente, 2026-09-01): contenuto
+   centrato su schermi larghi - stesso identico trattamento gia' applicato a
+   /torneo (Story 20.14, torneo-pubblico.module.css .main). Quella storia
+   aveva lasciato /calendario e /squadre esplicitamente a piena larghezza
+   ("nessun retrofit") - questa story inverte quella scelta SOLO per
+   /squadre (mai la centratura di /torneo, che resta invariata). /calendario
+   (e /staff, /contatti) restano a piena larghezza, non rivalutate qui.
+   Nessuna verifica dal vivo ancora eseguita (ambiente locale rotto, mirror
+   della stessa nota gia' lasciata per Story 20.17 in torneo-pubblico.module.css)
+   - demandata all'utente dopo il prossimo deploy. */
 .main {
+  max-width: 1000px;
+  margin: 0 auto;
   padding: var(--space-8) var(--space-6);
   background: #f2f5f7;
 }

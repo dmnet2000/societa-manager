@@ -2822,6 +2822,32 @@ so that il sito non sembri rotto/disallineato su schermi stretti.
 6. **And** nessuna regressione sul target di tocco 44×44px di hamburger/Accedi/controlli del carosello (`.frecciaPost`/`.pausaPost`/`.pallinoPost`), invariati da Story 18.14/18.18
 7. **And** verificato dal vivo (`cf:preview` o produzione) su almeno un viewport reale ~360-375px prima di chiudere la storia
 
+### Story 18.25: Contenuto centrato nella pagina pubblica /squadre
+
+*(Aggiunta post-apertura epica — 2026-09-01, richiesta esplicita dell'utente: "nella sezione squadre vorrei venisse allineato in centro" (messaggio troncato). Chiarito con l'utente (`AskUserQuestion`): applicare a `/squadre` lo stesso trattamento di centratura già esistente su `/torneo` (Story 20.14 — `max-width:1000px; margin:0 auto` su `.main`), SOLO su `/squadre` — `/calendario` resta piena larghezza, invariato. Verificato nel codice: `app/squadre/squadre.module.css` (`.main`) non ha oggi alcun `max-width`/`margin: 0 auto` (contenuto full-bleed su schermi larghi) — il commento sorgente di `app/torneo/torneo-pubblico.module.css` (Story 20.14) documenta esplicitamente che allora fu deciso di NON estendere la centratura a `/calendario`/`/squadre` ("le pagine gemelle... restano a piena larghezza, nessun retrofit") — questa storia inverte quella decisione, solo per `/squadre`.)*
+
+As a Visitatore del sito pubblico,
+I want che il contenuto di `/squadre` sia centrato su schermi larghi (stessa larghezza massima di `/torneo`), invece di estendersi a piena larghezza,
+so that la pagina sia più leggibile su schermi larghi e visivamente coerente con `/torneo`.
+
+**Contesto tecnico:** mirror esatto di `app/torneo/torneo-pubblico.module.css` (`.main`, Story 20.14): `max-width: 1000px; margin: 0 auto;` aggiunto a `.main` in `app/squadre/squadre.module.css`, nessun'altra modifica. `/calendario` resta esplicitamente fuori scope (nessun retrofit, stessa decisione già presa in Story 20.14).
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore su `/squadre` con uno schermo largo (>1000px) **When** la pagina viene renderizzata **Then** il contenuto è centrato entro una larghezza massima di 1000px (stesso valore di `/torneo`), non più a piena larghezza
+2. **And** su schermi stretti (<1000px) il comportamento resta invariato (il contenuto occupa già tutta la larghezza disponibile in entrambi i casi)
+3. **And** nessuna regressione su `/calendario`, che resta esplicitamente a piena larghezza — fuori scope di questa storia
+
+### Story 18.26 (BUG): `null value in column "accessToken"` su `configurazione_social_facebook` — da investigare
+
+*(Aggiunta 2026-09-01, segnalata dall'utente da Supabase: "ho questo errore su supbase: null value in column 'accessToken' of relation 'configurazione_social_facebook' violates not-null constraint" - richiesto solo di registrarla come bug da controllare, NESSUNA IMPLEMENTAZIONE/FIX ancora. Investigazione preliminare fatta nel codice, non ancora confermata dal vivo.)*
+
+**Sintomo:** un `INSERT`/`upsert` su `configurazione_social_facebook` fallisce con una violazione del vincolo `NOT NULL` sulla colonna `accessToken` (`prisma/schema.prisma`, `accessToken String` - mai nullable, nessun default).
+
+**Sospetto principale (non confermato dal vivo):** `aggiornaStatoLetturaFacebook` (`lib/db-rls/configurazione-social-facebook.ts`, righe 81-98) fa un `upsert` su id fisso che scrive solo `ultimaLetturaOk`/`ultimoErrore`/`updatedAt` - **mai** `accessToken`. Se la riga con quell'id non esiste ancora, Postgrest genera un `INSERT` che omette `accessToken` del tutto, colpendo il vincolo `NOT NULL` esattamente come nell'errore riportato. Il commento sorgente della funzione assume che questo caso sia "evitato a monte" da `leggiUltimiPostFacebook` (`lib/facebook-graph.ts`, riga 92: `if (!configurazione || !configurazione.accessToken) return [];`) - verificato nel codice che quella guardia esiste ed è l'UNICO chiamante attuale di `aggiornaStatoLetturaFacebook`, quindi il percorso applicativo normale sembra protetto. Non è stato però possibile riprodurre l'errore né escludere un percorso alternativo (es. la riga cancellata manualmente da Supabase, o un futuro secondo chiamante che non passa da quella guardia) - **causa non confermata**, solo la funzione più sospetta identificata.
+
+**Da fare in una futura investigazione:** verificare da quando/con quale frequenza l'errore compare in produzione (log Supabase); se confermato, la correzione più diretta è rendere `aggiornaStatoLetturaFacebook` un `UPDATE` puro (mai un `upsert`/`INSERT`) - quella riga deve esistere già, creata solo da `salvaTokenFacebook` insieme a un `accessToken` reale, mai da questa funzione.
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
