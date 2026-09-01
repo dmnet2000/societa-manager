@@ -103,6 +103,94 @@
   margin-top: var(--space-1);
 }
 
+/* Story 20.19 (Epic 20, Torneo Memorial): pulsante + tabella aggiuntiva
+   "tutti gli incontri della Categoria" - affianca la griglia grafica sotto
+   senza mai sostituirla, nascosta di default (TabellaIncontriCategoria.tsx).
+   Stesso token bottone di app/error.module.css (.bottone,
+   --color-button-bg/--color-surface/--radius-sm/--color-focus-ring), unica
+   eccezione visiva del registro "Poster Sportivo" letterale di questa pagina
+   (nessun match-card qui, e' un controllo di utilita', non un contenuto
+   editoriale). */
+.sezioneTabellaIncontri {
+  margin-top: var(--space-4);
+}
+
+/* Review fix (Blind Hunter): min-height 44px + inline-flex/align-items
+   centrato - un padding verticale da solo non basta a garantire il touch
+   target minimo (lezione gia' registrata in memoria progetto, "Touch
+   target 44px richiede align-self:stretch"), qui applicata preventivamente
+   invece di scoprirla di nuovo dal vivo. */
+.bottoneTabellaIncontri {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  background: var(--color-button-bg);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+/* Mirror di .srOnly in app/home-pubblica.module.css (CSS module, non
+   condivisibile tra pagine) - usata dalla <caption> di .tabellaIncontri per
+   dare un nome accessibile alla tabella senza un'intestazione visibile
+   aggiuntiva (il pulsante sopra e' gia' l'unico controllo visivo di questa
+   sezione). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.bottoneTabellaIncontri:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Wrapper di scroll orizzontale - a differenza di .tabellaClassifica/
+   .tabellaSquadreGironi sotto (gap noto, deferred-work.md), questa tabella
+   nuova ha 6 colonne fin da subito: nessun motivo di ripetere lo stesso gap
+   in una tabella scritta oggi. */
+.tabellaScroll {
+  overflow-x: auto;
+}
+
+.tabellaIncontri {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  margin-top: var(--space-3);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.tabellaIncontri th,
+.tabellaIncontri td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid #e6ebef;
+  white-space: nowrap;
+}
+
+.tabellaIncontri th {
+  font-weight: 700;
+  color: #5b6472;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
 .sezioneGirone {
   margin-top: var(--space-6);
 }

@@ -14,31 +14,11 @@ import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import { ordinaPartitePerSlot } from "@/lib/ordina-partite-per-slot";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { formattaSlotTestoBreve, type SlotPubblico } from "@/lib/formatta-slot-torneo";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
+import { TabellaIncontriCategoria } from "./TabellaIncontriCategoria";
 import styles from "./torneo-pubblico.module.css";
-
-// Story 20.9 (Epic 20, Torneo Memorial): dati minimi dello Slot assegnato
-// (con la sua Palestra) per il blocco "dove/quando" mostrato su ogni
-// match-card pubblica - stesso shape restituito da elencaPartiteTorneo
-// (lib/torneo.ts, include: slotTorneo -> palestra).
-type SlotPubblico = {
-  etichetta: string;
-  data: string;
-  ora: string;
-  palestra: {
-    nome: string;
-    indirizzo: string | null;
-    latitudine: number | null;
-    longitudine: number | null;
-  };
-  // Story 20.18 (Epic 20, Torneo Memorial): Campo opzionale - null per una
-  // Palestra senza Campi censiti (spec-20-18 Boundaries "Always": il nome
-  // del Campo compare sempre accanto al nome della Palestra, ovunque uno
-  // SlotTorneo con Campo assegnato viene mostrato - qui anche sulla pagina
-  // pubblica).
-  campo: { nome: string } | null;
-};
 
 // Mostrato dentro ogni match-card (girone/semifinale/finale) SOLO quando la
 // Partita ha uno Slot assegnato - "Naviga" riusa costruisciLinkNaviga TALE E
@@ -49,21 +29,17 @@ function MetaSlot({ slotTorneo }: { slotTorneo: SlotPubblico | null }) {
   if (!slotTorneo) {
     return null;
   }
-  const { etichetta, data, ora, palestra, campo } = slotTorneo;
-  const linkNaviga = costruisciLinkNaviga(palestra);
+  const linkNaviga = costruisciLinkNaviga(slotTorneo.palestra);
   return (
     <div className={styles.metaSlot}>
-      <span>
-        {etichetta} · {data} {ora} · {palestra.nome}
-        {campo && ` - ${campo.nome}`}
-      </span>
+      <span>{formattaSlotTestoBreve(slotTorneo)}</span>
       {linkNaviga && (
         <a
           className={styles.linkNaviga}
           href={linkNaviga}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Naviga verso ${palestra.nome}`}
+          aria-label={`Naviga verso ${slotTorneo.palestra.nome}`}
         >
           Naviga
         </a>
@@ -240,6 +216,13 @@ export default async function TorneoPubblicoPage() {
                 <p className={styles.etichettaSettimana}>
                   {etichettaSettimanaPersonalizzata(categoria.settimana, edizione)}
                 </p>
+
+                {/* Story 20.19: vista tabellare aggiuntiva di TUTTI gli
+                    incontri della Categoria (Gironi + Semifinali + Finali
+                    insieme, gia' ordinati per numero di Gara -
+                    elencaPartiteTorneo, lib/torneo.ts) - affianca la griglia
+                    grafica sotto senza mai sostituirla, nascosta di default. */}
+                <TabellaIncontriCategoria partite={partite} nomeCategoria={categoria.nome} />
 
                 {calendarioGenerato ? (
                   GIRONI_TORNEO.map((girone) => {
