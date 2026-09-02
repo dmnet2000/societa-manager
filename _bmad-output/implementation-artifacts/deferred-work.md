@@ -999,3 +999,10 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: `_bmad-output/implementation-artifacts/spec-20-19-vista-tabellare-tutti-incontri-torneo.md`
   summary: la vista tabellare "tutti gli incontri" mostra "In programma" identicamente per un incontro non ancora iniziato e uno con un risultato solo parzialmente inserito (es. solo il primo set registrato) - le due situazioni non sono distinguibili nella nuova tabella.
   evidence: `formattaRisultatoPartitaTorneo(partita) ?? "In programma"` è lo stesso identico fallback già in uso, immutato, nella griglia grafica esistente (match-card) di `app/torneo/page.tsx` da prima di questa storia - pattern pre-esistente, non introdotto né aggravato da Story 20.19.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-21-1-indice-atleta-nome.md`
+  summary: `CREATE INDEX` sulla nuova migrazione non usa `CONCURRENTLY` - la costruzione dell'indice prende un lock che blocca temporaneamente le scritture concorrenti su `atlete` (`creaAtleta`/`aggiornaAtleta`).
+  evidence: la tabella `atlete` è l'anagrafica di un'unica società sportiva (decine/centinaia di righe, non milioni) - il lock è dell'ordine dei millisecondi. Aggiungere `CONCURRENTLY` richiederebbe disabilitare il transaction-wrap della migrazione, non verificabile in questo ambiente (dev locale rotto, Prisma WASM/Windows) - da rivalutare solo se la tabella crescesse di ordini di grandezza.
+- source_spec: `_bmad-output/implementation-artifacts/spec-21-1-indice-atleta-nome.md`
+  summary: la migrazione scritta a mano non è stata verificata contro l'output che genererebbe `prisma migrate dev`/`prisma migrate diff` (nome esatto dell'indice, sintassi).
+  evidence: stesso identico vincolo pre-esistente di ogni altra migrazione scritta a mano in questo repository (dev locale rotto su questa macchina, Prisma WASM/Windows) - non specifico di questa storia, da verificare non appena l'ambiente locale tornerà funzionante.

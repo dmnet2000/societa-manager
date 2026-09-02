@@ -32,6 +32,7 @@ Build a public, unauthenticated marketing site for the Volley sector — living 
 - Story 18.21: Favicon e titolo della scheda del browser dinamico dal nome del Settore
 - Story 18.22: Foto dell'Allenatore nella sezione Staff
 - Story 18.23: Riordino dell'header pubblico e larghezza della didascalia Facebook su mobile
+- Story 18.25: Contenuto centrato nella pagina pubblica /squadre
 - Story 18.26 (BUG, non ancora corretta): `null value in column "accessToken"` su `configurazione_social_facebook` — solo da investigare
 
 ## Requirements & Constraints
@@ -74,4 +75,5 @@ Build a public, unauthenticated marketing site for the Volley sector — living 
 - 18.6 (cookie consent) gates both the embed (18.5) and its carousel replacement (18.13); 18.17 reopens 18.6's compliance requirement, unresolved pending user confirmation.
 - 18.18 reopens the mobile-nav decision from 18.7/18.12, also pending user confirmation.
 - 18.20 introduces a previously unmodeled "Polisportiva" entity with open questions to resolve at dev-open.
+- 18.25 reverses the "no retrofit" decision made for `/squadre`/`/calendario` when `/torneo` (Epic 20, Story 20.14) was centered — applies the same `max-width:1000px; margin:0 auto` to `/squadre` only; `/calendario` stays explicitly out of scope, unretouched.
 - 18.26 is a bug report only (unfixed) against the Facebook-token table from 18.13.

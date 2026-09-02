@@ -1,3 +1,6 @@
+# last_updated: 2026-09-01 (Story 21.1: implementata via bmad-build, percorso one-shot (@@index([nome]) su Atleta + migrazione dedicata, nessuna modifica di codice applicativo). Review Blind Hunter: 5 patch applicati (tutti sui commenti/migrazione, nessun cambio di comportamento) - CREATE INDEX reso idempotente con IF NOT EXISTS (migrazione scritta a mano, dev locale rotto - mai verificabile con prisma migrate dev); riferimenti a riga esatta (lib/db-rls/atleta.ts:82/110) aggiunti ai commenti come richiesto dalla regola di processo dell'Epic 21; cross-reference tra schema.prisma e migration.sql; costo di manutenzione in scrittura riconosciuto esplicitamente (prima il commento diceva "nessuna modifica di comportamento" senza sfumature). 2 defer loggati in deferred-work.md (nessun CONCURRENTLY - tabella piccola, lock trascurabile, aggiungerlo richiederebbe disabilitare il transaction-wrap non verificabile in questo ambiente; migrazione non verificata contro l'output di prisma migrate dev/diff - stesso vincolo pre-esistente di ogni altra migrazione scritta a mano in questo repo). 1 reject (sprint-status "non ancora implementato" - risolto da questo stesso aggiornamento, non un difetto). Verifica: 1933/1933 test Vitest (invariati), tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo (uso reale dell'indice via pg_stat_user_indexes/EXPLAIN ANALYZE) non eseguibile qui - demandata all'utente post-deploy. Vedi spec-21-1-indice-atleta-nome.md. Status: backlog -> in-progress -> review (sprint-status), spec 'done' (one-shot).)
+# last_updated: 2026-09-01 (Epic 21 (Ottimizzazione database) aperto su richiesta esplicita dell'utente ("creami un'epica per ottimizzazione database, verificare indici da aggiungere, query ipoteticamente lente"), elenco APERTO come Epic 9/11/17/18. Story 21.1 aggiunta subito, segnalazione diretta dall'Advisor Supabase (indice btree su atlete.nome, 84.97% di miglioramento stimato) - verificata nel codice contro lib/db-rls/atleta.ts (elencaAtlete/elencaAtletePubbliche, entrambe .order("nome")). Nessun @@index esplicito esiste oggi nello schema. Vedi epics.md#Epic 21. NESSUNA IMPLEMENTAZIONE ANCORA - solo l'epica+prima story in questo giro.)
+# last_updated: 2026-09-01 (Story 18.26 (BUG) chiusa: indagine approfondita nel codice (git log/blame su lib/facebook-graph.ts, ricerca di ogni DELETE/scrittura diretta Prisma sulla tabella, verifica di tutti i chiamanti di aggiornaStatoLetturaFacebook) - nessun percorso applicativo reale raggiunge l'upsert senza accessToken, la guardia protettiva esiste fin dal primo commit del file. Confermato con l'utente (AskUserQuestion): l'errore e' apparso nella dashboard/SQL editor di Supabase (scrittura manuale), non navigando il sito. NON e' un bug di codice - nessun fix applicato, chiusa come Story 11.5 ("nessun difetto di codice applicativo"). Vedi epics.md#Story 18.26 (verdetto). Status: backlog -> done, nessuna modifica di codice.)
 # last_updated: 2026-09-01 (Story 18.25: implementata via bmad-build, percorso one-shot (blast radius zero: 2 righe CSS, mirror esatto di un trattamento gia' esistente su /torneo, nessuna logica). max-width:1000px + margin:0 auto su .main di squadre.module.css, richiesta esplicita dell'utente ("nella sezione squadre vorrei venisse allineato in centro", messaggio troncato) chiarita via AskUserQuestion: solo /squadre, /calendario resta piena larghezza. Review Blind Hunter: 5 patch applicati, tutti sui commenti sorgente (nessuna modifica di comportamento) - la prima stesura del commento gemello in torneo-pubblico.module.css affermava erroneamente che /calendario fosse l'unica pagina rimasta a piena larghezza, ignorando /staff e /contatti (corretto in entrambi i file, ora simmetrici); ambiguita' su quale "decisione" venisse invertita chiarita; paragrafi separati per le due epoche di rationale (18.12 sfondo, 18.25 larghezza), mirror della struttura gia' in uso in torneo-pubblico.module.css; banner di testa del file esteso con un accenno all'eccezione di larghezza; nota di verifica dal vivo ancora mancante aggiunta (mirror Story 20.17). 3 reject con motivazione esplicita (nessuna interazione reale col breakpoint 900px esistente - stesso schema gia' usato da Story 20.14 su /torneo senza discuterne; duplicazione della regola di centratura tra i due CSS module - convenzione esplicitamente dichiarata nel progetto, "un CSS module per pagina, mai condiviso"; nessun aggiornamento guida in-app - le pagine pubbliche non hanno mai avuto voci guida, verificato). Verifica: 1933/1933 test Vitest (invariati, nessuna logica toccata), tsc/lint puliti, build riuscita. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Vedi spec-18-25-contenuto-centrato-squadre-pubblica.md. Commit lasciato all'utente. Status: backlog -> in-progress -> review (sprint-status), spec 'done' (one-shot).)
 # last_updated: 2026-09-01 (Story 20.19: implementata via bmad-build, percorso one-shot (blast radius zero: sola pagina pubblica /torneo, nessuna migrazione/nuova rotta/nuova server action). Nuovo componente client TabellaIncontriCategoria (pulsante + tabella nascosta di default, mai sostituisce la griglia grafica) + 2 funzioni pure estratte come unica fonte di verita' (etichettaFasePartitaTorneo, formattaSlotTestoBreve - quest'ultima riusata anche da MetaSlot preesistente). Review Blind Hunter (1 layer, mirror step-oneshot.md): 6 patch applicati (aria-controls/useId a collegare pulsante e tabella; nome Categoria nel testo/aria-label del pulsante - senza, ogni istanza aveva lo stesso nome accessibile ambiguo; <caption> sr-only per dare un nome alla tabella; touch target 44px esplicito sul pulsante, lezione gia' nota in memoria progetto; rimossa la ripetizione "Gara" tra intestazione e cella; em-dash non accessibile per uno Slot mancante sostituito col testo "Da definire"), 1 defer loggato in deferred-work.md ("In programma" collassa non-iniziato/parziale, stesso fallback gia' esistente e invariato della griglia grafica), resto reject con motivazione esplicita (nessun test di rendering per il componente - convenzione gia' stabilita nel progetto; tipo PartitaTabellare duplicato a mano - stesso pattern gia' usato ovunque nell'epica per le forme Slot; ordinamento per numero di Gara invece che per Slot - corrisponde all'AC #1 scritto esplicitamente nello spec; fallback "non raggiungibile" di etichettaFasePartitaTorneo non forzato dal type system - l'invariante e' comunque garantita da un CHECK a livello DB, Story 20.9; -webkit-overflow-scrolling - proprieta' obsoleta su Safari moderno, nessun collegamento reale con l'unico bug Safari/iOS noto del progetto, Story 11.4, che riguarda tutt'altro; focus/aria-live sulla rivelazione - oltre la baseline del pattern WAI-ARIA Disclosure gia' soddisfatta da aria-expanded). Verifica: 1933/1933 test Vitest (+4), tsc/lint puliti, build riuscita (prisma validate non applicabile, nessuna migrazione). Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Vedi spec-20-19-vista-tabellare-tutti-incontri-torneo.md (Suggested Review Order). Commit lasciato all'utente su sua richiesta permanente (non fare git commit/push in autonomia). Status: backlog -> in-progress -> review (sprint-status), spec 'done' (one-shot).)
 # last_updated: 2026-09-01 (Story 9.41 aggiunta 2026-08-31 su richiesta esplicita dell'utente ("vorrei avere in visualizzazione oltre che alla forma grafica delle partite un pulsante che mostra tutte le partite in forma tabellare" - Torneo Memorial, Epic 20), ambito chiarito via AskUserQuestion: solo /torneo pubblica, tabella unica per Categoria (Gironi+Semifinali+Finali insieme), coesistenza con la griglia grafica (mai un toggle che la nasconde) - vedi epics.md#Story 20.19. 20-19-vista-tabellare-tutti-incontri-torneo aggiunta in backlog, NESSUNA IMPLEMENTAZIONE ANCORA.)
@@ -329,7 +332,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-15
-last_updated: "09-01-2026 22:22"
+last_updated: "09-01-2026 22:52"
 project: societa-manager
 project_key: NOKEY
 tracking_system: file-system
@@ -1181,7 +1184,19 @@ development_status:
   # default. L'unico chiamante attuale (lib/facebook-graph.ts) sembra gia'
   # protetto da una guardia esplicita, quindi la causa non e' confermata -
   # vedi epics.md#Story 18.26 per il dettaglio completo e i prossimi passi.
-  18-26-bug-accesstoken-null-configurazione-facebook: backlog
+  #
+  # Story 18.26 chiusa 2026-09-01: investigazione approfondita nel codice -
+  # la guardia in lib/facebook-graph.ts:92 esiste fin dal primissimo commit
+  # che ha introdotto il file (ccb1fb3), nessun DELETE esiste per questa
+  # tabella in tutto il codice, salvaTokenFacebookAction non chiama mai
+  # aggiornaStatoLetturaFacebook - nessun percorso applicativo reale
+  # raggiunge l'upsert senza accessToken. Confermato con l'utente
+  # (AskUserQuestion): l'errore e' apparso nella dashboard/SQL editor di
+  # Supabase, non navigando il sito - causa una scrittura manuale (Table
+  # Editor o query diretta) correttamente respinta dal vincolo NOT NULL.
+  # NON e' un difetto di codice applicativo, nessun fix necessario - mirror
+  # dello stesso esito di Story 11.5. Vedi epics.md#Story 18.26 (verdetto).
+  18-26-bug-accesstoken-null-configurazione-facebook: done
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
@@ -1801,3 +1816,23 @@ development_status:
   # epics.md#Story 20.19. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in
   # questo giro.
   20-19-vista-tabellare-tutti-incontri-torneo: review
+
+  # Epic 21 (Ottimizzazione database) aperto 2026-09-01, richiesta esplicita
+  # dell'utente: "creami un'epica per ottimizzazione database, verificare
+  # indici da aggiungere, query ipoteticamente lente". Elenco APERTO come
+  # Epic 9/11/17/18 - copertura incrementale, una segnalazione alla volta
+  # (fonte primaria: Advisor "Query Performance"/"Index Recommendations" di
+  # Supabase). Nessun @@index esplicito esiste oggi in schema.prisma - prima
+  # epica del progetto dedicata a indici puramente di performance. Vedi
+  # epics.md#Epic 21.
+  epic-21: in-progress
+
+  # Story 21.1 aggiunta 2026-09-01, segnalazione diretta dell'utente
+  # dall'Advisor Supabase: "New index recommendations... CREATE INDEX ON
+  # public.atlete USING btree (nome)" (84.97% di miglioramento stimato).
+  # Verificato nel codice: lib/db-rls/atleta.ts righe 82/110
+  # (elencaAtlete/elencaAtletePubbliche) fanno entrambe .order("nome",
+  # {ascending:true}) sulla tabella atlete - esattamente il pattern
+  # segnalato, nessun indice oggi copre Atleta.nome (solo codiceFiscale
+  # @unique). Vedi epics.md#Story 21.1. NESSUNA IMPLEMENTAZIONE ANCORA.
+  21-1-indice-atleta-nome: review

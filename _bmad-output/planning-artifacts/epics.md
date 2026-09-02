@@ -2838,15 +2838,15 @@ so that la pagina sia più leggibile su schermi larghi e visivamente coerente co
 2. **And** su schermi stretti (<1000px) il comportamento resta invariato (il contenuto occupa già tutta la larghezza disponibile in entrambi i casi)
 3. **And** nessuna regressione su `/calendario`, che resta esplicitamente a piena larghezza — fuori scope di questa storia
 
-### Story 18.26 (BUG): `null value in column "accessToken"` su `configurazione_social_facebook` — da investigare
+### Story 18.26 (BUG): `null value in column "accessToken"` su `configurazione_social_facebook` — CHIUSA, non un bug applicativo
 
-*(Aggiunta 2026-09-01, segnalata dall'utente da Supabase: "ho questo errore su supbase: null value in column 'accessToken' of relation 'configurazione_social_facebook' violates not-null constraint" - richiesto solo di registrarla come bug da controllare, NESSUNA IMPLEMENTAZIONE/FIX ancora. Investigazione preliminare fatta nel codice, non ancora confermata dal vivo.)*
+*(Aggiunta 2026-09-01, segnalata dall'utente da Supabase: "ho questo errore su supbase: null value in column 'accessToken' of relation 'configurazione_social_facebook' violates not-null constraint". Investigata e chiusa nella stessa giornata - vedi verdetto sotto.)*
 
 **Sintomo:** un `INSERT`/`upsert` su `configurazione_social_facebook` fallisce con una violazione del vincolo `NOT NULL` sulla colonna `accessToken` (`prisma/schema.prisma`, `accessToken String` - mai nullable, nessun default).
 
-**Sospetto principale (non confermato dal vivo):** `aggiornaStatoLetturaFacebook` (`lib/db-rls/configurazione-social-facebook.ts`, righe 81-98) fa un `upsert` su id fisso che scrive solo `ultimaLetturaOk`/`ultimoErrore`/`updatedAt` - **mai** `accessToken`. Se la riga con quell'id non esiste ancora, Postgrest genera un `INSERT` che omette `accessToken` del tutto, colpendo il vincolo `NOT NULL` esattamente come nell'errore riportato. Il commento sorgente della funzione assume che questo caso sia "evitato a monte" da `leggiUltimiPostFacebook` (`lib/facebook-graph.ts`, riga 92: `if (!configurazione || !configurazione.accessToken) return [];`) - verificato nel codice che quella guardia esiste ed è l'UNICO chiamante attuale di `aggiornaStatoLetturaFacebook`, quindi il percorso applicativo normale sembra protetto. Non è stato però possibile riprodurre l'errore né escludere un percorso alternativo (es. la riga cancellata manualmente da Supabase, o un futuro secondo chiamante che non passa da quella guardia) - **causa non confermata**, solo la funzione più sospetta identificata.
+**Investigazione nel codice:** `aggiornaStatoLetturaFacebook` (`lib/db-rls/configurazione-social-facebook.ts`, righe 81-98) fa un `upsert` su id fisso che scrive solo `ultimaLetturaOk`/`ultimoErrore`/`updatedAt` - mai `accessToken`. In teoria, se la riga non esistesse ancora, l'`INSERT` risultante colpirebbe lo stesso vincolo `NOT NULL`. Verificato però che l'UNICO chiamante attuale (`leggiUltimiPostFacebook`, `lib/facebook-graph.ts` riga 92: `if (!configurazione || !configurazione.accessToken) return [];`) è protetto da quella guardia fin dal **primissimo commit** che ha introdotto il file (`ccb1fb3`, mai un fix successivo) - nessuna regressione. Nessun `DELETE` esiste in tutto il codice per questa tabella (RLS concede solo `SELECT/INSERT/UPDATE`). `salvaTokenFacebookAction` (form Admin) chiama solo `salvaTokenFacebook`, che include sempre `accessToken` nel payload - mai `aggiornaStatoLetturaFacebook`. **Nessun percorso applicativo reale raggiunge l'upsert senza `accessToken`.**
 
-**Da fare in una futura investigazione:** verificare da quando/con quale frequenza l'errore compare in produzione (log Supabase); se confermato, la correzione più diretta è rendere `aggiornaStatoLetturaFacebook` un `UPDATE` puro (mai un `upsert`/`INSERT`) - quella riga deve esistere già, creata solo da `salvaTokenFacebook` insieme a un `accessToken` reale, mai da questa funzione.
+**Verdetto (confermato con l'utente):** l'errore è stato visto direttamente nella dashboard/SQL editor di Supabase, non navigando il sito - causa una scrittura manuale (es. Table Editor "Insert row" senza valorizzare `accessToken`, o una query diretta) che il vincolo `NOT NULL` ha correttamente respinto, esattamente come progettato. **Non è un difetto del codice applicativo** - nessun fix necessario, mirror dello stesso esito già visto per Story 11.5 ("nessun difetto di codice applicativo").
 
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
@@ -3543,3 +3543,25 @@ so that possa scorrere rapidamente l'elenco completo delle Gare di una Categoria
 5. **And** una Categoria senza alcun incontro generato (né calendario di girone né tabellone) non mostra alcun pulsante — nessuna tabella vuota fuorviante
 6. **And** ogni Categoria ha il proprio stato mostra/nascondi indipendente dalle altre — premere il pulsante di una Categoria non altera lo stato delle altre
 7. **And** nessuna regressione sulle pagine admin (`app/app/(torneo)/torneo/...`) — questa storia tocca solo la pagina pubblica `/torneo`
+
+## Epic 21: Ottimizzazione database
+
+*(Aperto 2026-09-01, richiesta esplicita dell'utente: "creami un'epica per ottimizzazione database, verificare indici da aggiungere, query ipoteticamente lente". Elenco APERTO come Epic 9/11/17/18 — copertura incrementale, una segnalazione/query alla volta, non un audit esaustivo in un solo colpo. Nessun indice esplicito (`@@index`) esiste oggi in `prisma/schema.prisma` - ogni indice attuale del database viene solo da `@id`/`@unique`/`@@unique`; questa è la prima epica del progetto dedicata a indici puramente di performance.**Fonte primaria delle segnalazioni**: l'Advisor "Query Performance"/"Index Recommendations" di Supabase (basato su `pg_stat_statements` + statistiche reali di produzione) - una segnalazione alla volta, verificata nel codice prima di agire (mai un indice aggiunto alla cieca senza aver identificato la query reale che lo giustifica).*
+
+**Regola di processo per ogni story di questa epica**: 1) partire dalla segnalazione (Advisor Supabase, o un sospetto concreto nel codice - mai un audit generico "a tappeto"); 2) verificare nel codice quale/quali query reali beneficerebbero, citando il file/riga esatti; 3) aggiungere l'indice via migrazione Prisma (`@@index`, mai un'operazione manuale fuori dalle migrazioni versionate); 4) nessuna modifica di comportamento applicativo - un indice non cambia mai il risultato di una query, solo il suo costo.
+
+### Story 21.1: Indice su Atleta.nome
+
+*(Aggiunta 2026-09-01, segnalazione diretta dell'utente dall'Advisor di Supabase: "Indexes in use: No indexes are involved in this query... New index recommendations: Query's performance can be improved by 84.97% by creating this index: CREATE INDEX ON public.atlete USING btree (nome)". Verificato nel codice: `lib/db-rls/atleta.ts` righe 82 e 110 (`elencaAtlete`/`elencaAtletePubbliche`) fanno entrambe `.order("nome", { ascending: true })` sulla tabella `atlete` via client Supabase - esattamente il pattern che l'Advisor segnala, nessun indice oggi copre `nome` (il modello `Atleta`, `prisma/schema.prisma` riga 94, ha solo `codiceFiscale @unique`).)*
+
+As a Sistema (nessun impatto visibile per l'utente finale),
+I want un indice btree su `Atleta.nome`,
+so that le query che ordinano le Atlete per nome (`elencaAtlete`/`elencaAtletePubbliche`, usate da `/app/gruppi`, `/squadre` e ovunque un elenco Atlete viene mostrato) restino performanti al crescere della tabella, invece di richiedere una scansione sequenziale ordinata a ogni chiamata.
+
+**Contesto tecnico:** `prisma/schema.prisma`, model `Atleta` (riga 94) - aggiunta `@@index([nome])` prima di `@@map("atlete")`. Nuova migrazione `CREATE INDEX` (mirror sintattico della segnalazione Supabase, `btree` è il default Postgres per `CREATE INDEX` quindi nessun metodo esplicito necessario nella migrazione). Nessuna RLS/policy toccata (un indice non è un permesso). Nessuna modifica di codice applicativo - le due query in `lib/db-rls/atleta.ts` restano bit-per-bit identiche, solo il piano di esecuzione di Postgres cambia.
+
+**Acceptance Criteria:**
+
+1. **Given** lo schema Prisma **When** la migrazione viene applicata **Then** esiste un indice btree su `atlete.nome`
+2. **And** nessuna query esistente (`elencaAtlete`, `elencaAtletePubbliche`, o qualunque altro lookup su `atlete`) cambia risultato o comportamento - solo il costo di esecuzione può migliorare
+3. **And** nessuna regressione sui test esistenti (un indice non ha comportamento testabile a livello applicativo - nessun nuovo test necessario oltre a `npx prisma validate`)

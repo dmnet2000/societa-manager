@@ -1,0 +1,23 @@
+-- Story 21.1 (Epic 21, Ottimizzazione database): indice btree segnalato
+-- dall'Advisor "Index Recommendations" di Supabase (84.97% di miglioramento
+-- stimato) - lib/db-rls/atleta.ts righe 82/110 (elencaAtlete/
+-- elencaAtletePubbliche) ordinano entrambe per "nome" (.order("nome",
+-- { ascending: true })), nessun indice copriva finora questa colonna (solo
+-- codiceFiscale @unique). Nessuna modifica al risultato di alcuna query -
+-- solo il piano di esecuzione di Postgres in lettura; costo di
+-- manutenzione minimo in scrittura, trascurabile alla scala di
+-- un'anagrafica di club sportivo. Vedi anche il commento gemello su
+-- prisma/schema.prisma (model Atleta, @@index([nome])).
+--
+-- IF NOT EXISTS: migrazione scritta a mano (dev locale rotto, Prisma WASM/
+-- Windows - impossibile generarla/validarla con `prisma migrate dev`) -
+-- idempotente per costruzione, mai un fallimento su un doppio apply.
+--
+-- Nessun CONCURRENTLY: la tabella "atlete" e' l'anagrafica di un'unica
+-- societa' sportiva (decine/centinaia di righe, non milioni) - il lock in
+-- scrittura durante la costruzione dell'indice e' dell'ordine dei
+-- millisecondi. CONCURRENTLY richiederebbe disabilitare il transaction-wrap
+-- della migrazione (non verificabile in questo ambiente, dev locale rotto)
+-- per un guadagno trascurabile a questa scala - da rivalutare solo se la
+-- tabella crescesse di ordini di grandezza.
+CREATE INDEX IF NOT EXISTS "atlete_nome_idx" ON "atlete"("nome");

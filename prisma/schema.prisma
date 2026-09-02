@@ -123,6 +123,16 @@ model Atleta {
   notifiche             Notifica[]
   misurazioni           MisurazioneAtleta[]
 
+  // Story 21.1 (Epic 21, Ottimizzazione database): indice btree segnalato
+  // dall'Advisor Supabase (84.97% di miglioramento stimato) - lib/db-rls/atleta.ts
+  // righe 82/110 (elencaAtlete/elencaAtletePubbliche) ordinano entrambe per
+  // "nome", nessun indice copriva finora questa colonna (solo codiceFiscale
+  // @unique). Nessuna modifica al risultato di alcuna query - solo il piano
+  // di esecuzione di Postgres in lettura; un costo di manutenzione minimo in
+  // scrittura (creaAtleta/aggiornaAtleta mantengono un indice in più),
+  // trascurabile alla scala di un'anagrafica di club sportivo. Vedi anche il
+  // commento della migrazione (20260901000000_add_index_atlete_nome).
+  @@index([nome])
   @@map("atlete")
 }
 
