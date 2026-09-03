@@ -1,3 +1,7 @@
+# last_updated: 2026-09-03 (Story 9.42: implementazione completata e review Blind Hunter (bmad-build one-shot) - esci() (app/NavBar.actions.ts) rediretta ora a HOME_PATH ("/", nuova costante condivisa in lib/auth/route-guard.ts, mirror di LOGIN_PATH) invece di LOGIN_PATH ("/accedi"). 3 patch applicati (commento stale su /accedi riallineato, destinazione hard-coded sostituita dalla costante HOME_PATH, titolo describe del test esteso alla 9.42), resto dei finding respinto (rumore o precedente gia' stabilito). Vedi spec-9-42-logoff-torna-alla-home-pubblica.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
+# last_updated: 2026-09-03 (Story 9.42: sviluppo avviato via bmad-build one-shot - epic-9-context.md ricompilato per includerla, baseline_commit e30a9100c36feece884389f3c17cbdec52143bc1, sprint-status 9-42 backlog -> in-progress.)
+# last_updated: 2026-09-03 (Story 18.27 aggiunta su richiesta esplicita dell'utente: "il .schedaGruppo dovrebbe essere almeno il triplo di larghezza" - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, ogni scheda passa da ~1/3 a tutta la larghezza di .main (invariato a 1000px, Story 18.25), esattamente 3x. Vedi epics.md#Story 18.27. NESSUNA IMPLEMENTAZIONE ANCORA. 18-27-scheda-gruppo-larghezza-tripla aggiunta in backlog.)
+# last_updated: 2026-09-03 (Story 9.42 aggiunta su richiesta esplicita dell'utente: "dopo il logout vorrei che si tornasse nella home del sito statico" - cambia solo il target del redirect di esci() (app/NavBar.actions.ts, Story 9.1) da /accedi a "/" (home pubblica, Story 18.1), nessuna regressione sul resto del comportamento di logoff (Story 9.7). Vedi epics.md#Story 9.42. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in questo giro. 9-42-logoff-torna-alla-home-pubblica aggiunta in backlog.)
 # last_updated: 2026-09-01 (Story 21.1: implementata via bmad-build, percorso one-shot (@@index([nome]) su Atleta + migrazione dedicata, nessuna modifica di codice applicativo). Review Blind Hunter: 5 patch applicati (tutti sui commenti/migrazione, nessun cambio di comportamento) - CREATE INDEX reso idempotente con IF NOT EXISTS (migrazione scritta a mano, dev locale rotto - mai verificabile con prisma migrate dev); riferimenti a riga esatta (lib/db-rls/atleta.ts:82/110) aggiunti ai commenti come richiesto dalla regola di processo dell'Epic 21; cross-reference tra schema.prisma e migration.sql; costo di manutenzione in scrittura riconosciuto esplicitamente (prima il commento diceva "nessuna modifica di comportamento" senza sfumature). 2 defer loggati in deferred-work.md (nessun CONCURRENTLY - tabella piccola, lock trascurabile, aggiungerlo richiederebbe disabilitare il transaction-wrap non verificabile in questo ambiente; migrazione non verificata contro l'output di prisma migrate dev/diff - stesso vincolo pre-esistente di ogni altra migrazione scritta a mano in questo repo). 1 reject (sprint-status "non ancora implementato" - risolto da questo stesso aggiornamento, non un difetto). Verifica: 1933/1933 test Vitest (invariati), tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo (uso reale dell'indice via pg_stat_user_indexes/EXPLAIN ANALYZE) non eseguibile qui - demandata all'utente post-deploy. Vedi spec-21-1-indice-atleta-nome.md. Status: backlog -> in-progress -> review (sprint-status), spec 'done' (one-shot).)
 # last_updated: 2026-09-01 (Epic 21 (Ottimizzazione database) aperto su richiesta esplicita dell'utente ("creami un'epica per ottimizzazione database, verificare indici da aggiungere, query ipoteticamente lente"), elenco APERTO come Epic 9/11/17/18. Story 21.1 aggiunta subito, segnalazione diretta dall'Advisor Supabase (indice btree su atlete.nome, 84.97% di miglioramento stimato) - verificata nel codice contro lib/db-rls/atleta.ts (elencaAtlete/elencaAtletePubbliche, entrambe .order("nome")). Nessun @@index esplicito esiste oggi nello schema. Vedi epics.md#Epic 21. NESSUNA IMPLEMENTAZIONE ANCORA - solo l'epica+prima story in questo giro.)
 # last_updated: 2026-09-01 (Story 18.26 (BUG) chiusa: indagine approfondita nel codice (git log/blame su lib/facebook-graph.ts, ricerca di ogni DELETE/scrittura diretta Prisma sulla tabella, verifica di tutti i chiamanti di aggiornaStatoLetturaFacebook) - nessun percorso applicativo reale raggiunge l'upsert senza accessToken, la guardia protettiva esiste fin dal primo commit del file. Confermato con l'utente (AskUserQuestion): l'errore e' apparso nella dashboard/SQL editor di Supabase (scrittura manuale), non navigando il sito. NON e' un bug di codice - nessun fix applicato, chiusa come Story 11.5 ("nessun difetto di codice applicativo"). Vedi epics.md#Story 18.26 (verdetto). Status: backlog -> done, nessuna modifica di codice.)
@@ -660,6 +664,45 @@ development_status:
   # demandata all'utente post-deploy.
   9-41-precaricamento-email-segreteria-dirigente: done
 
+  # Story 9.42 aggiunta 2026-09-03, richiesta esplicita dell'utente: "dopo il
+  # logout vorrei che si tornasse nella home del sito statico". Verificato
+  # nel codice: esci() (app/NavBar.actions.ts, Story 9.1) rediretta sempre a
+  # LOGIN_PATH ("/accedi"), sia su successo che sul percorso fail-closed -
+  # comportamento antecedente a Story 18.1 (2026-08-11), che ha introdotto
+  # la home pubblica su "/" (gia' in PUBLIC_ROUTES). Nessun punto aperto:
+  # cambia solo il target del redirect, revalidatePath("/app", "layout")
+  # (Story 9.7) invariato. Vedi epics.md#Story 9.42. NESSUNA IMPLEMENTAZIONE
+  # ANCORA - solo la story in questo giro.
+  #
+  # Implementata 2026-09-03 via bmad-build one-shot (blast radius zero: 1
+  # riga di comportamento, nessuna decisione architetturale). esci()
+  # (app/NavBar.actions.ts) rediretta ora a HOME_PATH invece di LOGIN_PATH -
+  # nuova costante HOME_PATH ("/") aggiunta in lib/auth/route-guard.ts
+  # (mirror di LOGIN_PATH), riusata anche da PUBLIC_ROUTES al posto del
+  # letterale "/" preesistente. Review Blind Hunter: 3 patch applicati
+  # (commento di esci() che citava ancora /accedi come destinazione, non
+  # piu' accurato dopo il cambio; destinazione "/" hard-coded invece di una
+  # costante condivisa - risolto introducendo HOME_PATH; titolo del blocco
+  # describe del test ancora "Story 9.1" mentre i singoli it() gia'
+  # citavano la 9.42), resto dei finding respinto perche' rumore/precedente
+  # gia' stabilito nel progetto (destinazione piu' pesante di /accedi -
+  # conseguenza intrinseca della richiesta esplicita dell'utente, non un
+  # difetto; sprint-status con commenti impilati sulla stessa data - stessa
+  # convenzione append-only gia' in uso ovunque nel file; nessun test nuovo
+  # per l'invarianza del Proxy sulle rotte protette - comportamento
+  # esplicitamente invariato, gia' coperto dalla suite esistente; nessuna
+  # voce guida da aggiornare - il logoff non ha mai avuto contenuto guida,
+  # la regola del progetto si applica solo a funzionalita' gia'
+  # documentate; UX "conferma visiva del logoff" - scope creep, mai
+  # richiesto). Vedi Spec Change Log in
+  # spec-9-42-logoff-torna-alla-home-pubblica.md. Verifica: 1933/1933 test
+  # Vitest (invariati, solo asserzioni aggiornate), tsc/lint puliti, build
+  # riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev
+  # locale rotto) - demandata all'utente post-deploy. Commit lasciato
+  # all'utente (richiesta permanente, non fare git commit/push in
+  # autonomia).
+  9-42-logoff-torna-alla-home-pubblica: review
+
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
   # Analisi completata e rotta in 5 storie il 2026-07-28 all'avvio dello
@@ -1197,6 +1240,20 @@ development_status:
   # NON e' un difetto di codice applicativo, nessun fix necessario - mirror
   # dello stesso esito di Story 11.5. Vedi epics.md#Story 18.26 (verdetto).
   18-26-bug-accesstoken-null-configurazione-facebook: done
+
+  # Story 18.27 aggiunta 2026-09-03, richiesta esplicita dell'utente: "il
+  # .schedaGruppo dovrebbe essere almeno il triplo di larghezza". Verificato
+  # nel codice: .listaGruppi (app/squadre/squadre.module.css) e' oggi una
+  # griglia a 3 colonne dentro .main (max-width:1000px, Story 18.25) - ogni
+  # scheda occupa circa 1/3 della larghezza. Da Story 18.24 ogni scheda
+  # include anche l'elenco Atlete (foto/nome/Numero), oltre a foto/nome/
+  # categoria/Allenatori - spazio compresso a 3 colonne. Fix: 1 sola colonna
+  # (grid-template-columns: 1fr, sempre, non solo sotto i 900px) - ogni
+  # scheda passa a tutta la larghezza di .main, esattamente 3x. Nessuna
+  # modifica a .main (resta 1000px, Story 18.25) ne' al contenuto delle
+  # schede. Vedi epics.md#Story 18.27. NESSUNA IMPLEMENTAZIONE ANCORA - solo
+  # la story in questo giro.
+  18-27-scheda-gruppo-larghezza-tripla: backlog
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story

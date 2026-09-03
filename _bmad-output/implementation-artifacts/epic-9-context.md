@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produzione, aggiunti una storia alla volta man mano che emergono dall'uso reale (mai pianificati tutti in anticipo). L'elenco resta volutamente aperto — non esiste uno stato "epic completa". Copre tre tipi di lavoro ricorrenti: rifiniture di navigazione/UX (barra laterale, menu profilo, riquadri form), operazioni CRUD mancanti su entità che avevano solo la creazione (modifica/cancellazione di Slot, Allenatori, assegnazioni Gruppo↔Atleta/Allenatore), e piccole estensioni al modello dati emerse da casi reali del volley giovanile (Cognome Allenatore, numero maglia, Atleta multi-Gruppo). Molte storie sono correzioni dirette di regressioni UX introdotte da storie precedenti dello stesso epic (es. 9.7/9.10 correggono effetti collaterali di 9.2).
+Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produzione, aggiunti una storia alla volta man mano che emergono dall'uso reale (mai pianificati tutti in anticipo). L'elenco resta volutamente aperto — non esiste uno stato "epic completa". Copre tre tipi di lavoro ricorrenti: rifiniture di navigazione/UX (barra laterale, menu profilo, riquadri form, redirect di logoff), operazioni CRUD mancanti su entità che avevano solo la creazione (modifica/cancellazione di Slot, Allenatori, assegnazioni Gruppo↔Atleta/Allenatore), e piccole estensioni al modello dati emerse da casi reali del volley giovanile (Cognome Allenatore, numero maglia, Atleta multi-Gruppo). Molte storie sono correzioni dirette di regressioni UX introdotte da storie precedenti dello stesso epic (es. 9.7/9.10 correggono effetti collaterali di 9.2), o adattamenti resi necessari da epic successive (es. 9.42 adegua il logoff alla home pubblica introdotta da Story 18.1).
 
 ## Stories
 
@@ -46,6 +46,7 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - Story 9.39: Normalizzazione in maiuscolo delle Atlete già esistenti in anagrafica
 - Story 9.40: Vista più compatta e ordinabile per l'elenco Utenti in /app/admin
 - Story 9.41: Precaricamento email per Segreteria e Dirigente (blocco registrazione)
+- Story 9.42: Dopo il logoff, atterrare sulla home pubblica invece che su /accedi
 
 ## Requirements & Constraints
 
@@ -54,6 +55,7 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - **Autorizzazione a due livelli (difesa in profondità).** Ogni azione sensibile bloccata sia a livello di route-guard sia dentro la Server Action, non solo in UI. Un Allenatore agisce solo sul/i proprio/i Gruppo/i (via `GruppoAllenatore`); un Admin non può eseguire operazioni ad alto rischio (reset password, correzione email) su un altro Admin.
 - **Nessun servizio esterno a pagamento** (NFR ereditato) — es. mappa Palestre via iframe Google Maps `output=embed` invece della JS API a pagamento.
 - **Controllo preventivo, non a posteriori, per un Ruolo "blindato" in registrazione**: se il dato di contatto (CF per Allenatore, email per Segreteria/Dirigente) non è precaricato da un Admin, l'intera registrazione è rifiutata prima di creare qualunque account — mai un account "a metà". Se la richiesta include anche Ruoli non bloccati, si accetta o rifiuta insieme.
+- **Fail-closed anche sui redirect di logoff**: sia nel percorso di successo sia in quello di errore di `signOut()`, l'Utente atterra sempre sulla stessa destinazione pubblica prevista (mai una pagina protetta, mai un'incoerenza tra i due percorsi).
 
 ## Technical Decisions
 
@@ -67,6 +69,7 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - **Formattazione data unica**: `toLocaleDateString("it-IT", { timeZone: "UTC" })`.
 - **Sanificazione maiuscolo**: già sul Codice Fiscale ovunque; estesa a Cognome/Nome `Atleta` in creazione (9.36) e via backfill (9.39, `UPDATE ... SET nome = UPPER(nome)`, idempotente). `Allenatore.nome` resta esplicitamente non sanificato.
 - **Pattern "voce precaricata → aggancio automatico → claim non riutilizzabile"**: stabilito per `Allenatore.codiceFiscale` (maiuscolo), generalizzato in 9.41 a un modello distinto per email Segreteria/Dirigente (trim+minuscolo). Voce agganciata: non più modificabile/cancellabile, mostrata come "Registrata" vs "Precaricata"; duplicati sulla stessa chiave sempre controllati.
+- **Destinazione post-logoff è la home pubblica (`"/"`), non `/accedi`** (9.42): la distinzione tra area pubblica (sito vetrina, Epic 18) e area riservata (`/app`) rende `"/"` la destinazione coerente per chi esce dalla sessione, già raggiungibile senza autenticazione e già collegata da un link "Accedi" per chi vuole rientrare subito. Il resto del comportamento di logoff (invalidazione cookie, `revalidatePath("/app", "layout")`, fail-closed, blocco del Proxy su pagine protette dopo l'uscita) resta quello stabilito da 9.1/9.7, solo la costante di destinazione cambia.
 
 ## UX & Interaction Patterns
 
@@ -74,6 +77,7 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - Menu profilo unico (logoff + modifica password) invece di azioni isolate in barra.
 - Pagine di impostazioni correlate raggruppate dietro una pagina-hub (`/impostazioni`) invece di sottomenu annidati — la navigazione resta una lista piatta.
 - Le liste lunghe tendono verso righe compatte con azioni dietro icone man mano che emergono richieste di "vista più compatta".
+- Dopo il logoff, l'Utente rientra nell'esperienza da Visitatore del sito pubblico (home vetrina con link "Accedi"), non in un form di login isolato — coerenza con la separazione area pubblica/area riservata introdotta da Epic 18.
 
 ## Cross-Story Dependencies
 
@@ -85,3 +89,4 @@ Epic 9 raccoglie i miglioramenti richiesti dall'utente dopo il rilascio in produ
 - 9.30 stabilisce "riga compatta + icona matita", richiamato come mirror da 9.37 e 9.40.
 - 9.38 e 9.39 nascono da follow-up diretti (una segnalazione utente, e 9.36).
 - 9.41 fa da mirror strutturale di 9.9 su un modello/chiave diversi (email, non CF) e sostituisce, solo per Segreteria/Dirigente, il gate "Ruoli sensibili" a posteriori ancora usato per Admin/Site Manager.
+- 9.42 cambia la destinazione della `redirect()` di `esci()` già introdotta da 9.1 (`/accedi` → `"/"`), sfruttando la home pubblica resa disponibile da Story 18.1 (Epic 18) — nessun impatto sul fix di 9.7 (la barra di navigazione dell'area riservata deve restare invisibile qualunque sia la destinazione pubblica di atterraggio).

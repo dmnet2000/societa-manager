@@ -1,6 +1,11 @@
 import type { Ruolo } from "@prisma/client";
 
 export const LOGIN_PATH = "/accedi";
+// Story 9.42: unica fonte di verita' per la home pubblica, riusata sia da
+// PUBLIC_ROUTES sotto sia dalla destinazione post-logoff di esci()
+// (app/NavBar.actions.ts) - mirror dello stesso trattamento gia' riservato
+// a LOGIN_PATH sopra.
+export const HOME_PATH = "/";
 // Story 18.1 (Epic 18): /non-autorizzato si e' spostata sotto /app insieme
 // al resto della dashboard interna (e' raggiunta solo da un Utente gia'
 // autenticato con Ruolo sbagliato, concettualmente parte dell'area /app),
@@ -38,7 +43,7 @@ export const NON_AUTORIZZATO_PATH = "/app/non-autorizzato";
 // nel progetto) per una richiesta che supera il Proxy senza trovare una
 // rotta - lo stesso 404 gia' atteso dalla story, ora davvero raggiungibile.
 export const PUBLIC_ROUTES = [
-  "/",
+  HOME_PATH,
   "/accedi",
   "/registrati",
   // Story 11.4: stesso motivo di /recupera-password e /reimposta-password

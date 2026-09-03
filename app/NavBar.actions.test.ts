@@ -22,7 +22,7 @@ vi.mock("next/cache", () => ({
 
 const { esci } = await import("./NavBar.actions");
 
-describe("esci (Server Action, Story 9.1)", () => {
+describe("esci (Server Action, Story 9.1 - destinazione post-logoff Story 9.42)", () => {
   beforeEach(() => {
     signOutMock.mockReset();
     signOutMock.mockResolvedValue({ error: null });
@@ -30,27 +30,27 @@ describe("esci (Server Action, Story 9.1)", () => {
     revalidatePathMock.mockClear();
   });
 
-  it("termina la sessione Supabase e rediretta a /accedi", async () => {
+  it("termina la sessione Supabase e rediretta alla home pubblica (Story 9.42)", async () => {
     await expect(esci()).rejects.toThrow("REDIRECT");
 
     expect(signOutMock).toHaveBeenCalled();
-    expect(redirectMock).toHaveBeenCalledWith("/accedi");
+    expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
-  it("rediretta comunque a /accedi (fail-closed) quando signOut() risolve con un errore", async () => {
+  it("rediretta comunque alla home pubblica (fail-closed) quando signOut() risolve con un errore (Story 9.42)", async () => {
     signOutMock.mockResolvedValue({ error: new Error("Supabase Auth non raggiungibile") });
 
     await expect(esci()).rejects.toThrow("REDIRECT");
 
-    expect(redirectMock).toHaveBeenCalledWith("/accedi");
+    expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
-  it("rediretta comunque a /accedi (fail-closed) quando signOut() lancia un'eccezione", async () => {
+  it("rediretta comunque alla home pubblica (fail-closed) quando signOut() lancia un'eccezione (Story 9.42)", async () => {
     signOutMock.mockRejectedValue(new Error("network error"));
 
     await expect(esci()).rejects.toThrow("REDIRECT");
 
-    expect(redirectMock).toHaveBeenCalledWith("/accedi");
+    expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
   // Story 9.7: senza invalidare il layout radice (dove NavBar e' montata), la

@@ -1640,6 +1640,21 @@ so that non chiunque possa auto-assegnarsi un Ruolo di gestione interna semplice
 8. **And** nessuna regressione sul precaricamento Allenatore via Codice Fiscale (Story 1.4 e successive, invariato), sul gate "Ruoli sensibili" per Admin/Site Manager (auto-registrazione + attivazione manuale, invariato per questi due Ruoli), né sulla registrazione Atleta/Genitore (CF obbligatorio, invariata)
 9. **And** la guida in-app (`/guida`) descrive la nuova pagina di precaricamento e il nuovo comportamento di registrazione per Segreteria/Dirigente
 
+### Story 9.42: Dopo il logoff, atterrare sulla home pubblica invece che su `/accedi`
+
+*(Aggiunta post-apertura epica — 2026-09-03, richiesta esplicita dell'utente: "dopo il logout vorrei che si tornasse nella home del sito statico". Verificato nel codice: `esci()` (`app/NavBar.actions.ts`, Story 9.1) chiama sempre `redirect(LOGIN_PATH)` (`/accedi`) dopo aver terminato la sessione Supabase, sia in caso di successo che di errore fail-closed. Quel comportamento è antecedente a Story 18.1 (2026-08-11), che ha spostato la home pubblica del sito su `"/"` e la dashboard interna sotto `/app` — `/accedi` restava l'unica destinazione sensata prima che esistesse una home pubblica da mostrare a un Visitatore sloggato. Nessun punto aperto: `"/"` è già in `PUBLIC_ROUTES`, raggiungibile senza sessione, stesso identico target già usato dal link "Accedi" della home pubblica stessa.)*
+
+As a Utente che effettua il logoff,
+I want atterrare sulla home pubblica del sito (`"/"`) invece che sulla pagina di login,
+so that dopo essere uscito dall'area riservata mi ritrovi sul sito vetrina della società (come un qualunque Visitatore), non su un form di login che non ho necessariamente intenzione di riusare subito.
+
+**Acceptance Criteria:**
+
+1. **Given** un Utente autenticato di qualunque Ruolo **When** clicca il pulsante di logoff (`esci()`, `app/NavBar.actions.ts`) **Then** la sessione Supabase viene terminata come oggi e l'Utente viene rediretto a `"/"` (home pubblica) invece che a `/accedi`
+2. **And** questo vale anche nel percorso fail-closed (`signOut()` fallisce/lancia un errore lato Supabase): il redirect a `"/"` avviene comunque, stesso principio già in uso per `/accedi` oggi
+3. **And** nessuna regressione sul resto del comportamento di logoff già esistente: cookie di sessione invalidati, `revalidatePath("/app", "layout")` invariato (Story 9.7 — la barra di navigazione dell'area riservata non deve restare visibile), un tentativo successivo di raggiungere una pagina protetta (URL diretto o "indietro" del browser) resta rediretto a `/accedi` dal Proxy come per qualunque Utente non autenticato
+4. **And** la home pubblica mostra il link "Accedi" (Story 18.1 AC #7) — un Utente che ha fatto logoff per errore può rientrare in un click, nessuna funzionalità persa rispetto ad atterrare direttamente su `/accedi`
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*
@@ -2847,6 +2862,23 @@ so that la pagina sia più leggibile su schermi larghi e visivamente coerente co
 **Investigazione nel codice:** `aggiornaStatoLetturaFacebook` (`lib/db-rls/configurazione-social-facebook.ts`, righe 81-98) fa un `upsert` su id fisso che scrive solo `ultimaLetturaOk`/`ultimoErrore`/`updatedAt` - mai `accessToken`. In teoria, se la riga non esistesse ancora, l'`INSERT` risultante colpirebbe lo stesso vincolo `NOT NULL`. Verificato però che l'UNICO chiamante attuale (`leggiUltimiPostFacebook`, `lib/facebook-graph.ts` riga 92: `if (!configurazione || !configurazione.accessToken) return [];`) è protetto da quella guardia fin dal **primissimo commit** che ha introdotto il file (`ccb1fb3`, mai un fix successivo) - nessuna regressione. Nessun `DELETE` esiste in tutto il codice per questa tabella (RLS concede solo `SELECT/INSERT/UPDATE`). `salvaTokenFacebookAction` (form Admin) chiama solo `salvaTokenFacebook`, che include sempre `accessToken` nel payload - mai `aggiornaStatoLetturaFacebook`. **Nessun percorso applicativo reale raggiunge l'upsert senza `accessToken`.**
 
 **Verdetto (confermato con l'utente):** l'errore è stato visto direttamente nella dashboard/SQL editor di Supabase, non navigando il sito - causa una scrittura manuale (es. Table Editor "Insert row" senza valorizzare `accessToken`, o una query diretta) che il vincolo `NOT NULL` ha correttamente respinto, esattamente come progettato. **Non è un difetto del codice applicativo** - nessun fix necessario, mirror dello stesso esito già visto per Story 11.5 ("nessun difetto di codice applicativo").
+
+### Story 18.27: Scheda Gruppo molto più larga in `/squadre`
+
+*(Aggiunta post-apertura epica — 2026-09-03, richiesta esplicita dell'utente: "il .schedaGruppo dovrebbe essere almeno il triplo di larghezza". Verificato nel codice: `.listaGruppi` (`app/squadre/squadre.module.css`) è oggi una griglia a 3 colonne (`grid-template-columns: repeat(3, 1fr)`) dentro `.main` (`max-width: 1000px`, Story 18.25) — ogni `.schedaGruppo` occupa quindi circa un terzo della larghezza disponibile. Da Story 18.24, ogni scheda contiene anche l'elenco delle Atlete del Gruppo (foto/nome/Numero) oltre a foto/nome/categoria/Allenatori — a 3 colonne lo spazio per quell'elenco è compresso. L'unico modo per ottenere "almeno il triplo" restando dentro la larghezza di `.main` già decisa in Story 18.25 (nessuna riapertura di quella scelta) è passare da 3 colonne a 1 colonna: ogni `.schedaGruppo` passa così da ~1/3 a l'intera larghezza di `.main`, esattamente 3 volte più largo. Sotto i 900px il comportamento è già a 1 colonna (media query esistente) — nessun cambiamento visibile su mobile.)*
+
+As a Visitatore del sito pubblico,
+I want che ogni scheda Gruppo in `/squadre` occupi tutta la larghezza della pagina invece di condividerla con altre due schede affiancate,
+so that le informazioni della scheda (foto, Allenatori, elenco Atlete con foto e Numero) siano più leggibili, specialmente per i Gruppi con molte Atlete.
+
+**Contesto tecnico:** `.listaGruppi` passa da `grid-template-columns: repeat(3, 1fr)` a `grid-template-columns: 1fr` — una sola colonna a qualunque larghezza, non solo sotto i 900px. La media query esistente (`@media (max-width: 900px) { .listaGruppi { grid-template-columns: 1fr; } }`) diventa ridondante e va rimossa insieme al cambio sopra. Nessuna modifica a `.main` (resta `max-width: 1000px`, Story 18.25) né al contenuto/ordine delle schede.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore su `/squadre` con uno schermo largo (>900px) **When** la pagina viene renderizzata **Then** ogni `.schedaGruppo` occupa l'intera larghezza di `.main` (una sola colonna), invece delle 3 colonne attuali — almeno il triplo della larghezza precedente
+2. **And** su schermi stretti (≤900px) il comportamento resta invariato (già a 1 colonna)
+3. **And** il contenuto di ciascuna scheda (foto/placeholder, nome, categoria, elenco Allenatori, sezione Atlete) resta invariato — solo la larghezza della scheda cambia, nessuna modifica di layout interno alla scheda stessa
+4. **And** il gap verticale tra le schede (28px, `.listaGruppi`) resta invariato
 
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
