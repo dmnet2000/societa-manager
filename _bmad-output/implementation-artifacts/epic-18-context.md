@@ -33,7 +33,8 @@ Build a public, unauthenticated marketing site for the Volley sector — living 
 - Story 18.22: Foto dell'Allenatore nella sezione Staff
 - Story 18.23: Riordino dell'header pubblico e larghezza della didascalia Facebook su mobile
 - Story 18.25: Contenuto centrato nella pagina pubblica /squadre
-- Story 18.26 (BUG, non ancora corretta): `null value in column "accessToken"` su `configurazione_social_facebook` — solo da investigare
+- Story 18.26 (BUG, chiusa il giorno stesso — non un difetto applicativo): `null value in column "accessToken"` su `configurazione_social_facebook`, causato da una scrittura manuale fuori applicazione
+- Story 18.27: Scheda Gruppo molto più larga in `/squadre` — da 3 colonne a 1 colonna, per dare più spazio all'elenco Atlete introdotto da 18.24
 
 ## Requirements & Constraints
 
@@ -56,6 +57,7 @@ Build a public, unauthenticated marketing site for the Volley sector — living 
 - Mobile nav is a horizontal wrapping list, explicitly not a hamburger/drawer — decided 18.7, reconfirmed 18.12, revisited again in 18.18; any change needs explicit user confirmation first.
 - A photo shown publicly from an otherwise-private bucket (Allenatore for Staff, Atleta for Squadre) is served via a server-generated short-lived signed URL from a privileged client — bucket RLS stays unchanged, never a permanent public URL.
 - Carousel step/index arithmetic is a shared utility reused by both the Sponsor and Facebook-post carousels, not duplicated.
+- The Gruppo card grid on `/squadre` is single-column at every width (not just the narrow-screen breakpoint) — a Gruppo card is meant to be read as a wide, self-contained block (photo, coaches, and the per-Gruppo Atlete list from 18.24), not one of several narrow columns.
 
 ## UX & Interaction Patterns
 
@@ -76,4 +78,5 @@ Build a public, unauthenticated marketing site for the Volley sector — living 
 - 18.18 reopens the mobile-nav decision from 18.7/18.12, also pending user confirmation.
 - 18.20 introduces a previously unmodeled "Polisportiva" entity with open questions to resolve at dev-open.
 - 18.25 reverses the "no retrofit" decision made for `/squadre`/`/calendario` when `/torneo` (Epic 20, Story 20.14) was centered — applies the same `max-width:1000px; margin:0 auto` to `/squadre` only; `/calendario` stays explicitly out of scope, unretouched.
-- 18.26 is a bug report only (unfixed) against the Facebook-token table from 18.13.
+- 18.26 is a bug report only (closed, no code change) against the Facebook-token table from 18.13.
+- 18.27 widens the Gruppo card on `/squadre` (3 columns → 1 column) to give the per-Gruppo Atlete list from 18.24 more room, while staying inside the `max-width:1000px` container fixed by 18.25 (not reopened) — no change to card content or ordering, only column count.

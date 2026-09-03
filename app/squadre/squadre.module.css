@@ -5,7 +5,11 @@
    Nessun custom property nuovo in app/globals.css - hex letterali
    commentati, eccezione solo per i 4 valori con hex identico gia'
    verificati nella storia. Story 18.25: .main guadagna un'eccezione di
-   larghezza (vedi sotto) - il resto della pagina resta piena larghezza. */
+   larghezza (vedi sotto) - il resto della pagina resta piena larghezza.
+   Story 18.27: .listaGruppi passa da 3 a 1 colonna (vedi sotto) - nessuna
+   verifica dal vivo ancora eseguita (ambiente locale rotto, stessa nota
+   gia' lasciata per Story 18.25 sopra), demandata all'utente dopo il
+   prossimo deploy. */
 
 /* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
    var(--color-surface-alt). DESIGN.md elenca esplicitamente "sezione
@@ -51,19 +55,22 @@
   color: var(--color-text-secondary);
 }
 
-/* team-grid: 3 colonne desktop, 1 colonna sotto i 900px. {spacing.card-gap}
-   28px - letterale. */
+/* team-grid: 1 sola colonna a qualunque larghezza (Story 18.27, richiesta
+   esplicita dell'utente: ".schedaGruppo dovrebbe essere almeno il triplo di
+   larghezza") - prima erano 3 colonne desktop, ciascuna scheda occupava
+   circa 1/3 di .main (max-width:1000px, Story 18.25) al netto del gap;
+   ora ne occupa l'intera larghezza, ben oltre il triplo (l'AC #1 della
+   story chiede esplicitamente "almeno" il triplo, non un fattore esatto -
+   il gap tra le colonne, presente solo nel layout a 3 colonne, rende il
+   rapporto reale sempre superiore a 3x). Sotto i 900px il comportamento
+   era gia' a 1 colonna (nessun cambiamento visibile su mobile) - la media
+   query che lo imponeva e' stata rimossa perche' ridondante.
+   {spacing.card-gap} 28px - letterale, invariato. */
 .listaGruppi {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 28px;
   margin-top: var(--space-4);
-}
-
-@media (max-width: 900px) {
-  .listaGruppi {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* components.team-card: sfondo {colors.bianco}, nessun angolo arrotondato,

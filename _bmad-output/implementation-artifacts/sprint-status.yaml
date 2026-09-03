@@ -1,6 +1,7 @@
+# last_updated: 2026-09-03 (Story 18.27: implementazione completata e review Blind Hunter (bmad-build one-shot) - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, media query mobile ridondante rimossa. 2 patch applicati (dicitura "esattamente 3 volte" imprecisa corretta in "almeno/ben oltre il triplo", coerente con l'AC #1; intestazione del file estesa alla nuova story), resto dei finding respinto come conseguenza intrinseca gia' scoperta e accettata nell'AC #3 (nessuna modifica al layout interno della scheda) o come precedente gia' stabilito. Vedi spec-18-27-scheda-gruppo-larghezza-tripla.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
 # last_updated: 2026-09-03 (Story 9.42: implementazione completata e review Blind Hunter (bmad-build one-shot) - esci() (app/NavBar.actions.ts) rediretta ora a HOME_PATH ("/", nuova costante condivisa in lib/auth/route-guard.ts, mirror di LOGIN_PATH) invece di LOGIN_PATH ("/accedi"). 3 patch applicati (commento stale su /accedi riallineato, destinazione hard-coded sostituita dalla costante HOME_PATH, titolo describe del test esteso alla 9.42), resto dei finding respinto (rumore o precedente gia' stabilito). Vedi spec-9-42-logoff-torna-alla-home-pubblica.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
 # last_updated: 2026-09-03 (Story 9.42: sviluppo avviato via bmad-build one-shot - epic-9-context.md ricompilato per includerla, baseline_commit e30a9100c36feece884389f3c17cbdec52143bc1, sprint-status 9-42 backlog -> in-progress.)
-# last_updated: 2026-09-03 (Story 18.27 aggiunta su richiesta esplicita dell'utente: "il .schedaGruppo dovrebbe essere almeno il triplo di larghezza" - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, ogni scheda passa da ~1/3 a tutta la larghezza di .main (invariato a 1000px, Story 18.25), esattamente 3x. Vedi epics.md#Story 18.27. NESSUNA IMPLEMENTAZIONE ANCORA. 18-27-scheda-gruppo-larghezza-tripla aggiunta in backlog.)
+# last_updated: 2026-09-03 (Story 18.27 aggiunta su richiesta esplicita dell'utente: "il .schedaGruppo dovrebbe essere almeno il triplo di larghezza" - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, ogni scheda passa da ~1/3 a tutta la larghezza di .main (invariato a 1000px, Story 18.25), ben oltre il triplo (AC #1 chiede "almeno" il triplo, non un fattore esatto). Vedi epics.md#Story 18.27. NESSUNA IMPLEMENTAZIONE ANCORA. 18-27-scheda-gruppo-larghezza-tripla aggiunta in backlog.)
 # last_updated: 2026-09-03 (Story 9.42 aggiunta su richiesta esplicita dell'utente: "dopo il logout vorrei che si tornasse nella home del sito statico" - cambia solo il target del redirect di esci() (app/NavBar.actions.ts, Story 9.1) da /accedi a "/" (home pubblica, Story 18.1), nessuna regressione sul resto del comportamento di logoff (Story 9.7). Vedi epics.md#Story 9.42. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in questo giro. 9-42-logoff-torna-alla-home-pubblica aggiunta in backlog.)
 # last_updated: 2026-09-01 (Story 21.1: implementata via bmad-build, percorso one-shot (@@index([nome]) su Atleta + migrazione dedicata, nessuna modifica di codice applicativo). Review Blind Hunter: 5 patch applicati (tutti sui commenti/migrazione, nessun cambio di comportamento) - CREATE INDEX reso idempotente con IF NOT EXISTS (migrazione scritta a mano, dev locale rotto - mai verificabile con prisma migrate dev); riferimenti a riga esatta (lib/db-rls/atleta.ts:82/110) aggiunti ai commenti come richiesto dalla regola di processo dell'Epic 21; cross-reference tra schema.prisma e migration.sql; costo di manutenzione in scrittura riconosciuto esplicitamente (prima il commento diceva "nessuna modifica di comportamento" senza sfumature). 2 defer loggati in deferred-work.md (nessun CONCURRENTLY - tabella piccola, lock trascurabile, aggiungerlo richiederebbe disabilitare il transaction-wrap non verificabile in questo ambiente; migrazione non verificata contro l'output di prisma migrate dev/diff - stesso vincolo pre-esistente di ogni altra migrazione scritta a mano in questo repo). 1 reject (sprint-status "non ancora implementato" - risolto da questo stesso aggiornamento, non un difetto). Verifica: 1933/1933 test Vitest (invariati), tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo (uso reale dell'indice via pg_stat_user_indexes/EXPLAIN ANALYZE) non eseguibile qui - demandata all'utente post-deploy. Vedi spec-21-1-indice-atleta-nome.md. Status: backlog -> in-progress -> review (sprint-status), spec 'done' (one-shot).)
 # last_updated: 2026-09-01 (Epic 21 (Ottimizzazione database) aperto su richiesta esplicita dell'utente ("creami un'epica per ottimizzazione database, verificare indici da aggiungere, query ipoteticamente lente"), elenco APERTO come Epic 9/11/17/18. Story 21.1 aggiunta subito, segnalazione diretta dall'Advisor Supabase (indice btree su atlete.nome, 84.97% di miglioramento stimato) - verificata nel codice contro lib/db-rls/atleta.ts (elencaAtlete/elencaAtletePubbliche, entrambe .order("nome")). Nessun @@index esplicito esiste oggi nello schema. Vedi epics.md#Epic 21. NESSUNA IMPLEMENTAZIONE ANCORA - solo l'epica+prima story in questo giro.)
@@ -1249,11 +1250,48 @@ development_status:
   # include anche l'elenco Atlete (foto/nome/Numero), oltre a foto/nome/
   # categoria/Allenatori - spazio compresso a 3 colonne. Fix: 1 sola colonna
   # (grid-template-columns: 1fr, sempre, non solo sotto i 900px) - ogni
-  # scheda passa a tutta la larghezza di .main, esattamente 3x. Nessuna
-  # modifica a .main (resta 1000px, Story 18.25) ne' al contenuto delle
-  # schede. Vedi epics.md#Story 18.27. NESSUNA IMPLEMENTAZIONE ANCORA - solo
-  # la story in questo giro.
-  18-27-scheda-gruppo-larghezza-tripla: backlog
+  # scheda passa a tutta la larghezza di .main, ben oltre il triplo (AC #1
+  # chiede "almeno" il triplo). Nessuna modifica a .main (resta 1000px,
+  # Story 18.25) ne' al contenuto delle schede. Vedi epics.md#Story 18.27.
+  # NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in questo giro.
+  #
+  # Implementata 2026-09-03 via bmad-build one-shot (blast radius zero:
+  # 1 sola regola CSS cambiata, media query ridondante rimossa, mirror
+  # esatto del trattamento gia' collaudato per il breakpoint mobile - Story
+  # 18.8 - dove .listaGruppi era gia' a 1 colonna). Review Blind Hunter: 2
+  # patch applicati (dicitura "esattamente 3 volte" matematicamente
+  # imprecisa - il gap tra colonne, presente solo nel layout a 3 colonne,
+  # rende il rapporto reale sempre superiore a 3x, corretto qui e in
+  # epics.md/squadre.module.css in "almeno/ben oltre il triplo", coerente
+  # con l'AC #1 gia' scritto cosi'; intestazione di squadre.module.css non
+  # elencava la nuova story tra quelle che hanno toccato il file - corretta
+  # mirror della stessa convenzione gia' in uso), resto dei finding
+  # respinto: conseguenze intrinseche di una scelta gia' congelata
+  # nell'AC #3 della story (nessuna modifica al layout interno della
+  # scheda) - la foto (altezza fissa 260px/140px) passa da un crop ~1.15:1
+  # a un crop molto piu' largo/basso, e il testo (Allenatori/Atlete) puo'
+  # ora estendersi fino a quasi la larghezza intera della scheda senza
+  # alcun max-width - entrambi effetti reali ma esplicitamente fuori scope
+  # per decisione gia' presa in apertura della story, non un difetto di
+  # questa implementazione; nessun test automatizzato per gli AC (nessuna
+  # infrastruttura di test CSS/visual-regression esiste nel repo, stesso
+  # gap gia' accettato per Story 18.25); display:grid con 1 sola colonna
+  # giudicato "complessita' vestigiale" da sostituire con flex/block -
+  # respinto, grid+1fr e' lo stesso identico pattern gia' collaudato sul
+  # breakpoint mobile dal 2026-08 (Story 18.8), sostituirlo con
+  # display:flex per un cambio puramente stilistico introdurrebbe rischio
+  # (gap non funziona su un block container semplice) senza alcun
+  # beneficio. Segnalato all'utente nel report finale (non bloccante): la
+  # scheda molto piu' larga potrebbe rendere la foto di squadra troppo
+  # "schiacciata" e il testo scomodo da leggere su schermi larghissimi -
+  # una eventuale story di follow-up potrebbe rivedere l'altezza della
+  # foto e/o un max-width sul testo, dopo aver visto il risultato dal vivo.
+  # Vedi Spec Change Log in spec-18-27-scheda-gruppo-larghezza-tripla.md.
+  # Verifica: 1933/1933 test Vitest (invariati, nessuna logica toccata),
+  # tsc/lint puliti, build riuscita, prisma validate ok (nessuna
+  # migrazione). Manuale dal vivo non eseguibile (dev locale rotto) -
+  # demandata all'utente post-deploy. Commit lasciato all'utente.
+  18-27-scheda-gruppo-larghezza-tripla: review
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
