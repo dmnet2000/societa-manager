@@ -1006,3 +1006,7 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: `_bmad-output/implementation-artifacts/spec-21-1-indice-atleta-nome.md`
   summary: la migrazione scritta a mano non è stata verificata contro l'output che genererebbe `prisma migrate dev`/`prisma migrate diff` (nome esatto dell'indice, sintassi).
   evidence: stesso identico vincolo pre-esistente di ogni altra migrazione scritta a mano in questo repository (dev locale rotto su questa macchina, Prisma WASM/Windows) - non specifico di questa storia, da verificare non appena l'ambiente locale tornerà funzionante.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-9-raggruppamento-partite-per-gruppo-a-scomparsa.md`
+  summary: quando la tabella "a scomparsa" è nascosta, il bottone che la rivela porta comunque un `aria-controls` che punta a un `id` non presente nel DOM in quel momento (l'elemento è montato solo quando `visibile` è `true`).
+  evidence: comportamento ereditato identico da `TabellaIncontriCategoria.tsx` (Story 20.19, `app/torneo/TabellaIncontriCategoria.tsx`), mai segnalato né corretto in quella storia - non introdotto da questa story, che ne mirror la stessa meccanica deliberatamente. Risolverlo (es. montare sempre il contenitore e nascondere solo il contenuto via CSS) andrebbe applicato a entrambi i componenti insieme per restare coerenti, fuori scope per una storia che si limita ad aggiungere il raggruppamento per Gruppo.

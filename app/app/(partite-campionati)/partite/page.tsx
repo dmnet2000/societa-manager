@@ -5,9 +5,11 @@ import { parseRuoli } from "@/lib/ruoli";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
+import { raggruppaPartitePerGruppo } from "@/lib/raggruppa-partite-per-gruppo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { PartitaRow } from "./PartitaRow";
+import { TabellaPartiteGruppo } from "./TabellaPartiteGruppo";
 import styles from "./partite.module.css";
 
 // Un import riuscito su /campionati (Story 10.2, importaGare) revalida solo
@@ -144,7 +146,11 @@ export default async function PartitePage({
             gruppo: { annoAgonisticoId: annoCorrente.id, ...filtroAllenatore },
           },
           include: {
-            gruppo: { select: { nome: true } },
+            // Review fix (Blind Hunter): "ordine" necessario per ordinare la
+            // sezione "Partite per Gruppo" (Story 10.9) con lo stesso
+            // criterio di visualizzazione gia' scelto dal Site Manager
+            // (Story 19.15, elencaGruppiOrdinati), non alfabeticamente.
+            gruppo: { select: { nome: true, ordine: true } },
             campionato: { select: { nome: true } },
           },
           orderBy: [{ data: "asc" }, { ora: "asc" }],
@@ -152,6 +158,16 @@ export default async function PartitePage({
       : [];
 
   const settimane = raggruppaPerSettimana(partite);
+
+  // Story 10.9: sezione aggiuntiva "a scomparsa" (mai un rimpiazzo della
+  // vista per settimana sopra) - visibile solo quando le Partite mostrate
+  // appartengono a piu' di un Gruppo (AC #4: per un'Atleta/Genitore, o un
+  // Allenatore con un solo Gruppo, "partite" contiene sempre un solo
+  // gruppoId per costruzione - nessun controllo esplicito sul Ruolo
+  // necessario, la condizione discende direttamente dai dati gia' filtrati
+  // sopra). gruppoId e' gia' presente su ogni riga (scalare di default con
+  // "include", nessuna modifica alla query sopra necessaria).
+  const gruppiPartite = raggruppaPartitePerGruppo(partite);
 
   return (
     <main>
@@ -280,6 +296,27 @@ export default async function PartitePage({
           )}
         </section>
       ))}
+      {gruppiPartite.length > 1 && (
+        <section className={styles.sezionePerGruppo}>
+          <h2>Partite per Gruppo</h2>
+          {gruppiPartite.map((gruppo) => (
+            <TabellaPartiteGruppo
+              key={gruppo.gruppoId}
+              gruppoNome={gruppo.gruppoNome}
+              partite={gruppo.partite.map((partita) => ({
+                id: partita.id,
+                data: partita.data,
+                ora: partita.ora,
+                squadraCasa: partita.squadraCasa,
+                squadraOspite: partita.squadraOspite,
+                impianto: partita.impianto,
+                indirizzoImpianto: partita.indirizzoImpianto,
+                campionatoNome: partita.campionato.nome,
+              }))}
+            />
+          ))}
+        </section>
+      )}
     </main>
   );
 }

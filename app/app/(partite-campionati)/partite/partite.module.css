@@ -20,6 +20,24 @@
   padding-bottom: var(--space-2);
 }
 
+/* Story 10.9: stesso trattamento di .settimana sopra, ma nome dedicato -
+   questa sezione non ha nulla a che vedere con una settimana (Review fix,
+   Blind Hunter: riusare .settimana qui funzionava solo perche' e' un
+   semplice margin-top, ma il nome non descriveva piu' a cosa serviva). */
+.sezionePerGruppo {
+  margin-top: var(--space-5);
+}
+
+.sezionePerGruppo h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
 .messaggioVuoto {
   margin-top: var(--space-2);
   font-size: 13px;
@@ -193,4 +211,58 @@
 .bottoneSecondario:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* Story 10.9: sezione/bottone/tabella "a scomparsa" per il raggruppamento
+   per Gruppo (TabellaPartiteGruppo.tsx) - mirror di
+   .sezioneTabellaIncontri/.bottoneTabellaIncontri/.srOnly
+   (app/torneo/torneo-pubblico.module.css, Story 20.19) per la MECCANICA
+   (touch target 44px, disclosure nascosta di default, tabella con nome
+   accessibile via <caption> sr-only), non per il colore del bottone (qui
+   registro "secondario" di questa pagina, vedi sotto, non il bottone
+   primario del sito pubblico). .tabella/.scrollWrapper/.linkNaviga sopra
+   sono gia' generici, riusati identici. */
+.sezioneTabellaGruppo {
+  margin-top: var(--space-4);
+}
+
+/* Stesso registro visivo di .bottoneSecondario sopra (bordo/sfondo
+   neutro), ma con min-height 44px + inline-flex/align-items centrato
+   esplicito - un padding verticale da solo non basta a garantire il touch
+   target minimo (lezione gia' registrata in memoria progetto, "Touch
+   target 44px richiede align-self:stretch"), applicata qui
+   preventivamente invece di scoprirla di nuovo dal vivo. */
+.bottoneTabellaGruppo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-4);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.bottoneTabellaGruppo:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Mirror di .srOnly in torneo-pubblico.module.css (CSS module, non
+   condivisibile tra pagine) - usata dalla <caption> della tabella per
+   dare un nome accessibile senza un'intestazione visibile aggiuntiva (il
+   pulsante sopra e' gia' l'unico controllo visivo di questa sezione). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

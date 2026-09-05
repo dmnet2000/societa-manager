@@ -1844,6 +1844,30 @@ so that possa sistemare un nome inserito male senza cancellare e ricreare il Cam
 4. **And** stesso perimetro di autorizzazione di `creaCampionato`/`cancellaCampionato` (Allenatore limitato al proprio Gruppo tramite `risolviPossessoGruppo`, Admin/Dirigente ad accesso ampio) — nessuna modifica al modello di autorizzazione esistente
 5. **And** nessuna regressione sull'import gare (Story 10.2) né sulla cancellazione (Story 10.6) — il nome resta la chiave usata per il controllo di coerenza con la colonna `Campionato` del file Excel importato (invariato)
 
+### Story 10.9: Raggruppamento tabellare delle Partite per Gruppo, a scomparsa
+
+*(Aggiunta post-apertura epica — 2026-09-03, richiesta esplicita dell'utente: "sezione Partite, sarebbe da creare un raggruppamento anche delle partite per squadra magari in forma tabellare con pulsante a scomparsa". Verificato nel codice: `/app/partite` (Story 10.3) raggruppa oggi le Partite SOLO per settimana (`raggruppaPerSettimana`) — un Admin/Dirigente (o un Allenatore con più Gruppi) vede le Partite di più Gruppi mescolate insieme in ogni tabella settimanale, senza un modo per vedere tutte le Partite di UN singolo Gruppo raccolte insieme. "Squadra" qui è il termine informale già usato altrove nel progetto per "Gruppo" (es. pagina pubblica "Squadre", Story 18.8) — non le colonne testo libero `squadraCasa`/`squadraOspite` di una singola Partita (quelle restano invariate, sono gli avversari di quell'incontro). "Pulsante a scomparsa" è lo stesso pattern già introdotto da Story 20.19 (`TabellaIncontriCategoria.tsx`, sito pubblico Torneo): un bottone che rivela una tabella nascosta di default, mai un toggle che sostituisce la vista esistente.*
+
+As a Admin, Dirigente o Allenatore con più Gruppi,
+I want un bottone per Gruppo che riveli una tabella con TUTTE le sue Partite della stagione raccolte insieme (invece che sparse tra le settimane),
+so that possa vedere rapidamente il calendario completo di un singolo Gruppo senza scorrere tutte le settimane cercando le sue righe in mezzo a quelle degli altri Gruppi.
+
+**Decisioni prese (mirror di pattern già stabiliti, nessun punto aperto):**
+1. **Coesistenza, mai sostituzione**: la vista settimana-per-settimana esistente (Story 10.3) resta invariata e sempre visibile; il nuovo raggruppamento per Gruppo è una sezione aggiuntiva sotto di essa, stesso principio "mai un toggle che nasconde" di Story 20.19 AC #3.
+2. **Un bottone per Gruppo, nascosto di default**: mirror esatto di `TabellaIncontriCategoria.tsx` (pulsante + `aria-expanded`/`aria-controls`, tabella rivelata solo al click, stato indipendente per Gruppo — un componente per istanza, nessuno stato condiviso).
+3. **Visibile solo quando utile**: la sezione (e i suoi bottoni) compare solo se le Partite attualmente visibili appartengono a **più di un Gruppo** — per un'Atleta/Genitore (sempre un solo Gruppo, Story 10.5) o un Allenatore con un solo Gruppo, il raggruppamento per Gruppo coinciderebbe esattamente con l'elenco già visibile, nessun bottone aggiunto (mirror del principio "nessun controllo quando non c'è nulla in più da mostrare", Story 20.19 AC #5).
+4. **Colonne**: Giorno, Ora, Squadre (avversari), Luogo (con lo stesso pulsante "Naviga" di Story 9.6/10.3), Campionato — nessuna colonna Gruppo (implicito nel bottone sotto cui la tabella compare), nessuna colonna Azioni (sola lettura anche per chi può modificare altrove, mirror di `TabellaIncontriCategoria`, che è a sua volta sola lettura pur affiancando una vista con azioni).
+5. **Ordinamento**: cronologico (data, poi ora) su tutta la stagione, non diviso per settimana.
+
+**Acceptance Criteria:**
+
+1. **Given** un Admin, Dirigente, o un Allenatore con più Gruppi, su `/app/partite` **When** le Partite visibili appartengono a più di un Gruppo **Then** sotto l'elenco settimana-per-settimana compare una sezione con un bottone per ciascun Gruppo che ha almeno una Partita (etichetta "Mostra tutte le partite di [nome Gruppo]" - minuscolo, coerente con "Mostra tutti gli incontri di..." di `TabellaIncontriCategoria.tsx`, Story 20.19)
+2. **Given** il click su uno di questi bottoni **When** l'azione viene eseguita **Then** si rivela una tabella con tutte le Partite di quel Gruppo nell'intera stagione corrente, ordinate per data/ora, senza dover scorrere le settimane — un secondo click nasconde di nuovo la tabella (`aria-expanded` riflette lo stato)
+3. **And** la vista settimana-per-settimana esistente (Story 10.3) resta invariata, sempre visibile, mai sostituita da questa sezione
+4. **And** un Allenatore con un solo Gruppo, un'Atleta o un Genitore (sempre un solo Gruppo visibile, Story 10.5) non vedono alcun bottone aggiuntivo — nessuna Partita in più da raggruppare rispetto a quanto già mostrato
+5. **And** ogni tabella per Gruppo mostra Giorno/Ora/Squadre/Luogo (con pulsante "Naviga" quando disponibile)/Campionato — sola lettura, nessuna colonna Azioni, coerente con `TabellaIncontriCategoria.tsx` (Story 20.19)
+6. **And** lo stato aperto/chiuso di un bottone è indipendente dagli altri (aprire il Gruppo A non chiude né influenza il Gruppo B)
+
 ## Epic 11: Bug di Produzione
 
 *(Aggiunto in corso d'opera — 2026-07-27, su richiesta dell'utente. A differenza di Epic 9 (miglioramenti/richieste), questo epic raccoglie difetti reali osservati in produzione (log di errore, comportamento scorretto) — non nuove funzionalità. Elenco aperto come Epic 9: le storie vengono aggiunte una alla volta man mano che un bug viene segnalato, non definite tutte in anticipo. Ogni storia parte da un sintomo/evidenza osservata (log, screenshot, segnalazione utente), non da un requisito: la causa va confermata in fase di sviluppo prima di scrivere una patch, mai assunta a priori.)*

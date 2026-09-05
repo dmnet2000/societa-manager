@@ -370,6 +370,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui vedi il calendario delle partite, raggruppate per settimana, con giorno, ora, luogo e link per navigare all'impianto.",
       "Admin, Dirigente e Allenatore possono modificare i dati di una partita; Atleta e Genitore vedono l'elenco in sola lettura, scoped alle proprie Atlete/Gruppi.",
       "Un Genitore con più figlie deve selezionare l'Atleta per vedere le sue partite, come nelle altre pagine con più profili collegati.",
+      "Se vedi le partite di più Gruppi mescolate tra le settimane (Admin, Dirigente, o Allenatore di più Gruppi), in fondo alla pagina trovi una sezione \"Partite per Gruppo\": un bottone per ciascun Gruppo rivela tutte le sue partite della stagione raccolte in un'unica tabella, senza dover scorrere ogni settimana.",
     ],
   },
   {

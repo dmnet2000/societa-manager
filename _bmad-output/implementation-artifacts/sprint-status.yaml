@@ -1,3 +1,5 @@
+# last_updated: 2026-09-04 (Story 10.9: implementazione completata e review Blind Hunter (bmad-build one-shot) - raggruppaPartitePerGruppo (lib/, nuova funzione pura + test), TabellaPartiteGruppo.tsx (nuovo componente client, mirror di TabellaIncontriCategoria.tsx/Story 20.19), page.tsx esteso con la nuova sezione condizionale. 5 patch applicati (ordinamento per Gruppo.ordine invece di alfabetico, scope="col" sulle intestazioni, commento "mirror esatto" corretto, classe .settimana riusata sostituita da .sezionePerGruppo dedicata, guardia morta rimossa), 1 defer (aria-controls ereditato da TabellaIncontriCategoria), resto dei finding respinto (precedenti gia' stabiliti nel progetto). Vedi spec-10-9-raggruppamento-partite-per-gruppo-a-scomparsa.md. Verifica: 1939/1939 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
+# last_updated: 2026-09-03 (Story 10.9 aggiunta su richiesta esplicita dell'utente: "sezione Partite, sarebbe da creare un raggruppamento anche delle partite per squadra magari in forma tabellare con pulsante a scomparsa" - /app/partite raggruppa oggi solo per settimana, mescolando le Partite di piu' Gruppi; nuova sezione aggiuntiva con bottone a scomparsa per Gruppo (mirror di TabellaIncontriCategoria.tsx, Story 20.19), visibile solo quando le Partite visibili coprono piu' di un Gruppo. Vedi epics.md#Story 10.9. NESSUNA IMPLEMENTAZIONE ANCORA. 10-9-raggruppamento-partite-per-gruppo-a-scomparsa aggiunta in backlog.)
 # last_updated: 2026-09-03 (Story 18.27: implementazione completata e review Blind Hunter (bmad-build one-shot) - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, media query mobile ridondante rimossa. 2 patch applicati (dicitura "esattamente 3 volte" imprecisa corretta in "almeno/ben oltre il triplo", coerente con l'AC #1; intestazione del file estesa alla nuova story), resto dei finding respinto come conseguenza intrinseca gia' scoperta e accettata nell'AC #3 (nessuna modifica al layout interno della scheda) o come precedente gia' stabilito. Vedi spec-18-27-scheda-gruppo-larghezza-tripla.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
 # last_updated: 2026-09-03 (Story 9.42: implementazione completata e review Blind Hunter (bmad-build one-shot) - esci() (app/NavBar.actions.ts) rediretta ora a HOME_PATH ("/", nuova costante condivisa in lib/auth/route-guard.ts, mirror di LOGIN_PATH) invece di LOGIN_PATH ("/accedi"). 3 patch applicati (commento stale su /accedi riallineato, destinazione hard-coded sostituita dalla costante HOME_PATH, titolo describe del test esteso alla 9.42), resto dei finding respinto (rumore o precedente gia' stabilito). Vedi spec-9-42-logoff-torna-alla-home-pubblica.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
 # last_updated: 2026-09-03 (Story 9.42: sviluppo avviato via bmad-build one-shot - epic-9-context.md ricompilato per includerla, baseline_commit e30a9100c36feece884389f3c17cbdec52143bc1, sprint-status 9-42 backlog -> in-progress.)
@@ -719,6 +721,61 @@ development_status:
   10-6-cancellazione-partita-o-campionato: done
   10-7-campionato-un-solo-gruppo: done
   10-8-modifica-campionato-link-fipav: done
+
+  # Story 10.9 aggiunta 2026-09-03, richiesta esplicita dell'utente: "sezione
+  # Partite, sarebbe da creare un raggruppamento anche delle partite per
+  # squadra magari in forma tabellare con pulsante a scomparsa". Verificato
+  # nel codice: /app/partite (Story 10.3) raggruppa oggi SOLO per settimana
+  # - un Admin/Dirigente/Allenatore multi-Gruppo vede le Partite di piu'
+  # Gruppi mescolate in ogni tabella settimanale. Fix: sezione aggiuntiva
+  # (mai sostitutiva) con un bottone a scomparsa per Gruppo, mirror esatto
+  # di TabellaIncontriCategoria.tsx (Story 20.19, torneo pubblico) - rivela
+  # una tabella con tutte le Partite di quel Gruppo nell'intera stagione,
+  # ordinate cronologicamente. Visibile solo se le Partite visibili
+  # appartengono a piu' di un Gruppo (per Atleta/Genitore/Allenatore
+  # mono-Gruppo non aggiungerebbe nulla). Nessun punto aperto: decisioni
+  # tutte mirror di pattern gia' stabiliti. Vedi epics.md#Story 10.9.
+  # NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in questo giro.
+  #
+  # Implementata 2026-09-04 via bmad-build one-shot (stesso calibro della
+  # sua gemella diretta, Story 20.19, anch'essa trattata come one-shot).
+  # Nuova funzione pura raggruppaPartitePerGruppo (lib/, con test), nuovo
+  # componente client TabellaPartiteGruppo.tsx (mirror di
+  # TabellaIncontriCategoria.tsx per la meccanica disclosure), page.tsx
+  # esteso con la nuova sezione condizionale, nuove classi CSS con touch
+  # target 44px esplicito, guida in-app aggiornata. Review Blind Hunter: 5
+  # patch applicati (ordinamento dei Gruppi cambiato da alfabetico a
+  # Gruppo.ordine + nome come spareggio - stesso criterio gia' scelto dal
+  # Site Manager altrove, Story 19.15/elencaGruppiOrdinati, mai consultato
+  # nella prima stesura; scope="col" mancante sulle intestazioni, a
+  # differenza del componente mirror; commento "mirror esatto" impreciso -
+  # il bottone riusa deliberatamente il registro secondario di questa
+  # pagina, non il bottone primario del sito pubblico, corretto per
+  # dichiarare cosa e' davvero mirror (la meccanica) e cosa no; classe
+  # .settimana riusata per una sezione che non e' una settimana - nuova
+  # classe dedicata .sezionePerGruppo; guardia "if (partite.length === 0)
+  # return null" irraggiungibile per costruzione nell'unico chiamante
+  # attuale - rimossa, coerente con "non validare cio' che non puo'
+  # accadere"), 1 defer loggato in deferred-work.md (aria-controls verso un
+  # id non montato quando la tabella e' nascosta - ereditato identico da
+  # TabellaIncontriCategoria, mai segnalato ne' corretto li', non
+  # introdotto da questa storia), resto dei finding respinto (duplicazione
+  # della cella Luogo/Naviga in un terzo punto - stessa tolleranza alla
+  # duplicazione gia' esplicitamente dichiarata nel progetto per CSS/JSX
+  # per-modulo; nessun test di rendering/toggle per il componente -
+  # convenzione gia' stabilita, stesso esito della review di Story 20.19;
+  # nessuna paginazione sulla tabella per Gruppo - stessa scala/stesso
+  # accepted-risk gia' in uso altrove, es. /app/admin; epic-10-context.md
+  # non tracciato - segnalato all'utente, non un difetto di codice).
+  # Discrepanza di maiuscola tra l'AC #1 (epics.md) e il testo del pulsante
+  # corretta in epics.md (il codice seguiva gia' correttamente il
+  # precedente di Story 20.19, minuscolo). Vedi Spec Change Log in
+  # spec-10-9-raggruppamento-partite-per-gruppo-a-scomparsa.md. Verifica:
+  # 1939/1939 test Vitest (+6), tsc/lint puliti, build riuscita, prisma
+  # validate ok. Manuale dal vivo non eseguibile (dev locale rotto) -
+  # demandata all'utente post-deploy. Commit lasciato all'utente (incluso
+  # epic-10-context.md, nuovo file non tracciato).
+  10-9-raggruppamento-partite-per-gruppo-a-scomparsa: review
 
   # Epic 11 (Bug di Produzione) inserito il 2026-07-27 su richiesta dell'utente:
   # elenco APERTO di difetti reali osservati in produzione (log di errore,
