@@ -1115,10 +1115,16 @@ model SlotTorneo {
   // riuso diretto - mai una nuova anagrafica) - una Palestra a doppio campo
   // puo' cosi' ospitare due SlotTorneo paralleli sullo stesso orario, uno per
   // Campo, per due incontri in contemporanea (spec-20-18 Intent). null quando
-  // la Palestra non ha Campi censiti (comportamento pre-esistente,
-  // invariato) o per il percorso di creazione singola (semifinali/finali,
-  // Story 20.9), mai toccato da questa storia. Nessun onDelete esplicito
-  // (default Postgres/Prisma: Restrict), mirror palestraId sopra.
+  // la Palestra non ha Campi censiti, o quando non ne e' stato scelto uno pur
+  // avendone (comportamento pre-esistente, invariato). Story 20.25: anche il
+  // percorso di creazione singola (semifinali/finali) puo' ora impostarlo -
+  // non piu' esclusivo del girone. Una volta impostato per una fase diversa
+  // da GIRONE, quello SlotTorneo diventa pero' non piu' modificabile
+  // (aggiornaSlotTorneoAction, app/(torneo)/torneo/actions.ts, rifiuta
+  // l'intera modifica): quella Server Action forza sempre campoId a null per
+  // ogni fase diversa da GIRONE, un edit permesso lo cancellerebbe altrimenti
+  // in silenzio. Nessun onDelete esplicito (default Postgres/Prisma:
+  // Restrict), mirror palestraId sopra.
   campoId          String?
   campo            Campo?           @relation(fields: [campoId], references: [id])
   fase             FaseTorneo

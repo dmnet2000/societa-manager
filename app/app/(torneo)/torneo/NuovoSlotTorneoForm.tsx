@@ -5,6 +5,7 @@ import { creaSlotTorneoAction } from "./actions";
 import { FASI_TORNEO } from "@/lib/fase-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import { codificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
+import { campiDellaPalestraSelezionata } from "@/lib/campi-palestra-torneo";
 import styles from "./torneo.module.css";
 
 type Palestra = { id: string; nome: string; campi: { id: string; nome: string }[] };
@@ -46,6 +47,11 @@ export function NuovoSlotTorneoForm({
   const [state, formAction, pending] = useActionState(creaSlotTorneoAction, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const [fase, setFase] = useState("");
+  // Story 20.25 (Epic 20, Torneo Memorial): Palestra ora controllata (non
+  // piu' solo defaultValue) - serve a filtrare il <select> Campo condizionale
+  // sotto sulla Palestra correntemente scelta, mirror esatto di
+  // palestraSelezionata in SlotTorneoRow.tsx (Story 20.22).
+  const [palestraSelezionata, setPalestraSelezionata] = useState("");
 
   // Mirror del pattern "adjust state during render" gia' in uso altrove
   // nell'epica (es. CategoriaTorneoRow.tsx) per lo stato "fase" - un
@@ -59,6 +65,12 @@ export function NuovoSlotTorneoForm({
     setUltimoState(state);
     if (state && "success" in state) {
       setFase("");
+      // Story 20.25: mirror del reset di "fase" appena sopra - senza,
+      // riaprendo il form dopo un salvataggio riuscito la Palestra scelta in
+      // precedenza (e quindi i suoi Campi) resterebbe visibile pur essendo
+      // il <select> nativo gia' tornato vuoto dal formRef.current?.reset()
+      // sotto (che agisce sul DOM, non su questo stato React).
+      setPalestraSelezionata("");
     }
   }
 
@@ -77,6 +89,13 @@ export function NuovoSlotTorneoForm({
   // a ogni render (nessuna dipendenza costosa, solo un flatMap su un elenco
   // gia' in memoria).
   const righeSelezioneGirone = calcolaRigheSelezioneGirone(palestre);
+  // Story 20.25 (Epic 20, Torneo Memorial): Campi della Palestra
+  // correntemente selezionata - derivazione condivisa con SlotTorneoRow.tsx
+  // (Story 20.22), estratta in campiDellaPalestraSelezionata
+  // (lib/campi-palestra-torneo.ts, review fix) invece di due copie
+  // identiche. Il <select> Campo sotto compare solo quando questo elenco
+  // non e' vuoto (spec-20-25 Boundaries "Always").
+  const campiDisponibili = campiDellaPalestraSelezionata(palestre, palestraSelezionata);
 
   return (
     <form ref={formRef} action={formAction}>
@@ -103,13 +122,38 @@ export function NuovoSlotTorneoForm({
         {mostraPalestra && (
           <div className={styles.campo}>
             <label htmlFor="nuovo-slot-palestra">Palestra</label>
-            <select id="nuovo-slot-palestra" name="palestraId" required defaultValue="">
+            <select
+              id="nuovo-slot-palestra"
+              name="palestraId"
+              required
+              value={palestraSelezionata}
+              onChange={(e) => setPalestraSelezionata(e.target.value)}
+            >
               <option value="" disabled>
                 Seleziona...
               </option>
               {palestre.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {/* Story 20.25 (Epic 20, Torneo Memorial): il Campo compare solo
+            quando la Palestra scelta ha almeno un Campo censito - mirror
+            esatto della condizione gia' usata da SlotTorneoRow.tsx per la
+            modifica (Story 20.22). Rimontato (key) al cambio di Palestra:
+            un Campo scelto per la Palestra precedente non resta mai
+            selezionato ne' viene mai inviato per la Palestra nuova. */}
+        {mostraPalestra && campiDisponibili.length > 0 && (
+          <div className={styles.campo}>
+            <label htmlFor="nuovo-slot-campo">Campo (facoltativo)</label>
+            <select key={palestraSelezionata} id="nuovo-slot-campo" name="campoId" defaultValue="">
+              <option value="">Nessuno</option>
+              {campiDisponibili.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
                 </option>
               ))}
             </select>

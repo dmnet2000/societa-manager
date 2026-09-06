@@ -3664,7 +3664,84 @@ describe("creaSlotTorneoAction", () => {
       palestraId: "palestra-1",
       fase: "SEMIFINALE",
       tabellone: "POSIZIONI_1_4",
+      campoId: null,
     });
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+  });
+
+  // Story 20.25 (Epic 20, Torneo Memorial): mirror dei test di
+  // aggiornaSlotTorneoAction (Story 20.22) - qui pero' per il ramo di
+  // creazione di UN SINGOLO Slot (SEMIFINALE/FINALE_VINCENTI/
+  // FINALE_PERDENTI). Il Campo e' letto da formData (non da
+  // validazione.valori, che non lo considera per questo ramo).
+  it("creates a SEMIFINALE Slot with a campoId that belongs to the chosen Palestra (AC)", async () => {
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-1", palestraId: "palestra-1" });
+    creaSlotTorneoMock.mockResolvedValue({ id: "slot-1" });
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, campoId: "campo-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCampoPerIdMock).toHaveBeenCalledWith("campo-1");
+    expect(creaSlotTorneoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ palestraId: "palestra-1", campoId: "campo-1" })
+    );
+  });
+
+  // I/O matrix (spec-20-25): "Crea Slot con un Campo che non appartiene alla
+  // Palestra scelta (manomissione client)" -> rifiutata, VALIDATION.
+  it("rejects a campoId that does not belong to the chosen Palestra (I/O matrix)", async () => {
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-1", palestraId: "palestra-9" });
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, campoId: "campo-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+      },
+    });
+    expect(creaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a campoId that no longer exists (semifinale/finale)", async () => {
+    trovaCampoPerIdMock.mockResolvedValue(null);
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, campoId: "campo-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+      },
+    });
+    expect(creaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // spec-20-25 Boundaries "Always": una Palestra senza Campi censiti, o
+  // senza Campo scelto pur avendone, crea comunque lo Slot con
+  // campoId: null - nessun campoId nel form, trovaCampoPerId mai chiamato.
+  it("creates a SEMIFINALE Slot with campoId: null when no campo is sent", async () => {
+    creaSlotTorneoMock.mockResolvedValue({ id: "slot-1" });
+
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, campoId: "" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+    expect(creaSlotTorneoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ campoId: null })
+    );
   });
 
   it("returns a friendly error, no crash, when the create fails (GIRONE)", async () => {
@@ -3715,6 +3792,21 @@ const slotSemifinaleEsistente = {
   ora: "15:00",
   palestraId: "palestra-1",
   campoId: null,
+  fase: "SEMIFINALE",
+  tabellone: "POSIZIONI_1_4",
+};
+
+// Story 20.25 (Epic 20, Torneo Memorial, rinegoziato dopo review): mirror di
+// slotSemifinaleEsistente sopra, ma con un campoId gia' assegnato - possibile
+// solo dopo questa storia (creazione di uno Slot non-GIRONE con Campo).
+const slotSemifinaleConCampoEsistente = {
+  id: "slot-3",
+  edizioneTorneoId: "edizione-1",
+  etichetta: "Semifinale con Campo",
+  data: "2026-09-05",
+  ora: "15:00",
+  palestraId: "palestra-1",
+  campoId: "campo-1",
   fase: "SEMIFINALE",
   tabellone: "POSIZIONI_1_4",
 };
@@ -3780,6 +3872,54 @@ describe("aggiornaSlotTorneoAction", () => {
       error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." },
     });
     expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Story 20.25 (Epic 20, Torneo Memorial, rinegoziato dopo review - Blind
+  // Hunter): uno Slot non-GIRONE con un campoId gia' assegnato non e'
+  // modificabile affatto - questa azione forzerebbe altrimenti campoId a
+  // null (comportamento invariato dalla Story 20.22 per ogni fase diversa da
+  // GIRONE), cancellando silenziosamente il Campo assegnato in creazione da
+  // questa storia. Rifiutata PRIMA di validare qualunque altro campo (anche
+  // solo l'etichetta, spec-20-25 Acceptance) - guardia posizionata subito
+  // dopo la lettura di slotEsistente, prima di validaCampiSlot.
+  it("rejects any modification to a non-GIRONE Slot that already has a campoId assigned (I/O matrix)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleConCampoEsistente);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaSemifinaleValidi, id: "slot-3" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Questo Slot ha già un Campo assegnato e non è modificabile: se non è collegato a un incontro puoi cancellarlo e ricrearlo, altrimenti rimuovi prima l'assegnazione dello Slot dall'incontro.",
+      },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+  });
+
+  // Nessuna regressione (spec-20-25 Acceptance): la nuova guardia si applica
+  // solo a fase !== GIRONE - uno Slot di fase GIRONE con un campoId gia'
+  // assegnato resta pienamente modificabile come prima di questa storia.
+  it("still allows modifying a GIRONE Slot that already has a campoId assigned (no regression)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-2" });
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      expect.objectContaining({ campoId: "campo-2" })
+    );
   });
 
   // Review fix mirror (Blind Hunter, gia' applicato a

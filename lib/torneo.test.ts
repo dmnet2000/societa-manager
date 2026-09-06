@@ -618,6 +618,30 @@ describe("creaSlotTorneo", () => {
     expect(slotCreateMock).toHaveBeenCalledWith({ data: dati });
     expect(result).toBe(slot);
   });
+
+  // Story 20.25 (Epic 20, Torneo Memorial): campoId opzionale, passato tale
+  // e quale a prisma.slotTorneo.create quando presente - la verifica che
+  // appartenga davvero alla Palestra scelta e' responsabilita' del chiamante
+  // (creaSlotTorneoAction), non di questa funzione.
+  it("forwards campoId to prisma.slotTorneo.create when provided", async () => {
+    const dati = {
+      edizioneTorneoId: "edizione-1",
+      etichetta: "Semifinale 1",
+      data: "2026-09-05",
+      ora: "09:00",
+      palestraId: "palestra-1",
+      fase: "SEMIFINALE" as const,
+      tabellone: "POSIZIONI_1_4" as const,
+      campoId: "campo-1",
+    };
+    const slot = { id: "slot-1", ...dati };
+    slotCreateMock.mockResolvedValue(slot);
+
+    const result = await creaSlotTorneo(dati);
+
+    expect(slotCreateMock).toHaveBeenCalledWith({ data: dati });
+    expect(result).toBe(slot);
+  });
 });
 
 // Story 20.18 (Epic 20, Torneo Memorial): sostituisce

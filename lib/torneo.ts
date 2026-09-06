@@ -372,6 +372,17 @@ export async function trovaCampoPerId(id: string) {
   return prisma.campo.findUnique({ where: { id } });
 }
 
+// Story 20.25 (Epic 20, Torneo Memorial): campoId opzionale - il form di
+// creazione di UN SINGOLO Slot (SEMIFINALE/FINALE_VINCENTI/FINALE_PERDENTI,
+// NuovoSlotTorneoForm.tsx) puo' ora inviarlo quando la Palestra scelta ha
+// Campi censiti (spec-20-25 Intent). Omesso, Prisma non lo imposta affatto -
+// la colonna e' nullable senza @default (prisma/schema.prisma), il
+// risultato e' quindi sempre lo stesso NULL di prima di questa storia,
+// nessuna trasformazione esplicita necessaria qui. La verifica che
+// campoId appartenga davvero a palestraId resta a carico del chiamante
+// (creaSlotTorneoAction, tramite trovaCampoPerId) - stessa disciplina "mai
+// fidarsi del client" gia' stabilita per aggiornaSlotTorneoAction (Story
+// 20.22).
 export async function creaSlotTorneo(dati: {
   edizioneTorneoId: string;
   etichetta: string;
@@ -380,6 +391,7 @@ export async function creaSlotTorneo(dati: {
   palestraId: string;
   fase: FaseTorneo;
   tabellone: TabelloneTorneo | null;
+  campoId?: string | null;
 }) {
   return prisma.slotTorneo.create({ data: dati });
 }

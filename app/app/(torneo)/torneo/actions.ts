@@ -732,7 +732,40 @@ export async function creaSlotTorneoAction(
       if (!palestra) {
         return { error: { code: "VALIDATION", message: "Palestra non trovata." } };
       }
-      await creaSlotTorneo({ edizioneTorneoId, etichetta, data, ora, palestraId, fase, tabellone });
+
+      // Story 20.25 (Epic 20, Torneo Memorial): il Campo e' opzionale - letto
+      // qui da formData (non da validazione.valori, che non lo considera per
+      // questo ramo non-GIRONE), mirror esatto di aggiornaSlotTorneoAction
+      // (Story 20.22): mai fidandosi del client, verificato con
+      // trovaCampoPerId che appartenga davvero alla Palestra scelta prima di
+      // essere persistito. Una Palestra senza Campi censiti, o senza Campo
+      // scelto pur avendone, crea comunque lo Slot con campoId: null
+      // (spec-20-25 Boundaries "Always", nessuna regressione).
+      let campoId: string | null = null;
+      const campoIdGrezzo = String(formData.get("campoId") ?? "").trim();
+      if (campoIdGrezzo) {
+        const campo = await trovaCampoPerId(campoIdGrezzo);
+        if (!campo || campo.palestraId !== palestraId) {
+          return {
+            error: {
+              code: "VALIDATION",
+              message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+            },
+          };
+        }
+        campoId = campoIdGrezzo;
+      }
+
+      await creaSlotTorneo({
+        edizioneTorneoId,
+        etichetta,
+        data,
+        ora,
+        palestraId,
+        fase,
+        tabellone,
+        campoId,
+      });
     }
   } catch (err) {
     console.error(err);
@@ -784,6 +817,31 @@ export async function aggiornaSlotTorneoAction(
     const slotEsistente = await trovaSlotTorneoPerId(id);
     if (!slotEsistente || slotEsistente.edizioneTorneoId !== edizioneTorneoId) {
       return { error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." } };
+    }
+
+    // Story 20.25 (Epic 20, Torneo Memorial, rinegoziato dopo review -
+    // Blind Hunter): questa azione forza sempre campoId a null qualche riga
+    // sotto per ogni fase diversa da GIRONE (invariato dalla Story 20.22,
+    // quando uno Slot non-GIRONE non aveva mai un Campo) - ora che
+    // creaSlotTorneoAction puo' creare uno Slot non-GIRONE CON un Campo
+    // (questa stessa storia), qualunque modifica successiva a quello Slot
+    // lo cancellerebbe silenziosamente. Deciso con l'utente: nessun
+    // tentativo di preservare/unire il Campo, l'intera modifica e' bloccata
+    // PRIMA di validare qualunque altro campo (spec-20-25 Boundaries
+    // "Always"/Never). Gli Slot di fase GIRONE restano invariati. Review fix
+    // (secondo giro, Blind Hunter): il messaggio menziona esplicitamente
+    // anche il caso "collegato a un incontro" - cancellaSlotTorneo rifiuta
+    // gia' la cancellazione in quel caso, un Admin con uno Slot cosi'
+    // (non modificabile E non cancellabile) finirebbe altrimenti in un
+    // vicolo cieco senza alcun indizio su come uscirne.
+    if (slotEsistente.fase !== "GIRONE" && slotEsistente.campoId) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "Questo Slot ha già un Campo assegnato e non è modificabile: se non è collegato a un incontro puoi cancellarlo e ricrearlo, altrimenti rimuovi prima l'assegnazione dello Slot dall'incontro.",
+        },
+      };
     }
 
     const formDataValidazione = new FormData();

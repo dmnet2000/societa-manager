@@ -5,6 +5,7 @@ import { aggiornaSlotTorneoAction, cancellaSlotTorneoAction } from "./actions";
 import { ETICHETTA_FASE } from "@/lib/fase-torneo";
 import { ETICHETTA_TABELLONE } from "@/lib/tabelloni-torneo";
 import { IconaModifica, IconaCancella } from "@/app/icone-azione-riga";
+import { campiDellaPalestraSelezionata } from "@/lib/campi-palestra-torneo";
 import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
 import styles from "./torneo.module.css";
 
@@ -38,6 +39,20 @@ type Slot = {
 // suoi Campi) - popola sia il <select> Palestra sia, per il ramo GIRONE, il
 // <select> Campo filtrato sulla Palestra correntemente selezionata nel form.
 type Palestra = { id: string; nome: string; campi: { id: string; nome: string }[] };
+
+// Story 20.25 (Epic 20, Torneo Memorial, review fix - Verification Gap
+// Reviewer): estratta come funzione pura esportata - mirror esatto dello
+// stile gia' in uso per calcolaRigheSelezioneGirone
+// (NuovoSlotTorneoForm.tsx), testata a se' in SlotTorneoRow.test.ts senza
+// rendering/DOM. Senza questa estrazione, un domani un'inversione o una
+// rottura della condizione (es. controllare slot.tabellone invece di
+// slot.campoId) passerebbe inosservata: nessun test la eserciterebbe
+// direttamente. Mirror esatto della guardia server-side in
+// aggiornaSlotTorneoAction (app/(torneo)/torneo/actions.ts, spec-20-25
+// Boundaries "Always").
+export function slotNonModificabilePerCampo(slot: Pick<Slot, "fase" | "campoId">): boolean {
+  return slot.fase !== "GIRONE" && Boolean(slot.campoId);
+}
 
 // Story 20.9 (Epic 20, Torneo Memorial): mirror di CategoriaTorneoRow.tsx.
 // Story 20.22: la modifica inline arriva ora anche qui - stesso identico
@@ -98,9 +113,21 @@ export function SlotTorneoRow({ slot, palestre }: { slot: Slot; palestre: Palest
   // Campi disponibili per la Palestra correntemente selezionata nel form -
   // se l'Admin cambia Palestra, il Campo originale potrebbe non appartenerle
   // piu': in quel caso il <select> Campo riparte da "Nessuno" (key sotto).
-  const campiDisponibili = palestre.find((p) => p.id === palestraSelezionata)?.campi ?? [];
+  // Story 20.25 (review fix): derivazione condivisa con
+  // NuovoSlotTorneoForm.tsx (lib/campi-palestra-torneo.ts), invece di due
+  // copie identiche.
+  const campiDisponibili = campiDellaPalestraSelezionata(palestre, palestraSelezionata);
   const campoDefaultValue =
     palestraSelezionata === slot.palestraId ? (slot.campoId ?? "") : "";
+
+  // Story 20.25 (Epic 20, Torneo Memorial, rinegoziato dopo review): uno
+  // Slot non-GIRONE con un Campo gia' assegnato (possibile solo dopo questa
+  // storia, in creazione) non e' modificabile - aggiornaSlotTorneoAction
+  // forza sempre campoId a null per queste fasi (Story 20.22, mai cambiato
+  // qui), quindi anche solo modificare l'etichetta lo cancellerebbe
+  // silenziosamente. Bloccato qui lato UI, mirror della guardia server-side
+  // in actions.ts (spec-20-25 Boundaries "Always").
+  const modificaBloccataDaCampo = slotNonModificabilePerCampo(slot);
 
   return (
     <>
@@ -125,9 +152,17 @@ export function SlotTorneoRow({ slot, palestre }: { slot: Slot; palestre: Palest
               setInModifica(true);
               setErroreModificaVisibile(false);
             }}
-            disabled={azionePending || inModifica}
-            aria-label={`Modifica ${slot.etichetta}`}
-            title={`Modifica ${slot.etichetta}`}
+            disabled={azionePending || inModifica || modificaBloccataDaCampo}
+            aria-label={
+              modificaBloccataDaCampo
+                ? `${slot.etichetta} ha già un Campo assegnato e non è modificabile: se non è collegato a un incontro puoi cancellarlo e ricrearlo, altrimenti rimuovi prima l'assegnazione dello Slot dall'incontro`
+                : `Modifica ${slot.etichetta}`
+            }
+            title={
+              modificaBloccataDaCampo
+                ? "Questo Slot ha già un Campo assegnato e non è modificabile: se non è collegato a un incontro puoi cancellarlo e ricrearlo, altrimenti rimuovi prima l'assegnazione dello Slot dall'incontro."
+                : `Modifica ${slot.etichetta}`
+            }
           >
             <IconaModifica />
           </button>{" "}
