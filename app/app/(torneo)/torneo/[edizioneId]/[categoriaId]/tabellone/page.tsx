@@ -11,6 +11,7 @@ import { calcolaClassificaFinale } from "@/lib/classifica-finale-torneo";
 import { haRisultatoCompleto } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
+import { calcolaProspettoIpoteticoTorneo } from "@/lib/prospetto-ipotetico-torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
@@ -92,6 +93,21 @@ export default async function TabelloneTorneoPage({
     (s) => s.squadreSufficienti && s.risultatiCompleti
   );
 
+  // Story 20.20: prospetto ipotetico degli accoppiamenti di seconda fase,
+  // renderizzato SOLO dentro il ramo JSX "tabellone non ancora generato"
+  // sotto (quel ramo gia' garantisce !tabelloneGenerato - nessun guard
+  // duplicato qui). Deriva il formato ESCLUSIVAMENTE dal conteggio di
+  // Squadre per Girone gia' calcolato sopra in statoGironi (che itera
+  // GIRONI_TORNEO, l'unica fonte di verita' - review fix, Blind Hunter:
+  // niente stringhe letterali "GIRONE_A"/"GIRONE_B" duplicate qui per
+  // rifiltrare "squadre" una seconda volta). L'ordine di statoGironi segue
+  // sempre GIRONI_TORNEO (Girone A poi Girone B). Funzione pura: null per
+  // qualunque combinazione non riconosciuta (gironi sbilanciati, conteggi
+  // diversi da 3/4, iscrizioni incomplete) - in quel caso nessuna sezione
+  // viene renderizzata piu' sotto.
+  const [numeroGironeA, numeroGironeB] = statoGironi.map((s) => s.numeroSquadre);
+  const prospettoIpotetico = calcolaProspettoIpoteticoTorneo(numeroGironeA, numeroGironeB);
+
   // Classifica finale MAI persistita - ricalcolata al volo da qui a ogni
   // caricamento della pagina (spec-20-4 Boundaries, stesso principio di
   // calcolaClassificaGirone). null finche' le 4 finali non hanno tutte un
@@ -126,22 +142,83 @@ export default async function TabelloneTorneoPage({
       />
 
       {!tabelloneGenerato ? (
-        <section className={styles.sezione}>
-          <p className={styles.riepilogo}>
-            {statoGironi
-              .map(({ girone, numeroSquadre, squadreSufficienti, risultatiCompleti }) => {
-                if (!squadreSufficienti) {
-                  return `${girone.label}: ${numeroSquadre} squadre (servono almeno 4)`;
-                }
-                if (!risultatiCompleti) {
-                  return `${girone.label}: ${numeroSquadre} squadre (risultati di girone non ancora completi)`;
-                }
-                return `${girone.label}: ${numeroSquadre} squadre (pronto)`;
-              })
-              .join(" · ")}
-          </p>
-          <GeneraTabelloneForm categoriaTorneoId={categoriaId} pronto={tabelloneGenerabile} />
-        </section>
+        <>
+          <section className={styles.sezione}>
+            <p className={styles.riepilogo}>
+              {statoGironi
+                .map(({ girone, numeroSquadre, squadreSufficienti, risultatiCompleti }) => {
+                  if (!squadreSufficienti) {
+                    return `${girone.label}: ${numeroSquadre} squadre (servono almeno 4)`;
+                  }
+                  if (!risultatiCompleti) {
+                    return `${girone.label}: ${numeroSquadre} squadre (risultati di girone non ancora completi)`;
+                  }
+                  return `${girone.label}: ${numeroSquadre} squadre (pronto)`;
+                })
+                .join(" · ")}
+            </p>
+            <GeneraTabelloneForm categoriaTorneoId={categoriaId} pronto={tabelloneGenerabile} />
+          </section>
+
+          {/* Story 20.20: prospetto ipotetico di sola lettura - nessuna
+              PartitaTorneo creata, solo placeholder testuali di posizione
+              (spec-20-20 Boundaries "Always"). Sezione sempre presente in
+              questo ramo: spiega esplicitamente (styles.messaggioVuoto,
+              stesso principio della classifica finale sotto) quando il
+              prospetto non e' disponibile, invece di sparire in silenzio -
+              review fix (Verification Gap Reviewer). */}
+          <section className={styles.sezione}>
+            <h2>Prospetto ipotetico della seconda fase</h2>
+            {!prospettoIpotetico ? (
+              <p className={styles.messaggioVuoto}>
+                Il prospetto ipotetico è disponibile solo quando entrambi i Gironi hanno lo stesso
+                numero di Squadre (3 o 4).
+              </p>
+            ) : (
+              <>
+                <p className={styles.riepilogo}>
+                  Anteprima di sola lettura: mostra come si incroceranno le posizioni di girone una
+                  volta completato il calendario - nessuna Squadra reale, nessun incontro creato.
+                </p>
+                {prospettoIpotetico.map((sezione) => {
+                  // Review fix (Verification Gap Reviewer): senza
+                  // semifinali (finalina diretta del formato 6) il titolo
+                  // <h3> della sezione ("Finalina 5°/6° posto") e
+                  // l'etichetta dell'unico accoppiamento sono la STESSA
+                  // stringa - il prefisso "etichetta:" e' quindi omesso
+                  // sotto solo in quel caso, per non ripeterla due volte di
+                  // fila. Altrove (semifinali, finali dei tabelloni 1°-4°/
+                  // 5°-8°) l'etichetta resta perche' distinta dal titolo.
+                  const haSemifinali = sezione.semifinali.length > 0;
+                  return (
+                    <div key={sezione.titolo}>
+                      <h3>{sezione.titolo}</h3>
+                      {haSemifinali && (
+                        <>
+                          <h4>Semifinali</h4>
+                          {sezione.semifinali.map((accoppiamento) => (
+                            <p key={accoppiamento.etichetta}>
+                              {accoppiamento.etichetta}: <strong>{accoppiamento.casa}</strong> vs{" "}
+                              <strong>{accoppiamento.ospite}</strong>
+                            </p>
+                          ))}
+                        </>
+                      )}
+                      <h4>Finali</h4>
+                      {sezione.finali.map((accoppiamento) => (
+                        <p key={accoppiamento.etichetta}>
+                          {haSemifinali && <>{accoppiamento.etichetta}: </>}
+                          <strong>{accoppiamento.casa}</strong> vs{" "}
+                          <strong>{accoppiamento.ospite}</strong>
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </section>
+        </>
       ) : (
         <>
           {TABELLONI_TORNEO.map((tabellone) => {
