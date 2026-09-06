@@ -363,6 +363,15 @@ export async function trovaPalestraPerId(id: string) {
   return prisma.palestra.findUnique({ where: { id } });
 }
 
+// Story 20.22 (Epic 20, Torneo Memorial): mirror di trovaPalestraPerId sopra
+// - serve ad aggiornaSlotTorneoAction per verificare, server-side, che un
+// campoId inviato dal client appartenga davvero alla Palestra scelta (mai
+// fidandosi del client, stessa disciplina di creaSlotTorneoPerSelezione,
+// Story 20.18).
+export async function trovaCampoPerId(id: string) {
+  return prisma.campo.findUnique({ where: { id } });
+}
+
 export async function creaSlotTorneo(dati: {
   edizioneTorneoId: string;
   etichetta: string;
@@ -497,6 +506,33 @@ export async function trovaSlotTorneoPerId(id: string) {
 export async function cancellaSlotTorneo(id: string, edizioneTorneoId: string) {
   return prisma.slotTorneo.deleteMany({
     where: { id, edizioneTorneoId, partite: { none: {} } },
+  });
+}
+
+// Story 20.22 (Epic 20, Torneo Memorial): update scoped su id +
+// edizioneTorneoId insieme (stesso pattern anti-mismatch di
+// aggiornaCategoriaTorneo/cancellaSlotTorneo sopra) - count === 0 e'
+// trattato dal chiamante come "Slot non trovato in questa Edizione".
+// fase/tabellone NON fanno parte di "dati": non sono mai modificabili dopo
+// la creazione (spec-20-22 Boundaries "Always") - cambiarli romperebbe la
+// corrispondenza gia' stabilita con le Partite/prenotazioni agganciate a
+// quello Slot per quella fase/tabellone. Nessun vincolo sullo stato dello
+// Slot: modificabile anche se gia' assegnato a una Partita, a differenza di
+// cancellaSlotTorneo sopra (non e' un'operazione distruttiva).
+export async function aggiornaSlotTorneo(
+  id: string,
+  edizioneTorneoId: string,
+  dati: {
+    etichetta: string;
+    data: string;
+    ora: string;
+    palestraId: string;
+    campoId: string | null;
+  }
+) {
+  return prisma.slotTorneo.updateMany({
+    where: { id, edizioneTorneoId },
+    data: dati,
   });
 }
 

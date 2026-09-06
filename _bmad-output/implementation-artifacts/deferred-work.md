@@ -1,3 +1,12 @@
+## Deferred from: bmad-build review of spec-20-22-modifica-slot-torneo (2026-09-06)
+
+- Nessuna conferma visibile dopo un salvataggio riuscito della modifica di uno Slot (`SlotTorneoRow.tsx`) - la riga si ricollassa e basta, stesso comportamento già presente e mai corretto in `CategoriaTorneoRow.tsx` (mirror esatto, nessuna regressione introdotta da questa storia).
+- Il pulsante "Modifica" di `SlotTorneoRow.tsx` (e di `CategoriaTorneoRow.tsx`, stesso bug pre-esistente ereditato dal mirror) non azzera un eventuale errore di cancellazione ancora visibile sulla stessa riga quando si apre la modifica.
+- Nessuna protezione da sovrascrittura concorrente (last-write-wins) se due Admin modificano lo stesso Slot in contemporanea - coerente con la filosofia già esplicitata in Story 20.9 ("nessun vincolo di unicità, solo avviso applicativo"), mai richiesto da alcun AC.
+- Durante il salvataggio della modifica, solo i bottoni Salva/Annulla si disabilitano (`azionePending`) - i singoli campi del form restano modificabili durante la richiesta in corso, stesso comportamento (non introdotto da questa storia) di `CategoriaTorneoRow.tsx`.
+- I messaggi di errore di validazione della modifica (Slot e Categoria) sono un unico paragrafo generico in fondo al form, senza `aria-invalid`/`aria-describedby` che li colleghi al campo specifico - gap di accessibilità pre-esistente, condiviso tra le due righe.
+- `ETICHETTA_SLOT_MAX = 100` (validazione server-side, `app/app/(torneo)/torneo/actions.ts`) è duplicato come letterale `maxLength={100}` in tre punti indipendenti (`NuovoSlotTorneoForm.tsx`, e ora anche `SlotTorneoRow.tsx`) - non risolvibile con un semplice import dato che il file ha la direttiva `"use server"` (può esportare solo funzioni async); richiederebbe spostare la costante in un modulo condiviso non-server, da valutare a parte.
+
 ## Deferred from: bmad-build review of spec-20-11-numero-progressivo-gare-torneo (2026-08-25)
 
 - Race TOCTOU tra la lettura del numero massimo (`prossimoNumeroPartitaTorneo`) e l'insert (`creaPartiteTorneo`) nei tre punti di generazione: nessuna transazione esplicita, stesso pattern "check-then-act non atomico, il vero cancello è il vincolo DB" già accettato ovunque in questa epica (es. Story 20.9). Due generazioni concorrenti nella stessa Edizione possono collidere sul nuovo vincolo `(edizioneTorneoId, numero)` - gestito con un messaggio esplicito di retry, mai un crash. [app/app/(torneo)/torneo/actions.ts, lib/torneo.ts]

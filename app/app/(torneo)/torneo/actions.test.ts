@@ -37,7 +37,9 @@ const trovaPartitaTorneoPerIdMock = vi.fn();
 const creaSlotTorneoMock = vi.fn();
 const creaSlotTorneoPerSelezioneMock = vi.fn();
 const trovaSlotTorneoPerIdMock = vi.fn();
+const trovaCampoPerIdMock = vi.fn();
 const cancellaSlotTorneoMock = vi.fn();
+const aggiornaSlotTorneoMock = vi.fn();
 const assegnaSlotPartitaTorneoMock = vi.fn();
 const elencaSlotTorneoLiberiMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -90,7 +92,9 @@ vi.mock("@/lib/torneo", () => ({
   creaSlotTorneo: creaSlotTorneoMock,
   creaSlotTorneoPerSelezione: creaSlotTorneoPerSelezioneMock,
   trovaSlotTorneoPerId: trovaSlotTorneoPerIdMock,
+  trovaCampoPerId: trovaCampoPerIdMock,
   cancellaSlotTorneo: cancellaSlotTorneoMock,
+  aggiornaSlotTorneo: aggiornaSlotTorneoMock,
   assegnaSlotPartitaTorneo: assegnaSlotPartitaTorneoMock,
   elencaSlotTorneoLiberi: elencaSlotTorneoLiberiMock,
 }));
@@ -115,6 +119,7 @@ const {
   generaTabelloneAction,
   caricaVolantinoTorneoAction,
   creaSlotTorneoAction,
+  aggiornaSlotTorneoAction,
   cancellaSlotTorneoAction,
   assegnaSlotPartitaTorneoAction,
 } = await import("./actions");
@@ -232,7 +237,9 @@ beforeEach(() => {
   // test.
   creaSlotTorneoPerSelezioneMock.mockResolvedValue({ count: 1, nessunaPalestraCensita: false });
   trovaSlotTorneoPerIdMock.mockReset();
+  trovaCampoPerIdMock.mockReset();
   cancellaSlotTorneoMock.mockReset();
+  aggiornaSlotTorneoMock.mockReset();
   assegnaSlotPartitaTorneoMock.mockReset();
   // Story 20.9: nessuno Slot libero di default - l'auto-assegnazione
   // best-effort (assegnaSlotAutomaticamente) e' quindi un no-op silenzioso a
@@ -3681,6 +3688,366 @@ describe("creaSlotTorneoAction", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." },
     });
+  });
+});
+
+// Story 20.22 (Epic 20, Torneo Memorial): fixtures mirror
+// campiSlotGironeValidi/campiSlotSemifinaleValidi sopra - lo Slot ESISTENTE
+// (restituito da trovaSlotTorneoPerId) e i campi del form di modifica
+// inviati dal client.
+const slotGironeEsistente = {
+  id: "slot-1",
+  edizioneTorneoId: "edizione-1",
+  etichetta: "Campo 1 - Sabato mattina",
+  data: "2026-09-05",
+  ora: "09:00",
+  palestraId: "palestra-1",
+  campoId: "campo-1",
+  fase: "GIRONE",
+  tabellone: null,
+};
+
+const slotSemifinaleEsistente = {
+  id: "slot-2",
+  edizioneTorneoId: "edizione-1",
+  etichetta: "Campo 1 - Sabato pomeriggio",
+  data: "2026-09-05",
+  ora: "15:00",
+  palestraId: "palestra-1",
+  campoId: null,
+  fase: "SEMIFINALE",
+  tabellone: "POSIZIONI_1_4",
+};
+
+const campiModificaGironeValidi = {
+  id: "slot-1",
+  edizioneTorneoId: "edizione-1",
+  etichetta: "Campo 1 - Sabato mattina (rinominato)",
+  data: "2026-09-06",
+  ora: "10:00",
+  palestraId: "palestra-2",
+  campoId: "campo-2",
+};
+
+const campiModificaSemifinaleValidi = {
+  id: "slot-2",
+  edizioneTorneoId: "edizione-1",
+  etichetta: "Semifinale (rinominata)",
+  data: "2026-09-06",
+  ora: "16:00",
+  palestraId: "palestra-2",
+};
+
+describe("aggiornaSlotTorneoAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when id/edizioneTorneoId are missing", async () => {
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, id: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non specificato." },
+    });
+    expect(trovaSlotTorneoPerIdMock).not.toHaveBeenCalled();
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'not found' when the Slot doesn't exist", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix mirror (Blind Hunter, gia' applicato a
+  // assegnaSlotPartitaTorneoAction/aggiornaCategoriaTorneoAction): un id
+  // esistente ma sotto un'altra Edizione (tampering, link obsoleto) deve
+  // fallire esplicitamente, non aggiornare/rivalidare la pagina sbagliata.
+  it("returns 'not found' when the Slot belongs to a different Edizione", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      ...slotGironeEsistente,
+      edizioneTorneoId: "edizione-2",
+    });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Riusa validaCampiSlot (spec-20-22 Boundaries: "nessuna seconda
+  // validazione duplicata") - stesso messaggio di creaSlotTorneoAction.
+  it("reuses the same field validation as creaSlotTorneoAction (e.g. rejects a missing etichetta)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, etichetta: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "L'etichetta è obbligatoria." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("reuses the same field validation as creaSlotTorneoAction (e.g. rejects an invalid data format)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, data: "05/09/2026" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La data deve essere nel formato AAAA-MM-GG." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("updates etichetta/data/ora/Palestra of a SEMIFINALE Slot, forcing campoId to null (AC)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaSemifinaleValidi)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith("slot-2", "edizione-1", {
+      etichetta: "Semifinale (rinominata)",
+      data: "2026-09-06",
+      ora: "16:00",
+      palestraId: "palestra-2",
+      campoId: null,
+    });
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1/slot");
+  });
+
+  // AC: uno Slot SEMIFINALE/FINALE non ha mai un Campo - un eventuale
+  // campoId manomesso inviato dal client per una fase diversa da GIRONE e'
+  // ignorato, mai persistito (mai fidandosi del client).
+  it("ignores a tampered campoId sent for a non-GIRONE Slot", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaSemifinaleValidi, campoId: "campo-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-2",
+      "edizione-1",
+      expect.objectContaining({ campoId: null })
+    );
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+  });
+
+  // AC: la fase e' sempre riletta dal database (mai dal form) - un client
+  // che dichiara una fase diversa da quella reale dello Slot (tampering
+  // dell'hidden field) non ha alcun effetto: lo Slot resta trattato secondo
+  // la sua VERA fase (GIRONE), il Campo e' quindi ancora verificato.
+  it("always uses the Slot's real fase from the database, ignoring a tampered fase in the form", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-2" });
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, fase: "SEMIFINALE", tabellone: "" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCampoPerIdMock).toHaveBeenCalledWith("campo-2");
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      expect.objectContaining({ campoId: "campo-2" })
+    );
+  });
+
+  it("updates Palestra and Campo of a GIRONE Slot with a valid combinazione (AC)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-2" });
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCampoPerIdMock).toHaveBeenCalledWith("campo-2");
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith("slot-1", "edizione-1", {
+      etichetta: "Campo 1 - Sabato mattina (rinominato)",
+      data: "2026-09-06",
+      ora: "10:00",
+      palestraId: "palestra-2",
+      campoId: "campo-2",
+    });
+  });
+
+  it("maps an empty campoId (Palestra without Campi) to null for a GIRONE Slot", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, campoId: "" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaCampoPerIdMock).not.toHaveBeenCalled();
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      expect.objectContaining({ campoId: null })
+    );
+  });
+
+  // I/O matrix (spec-20-22): "Admin sceglie un Campo che non appartiene alla
+  // Palestra scelta" -> rifiutata, VALIDATION.
+  it("rejects a Campo that does not belong to the chosen Palestra (I/O matrix)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-9" });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+      },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a campoId that no longer exists", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue(null);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+      },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when palestraId is missing", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, palestraId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La Palestra è obbligatoria." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error, not a generic INTERNAL, when the Palestra no longer exists", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaPalestraPerIdMock.mockResolvedValue(null);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Palestra non trovata." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error, not a silent no-op, when id/edizioneTorneoId don't match any row at update time", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 0 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaSemifinaleValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when the update fails", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
+    aggiornaSlotTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaSemifinaleValidi)
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare lo Slot. Riprova." },
+    });
+  });
+
+  // AC: "Given uno Slot già assegnato a una Partita reale, when l'Admin lo
+  // modifica, then la modifica è consentita senza alcun blocco legato
+  // all'assegnazione esistente" - aggiornaSlotTorneo (lib/torneo.ts) non ha
+  // alcuna guardia "partite: { none: {} } }" a differenza di
+  // cancellaSlotTorneo: un count 1 e' restituito comunque.
+  it("allows the update of a Slot already assigned to a Partita, no block", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaSemifinaleValidi)
+    );
+
+    expect(result).toEqual({ success: true });
   });
 });
 

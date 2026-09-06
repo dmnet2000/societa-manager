@@ -81,7 +81,7 @@ export default async function SlotTorneoPage({
             </thead>
             <tbody>
               {slot.map((s) => (
-                <SlotTorneoRow key={s.id} slot={s} />
+                <SlotTorneoRow key={s.id} slot={s} palestre={palestre} />
               ))}
             </tbody>
           </table>

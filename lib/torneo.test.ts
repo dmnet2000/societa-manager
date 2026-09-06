@@ -30,8 +30,10 @@ const slotFindManyMock = vi.fn();
 const slotFindUniqueMock = vi.fn();
 const slotCreateMock = vi.fn();
 const slotCreateManyMock = vi.fn();
+const slotUpdateManyMock = vi.fn();
 const slotDeleteManyMock = vi.fn();
 const palestraFindManyMock = vi.fn();
+const campoFindUniqueMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -72,10 +74,14 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: slotFindUniqueMock,
       create: slotCreateMock,
       createMany: slotCreateManyMock,
+      updateMany: slotUpdateManyMock,
       deleteMany: slotDeleteManyMock,
     },
     palestra: {
       findMany: palestraFindManyMock,
+    },
+    campo: {
+      findUnique: campoFindUniqueMock,
     },
   },
 }));
@@ -110,7 +116,9 @@ const {
   creaSlotTorneoPerSelezione,
   elencaSlotTorneo,
   trovaSlotTorneoPerId,
+  trovaCampoPerId,
   cancellaSlotTorneo,
+  aggiornaSlotTorneo,
   assegnaSlotPartitaTorneo,
   elencaSlotTorneoLiberi,
 } = await import("./torneo");
@@ -144,8 +152,10 @@ beforeEach(() => {
   slotFindUniqueMock.mockReset();
   slotCreateMock.mockReset();
   slotCreateManyMock.mockReset();
+  slotUpdateManyMock.mockReset();
   slotDeleteManyMock.mockReset();
   palestraFindManyMock.mockReset();
+  campoFindUniqueMock.mockReset();
 });
 
 describe("elencaEdizioniTorneo", () => {
@@ -862,6 +872,69 @@ describe("cancellaSlotTorneo", () => {
       where: { id: "slot-1", edizioneTorneoId: "edizione-1", partite: { none: {} } },
     });
     expect(result).toEqual({ count: 1 });
+  });
+});
+
+// Story 20.22 (Epic 20, Torneo Memorial): mirror di aggiornaCategoriaTorneo
+// sopra - updateMany scoped su id + edizioneTorneoId insieme, mai fase/
+// tabellone fra i campi scrivibili (spec-20-22 Boundaries "Always": non sono
+// mai modificabili dopo la creazione).
+describe("aggiornaSlotTorneo", () => {
+  it("updates only the Slot matching BOTH id and edizioneTorneoId, never touching fase/tabellone", async () => {
+    const dati = {
+      etichetta: "Campo 1 - Sabato mattina (rinominato)",
+      data: "2026-09-06",
+      ora: "10:00",
+      palestraId: "palestra-2",
+      campoId: "campo-2",
+    };
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneo("slot-1", "edizione-1", dati);
+
+    // Nessun vincolo "partite: { none: {} } }" a differenza di
+    // cancellaSlotTorneo sopra (spec-20-22 Boundaries "Always": "Nessun
+    // vincolo sullo stato dello Slot ... non e' un'operazione distruttiva")
+    // - un where composto identico a aggiornaCategoriaTorneo, non esteso.
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-1", edizioneTorneoId: "edizione-1" },
+      data: dati,
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+
+  it("accepts a null campoId (Palestra without Campi, or fase diversa da GIRONE)", async () => {
+    const dati = {
+      etichetta: "Semifinale 1-4",
+      data: "2026-09-06",
+      ora: "15:00",
+      palestraId: "palestra-1",
+      campoId: null,
+    };
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneo("slot-2", "edizione-1", dati);
+
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-2", edizioneTorneoId: "edizione-1" },
+      data: dati,
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+});
+
+// Story 20.22: mirror di trovaPalestraPerId sopra - usata da
+// aggiornaSlotTorneoAction per verificare che un campoId inviato dal client
+// appartenga davvero alla Palestra scelta.
+describe("trovaCampoPerId", () => {
+  it("looks up a single Campo by id", async () => {
+    const campo = { id: "campo-1", nome: "Campo 1", palestraId: "palestra-1" };
+    campoFindUniqueMock.mockResolvedValue(campo);
+
+    const result = await trovaCampoPerId("campo-1");
+
+    expect(campoFindUniqueMock).toHaveBeenCalledWith({ where: { id: "campo-1" } });
+    expect(result).toBe(campo);
   });
 });
 

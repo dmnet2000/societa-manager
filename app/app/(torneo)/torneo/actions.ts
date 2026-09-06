@@ -33,7 +33,9 @@ import {
   creaSlotTorneoPerSelezione,
   trovaSlotTorneoPerId,
   trovaPalestraPerId,
+  trovaCampoPerId,
   cancellaSlotTorneo,
+  aggiornaSlotTorneo,
   assegnaSlotPartitaTorneo,
   elencaSlotTorneoLiberi,
 } from "@/lib/torneo";
@@ -735,6 +737,116 @@ export async function creaSlotTorneoAction(
   } catch (err) {
     console.error(err);
     return { error: { code: "INTERNAL", message: "Impossibile creare lo Slot. Riprova." } };
+  }
+
+  revalidatePath(`/app/torneo/${edizioneTorneoId}/slot`);
+  return { success: true };
+}
+
+// Story 20.22 (Epic 20, Torneo Memorial): mirror aggiornaCategoriaTorneoAction
+// sopra - modifica di UNO SlotTorneo esistente, mai la sua fase/tabellone
+// (spec-20-22 Boundaries "Always": cambiarli romperebbe la corrispondenza
+// gia' stabilita con le Partite/prenotazioni agganciate a quello Slot per
+// quella fase/tabellone). Nessun vincolo sullo stato dello Slot: modificabile
+// anche se gia' assegnato a una Partita reale, a differenza di
+// cancellaSlotTorneoAction sotto (non e' un'operazione distruttiva).
+//
+// La fase reale dello Slot e' riletta qui da trovaSlotTorneoPerId (mai dal
+// form, mai fidandosi del client) e forzata nel FormData passato a
+// validaCampiSlot al posto di un eventuale valore manomesso: cosi'
+// etichetta/data/ora sono validati riusando la stessa funzione di
+// creaSlotTorneoAction (spec-20-22 Boundaries "nessuna seconda validazione
+// duplicata"), ma la decisione se mostrare/verificare un Campo (fase ===
+// GIRONE) dipende sempre dalla fase VERA dello Slot, mai da quella che il
+// client dichiara di modificare (che comunque non verrebbe mai persistita,
+// dato che aggiornaSlotTorneo non accetta fase/tabellone fra i campi
+// scrivibili).
+//
+// palestraId (e campoId, solo per fase GIRONE) sono letti direttamente dal
+// form invece che da validazione.valori: per il ramo GIRONE, validaCampiSlot
+// non li considera affatto (li' non esiste un singolo palestraId scalare,
+// Story 20.18/20.12 - la creazione in blocco usa una checklist), ma ogni
+// SlotTorneo, di qualunque fase, ha sempre esattamente una Palestra.
+export async function aggiornaSlotTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!id || !edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Slot non specificato." } };
+  }
+
+  try {
+    const slotEsistente = await trovaSlotTorneoPerId(id);
+    if (!slotEsistente || slotEsistente.edizioneTorneoId !== edizioneTorneoId) {
+      return { error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." } };
+    }
+
+    const formDataValidazione = new FormData();
+    for (const [chiave, valore] of formData.entries()) {
+      formDataValidazione.set(chiave, valore);
+    }
+    formDataValidazione.set("fase", slotEsistente.fase);
+    formDataValidazione.set("tabellone", slotEsistente.tabellone ?? "");
+
+    const validazione = validaCampiSlot(formDataValidazione);
+    if ("error" in validazione) return validazione;
+    const { etichetta, data, ora, fase } = validazione.valori;
+
+    const palestraId =
+      validazione.valori.fase === "GIRONE"
+        ? String(formData.get("palestraId") ?? "").trim()
+        : validazione.valori.palestraId;
+    if (!palestraId) {
+      return { error: { code: "VALIDATION", message: "La Palestra è obbligatoria." } };
+    }
+
+    // Mirror del controllo esplicito di creaSlotTorneoAction sopra - un
+    // palestraId non piu' esistente violerebbe altrimenti solo il vincolo FK
+    // del database.
+    const palestra = await trovaPalestraPerId(palestraId);
+    if (!palestra) {
+      return { error: { code: "VALIDATION", message: "Palestra non trovata." } };
+    }
+
+    // Il Campo esiste solo per la fase GIRONE (spec-20-22 Boundaries
+    // "Always") - per ogni altra fase campoId e' forzato a null, mai
+    // fidandosi di un eventuale valore inviato dal client per una fase che
+    // non lo prevede.
+    let campoId: string | null = null;
+    if (fase === "GIRONE") {
+      const campoIdGrezzo = String(formData.get("campoId") ?? "").trim();
+      if (campoIdGrezzo) {
+        const campo = await trovaCampoPerId(campoIdGrezzo);
+        if (!campo || campo.palestraId !== palestraId) {
+          return {
+            error: {
+              code: "VALIDATION",
+              message: "Il Campo scelto non appartiene alla Palestra selezionata.",
+            },
+          };
+        }
+        campoId = campoIdGrezzo;
+      }
+    }
+
+    const risultato = await aggiornaSlotTorneo(id, edizioneTorneoId, {
+      etichetta,
+      data,
+      ora,
+      palestraId,
+      campoId,
+    });
+    if (risultato.count === 0) {
+      return { error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." } };
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile aggiornare lo Slot. Riprova." } };
   }
 
   revalidatePath(`/app/torneo/${edizioneTorneoId}/slot`);
