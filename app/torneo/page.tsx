@@ -204,6 +204,13 @@ export default async function TorneoPubblicoPage() {
               squadre.filter((s) => s.girone === girone.value)
             );
 
+            // Story 20.23: stesso ordinamento per data/ora dello Slot gia'
+            // riusato identico da "partiteDelGirone"/"semifinali" sotto
+            // (Story 20.17) - un incontro senza Slot finisce sempre in
+            // fondo, la colonna "Gara" della tabella non e' quindi
+            // necessariamente crescente dall'alto in basso.
+            const partiteTabellaCompleta = ordinaPartitePerSlot(partite);
+
             return (
               <section
                 key={categoria.id}
@@ -219,10 +226,13 @@ export default async function TorneoPubblicoPage() {
 
                 {/* Story 20.19: vista tabellare aggiuntiva di TUTTI gli
                     incontri della Categoria (Gironi + Semifinali + Finali
-                    insieme, gia' ordinati per numero di Gara -
-                    elencaPartiteTorneo, lib/torneo.ts) - affianca la griglia
+                    insieme), ordinata per data/ora dello Slot (Story 20.23,
+                    vedi partiteTabellaCompleta sopra) - affianca la griglia
                     grafica sotto senza mai sostituirla, nascosta di default. */}
-                <TabellaIncontriCategoria partite={partite} nomeCategoria={categoria.nome} />
+                <TabellaIncontriCategoria
+                  partite={partiteTabellaCompleta}
+                  nomeCategoria={categoria.nome}
+                />
 
                 {calendarioGenerato ? (
                   GIRONI_TORNEO.map((girone) => {

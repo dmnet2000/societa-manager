@@ -195,6 +195,55 @@
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 1px;
+  padding: 0;
+}
+
+/* Story 20.24 (Epic 20, Torneo Memorial): le 6 intestazioni di
+   .tabellaIncontri diventano cliccabili (ordinamento a click) - un <button>
+   trasparente che riempie il <th> (nessun th "semplice" rimasto in questa
+   tabella), stessa tipografia/uppercase/letter-spacing gia' definiti sopra
+   su .tabellaIncontri th (ereditati via `inherit`, nessuna duplicazione).
+   min-height 44px per il touch target minimo, stessa disciplina di
+   .bottoneTabellaIncontri sopra. */
+.bottoneOrdinamento {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  white-space: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Review fix (Blind Hunter, spec-20-24): nessun segnale visivo per un
+   utente con mouse prima del click/focus - stessa tinta hover di .pulsante
+   in aiuto-contestuale.module.css/.voceMenu in NavBar.module.css
+   ("--color-border" e' gia' il token del progetto per tinte chiare su
+   superfici chiare, qui la superficie e' .main #f2f5f7). */
+.bottoneOrdinamento:hover {
+  background: var(--color-border);
+}
+
+.bottoneOrdinamento:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Freccia di direzione - visibile solo sulla colonna attualmente ordinata
+   (spec-20-24 Boundaries, "un indicatore visivo compare solo sulla colonna
+   attualmente ordinata"). aria-hidden nel markup: lo stato e' gia'
+   comunicato via aria-sort sul <th> e via aria-label sul bottone. */
+.frecciaOrdinamento {
+  font-size: 10px;
 }
 
 .sezioneGirone {
