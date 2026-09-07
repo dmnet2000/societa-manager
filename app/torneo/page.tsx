@@ -12,6 +12,7 @@ import { formattaRisultatoPartitaTorneo } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
 import { etichettaSettimanaPersonalizzata } from "@/lib/settimana-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
+import { calcolaProspettoIpoteticoTorneo } from "@/lib/prospetto-ipotetico-torneo";
 import { ordinaPartitePerSlot } from "@/lib/ordina-partite-per-slot";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { formattaSlotTestoBreve, type SlotPubblico } from "@/lib/formatta-slot-torneo";
@@ -203,6 +204,24 @@ export default async function TorneoPubblicoPage() {
             const squadrePerGirone = GIRONI_TORNEO.map((girone) =>
               squadre.filter((s) => s.girone === girone.value)
             );
+
+            // Story 20.27: prospetto ipotetico della seconda fase (Story
+            // 20.20, gia' mostrato in area admin, lib/prospetto-ipotetico-torneo.ts)
+            // ora riusato TALE E QUALE anche qui, di sola lettura - stessi due
+            // conteggi di Squadre per Girone gia' derivati sopra in
+            // squadrePerGirone (ordine GIRONI_TORNEO: Girone A poi Girone B,
+            // stesso principio gia' documentato in tabellone/page.tsx), nessuna
+            // nuova logica di calcolo. Calcolato SOLO quando !tabelloneGenerato
+            // (spec-20-27 Boundaries "Always") - null altrove, mai usato in
+            // quel caso. Funzione pura: null per qualunque combinazione non
+            // riconosciuta (gironi sbilanciati, conteggi diversi da 3/4,
+            // iscrizioni incomplete o assenti) - in quel caso un messaggio
+            // esplicito viene mostrato piu' sotto invece di un'area vuota.
+            const numeroGironeA = squadrePerGirone[0].length;
+            const numeroGironeB = squadrePerGirone[1].length;
+            const prospettoIpotetico = !tabelloneGenerato
+              ? calcolaProspettoIpoteticoTorneo(numeroGironeA, numeroGironeB)
+              : null;
 
             // Story 20.23: stesso ordinamento per data/ora dello Slot gia'
             // riusato identico da "partiteDelGirone"/"semifinali" sotto
@@ -396,9 +415,64 @@ export default async function TorneoPubblicoPage() {
                     Tabellone semifinali/finali
                   </h3>
                   {!tabelloneGenerato ? (
-                    <p className={styles.messaggioSezione}>
-                      Tabellone semifinali/finali non ancora generato.
-                    </p>
+                    // Story 20.27: prospetto ipotetico di sola lettura -
+                    // mirror di tabellone/page.tsx (admin) MA senza
+                    // PrenotaSlotIpoteticoForm/mostraPrenotazione (nessun
+                    // controllo di prenotazione anticipata Slot sulla vista
+                    // pubblica, spec-20-27 Boundaries "Never") - bastano
+                    // sezione.semifinali/sezione.finali cosi' come restituiti
+                    // da calcolaProspettoIpoteticoTorneo. Sezione "Tabellone
+                    // semifinali/finali" gia' esistente riusata cosi' com'e'
+                    // (nessun nuovo <h2>/<h3> duplicato qui).
+                    !prospettoIpotetico ? (
+                      <p className={styles.messaggioSezione}>
+                        Il prospetto ipotetico è disponibile solo quando entrambi i Gironi hanno
+                        lo stesso numero di Squadre (3 o 4).
+                      </p>
+                    ) : (
+                      <>
+                        <p className={styles.messaggioSezione}>
+                          Anteprima di sola lettura: mostra come si incroceranno le posizioni di
+                          girone una volta completato il calendario - nessuna Squadra reale,
+                          nessun incontro creato.
+                        </p>
+                        {prospettoIpotetico.map((sezione) => {
+                          // Review fix mirror (Verification Gap Reviewer,
+                          // Story 20.20/20.26): senza semifinali (finalina
+                          // diretta del formato 6) il titolo della sezione e
+                          // l'etichetta dell'unico accoppiamento di "Finali"
+                          // sono la STESSA stringa - il prefisso "etichetta:"
+                          // e' quindi omesso sotto solo in quel caso, stessa
+                          // condizione gia' usata in admin.
+                          const haSemifinali = sezione.semifinali.length > 0;
+                          return (
+                            <div key={sezione.titolo} className={styles.blocoTabellone}>
+                              <p className={styles.etichettaSettimana}>{sezione.titolo}</p>
+                              {sezione.semifinali.map((accoppiamento) => (
+                                <p
+                                  key={accoppiamento.etichetta}
+                                  className={styles.messaggioSezione}
+                                >
+                                  {accoppiamento.etichetta}:{" "}
+                                  <strong>{accoppiamento.casa}</strong> vs{" "}
+                                  <strong>{accoppiamento.ospite}</strong>
+                                </p>
+                              ))}
+                              {sezione.finali.map((accoppiamento) => (
+                                <p
+                                  key={accoppiamento.etichetta}
+                                  className={styles.messaggioSezione}
+                                >
+                                  {haSemifinali && <>{accoppiamento.etichetta}: </>}
+                                  <strong>{accoppiamento.casa}</strong> vs{" "}
+                                  <strong>{accoppiamento.ospite}</strong>
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )
                   ) : (
                     <>
                       {TABELLONI_TORNEO.map((tabellone) => {

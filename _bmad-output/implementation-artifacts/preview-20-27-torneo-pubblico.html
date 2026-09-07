@@ -1,0 +1,330 @@
+<title>Anteprima Prospetto Torneo</title>
+<style>
+  :root{
+    --color-surface:#ffffff;
+    --color-primary:#00a3e0;
+    --color-button-bg:#006da6;
+    --color-text-primary:#101820;
+    --color-text-secondary:#46586b;
+    --color-border:#bfe4f5;
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-8:32px;
+    --bg-pagina:#f2f5f7;
+    --azzurro-scuro:#0072a3;
+    --grigio-titolo:#5b6472;
+    --azzurro-partite:#2e6f99;
+    --testo-chiaro-partite:#eaf4fb;
+    --magenta-chiaro:#ffcbe6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg-pagina);
+    color:var(--color-text-primary);
+    font-family:Arial, sans-serif;
+  }
+
+  /* ---- nastro di servizio (non fa parte del sito reale) ---- */
+  .nastro{
+    background:#101820;
+    color:#f2f5f7;
+    font-family:Arial, sans-serif;
+    font-size:12.5px;
+    letter-spacing:0.02em;
+    padding:10px var(--space-6);
+    text-align:center;
+  }
+  .nastro strong{color:#7fd4ff;}
+
+  /* ---- header semplificato (mockup, non pixel-perfect) ---- */
+  .headerFinto{
+    background:#ffffff;
+    border-bottom:1px solid var(--color-border);
+    padding:var(--space-3) var(--space-6);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:var(--space-3);
+  }
+  .headerFinto .brand{
+    font-family:"Arial Black","Arial Narrow",Impact,sans-serif;
+    font-weight:900;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    font-size:16px;
+    color:var(--color-text-primary);
+  }
+  .headerFinto nav{display:flex; gap:var(--space-5); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;}
+  .headerFinto nav a{color:var(--color-text-secondary); text-decoration:none;}
+  .headerFinto nav a.attivo{color:var(--color-button-bg); border-bottom:2px solid var(--color-button-bg); padding-bottom:2px;}
+
+  /* ==================================================================
+     Da qui in poi: riproduzione fedele di app/torneo/torneo-pubblico.module.css
+     (stesse classi, stessi valori) applicata a dati di esempio.
+     ================================================================== */
+  .main{
+    max-width:1000px;
+    margin:0 auto;
+    padding:var(--space-8) var(--space-6);
+    background:var(--bg-pagina);
+  }
+  .titolo{
+    font-family:"Arial Black","Arial Narrow",Impact,sans-serif;
+    font-size:40px;
+    font-weight:900;
+    line-height:1.05;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--color-text-primary);
+    text-wrap:balance;
+  }
+  @media (max-width:900px){ .titolo{ font-size:22px; line-height:1.1; } }
+
+  .sezioneCategoria{ margin-top:var(--space-8); }
+  .sezioneCategoria:first-of-type{ margin-top:var(--space-6); }
+
+  .titoloCategoria{
+    font-family:"Arial Black","Arial Narrow",Impact,sans-serif;
+    font-size:22px; font-weight:900; line-height:1.15;
+    letter-spacing:0.5px; text-transform:uppercase;
+    color:var(--color-text-primary);
+  }
+  .etichettaSettimana{
+    font-family:Arial, sans-serif;
+    font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--azzurro-scuro);
+    margin-top:var(--space-1);
+  }
+
+  .sezioneGirone{ margin-top:var(--space-6); }
+  .titoloGirone{
+    font-family:"Arial Black",sans-serif;
+    font-size:14px; font-weight:900; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--grigio-titolo);
+    margin-bottom:var(--space-3);
+  }
+  .messaggioSezione{ color:var(--color-text-secondary); margin:0 0 var(--space-2) 0; }
+
+  .tabellaClassifica{ width:100%; border-collapse:collapse; margin-bottom:var(--space-4); font-size:14px; }
+  .tabellaClassifica th, .tabellaClassifica td{ text-align:left; padding:var(--space-2) var(--space-3); border-bottom:1px solid #e6ebef; }
+  .tabellaClassifica th{ font-weight:700; color:var(--grigio-titolo); text-transform:uppercase; font-size:11px; letter-spacing:1px; }
+  .tabellaScroll{ overflow-x:auto; }
+
+  .matchGrid{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--space-4); }
+  @media (max-width:900px){ .matchGrid{ grid-template-columns:1fr; } }
+  .matchCard{
+    display:flex; flex-direction:column; gap:var(--space-2);
+    background:var(--azzurro-partite); color:#ffffff;
+    padding:var(--space-4);
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 4% 100%);
+    position:relative; overflow:hidden;
+  }
+  .matchCard::before{
+    content:""; position:absolute; top:0; right:0; width:56px; height:56px;
+    background:var(--color-primary); opacity:0.15;
+    clip-path:polygon(100% 0, 0 0, 100% 100%);
+  }
+  .categoria{
+    font-family:Arial, sans-serif; font-size:11px; font-weight:700; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--testo-chiaro-partite);
+  }
+  .squadre{
+    display:flex; align-items:center; gap:var(--space-2);
+    font-family:"Arial Black","Arial Narrow",Impact,sans-serif;
+    font-size:20px; font-weight:900; line-height:1.15; letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .vs{ color:var(--magenta-chiaro); font-size:inherit; font-weight:inherit; }
+  .meta{ padding-left:var(--space-4); font-family:Arial, sans-serif; font-size:13px; color:var(--testo-chiaro-partite); }
+  .metaSlot{
+    padding-left:var(--space-4); font-family:Arial, sans-serif; font-size:13px; color:var(--testo-chiaro-partite);
+    display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); margin-top:var(--space-1);
+  }
+  .linkNaviga{ color:var(--testo-chiaro-partite); font-weight:700; }
+
+  .sezioneTabellone{ margin-top:var(--space-6); }
+  .blocoTabellone{ margin-bottom:var(--space-4); }
+
+  /* Riquadro puramente illustrativo per delimitare visivamente, in questa
+     anteprima, il blocco "prima" (com'era) dal blocco "ora" (novita' di
+     Story 20.27) - non esiste nel sito reale. */
+  .confronto{ display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-top:var(--space-3); }
+  @media (max-width:820px){ .confronto{ grid-template-columns:1fr; } }
+  .confrontoBox{ background:#ffffff; border:1px dashed var(--color-border); padding:var(--space-4); }
+  .confrontoLabel{
+    display:inline-block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em;
+    color:#8a95a3; margin-bottom:var(--space-2);
+  }
+  .confrontoLabel.nuovo{ color:var(--color-button-bg); }
+</style>
+
+<div class="nastro">Anteprima statica &mdash; Story 20.27 &middot; dati di esempio, non l'app live (dev locale non disponibile su questa macchina)</div>
+
+<header class="headerFinto">
+  <div class="brand">Settore Volley</div>
+  <nav>
+    <a href="#">Home</a>
+    <a href="#">Squadre</a>
+    <a href="#">Calendario</a>
+    <a href="#" class="attivo">Torneo</a>
+    <a href="#">Staff</a>
+    <a href="#">Contatti</a>
+  </nav>
+</header>
+
+<main class="main">
+  <h1 class="titolo">Memorial Giulio Bianchi 2026</h1>
+
+  <!-- ================= CATEGORIA 1 — formato 8 (4+4), girone in corso ================= -->
+  <section class="sezioneCategoria">
+    <h2 class="titoloCategoria">Under 16 Maschile</h2>
+    <p class="etichettaSettimana">Settimana 1</p>
+
+    <section class="sezioneGirone">
+      <h3 class="titoloGirone">Girone A</h3>
+      <div class="tabellaScroll">
+        <table class="tabellaClassifica">
+          <thead><tr><th>Squadra</th><th>Punti</th><th>Partite giocate</th><th>Set vinti</th><th>Set persi</th></tr></thead>
+          <tbody>
+            <tr><td>Pallavolo Riviera</td><td>7</td><td>3</td><td>6</td><td>1</td></tr>
+            <tr><td>Virtus San Marco</td><td>5</td><td>3</td><td>5</td><td>3</td></tr>
+            <tr><td>Nuova Pallavolo Adige</td><td>2</td><td>3</td><td>2</td><td>6</td></tr>
+            <tr><td>Sport Club Fenice</td><td>1</td><td>3</td><td>1</td><td>6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sezioneGirone">
+      <h3 class="titoloGirone">Girone B</h3>
+      <div class="tabellaScroll">
+        <table class="tabellaClassifica">
+          <thead><tr><th>Squadra</th><th>Punti</th><th>Partite giocate</th><th>Set vinti</th><th>Set persi</th></tr></thead>
+          <tbody>
+            <tr><td>Volley Team Corallo</td><td>6</td><td>3</td><td>6</td><td>2</td></tr>
+            <tr><td>Polisportiva Aurora</td><td>6</td><td>3</td><td>5</td><td>2</td></tr>
+            <tr><td>Asd Litorale</td><td>3</td><td>3</td><td>3</td><td>5</td></tr>
+            <tr><td>Volley Belvedere</td><td>0</td><td>3</td><td>0</td><td>6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sezioneTabellone">
+      <h3 class="titoloGirone">Tabellone semifinali/finali</h3>
+
+      <div class="confronto">
+        <div class="confrontoBox">
+          <span class="confrontoLabel">Prima di Story 20.27</span>
+          <p class="messaggioSezione" style="margin:0;">Tabellone semifinali/finali non ancora generato.</p>
+        </div>
+        <div class="confrontoBox">
+          <span class="confrontoLabel nuovo">Ora</span>
+          <p class="messaggioSezione">Anteprima di sola lettura: mostra come si incroceranno le posizioni di girone una volta completato il calendario - nessuna Squadra reale, nessun incontro creato.</p>
+
+          <div class="blocoTabellone">
+            <p class="etichettaSettimana">Tabellone posizioni 1°-4°</p>
+            <p class="messaggioSezione">Semifinale 1: <strong>1° Girone A</strong> vs <strong>2° Girone B</strong></p>
+            <p class="messaggioSezione">Semifinale 2: <strong>1° Girone B</strong> vs <strong>2° Girone A</strong></p>
+            <p class="messaggioSezione">Finale 1°/2° posto: <strong>Vincente semifinale 1</strong> vs <strong>Vincente semifinale 2</strong></p>
+            <p class="messaggioSezione">Finale 3°/4° posto: <strong>Perdente semifinale 1</strong> vs <strong>Perdente semifinale 2</strong></p>
+          </div>
+
+          <div class="blocoTabellone" style="margin-bottom:0;">
+            <p class="etichettaSettimana">Tabellone posizioni 5°-8°</p>
+            <p class="messaggioSezione">Semifinale 1: <strong>3° Girone A</strong> vs <strong>4° Girone B</strong></p>
+            <p class="messaggioSezione">Semifinale 2: <strong>3° Girone B</strong> vs <strong>4° Girone A</strong></p>
+            <p class="messaggioSezione">Finale 5°/6° posto: <strong>Vincente semifinale 1</strong> vs <strong>Vincente semifinale 2</strong></p>
+            <p class="messaggioSezione" style="margin-bottom:0;">Finale 7°/8° posto: <strong>Perdente semifinale 1</strong> vs <strong>Perdente semifinale 2</strong></p>
+          </div>
+          <p class="messaggioSezione" style="margin-top:var(--space-3); font-size:12px; font-style:italic;">Nota: in admin ogni riga qui sopra ha anche un menu per prenotare in anticipo lo Slot (Story 20.21/20.26) - sul sito pubblico quel controllo non compare, per scelta di questa story.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ================= CATEGORIA 2 — formato 6 (3+3), girone in corso ================= -->
+  <section class="sezioneCategoria">
+    <h2 class="titoloCategoria">Under 14 Femminile</h2>
+    <p class="etichettaSettimana">Settimana 2</p>
+
+    <section class="sezioneGirone">
+      <h3 class="titoloGirone">Girone A</h3>
+      <div class="tabellaScroll">
+        <table class="tabellaClassifica">
+          <thead><tr><th>Squadra</th><th>Punti</th><th>Partite giocate</th><th>Set vinti</th><th>Set persi</th></tr></thead>
+          <tbody>
+            <tr><td>Pallavolo Girasole</td><td>4</td><td>2</td><td>4</td><td>0</td></tr>
+            <tr><td>Asd Torrente</td><td>2</td><td>2</td><td>2</td><td>2</td></tr>
+            <tr><td>Volley Ginestra</td><td>0</td><td>2</td><td>0</td><td>4</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sezioneGirone">
+      <h3 class="titoloGirone">Girone B</h3>
+      <div class="tabellaScroll">
+        <table class="tabellaClassifica">
+          <thead><tr><th>Squadra</th><th>Punti</th><th>Partite giocate</th><th>Set vinti</th><th>Set persi</th></tr></thead>
+          <tbody>
+            <tr><td>Polisportiva Faro</td><td>3</td><td>2</td><td>3</td><td>1</td></tr>
+            <tr><td>Virtus Collina</td><td>3</td><td>2</td><td>3</td><td>2</td></tr>
+            <tr><td>Sport Club Ontano</td><td>0</td><td>2</td><td>0</td><td>4</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sezioneTabellone">
+      <h3 class="titoloGirone">Tabellone semifinali/finali</h3>
+      <p class="messaggioSezione">Anteprima di sola lettura: mostra come si incroceranno le posizioni di girone una volta completato il calendario - nessuna Squadra reale, nessun incontro creato.</p>
+
+      <div class="blocoTabellone">
+        <p class="etichettaSettimana">Tabellone posizioni 1°-4°</p>
+        <p class="messaggioSezione">Semifinale 1: <strong>1° Girone A</strong> vs <strong>2° Girone B</strong></p>
+        <p class="messaggioSezione">Semifinale 2: <strong>1° Girone B</strong> vs <strong>2° Girone A</strong></p>
+        <p class="messaggioSezione">Finale 1°/2° posto: <strong>Vincente semifinale 1</strong> vs <strong>Vincente semifinale 2</strong></p>
+        <p class="messaggioSezione">Finale 3°/4° posto: <strong>Perdente semifinale 1</strong> vs <strong>Perdente semifinale 2</strong></p>
+      </div>
+
+      <div class="blocoTabellone" style="margin-bottom:0;">
+        <p class="etichettaSettimana">Finalina 5°/6° posto</p>
+        <p class="messaggioSezione" style="margin-bottom:0;"><strong>3° Girone A</strong> vs <strong>3° Girone B</strong></p>
+      </div>
+    </section>
+  </section>
+
+  <!-- ================= CATEGORIA 3 — tabellone reale gia' generato (ramo invariato, per confronto) ================= -->
+  <section class="sezioneCategoria">
+    <h2 class="titoloCategoria">Under 18 Misto</h2>
+    <p class="etichettaSettimana">Settimana 1</p>
+    <p class="messaggioSezione" style="margin-top:var(--space-6);">(Girone completato — dettaglio omesso in questa anteprima)</p>
+
+    <section class="sezioneTabellone">
+      <h3 class="titoloGirone">Tabellone posizioni 1°-4°</h3>
+      <div class="matchGrid">
+        <div class="matchCard">
+          <div class="categoria">Gara 19 &middot; Semifinale</div>
+          <div class="squadre"><span>Pallavolo Riviera</span><span class="vs">vs</span><span>Polisportiva Aurora</span></div>
+          <div class="meta">3&ndash;1 (25-20, 22-25, 25-18, 25-19)</div>
+          <div class="metaSlot"><span>Turno serale &middot; 2026-09-12 18:00 &middot; Palestra Comunale</span></div>
+        </div>
+        <div class="matchCard">
+          <div class="categoria">Gara 20 &middot; Semifinale</div>
+          <div class="squadre"><span>Volley Team Corallo</span><span class="vs">vs</span><span>Virtus San Marco</span></div>
+          <div class="meta">In programma</div>
+          <div class="metaSlot">
+            <span>Turno serale &middot; 2026-09-13 19:30 &middot; Palestra Comunale - Campo 2</span>
+            <a class="linkNaviga" href="#">Naviga</a>
+          </div>
+        </div>
+        <div class="matchCard">
+          <div class="categoria">Finale 1°/2° posto</div>
+          <div class="squadre"><span>Pallavolo Riviera</span><span class="vs">vs</span><span>Vincente semifinale 2</span></div>
+          <div class="meta">In programma</div>
+          <!-- Nessuno Slot assegnato: MetaSlot non renderizza nulla in questo caso (comportamento reale) -->
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
