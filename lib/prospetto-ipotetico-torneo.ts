@@ -20,10 +20,11 @@ export type AccoppiamentoIpotetico = {
   // il form di prenotazione anticipata dello Slot su quella riga esatta
   // (PrenotaSlotIpoteticoForm.tsx). ordinale e' 1|2 per le due semifinali
   // dello stesso tabellone, null per le finali (un solo Slot, nessuna
-  // ambiguita' - spec-20-21 Boundaries "Always"). Tutti e tre undefined
-  // SOLO per la finalina diretta del formato 6 (sezionePosizioni5_6Formato6
-  // sotto): quella riga non ha oggi alcun percorso di generazione reale
-  // (spec-20-20 Never), quindi nessuna prenotazione ha senso li'.
+  // ambiguita' - spec-20-21 Boundaries "Always") - inclusa la finalina
+  // diretta del formato 6 (sezionePosizioni5_6Formato6 sotto), che da
+  // spec-20-26 ha anch'essa un percorso di generazione reale
+  // (generaTabelloneAction, fase "FINALE_VINCENTI"/tabellone
+  // "POSIZIONI_5_8"). Nessuna riga oggi lascia questi campi undefined.
   fase?: FaseTorneo;
   tabellone?: TabelloneTorneo;
   ordinale?: number | null;
@@ -133,14 +134,32 @@ function sezionePosizioni5_8(): SezioneProspettoIpotetico {
 // classificato - il 5°-6° posto e' quindi gia' una finale diretta tra le
 // sole due terze classificate, nessuna semifinale (spec-20-20 Design
 // Notes). "Finalina 5°/6° posto" e' una nuova etichetta locale, non un
-// TabelloneTorneo DB-backed (spec-20-20 Boundaries "Always") - questo
-// formato non genera mai un vero tabellone a 6 (story futura).
+// TabelloneTorneo DB-backed (spec-20-20 Boundaries "Always") - riusa pero'
+// per intero fase/tabellone esistenti (FaseTorneo/TabelloneTorneo), nessuna
+// migrazione.
+// spec-20-26: da quando generaTabelloneAction genera davvero questa riga
+// (fase "FINALE_VINCENTI", tabellone "POSIZIONI_5_8", nessuna semifinale
+// precedente per quel tabellone in questo formato), i metadati fase/
+// tabellone/ordinale sono valorizzati esattamente come per quel percorso
+// reale - stesso meccanismo di prenotazione anticipata gia' usato dalle
+// altre righe (spec-20-26 Boundaries "Always", punto sulla prenotazione
+// anticipata). Prima di questa story erano tutti undefined, perche' non
+// esisteva alcun percorso di generazione reale per questa riga.
 function sezionePosizioni5_6Formato6(): SezioneProspettoIpotetico {
   const etichetta = "Finalina 5°/6° posto";
   return {
     titolo: etichetta,
     semifinali: [],
-    finali: [{ etichetta, casa: posizione(3, "GIRONE_A"), ospite: posizione(3, "GIRONE_B") }],
+    finali: [
+      {
+        etichetta,
+        casa: posizione(3, "GIRONE_A"),
+        ospite: posizione(3, "GIRONE_B"),
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_5_8",
+        ordinale: null,
+      },
+    ],
   };
 }
 
@@ -162,6 +181,15 @@ export function formatoOttoSquadre(numeroGironeA: number, numeroGironeB: number)
   return numeroGironeA === 4 && numeroGironeB === 4;
 }
 
+// spec-20-26: mirror di formatoOttoSquadre sopra, stessa unica fonte di
+// verita' per la regola "Categoria in formato 6 squadre (3+3)" - riusata
+// ora anche da generaTabelloneAction/prenotaSlotIpoteticoAction
+// (app/app/(torneo)/torneo/actions.ts), mai una terza implementazione
+// indipendente della stessa soglia.
+export function formatoSeiSquadre(numeroGironeA: number, numeroGironeB: number): boolean {
+  return numeroGironeA === 3 && numeroGironeB === 3;
+}
+
 // spec-20-20 Boundaries "Always": formato dedotto SOLO dal conteggio
 // Squadre per Girone - entrambi con esattamente 4 -> formato 8, entrambi
 // con esattamente 3 -> formato 6, qualunque altra combinazione (gironi
@@ -174,7 +202,7 @@ export function calcolaProspettoIpoteticoTorneo(
   if (formatoOttoSquadre(numeroGironeA, numeroGironeB)) {
     return [sezionePosizioni1_4(), sezionePosizioni5_8()];
   }
-  if (numeroGironeA === 3 && numeroGironeB === 3) {
+  if (formatoSeiSquadre(numeroGironeA, numeroGironeB)) {
     return [sezionePosizioni1_4(), sezionePosizioni5_6Formato6()];
   }
   return null;

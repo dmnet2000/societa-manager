@@ -47,7 +47,7 @@ import { isSettimanaTorneoValida, NOME_SETTIMANA_MAX } from "@/lib/settimana-tor
 import { isGironeTorneoValido } from "@/lib/girone-torneo";
 import { isFaseTorneoValida } from "@/lib/fase-torneo";
 import { isTabelloneTorneoValido } from "@/lib/tabelloni-torneo";
-import { formatoOttoSquadre } from "@/lib/prospetto-ipotetico-torneo";
+import { formatoOttoSquadre, formatoSeiSquadre } from "@/lib/prospetto-ipotetico-torneo";
 import { decodificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import {
@@ -1694,16 +1694,21 @@ async function generaFinaliSeCompletate(
   await assegnaSlotAutomaticamente(categoriaTorneoId, edizioneTorneoId, "FINALE_PERDENTI", tabellone);
 }
 
-// spec-20-4 Boundaries: il tabellone (le 4 semifinali) e' generato una sola
-// volta per Categoria (idempotente - rifiutato se esistono gia'
-// PartitaTorneo con fase !== GIRONE), solo quando la classifica di
-// entrambi i gironi e' completa (ogni PartitaTorneo di fase GIRONE ha un
-// risultato - incluso il caso limite "calendario mai generato", partite di
-// girone assenti = classifica non completa) e richiede almeno 4 Squadre
-// per girone (serve un 4° posto per il tabellone 5°-8°, decisione presa in
-// spec-20-4 Design Notes - epics.md non la specifica esplicitamente).
-// Incrocio letterale dell'AC di epics.md: 1°A-2°B/1°B-2°A per il tabellone
-// 1°-4°, 3°A-4°B/3°B-4°A per il 5°-8°.
+// spec-20-4 Boundaries: il tabellone e' generato una sola volta per
+// Categoria (idempotente - rifiutato se esistono gia' PartitaTorneo con
+// fase !== GIRONE), solo quando la classifica di entrambi i gironi e'
+// completa (ogni PartitaTorneo di fase GIRONE ha un risultato - incluso il
+// caso limite "calendario mai generato", partite di girone assenti =
+// classifica non completa). Incrocio letterale dell'AC di epics.md:
+// 1°A-2°B/1°B-2°A per il tabellone 1°-4° (identico nei due formati).
+// spec-20-26 (Epic 20, Torneo Memorial): richiede ORA esattamente 4+4
+// Squadre (formato 8, invariato - genera le 4 semifinali, 3°A-4°B/3°B-4°A
+// per il 5°-8°) OPPURE esattamente 3+3 (formato 6, nuovo - genera 2
+// semifinali 1°-4° + un'UNICA finale diretta 3°A-3°B per il 5°-6°, MAI una
+// semifinale ne' una FINALE_PERDENTI per quel tabellone in questo formato).
+// Formato dedotto con la stessa unica fonte di verita' del prospetto
+// ipotetico (formatoOttoSquadre/formatoSeiSquadre,
+// lib/prospetto-ipotetico-torneo.ts).
 export async function generaTabelloneAction(
   _prevState: TorneoActionState,
   formData: FormData
@@ -1739,11 +1744,19 @@ export async function generaTabelloneAction(
     const squadreGironeA = squadre.filter((s) => s.girone === "GIRONE_A");
     const squadreGironeB = squadre.filter((s) => s.girone === "GIRONE_B");
 
-    if (squadreGironeA.length < 4 || squadreGironeB.length < 4) {
+    // spec-20-26 (Epic 20, Torneo Memorial): formato dedotto con la STESSA
+    // unica fonte di verita' gia' condivisa con il prospetto ipotetico e con
+    // prenotaSlotIpoteticoAction sotto (lib/prospetto-ipotetico-torneo.ts) -
+    // esattamente 4+4 (formato 8, invariato) O esattamente 3+3 (formato 6,
+    // nuovo). Qualunque altra combinazione resta rifiutata, come oggi.
+    const formato8 = formatoOttoSquadre(squadreGironeA.length, squadreGironeB.length);
+    const formato6 = formatoSeiSquadre(squadreGironeA.length, squadreGironeB.length);
+    if (!formato8 && !formato6) {
       return {
         error: {
           code: "VALIDATION",
-          message: "Servono almeno 4 Squadre in ciascun girone per generare il tabellone.",
+          message:
+            "Servono esattamente 4 Squadre in ciascun girone, oppure esattamente 3 in ciascuno, per generare il tabellone.",
         },
       };
     }
@@ -1789,9 +1802,13 @@ export async function generaTabelloneAction(
 
     // Story 20.11: numero di gara progressivo per l'intera Edizione - stesso
     // schema di generaCalendarioGironiAction, una sola lettura del massimo
-    // attuale, poi i 4 numeri consecutivi per le semifinali.
+    // attuale, poi i numeri consecutivi per le semifinali (+ la finalina
+    // diretta in formato 6).
     const prossimoNumero = await prossimoNumeroPartitaTorneo(categoria.edizioneTorneoId);
-    const righe = [
+    // Tabellone 1°-4°: identico nei due formati (dipende solo dal 1°/2°
+    // classificato di ciascun Girone, che esistono in entrambi - spec-20-26
+    // Boundaries "Always").
+    const semifinali1_4 = [
       {
         categoriaTorneoId,
         squadraCasaId: classificaA[0].squadra.id,
@@ -1810,32 +1827,59 @@ export async function generaTabelloneAction(
         edizioneTorneoId: categoria.edizioneTorneoId,
         numero: prossimoNumero + 1,
       },
-      {
-        categoriaTorneoId,
-        squadraCasaId: classificaA[2].squadra.id,
-        squadraOspiteId: classificaB[3].squadra.id,
-        fase: "SEMIFINALE" as const,
-        tabellone: "POSIZIONI_5_8" as const,
-        edizioneTorneoId: categoria.edizioneTorneoId,
-        numero: prossimoNumero + 2,
-      },
-      {
-        categoriaTorneoId,
-        squadraCasaId: classificaB[2].squadra.id,
-        squadraOspiteId: classificaA[3].squadra.id,
-        fase: "SEMIFINALE" as const,
-        tabellone: "POSIZIONI_5_8" as const,
-        edizioneTorneoId: categoria.edizioneTorneoId,
-        numero: prossimoNumero + 3,
-      },
     ];
+
+    // spec-20-26 (Epic 20, Torneo Memorial): formato 6 (3+3) - il 5°-8°
+    // diventa un'UNICA partita diretta (fase "FINALE_VINCENTI", tabellone
+    // "POSIZIONI_5_8") tra le terze classificate dei due gironi, MAI una
+    // SEMIFINALE ne' una FINALE_PERDENTI per quel tabellone in questo
+    // formato (spec-20-26 Boundaries "Always"). Formato 8 (4+4): invariato,
+    // 2 semifinali 3°A-4°B/3°B-4°A.
+    const righe = formato6
+      ? [
+          ...semifinali1_4,
+          {
+            categoriaTorneoId,
+            squadraCasaId: classificaA[2].squadra.id,
+            squadraOspiteId: classificaB[2].squadra.id,
+            fase: "FINALE_VINCENTI" as const,
+            tabellone: "POSIZIONI_5_8" as const,
+            edizioneTorneoId: categoria.edizioneTorneoId,
+            numero: prossimoNumero + 2,
+          },
+        ]
+      : [
+          ...semifinali1_4,
+          {
+            categoriaTorneoId,
+            squadraCasaId: classificaA[2].squadra.id,
+            squadraOspiteId: classificaB[3].squadra.id,
+            fase: "SEMIFINALE" as const,
+            tabellone: "POSIZIONI_5_8" as const,
+            edizioneTorneoId: categoria.edizioneTorneoId,
+            numero: prossimoNumero + 2,
+          },
+          {
+            categoriaTorneoId,
+            squadraCasaId: classificaB[2].squadra.id,
+            squadraOspiteId: classificaA[3].squadra.id,
+            fase: "SEMIFINALE" as const,
+            tabellone: "POSIZIONI_5_8" as const,
+            edizioneTorneoId: categoria.edizioneTorneoId,
+            numero: prossimoNumero + 3,
+          },
+        ];
 
     await creaPartiteTorneo(righe);
 
-    // Story 20.9: auto-assegnazione best-effort di uno Slot libero alle 4
-    // semifinali appena generate, una chiamata per tabellone (POSIZIONI_1_4/
-    // POSIZIONI_5_8) - mai un errore che blocchi la generazione gia'
-    // avvenuta sopra (assegnaSlotAutomaticamente non propaga mai).
+    // Story 20.9: auto-assegnazione best-effort di uno Slot libero alle
+    // Partite appena generate, una chiamata per fase/tabellone - mai un
+    // errore che blocchi la generazione gia' avvenuta sopra
+    // (assegnaSlotAutomaticamente non propaga mai). spec-20-26: in formato 6
+    // la seconda chiamata copre la finalina diretta (FINALE_VINCENTI/
+    // POSIZIONI_5_8) invece delle semifinali 5°-8° del formato 8 - mirror
+    // esatto delle chiamate gia' esistenti per le finali (generaFinaliSeCompletate
+    // sopra).
     await assegnaSlotAutomaticamente(
       categoriaTorneoId,
       categoria.edizioneTorneoId,
@@ -1845,7 +1889,7 @@ export async function generaTabelloneAction(
     await assegnaSlotAutomaticamente(
       categoriaTorneoId,
       categoria.edizioneTorneoId,
-      "SEMIFINALE",
+      formato6 ? "FINALE_VINCENTI" : "SEMIFINALE",
       "POSIZIONI_5_8"
     );
 
@@ -2218,10 +2262,11 @@ export async function assegnaSlotPartitaTorneoAction(
 // prospetto ipotetico (Categoria + fase/tabellone/ordinale) - mirror di
 // assegnaSlotPartitaTorneoAction, con due differenze: qui non esiste ancora
 // una PartitaTorneo reale (la riga e' solo ipotetica, spec-20-20/20-21), e
-// il formato "8 squadre" (4+4) e' un requisito in piu', mai fidato dal
-// client (ricalcolato qui dalle Squadre reali della Categoria, spec-20-21
-// Boundaries "Always": nessun percorso di generazione reale esiste per un
-// formato diverso, una prenotazione li' sarebbe orfana).
+// il formato "8 squadre" (4+4) o "6 squadre" (3+3, spec-20-26) e' un
+// requisito in piu', mai fidato dal client (ricalcolato qui dalle Squadre
+// reali della Categoria, spec-20-21 Boundaries "Always": nessun percorso di
+// generazione reale esiste per un formato diverso, una prenotazione li'
+// sarebbe orfana).
 export async function prenotaSlotIpoteticoAction(
   _prevState: TorneoActionState,
   formData: FormData
@@ -2322,23 +2367,51 @@ export async function prenotaSlotIpoteticoAction(
       };
     }
 
-    // spec-20-21 Boundaries "Always": disponibile SOLO per il formato "8
-    // squadre" (4+4) del prospetto ipotetico - mai fidarsi che il client
-    // abbia davvero nascosto il form per un'altra Categoria (id
-    // indovinato/scheda vecchia rimasta aperta su una Categoria poi
-    // svuotata/modificata). Review fix (Patch I): regola condivisa con
-    // tabellone/page.tsx tramite formatoOttoSquadre (lib/prospetto-ipotetico-torneo.ts) -
-    // unica fonte di verita', mai due implementazioni indipendenti della
-    // stessa soglia.
+    // spec-20-21 Boundaries "Always": disponibile SOLO per i formati "8
+    // squadre" (4+4) o "6 squadre" (3+3, spec-20-26) del prospetto ipotetico
+    // - mai fidarsi che il client abbia davvero nascosto il form per
+    // un'altra Categoria (id indovinato/scheda vecchia rimasta aperta su
+    // una Categoria poi svuotata/modificata). Review fix (Patch I): regola
+    // condivisa con tabellone/page.tsx tramite formatoOttoSquadre/
+    // formatoSeiSquadre (lib/prospetto-ipotetico-torneo.ts) - unica fonte
+    // di verita', mai due implementazioni indipendenti della stessa soglia.
     const squadre = await elencaSquadreTorneo(categoriaTorneoId);
     const numeroGironeA = squadre.filter((s) => s.girone === "GIRONE_A").length;
     const numeroGironeB = squadre.filter((s) => s.girone === "GIRONE_B").length;
-    if (!formatoOttoSquadre(numeroGironeA, numeroGironeB)) {
+    if (
+      !formatoOttoSquadre(numeroGironeA, numeroGironeB) &&
+      !formatoSeiSquadre(numeroGironeA, numeroGironeB)
+    ) {
       return {
         error: {
           code: "VALIDATION",
           message:
-            "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone.",
+            "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone, oppure 3 in ciascuno.",
+        },
+      };
+    }
+
+    // Review fix (3-layer review, Story 20.26): in formato 6 (3+3) il
+    // tabellone POSIZIONI_5_8 ha un SOLO percorso di generazione reale (la
+    // finalina diretta, fase "FINALE_VINCENTI"/ordinale null - generaTabelloneAction
+    // sopra) - mai una SEMIFINALE ne' una FINALE_PERDENTI per quel tabellone
+    // in questo formato. Senza questo controllo, un client (mai fidato,
+    // stesso principio del controllo formato sopra) potrebbe inviare una
+    // combinazione fase/tabellone che qui supera i controlli enum generici
+    // ma per cui generaTabelloneAction/assegnaSlotAutomaticamente non
+    // creeranno mai la riga corrispondente - una prenotazione orfana che
+    // bloccherebbe permanentemente quello Slot (stessa classe di rischio
+    // gia' risolta altrove in questa Story per fase/tabellone, spec-20-21
+    // Boundaries "Always").
+    if (
+      formatoSeiSquadre(numeroGironeA, numeroGironeB) &&
+      tabellone === "POSIZIONI_5_8" &&
+      fase !== "FINALE_VINCENTI"
+    ) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Questa combinazione di fase e tabellone non esiste per il formato a 6 squadre.",
         },
       };
     }

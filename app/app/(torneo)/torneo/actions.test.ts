@@ -2206,7 +2206,7 @@ describe("generaTabelloneAction", () => {
     expect(result).toEqual({
       error: {
         code: "VALIDATION",
-        message: "Servono almeno 4 Squadre in ciascun girone per generare il tabellone.",
+        message: "Servono esattamente 4 Squadre in ciascun girone, oppure esattamente 3 in ciascuno, per generare il tabellone.",
       },
     });
     expect(elencaPartiteTorneoMock).not.toHaveBeenCalled();
@@ -2232,7 +2232,7 @@ describe("generaTabelloneAction", () => {
     expect(result).toEqual({
       error: {
         code: "VALIDATION",
-        message: "Servono almeno 4 Squadre in ciascun girone per generare il tabellone.",
+        message: "Servono esattamente 4 Squadre in ciascun girone, oppure esattamente 3 in ciascuno, per generare il tabellone.",
       },
     });
     expect(elencaPartiteTorneoMock).not.toHaveBeenCalled();
@@ -2255,7 +2255,7 @@ describe("generaTabelloneAction", () => {
     expect(result).toEqual({
       error: {
         code: "VALIDATION",
-        message: "Servono almeno 4 Squadre in ciascun girone per generare il tabellone.",
+        message: "Servono esattamente 4 Squadre in ciascun girone, oppure esattamente 3 in ciascuno, per generare il tabellone.",
       },
     });
     expect(creaPartiteTorneoMock).not.toHaveBeenCalled();
@@ -2442,6 +2442,191 @@ describe("generaTabelloneAction", () => {
           "Numero gara in conflitto con un'altra generazione avvenuta nello stesso istante. Riprova.",
       },
     });
+  });
+});
+
+// spec-20-26 (Epic 20, Torneo Memorial): formato 6 (3+3 Squadre per
+// girone) - generaTabelloneAction genera ora 2 semifinali 1°-4° (identiche
+// al formato 8) + UNA SOLA finale diretta 5°-6° (fase "FINALE_VINCENTI",
+// tabellone "POSIZIONI_5_8"), MAI una SEMIFINALE ne' una FINALE_PERDENTI
+// per quel tabellone in questo formato.
+describe("generaTabelloneAction (formato 6, 3+3 Squadre - spec-20-26)", () => {
+  // 3 Squadre per girone, stesso schema deterministico dei test del
+  // formato 8 sopra - a1/b1 vincono sempre 2-0: classifica 1°=a1/b1,
+  // 2°=a2/b2, 3°=a3/b3.
+  const squadreComplete6 = [
+    { id: "a1", girone: "GIRONE_A" },
+    { id: "a2", girone: "GIRONE_A" },
+    { id: "a3", girone: "GIRONE_A" },
+    { id: "b1", girone: "GIRONE_B" },
+    { id: "b2", girone: "GIRONE_B" },
+    { id: "b3", girone: "GIRONE_B" },
+  ];
+
+  function partita2a0(casaId: string, ospiteId: string, girone: string) {
+    return {
+      id: `${casaId}-${ospiteId}`,
+      categoriaTorneoId: "categoria-1",
+      squadraCasaId: casaId,
+      squadraCasa: { id: casaId, girone },
+      squadraOspiteId: ospiteId,
+      squadraOspite: { id: ospiteId, girone },
+      fase: "GIRONE",
+      tabellone: null,
+      set1Casa: 25,
+      set1Ospite: 10,
+      set2Casa: 25,
+      set2Ospite: 10,
+      set3Casa: null,
+      set3Ospite: null,
+    };
+  }
+
+  const partiteGironeComplete6 = [
+    partita2a0("a1", "a2", "GIRONE_A"),
+    partita2a0("a1", "a3", "GIRONE_A"),
+    partita2a0("a2", "a3", "GIRONE_A"),
+    partita2a0("b1", "b2", "GIRONE_B"),
+    partita2a0("b1", "b3", "GIRONE_B"),
+    partita2a0("b2", "b3", "GIRONE_B"),
+  ];
+
+  it("generates exactly 3 matches (2 semifinali 1°-4° + 1 direct finalina 5°-6°), never a semifinale nor a FINALE_PERDENTI for the 5°-8° tabellone (AC)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete6);
+    elencaPartiteTorneoMock.mockResolvedValue(partiteGironeComplete6);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 3 });
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(creaPartiteTorneoMock).toHaveBeenCalledWith([
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a1",
+        squadraOspiteId: "b2",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        edizioneTorneoId: "edizione-1",
+        numero: 1,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "b1",
+        squadraOspiteId: "a2",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        edizioneTorneoId: "edizione-1",
+        numero: 2,
+      },
+      {
+        categoriaTorneoId: "categoria-1",
+        squadraCasaId: "a3",
+        squadraOspiteId: "b3",
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_5_8",
+        edizioneTorneoId: "edizione-1",
+        numero: 3,
+      },
+    ]);
+    const righeCreate = creaPartiteTorneoMock.mock.calls[0][0] as { fase: string; tabellone: string }[];
+    expect(righeCreate).toHaveLength(3);
+    expect(
+      righeCreate.some((r) => r.tabellone === "POSIZIONI_5_8" && r.fase === "SEMIFINALE")
+    ).toBe(false);
+    expect(
+      righeCreate.some((r) => r.tabellone === "POSIZIONI_5_8" && r.fase === "FINALE_PERDENTI")
+    ).toBe(false);
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/app/torneo/edizione-1/categoria-1/tabellone"
+    );
+  });
+
+  it("assigns a free Slot to the direct finalina 5°-6° the same way as the semifinali (mirror of the existing finali wiring, spec-20-9/20-26)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete6);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 3 });
+    assegnaSlotPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const semi1_1_4 = {
+      id: "semi-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      slotTorneoId: null,
+    };
+    const semi2_1_4 = {
+      id: "semi-2",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      slotTorneoId: null,
+    };
+    const finaleDiretta5_8 = {
+      id: "finale-diretta",
+      fase: "FINALE_VINCENTI",
+      tabellone: "POSIZIONI_5_8",
+      slotTorneoId: null,
+    };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete6) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente SEMIFINALE/POSIZIONI_1_4
+      .mockResolvedValueOnce([finaleDiretta5_8]); // assegnaSlotAutomaticamente FINALE_VINCENTI/POSIZIONI_5_8
+
+    elencaSlotTorneoLiberiMock.mockImplementation(
+      (_edizioneTorneoId: string, fase: string, tabellone: string | null) => {
+        if (tabellone === "POSIZIONI_1_4") {
+          return Promise.resolve([{ id: "slot-a" }, { id: "slot-b" }]);
+        }
+        if (fase === "FINALE_VINCENTI" && tabellone === "POSIZIONI_5_8") {
+          return Promise.resolve([{ id: "slot-c" }]);
+        }
+        return Promise.resolve([]);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith("semi-1", "categoria-1", "slot-a");
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith("semi-2", "categoria-1", "slot-b");
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "finale-diretta",
+      "categoria-1",
+      "slot-c"
+    );
+  });
+
+  it("rejects generation for Categorie with counts other than 4+4/3+3 (e.g. 5+5)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "a3", girone: "GIRONE_A" },
+      { id: "a4", girone: "GIRONE_A" },
+      { id: "a5", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+      { id: "b3", girone: "GIRONE_B" },
+      { id: "b4", girone: "GIRONE_B" },
+      { id: "b5", girone: "GIRONE_B" },
+    ]);
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Servono esattamente 4 Squadre in ciascun girone, oppure esattamente 3 in ciascuno, per generare il tabellone.",
+      },
+    });
+    expect(creaPartiteTorneoMock).not.toHaveBeenCalled();
   });
 });
 
@@ -4647,9 +4832,77 @@ describe("prenotaSlotIpoteticoAction", () => {
     expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
   });
 
-  // spec-20-21 Boundaries "Always": disponibile SOLO per il formato 4+4 -
-  // mai fidarsi del client, ricalcolato qui dalle Squadre reali.
-  it("rejects the reservation when the Categoria isn't in the 4+4 format (e.g. 3+3)", async () => {
+  // spec-20-21 Boundaries "Always" (esteso da spec-20-26 al formato 6) -
+  // disponibile SOLO per il formato 4+4 o 3+3, mai fidarsi del client,
+  // ricalcolato qui dalle Squadre reali.
+  it("rejects the reservation when the Categoria isn't in the 4+4/3+3 format (e.g. 3+4)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "a3", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+      { id: "b3", girone: "GIRONE_B" },
+      { id: "b4", girone: "GIRONE_B" },
+    ]);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone, oppure 3 in ciascuno.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // spec-20-26 (Epic 20, Torneo Memorial): decisione del checkpoint - la
+  // prenotazione anticipata e' ora disponibile anche per il formato 6
+  // (3+3), stesso meccanismo generico gia' usato per il formato 8.
+  it("accepts the reservation for a Categoria in the 3+3 format on the direct finalina 5°-6° row (spec-20-26)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "a3", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+      { id: "b3", girone: "GIRONE_B" },
+    ]);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "FINALE_VINCENTI",
+      tabellone: "POSIZIONI_5_8",
+      edizioneTorneoId: "edizione-1",
+    });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({
+        categoriaTorneoId: "categoria-1",
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_5_8",
+        slotTorneoId: "slot-1",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(prenotaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      "categoria-1",
+      null
+    );
+  });
+
+  // Review fix (3-layer review, Story 20.26): in formato 6 il tabellone
+  // POSIZIONI_5_8 e' SOLO la finalina diretta (FINALE_VINCENTI) - una
+  // SEMIFINALE su quel tabellone non avra' mai una riga reale corrispondente
+  // (generaTabelloneAction non la crea in questo formato), quindi sarebbe
+  // una prenotazione orfana che blocca lo Slot per sempre.
+  it("rejects a SEMIFINALE/POSIZIONI_5_8 reservation for a Categoria in the 3+3 format (no such row exists in this format)", async () => {
     elencaSquadreTorneoMock.mockResolvedValue([
       { id: "a1", girone: "GIRONE_A" },
       { id: "a2", girone: "GIRONE_A" },
@@ -4659,13 +4912,52 @@ describe("prenotaSlotIpoteticoAction", () => {
       { id: "b3", girone: "GIRONE_B" },
     ]);
 
-    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({
+        categoriaTorneoId: "categoria-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_5_8",
+        ordinale: "1",
+        slotTorneoId: "slot-1",
+      })
+    );
 
     expect(result).toEqual({
       error: {
         code: "VALIDATION",
-        message:
-          "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone.",
+        message: "Questa combinazione di fase e tabellone non esiste per il formato a 6 squadre.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Stesso principio del test sopra, per FINALE_PERDENTI - anch'essa mai
+  // creata su POSIZIONI_5_8 in formato 6.
+  it("rejects a FINALE_PERDENTI/POSIZIONI_5_8 reservation for a Categoria in the 3+3 format (no such row exists in this format)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "a3", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+      { id: "b3", girone: "GIRONE_B" },
+    ]);
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({
+        categoriaTorneoId: "categoria-1",
+        fase: "FINALE_PERDENTI",
+        tabellone: "POSIZIONI_5_8",
+        slotTorneoId: "slot-1",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questa combinazione di fase e tabellone non esiste per il formato a 6 squadre.",
       },
     });
     expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();

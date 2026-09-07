@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcolaProspettoIpoteticoTorneo } from "./prospetto-ipotetico-torneo";
+import { calcolaProspettoIpoteticoTorneo, formatoSeiSquadre } from "./prospetto-ipotetico-torneo";
 
 // Story 20.20 (Epic 20, Torneo Memorial): test della funzione pura, nessun
 // mock necessario (nessun import "server-only" nel modulo testato). Copre
@@ -170,20 +170,49 @@ describe("calcolaProspettoIpoteticoTorneo", () => {
       {
         titolo: "Finalina 5°/6° posto",
         semifinali: [],
-        finali: [{ etichetta: "Finalina 5°/6° posto", casa: "3° Girone A", ospite: "3° Girone B" }],
+        finali: [
+          {
+            etichetta: "Finalina 5°/6° posto",
+            casa: "3° Girone A",
+            ospite: "3° Girone B",
+            fase: "FINALE_VINCENTI",
+            tabellone: "POSIZIONI_5_8",
+            ordinale: null,
+          },
+        ],
       },
     ]);
   });
 
-  // Story 20.21: la finalina diretta del formato 6 non ha alcun percorso di
-  // generazione reale (spec-20-20 Never) - nessun metadato fase/tabellone/
-  // ordinale su quella riga, cosi' tabellone/page.tsx non puo' montarci per
-  // sbaglio un form di prenotazione.
-  it("does not attach fase/tabellone/ordinale metadata to the direct finalina of the 6-format (spec-20-21)", () => {
+  // spec-20-26 (Epic 20, Torneo Memorial): da quando generaTabelloneAction
+  // genera davvero la finalina diretta del formato 6 (fase
+  // "FINALE_VINCENTI", tabellone "POSIZIONI_5_8"), questa riga porta gli
+  // stessi metadati di ogni altra riga con un percorso di generazione reale
+  // - stesso meccanismo di prenotazione anticipata gia' usato per le altre
+  // righe (mirror del test precedente per il formato 8). Prima di
+  // spec-20-26 questi campi erano tutti undefined (spec-20-21).
+  it("attaches fase/tabellone/ordinale metadata to the direct finalina of the 6-format (spec-20-26)", () => {
     const result = calcolaProspettoIpoteticoTorneo(3, 3);
 
-    expect(result![1].finali[0].fase).toBeUndefined();
-    expect(result![1].finali[0].tabellone).toBeUndefined();
-    expect(result![1].finali[0].ordinale).toBeUndefined();
+    expect(result![1].finali[0].fase).toBe("FINALE_VINCENTI");
+    expect(result![1].finali[0].tabellone).toBe("POSIZIONI_5_8");
+    expect(result![1].finali[0].ordinale).toBeNull();
+  });
+});
+
+// spec-20-26 (Epic 20, Torneo Memorial): formatoSeiSquadre e' ora esportata
+// e riusata direttamente da generaTabelloneAction/prenotaSlotIpoteticoAction
+// (app/app/(torneo)/torneo/actions.ts) - mirror dei test gia' esistenti per
+// formatoOttoSquadre altrove nel progetto.
+describe("formatoSeiSquadre", () => {
+  it("returns true only when both Gironi have exactly 3 Squadre", () => {
+    expect(formatoSeiSquadre(3, 3)).toBe(true);
+  });
+
+  it("returns false for any other combination (unbalanced, or balanced but not 3)", () => {
+    expect(formatoSeiSquadre(4, 4)).toBe(false);
+    expect(formatoSeiSquadre(3, 4)).toBe(false);
+    expect(formatoSeiSquadre(4, 3)).toBe(false);
+    expect(formatoSeiSquadre(2, 2)).toBe(false);
   });
 });

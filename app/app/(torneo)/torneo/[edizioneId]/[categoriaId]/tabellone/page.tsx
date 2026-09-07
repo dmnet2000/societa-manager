@@ -14,6 +14,7 @@ import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import {
   calcolaProspettoIpoteticoTorneo,
   formatoOttoSquadre as calcolaFormatoOttoSquadre,
+  formatoSeiSquadre as calcolaFormatoSeiSquadre,
 } from "@/lib/prospetto-ipotetico-torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -114,20 +115,17 @@ export default async function TabelloneTorneoPage({
   const prospettoIpotetico = calcolaProspettoIpoteticoTorneo(numeroGironeA, numeroGironeB);
 
   // Story 20.21: la prenotazione anticipata di uno Slot per una riga del
-  // prospetto ipotetico e' disponibile SOLO per il formato "8 squadre"
-  // (4+4) - generaTabelloneAction richiede oggi >=4 Squadre in ENTRAMBI i
-  // gironi per generare qualunque riga del tabellone (non solo il 5°-8°),
-  // quindi il formato "6 squadre" (3+3) non ha un percorso di generazione
-  // reale per nessuna riga (spec-20-21 Boundaries "Always"/Design Notes) -
-  // nemmeno per la sezione "Tabellone posizioni 1°-4°", pur identica nei
-  // due formati (calcolaProspettoIpoteticoTorneo, lib/prospetto-ipotetico-torneo.ts).
-  // Va quindi verificato sul FORMATO complessivo, mai sulla singola sezione.
-  // Review fix (3-layer review, Story 20.21 - Patch I): regola riusata da
-  // lib/prospetto-ipotetico-torneo.ts (formatoOttoSquadre, rinominata qui
-  // calcolaFormatoOttoSquadre per non collidere col nome della costante
-  // locale) - unica fonte di verita', stessa funzione chiamata anche da
-  // prenotaSlotIpoteticoAction (app/app/(torneo)/torneo/actions.ts).
+  // prospetto ipotetico e' disponibile per i formati "8 squadre" (4+4) e,
+  // da spec-20-26, "6 squadre" (3+3) - entrambi hanno ora un percorso di
+  // generazione reale per OGNI riga del tabellone (generaTabelloneAction,
+  // app/app/(torneo)/torneo/actions.ts). Review fix (3-layer review, Story
+  // 20.21 - Patch I): regola riusata da lib/prospetto-ipotetico-torneo.ts
+  // (formatoOttoSquadre/formatoSeiSquadre, rinominate qui per non collidere
+  // coi nomi delle costanti locali) - unica fonte di verita', stesse
+  // funzioni chiamate anche da prenotaSlotIpoteticoAction
+  // (app/app/(torneo)/torneo/actions.ts).
   const formatoOttoSquadre = calcolaFormatoOttoSquadre(numeroGironeA, numeroGironeB);
+  const formatoSeiSquadre = calcolaFormatoSeiSquadre(numeroGironeA, numeroGironeB);
 
   // Classifica finale MAI persistita - ricalcolata al volo da qui a ogni
   // caricamento della pagina (spec-20-4 Boundaries, stesso principio di
@@ -251,11 +249,14 @@ export default async function TabelloneTorneoPage({
                   // 5°-8°) l'etichetta resta perche' distinta dal titolo.
                   const haSemifinali = sezione.semifinali.length > 0;
                   // Story 20.21: form di prenotazione anticipata montato
-                  // SOLO per il formato 4+4 (formatoOttoSquadre sopra) e
-                  // SOLO per righe con metadati fase/tabellone (undefined
-                  // per la finalina diretta del formato 6 - nessun percorso
-                  // di generazione reale esiste li', spec-20-20 Never).
-                  const mostraPrenotazione = formatoOttoSquadre;
+                  // per i formati 4+4 e 3+3 (formatoOttoSquadre/
+                  // formatoSeiSquadre sopra) - da spec-20-26 anche la
+                  // finalina diretta del formato 6 ha ora un percorso di
+                  // generazione reale (fase/tabellone/ordinale valorizzati
+                  // in sezionePosizioni5_6Formato6,
+                  // lib/prospetto-ipotetico-torneo.ts), quindi non e' piu'
+                  // esclusa qui.
+                  const mostraPrenotazione = formatoOttoSquadre || formatoSeiSquadre;
                   return (
                     <div key={sezione.titolo}>
                       <h3>{sezione.titolo}</h3>
@@ -345,19 +346,38 @@ export default async function TabelloneTorneoPage({
             const finaleVincenti = partiteTabellone.find((p) => p.fase === "FINALE_VINCENTI");
             const finalePerdenti = partiteTabellone.find((p) => p.fase === "FINALE_PERDENTI");
 
+            // spec-20-26 (Epic 20, Torneo Memorial): formato 6 (3+3) - il
+            // tabellone 5°-8° non ha mai una SEMIFINALE (la finalina diretta
+            // e' generata subito insieme alle 2 semifinali 1°-4°, mirror
+            // della stessa condizione gia' usata dal prospetto ipotetico,
+            // sezionePosizioni5_6Formato6 in lib/prospetto-ipotetico-torneo.ts)
+            // - l'intestazione "Semifinali" e' quindi omessa quando non ce
+            // ne sono, invece di restare vuota sopra un elenco senza righe.
+            // Il titolo della sezione diventa "Finalina 5°/6° posto" invece
+            // di "Tabellone posizioni 5°-8°" nello stesso caso, stessa
+            // etichetta gia' usata dal prospetto ipotetico.
+            const titoloSezione =
+              tabellone.value === "POSIZIONI_5_8" && formatoSeiSquadre
+                ? "Finalina 5°/6° posto"
+                : tabellone.label;
+
             return (
               <section key={tabellone.value} className={styles.sezione}>
-                <h2>{tabellone.label}</h2>
+                <h2>{titoloSezione}</h2>
 
-                <h3>Semifinali</h3>
-                {semifinali.map((partita) => (
-                  <RisultatoPartitaTorneoForm
-                    key={partita.id}
-                    partita={partita}
-                    slotDisponibili={slotPerPartita(partita)}
-                    slotOccupati={slotOccupati}
-                  />
-                ))}
+                {semifinali.length > 0 && (
+                  <>
+                    <h3>Semifinali</h3>
+                    {semifinali.map((partita) => (
+                      <RisultatoPartitaTorneoForm
+                        key={partita.id}
+                        partita={partita}
+                        slotDisponibili={slotPerPartita(partita)}
+                        slotOccupati={slotOccupati}
+                      />
+                    ))}
+                  </>
+                )}
 
                 <h3>Finali</h3>
                 {/* Nessuna azione manuale per generarle - side-effect di

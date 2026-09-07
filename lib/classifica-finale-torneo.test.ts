@@ -254,4 +254,129 @@ describe("calcolaClassificaFinale", () => {
     expect(result).not.toBeNull();
     expect(result).toHaveLength(8);
   });
+
+  // spec-20-26 (Epic 20, Torneo Memorial): formato 6 (3+3) - il tabellone
+  // 5°-8° e' una singola finalina diretta (fase "FINALE_VINCENTI",
+  // tabellone "POSIZIONI_5_8"), MAI una FINALE_PERDENTI per quel tabellone
+  // in questo formato. La sua assenza TOTALE dall'array (non "esiste ma
+  // incompleta") e' il segnale univoco del formato 6 - la classifica finale
+  // si ferma quindi al 6° posto invece di restituire null in attesa di una
+  // riga che non verra' mai creata.
+  describe("formato 6 (3+3, no FINALE_PERDENTI di POSIZIONI_5_8 at all)", () => {
+    it("returns the 6 rows in 1-6 order when the direct finalina 5-8 is complete and FINALE_PERDENTI 5-8 does not exist at all", () => {
+      const finaleVincenti1_4 = partita("f1", "FINALE_VINCENTI", "POSIZIONI_1_4", primoA, primoB, {
+        set1Casa: 25,
+        set1Ospite: 20,
+        set2Casa: 25,
+        set2Ospite: 18,
+      });
+      const finalePerdenti1_4 = partita(
+        "f2",
+        "FINALE_PERDENTI",
+        "POSIZIONI_1_4",
+        secondoB,
+        secondoA,
+        { set1Casa: 25, set1Ospite: 20, set2Casa: 25, set2Ospite: 18 }
+      );
+      // Finalina diretta 5-6: terzoB vince 2-0 (5°), terzoA (6°). Nessuna
+      // riga FINALE_PERDENTI di POSIZIONI_5_8 nell'array - formato 6.
+      const finalinaDiretta5_6 = partita(
+        "f3",
+        "FINALE_VINCENTI",
+        "POSIZIONI_5_8",
+        terzoA,
+        terzoB,
+        { set1Casa: 18, set1Ospite: 25, set2Casa: 20, set2Ospite: 25 }
+      );
+
+      const result = calcolaClassificaFinale([
+        finaleVincenti1_4,
+        finalePerdenti1_4,
+        finalinaDiretta5_6,
+      ]);
+
+      expect(result).toEqual([
+        { posizione: 1, squadra: primoA },
+        { posizione: 2, squadra: primoB },
+        { posizione: 3, squadra: secondoB },
+        { posizione: 4, squadra: secondoA },
+        { posizione: 5, squadra: terzoB },
+        { posizione: 6, squadra: terzoA },
+      ]);
+    });
+
+    it("returns null when the direct finalina 5-8 exists but is not complete yet (formato 6, still in progress)", () => {
+      const finaleVincenti1_4 = partita("f1", "FINALE_VINCENTI", "POSIZIONI_1_4", primoA, primoB, {
+        set1Casa: 25,
+        set1Ospite: 20,
+        set2Casa: 25,
+        set2Ospite: 18,
+      });
+      const finalePerdenti1_4 = partita(
+        "f2",
+        "FINALE_PERDENTI",
+        "POSIZIONI_1_4",
+        secondoB,
+        secondoA,
+        { set1Casa: 25, set1Ospite: 20, set2Casa: 25, set2Ospite: 18 }
+      );
+      const finalinaDiretta5_6Incompleta = partita(
+        "f3",
+        "FINALE_VINCENTI",
+        "POSIZIONI_5_8",
+        terzoA,
+        terzoB,
+        { set1Casa: null, set1Ospite: null, set2Casa: null, set2Ospite: null }
+      );
+
+      const result = calcolaClassificaFinale([
+        finaleVincenti1_4,
+        finalePerdenti1_4,
+        finalinaDiretta5_6Incompleta,
+      ]);
+
+      expect(result).toBeNull();
+    });
+
+    it("still returns null (formato 8, in progress) when FINALE_PERDENTI 5-8 exists but is not complete, distinct from the formato-6 signal above", () => {
+      const finaleVincenti1_4 = partita("f1", "FINALE_VINCENTI", "POSIZIONI_1_4", primoA, primoB, {
+        set1Casa: 25,
+        set1Ospite: 20,
+        set2Casa: 25,
+        set2Ospite: 18,
+      });
+      const finalePerdenti1_4 = partita(
+        "f2",
+        "FINALE_PERDENTI",
+        "POSIZIONI_1_4",
+        secondoB,
+        secondoA,
+        { set1Casa: 25, set1Ospite: 20, set2Casa: 25, set2Ospite: 18 }
+      );
+      const finaleVincenti5_8 = partita("f3", "FINALE_VINCENTI", "POSIZIONI_5_8", terzoA, quartoB, {
+        set1Casa: 25,
+        set1Ospite: 20,
+        set2Casa: 25,
+        set2Ospite: 18,
+      });
+      // FINALE_PERDENTI 5-8 esiste (formato 8) ma senza risultato ancora.
+      const finalePerdenti5_8Incompleta = partita(
+        "f4",
+        "FINALE_PERDENTI",
+        "POSIZIONI_5_8",
+        terzoB,
+        quartoA,
+        { set1Casa: null, set1Ospite: null, set2Casa: null, set2Ospite: null }
+      );
+
+      const result = calcolaClassificaFinale([
+        finaleVincenti1_4,
+        finalePerdenti1_4,
+        finaleVincenti5_8,
+        finalePerdenti5_8Incompleta,
+      ]);
+
+      expect(result).toBeNull();
+    });
+  });
 });
