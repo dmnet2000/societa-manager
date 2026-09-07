@@ -2,9 +2,10 @@
 title: 'Story 20.21: Prenotazione anticipata di Slot sulle righe del prospetto ipotetico'
 type: 'feature'
 created: '2026-09-06'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
 context: []
+baseline_commit: 'afc68862f3cc279bcc05ee2d4acb4ec29f6f9aae'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -55,11 +56,11 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `prisma/schema.prisma` + migrazione -- nuovi campi `prenotazioneCategoriaTorneoId`/`prenotazioneOrdinale`
-- [ ] `lib/torneo.ts` -- `prenotaSlotTorneo`/`rimuoviPrenotazioneSlotTorneo`/`trovaSlotPrenotato` + estensione `elencaSlotTorneoLiberi`/`cancellaCategoriaTorneo` + test
-- [ ] `torneo/actions.ts` -- `prenotaSlotIpoteticoAction` + estensione `generaTabelloneAction`/`generaFinaliSeCompletate`/`cancellaCategoriaTorneoAction` + test
-- [ ] `PrenotaSlotIpoteticoForm.tsx` (nuovo) + integrazione in `tabellone/page.tsx`
-- [ ] `lib/guida/contenuti.ts` -- aggiornamento `corpo` rotta `/app/torneo`
+- [x] `prisma/schema.prisma` + migrazione -- nuovi campi `prenotazioneCategoriaTorneoId`/`prenotazioneOrdinale`
+- [x] `lib/torneo.ts` -- `prenotaSlotTorneo`/`rimuoviPrenotazioneSlotTorneo`/`trovaSlotPrenotato` + estensione `elencaSlotTorneoLiberi`/`cancellaCategoriaTorneo` + test
+- [x] `torneo/actions.ts` -- `prenotaSlotIpoteticoAction` + estensione `generaTabelloneAction`/`generaFinaliSeCompletate`/`cancellaCategoriaTorneoAction` + test
+- [x] `PrenotaSlotIpoteticoForm.tsx` (nuovo) + integrazione in `tabellone/page.tsx`
+- [x] `lib/guida/contenuti.ts` -- aggiornamento `corpo` rotta `/app/torneo`
 
 **Acceptance Criteria:**
 - Given una Categoria 4+4 con SF1 e SF2 di un tabellone entrambe prenotate su Slot diversi, when l'Admin genera il tabellone reale, then ciascuna semifinale riceve esattamente lo Slot prenotato per la sua riga, non un altro
@@ -85,4 +86,56 @@ context: []
 - Prenotare un secondo Slot sulla stessa riga già prenotata: verificare che sostituisca la prenotazione precedente.
 - Categoria 3+3: verificare che nessuna riga mostri un controllo di prenotazione.
 - Svuotare le Squadre di una Categoria con uno Slot ancora prenotato e provare a cancellarla: verificare il rifiuto con messaggio esplicito.
+
+## Spec Change Log
+
+**2026-09-06/07 — tre giri di review a 3 livelli (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer).** Nessun `intent_gap`/`bad_spec` in senso stretto - tutte le patch implementavano garanzie già promesse dal frozen intent, mai una rinegoziazione dei Boundaries.
+
+**Giro 1 - PATCH (applicate):**
+- **A**: la prenotazione consumata con successo da `assegnaSlotAutomaticamente` non veniva mai liberata - bloccava per sempre la cancellazione della Categoria (guardia `slotPrenotati: { none: {} } }`) anche dopo la normale pulizia di Squadre/Partite. Aggiunta `rimuoviPrenotazioneSlotTorneo` dopo il consumo.
+- **B**: nessuna protezione contro il "furto" silenzioso della prenotazione di un'altra Categoria (confermato indipendentemente da tutti e 3 i reviewer) - `slotDisponibili` ora esclude gli Slot occupati da una Partita reale o prenotati per un'altra riga (`slotPerPrenotazione`, tabellone/page.tsx), più verifica server-side in `prenotaSlotIpoteticoAction`.
+- **C**: l'ordinale era derivato dalla posizione nell'array GIA' FILTRATO per "senza Slot" - fragile se una sola delle due semifinali fosse già assegnata. Derivato ora dalla posizione nell'array completo.
+- **D**: un errore nella ricerca della prenotazione interrompeva l'intera funzione invece di fallire in isolamento - avvolto in try/catch per-iterazione.
+- **E**: nessuna guardia contro una prenotazione dopo che il tabellone reale è già stato generato (stale tab race) - aggiunto un controllo con `contaPartiteTorneoTabellone`.
+- **F**: messaggio di successo impreciso quando si rimuoveva una prenotazione invece di crearla/aggiornarla.
+
+**Giro 2 - PATCH (applicate), sulle correzioni del Giro 1:**
+- **G** (il più importante): la Patch A liberava la prenotazione SOLO nel ramo di successo - se `assegnaSlotPartitaTorneo` falliva (count 0 o eccezione), la prenotazione restava agganciata per sempre, riaprendo esattamente il rischio che la Patch A doveva chiudere. Ora liberata sempre quando trovata, indipendentemente dall'esito del tentativo di consumo.
+- **H**: la guardia "tabellone già generato" (Patch E) bloccava anche la RIMOZIONE di una prenotazione residua, non solo la sua creazione - stessa classe di blocco permanente con un innesco diverso. Il ramo di rimozione è stato spostato prima delle due guardie (generazione/formato), che restano in vigore solo per creare/cambiare una prenotazione.
+- **I**: la regola "Categoria in formato 8 squadre" era duplicata indipendentemente in `tabellone/page.tsx` e `actions.ts` - estratta in `formatoOttoSquadre` (lib/prospetto-ipotetico-torneo.ts), unica fonte di verità.
+
+**DEFER (annotati in `deferred-work.md`):** race TOCTOU su submit concorrenti sulla stessa riga/sullo stesso Slot (nessuna transazione) - coerente con il rischio già esplicitamente accettato in Story 20.9; nessuna via di recupero se le Squadre scendono sotto 4+4 dopo una prenotazione (la sezione sparisce dalla UI, la prenotazione persiste); nessun indice DB dedicato sulle nuove colonne (mirror della stessa scelta già fatta per `campoId`); nessun messaggio esplicativo quando il formato 3+3 nasconde la sezione di prenotazione; nessun vincolo che leghi la tripla fase/tabellone/ordinale alle righe reali del prospetto (sempre vero oggi per il solo formato 4+4 esistente); il dropdown potrebbe in teoria mostrare uno Slot di una prenotazione residua senza segnalarlo esplicitamente (scenario reso molto più raro dalla Patch G).
+
+**Nota operativa:** il subagent di implementazione ha esaurito il budget della sessione (rate limit dell'account) a lavoro completo ma prima di riportare l'esito finale - verificato a mano che tutte e 3 le patch del Giro 3 (G/H/I) fossero già scritte correttamente su disco, inclusi i test dedicati, prima di procedere alla chiusura.
+
+## Suggested Review Order
+
+**Cancello reale: consumo e pulizia della prenotazione**
+
+- Entry point: per ciascuna riga senza Slot, cerca prima la corrispondenza esatta; libera SEMPRE la prenotazione trovata (Patch G), indipendentemente dal successo del consumo; fallback sul pool generico.
+  [`actions.ts:1505`](../../app/app/(torneo)/torneo/actions.ts#L1505)
+
+- Ordine di generazione: la rimozione di una prenotazione è sempre permessa prima delle guardie di generazione/formato (Patch H).
+  [`actions.ts:2225`](../../app/app/(torneo)/torneo/actions.ts#L2225)
+
+**Protezione contro il furto di prenotazioni altrui**
+
+- Filtro lato UI: esclude Slot occupati da una Partita reale o prenotati per un'altra riga, include sempre la prenotazione corrente.
+  [`page.tsx:171`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/tabellone/page.tsx#L171)
+
+- Verifica server-side (difesa in profondità, mai fidarsi solo del filtro client).
+  [`actions.ts:2225`](../../app/app/(torneo)/torneo/actions.ts#L2225)
+
+**Unica fonte di verità per il formato**
+
+- `formatoOttoSquadre` condivisa tra page.tsx e actions.ts (Patch I).
+  [`prospetto-ipotetico-torneo.ts:161`](../../lib/prospetto-ipotetico-torneo.ts#L161)
+
+**Peripherals**
+
+- Schema e migrazione (`prenotazioneCategoriaTorneoId`/`prenotazioneOrdinale`).
+  [`schema.prisma`](../../prisma/schema.prisma)
+
+- Test di regressione per ciascuna patch (G/H/I inclusi, con i casi count-0 ed eccezione per Patch G).
+  [`actions.test.ts`](../../app/app/(torneo)/torneo/actions.test.ts)
 

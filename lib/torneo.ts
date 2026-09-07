@@ -130,9 +130,15 @@ export async function aggiornaCategoriaTorneo(
 // spec-20-1 Design Notes, assolto qui ora che SquadraTorneo esiste), stesso
 // identico pattern anti-TOCTOU di cancellaEdizioneTorneo sopra (deleteMany
 // con where composto, non findUnique+delete separati).
+// Story 20.21: where esteso con "slotPrenotati: { none: {} } }" - una
+// Categoria con uno SlotTorneo ancora prenotato per una riga del suo
+// prospetto ipotetico non e' eliminabile, anche senza piu' Squadre/Partite
+// residue (spec-20-21 Boundaries "Always"), mirror esatto della
+// disambiguazione gia' fatta per cancellaEdizioneTorneo (Story 20.9: due
+// relazioni distinte possono bloccare la stessa deleteMany).
 export async function cancellaCategoriaTorneo(id: string, edizioneTorneoId: string) {
   return prisma.categoriaTorneo.deleteMany({
-    where: { id, edizioneTorneoId, squadre: { none: {} } },
+    where: { id, edizioneTorneoId, squadre: { none: {} }, slotPrenotati: { none: {} } },
   });
 }
 
@@ -569,14 +575,89 @@ export async function assegnaSlotPartitaTorneo(
 // semplice) - usata sia dall'auto-assegnazione best-effort di
 // generaTabelloneAction/generaFinaliSeCompletate (app/app/(torneo)/torneo/actions.ts)
 // sia, potenzialmente, per segnalare la disponibilita' nel form manuale.
+// Story 20.21: where esteso con "prenotazioneCategoriaTorneoId: null" - uno
+// Slot prenotato per una riga precisa del prospetto ipotetico non fa mai
+// parte del pool generico dell'auto-assegnazione best-effort (spec-20-21
+// Boundaries "Always": "assegnaSlotAutomaticamente... deve escludere dal
+// proprio pool generico gli Slot prenotati per un'altra Categoria/
+// ordinale"). La riga a cui quello Slot e' davvero destinato lo riceve
+// sempre PRIMA, per corrispondenza esatta, tramite trovaSlotPrenotato sotto
+// (chiamata dal chiamante prima di ricadere su questo pool) - uno Slot
+// ancora qui con una prenotazione attiva appartiene quindi sempre a
+// un'altra riga (di questa o di un'altra Categoria dell'Edizione, lo Slot e'
+// condiviso), mai a quella appena servita.
 export async function elencaSlotTorneoLiberi(
   edizioneTorneoId: string,
   fase: FaseTorneo,
   tabellone: TabelloneTorneo | null
 ) {
   return prisma.slotTorneo.findMany({
-    where: { edizioneTorneoId, fase, tabellone, partite: { none: {} } },
+    where: {
+      edizioneTorneoId,
+      fase,
+      tabellone,
+      partite: { none: {} },
+      prenotazioneCategoriaTorneoId: null,
+    },
     orderBy: [{ data: "asc" }, { ora: "asc" }],
+  });
+}
+
+// Story 20.21 (Epic 20, Torneo Memorial): prenota uno SlotTorneo per una
+// riga precisa del prospetto ipotetico (Categoria + fase/tabellone, gia'
+// propri dello Slot, + ordinale) - mirror di assegnaSlotPartitaTorneo sopra,
+// scoped su id + edizioneTorneoId (stesso pattern anti-mismatch di
+// aggiornaSlotTorneo: uno SlotTorneo non ha un proprio categoriaTorneoId,
+// appartiene sempre e solo a un'Edizione). Il chiamante
+// (prenotaSlotIpoteticoAction, app/app/(torneo)/torneo/actions.ts) libera
+// SEMPRE prima l'eventuale prenotazione precedente sulla stessa riga
+// (rimuoviPrenotazioneSlotTorneo sotto) - "al piu' una prenotazione attiva
+// per riga" resta quindi garantito solo a livello applicativo, mai da un
+// vincolo DB (spec-20-21 Boundaries/Never).
+export async function prenotaSlotTorneo(
+  id: string,
+  edizioneTorneoId: string,
+  categoriaTorneoId: string,
+  ordinale: number | null
+) {
+  return prisma.slotTorneo.updateMany({
+    where: { id, edizioneTorneoId },
+    data: { prenotazioneCategoriaTorneoId: categoriaTorneoId, prenotazioneOrdinale: ordinale },
+  });
+}
+
+// Rimuove una prenotazione esistente (lo Slot torna disponibile per il pool
+// generico di elencaSlotTorneoLiberi sopra) - mirror esatto di
+// prenotaSlotTorneo, stesso scoping id + edizioneTorneoId.
+export async function rimuoviPrenotazioneSlotTorneo(id: string, edizioneTorneoId: string) {
+  return prisma.slotTorneo.updateMany({
+    where: { id, edizioneTorneoId },
+    data: { prenotazioneCategoriaTorneoId: null, prenotazioneOrdinale: null },
+  });
+}
+
+// Trova lo SlotTorneo (se esiste) gia' prenotato per una riga precisa del
+// prospetto ipotetico - usata sia da generaTabelloneAction/
+// generaFinaliSeCompletate (app/app/(torneo)/torneo/actions.ts) per
+// assegnare direttamente quello Slot PRIMA di ricadere sul best-effort
+// generico, sia da prenotaSlotIpoteticoAction per trovare (e liberare) la
+// prenotazione precedente sulla stessa riga quando viene sostituita.
+// findFirst (non findUnique): nessun vincolo di unicita' DB su questa
+// combinazione (spec-20-21 Boundaries "Never") - al piu' una riga dovrebbe
+// mai avere una prenotazione attiva, ma la garanzia e' solo applicativa.
+export async function trovaSlotPrenotato(
+  categoriaTorneoId: string,
+  fase: FaseTorneo,
+  tabellone: TabelloneTorneo,
+  ordinale: number | null
+) {
+  return prisma.slotTorneo.findFirst({
+    where: {
+      prenotazioneCategoriaTorneoId: categoriaTorneoId,
+      fase,
+      tabellone,
+      prenotazioneOrdinale: ordinale,
+    },
   });
 }
 

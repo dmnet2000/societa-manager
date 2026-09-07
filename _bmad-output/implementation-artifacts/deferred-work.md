@@ -1,3 +1,12 @@
+## Deferred from: bmad-build review of spec-20-21-prenotazione-slot-prospetto-ipotetico (2026-09-06/07)
+
+- Race TOCTOU nella scrittura finale di `prenotaSlotIpoteticoAction`: due submit concorrenti su Categorie diverse verso lo stesso Slot possono entrambi superare la validazione e il secondo sovrascrive silenziosamente la prenotazione del primo - coerente con il rischio di concorrenza già esplicitamente accettato in Story 20.9 ("pannello amministrativo a bassa concorrenza"), non una novità introdotta da questa storia.
+- Se le Squadre di una Categoria scendono sotto il formato 4+4 dopo che una prenotazione è già stata fatta su una delle sue righe, l'intera sezione di prenotazione sparisce dalla UI (`formatoOttoSquadre` diventa `false`) ma la prenotazione persiste nel database, continuando a escludere quello Slot dal pool generico dell'Edizione e a bloccare la cancellazione della Categoria - nessuna via di recupero visibile finché le Squadre non tornano a 4+4.
+- Nessun indice DB dedicato su `prenotazioneCategoriaTorneoId` né sulla combinazione usata da `trovaSlotPrenotato` - mirror della stessa scelta già fatta per `campoId` (Story 20.18).
+- Nessun messaggio esplicativo quando il formato 3+3 nasconde l'intera sezione di prenotazione anticipata dalle righe del prospetto ipotetico (a differenza di altri stati "funzionalità non disponibile" della stessa pagina, che usano `messaggioVuoto`).
+- Nessun vincolo che leghi esplicitamente la tripla (fase, tabellone, ordinale) accettata da `prenotaSlotIpoteticoAction` alle righe realmente prodotte da `calcolaProspettoIpoteticoTorneo` per quella Categoria - oggi sempre vero per l'unico formato reale (4+4), ma non imposto per costruzione: un futuro formato di tabellone diverso potrebbe accettare prenotazioni per righe che non esistono.
+- Il dropdown di `PrenotaSlotIpoteticoForm` potrebbe in teoria continuare a mostrare come "prenotazione corrente" uno Slot ormai consumato da una prenotazione residua/orfana (scenario reso molto più raro dalla Patch G di questa stessa storia, ma non impossibile in teoria).
+
 ## Deferred from: bmad-build review of spec-20-25-campo-creazione-singolo-slot (2026-09-06)
 
 - Nessun test per la nuova logica client-side di `NuovoSlotTorneoForm.tsx` (derivazione `campiDisponibili`, reset del Campo al cambio Palestra) - stesso limite sistemico già accettato per ogni componente React interattivo del progetto (zero `*.test.tsx` ovunque).

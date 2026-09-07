@@ -28,6 +28,7 @@ const partitaUpdateManyMock = vi.fn();
 const partitaDeleteManyMock = vi.fn();
 const slotFindManyMock = vi.fn();
 const slotFindUniqueMock = vi.fn();
+const slotFindFirstMock = vi.fn();
 const slotCreateMock = vi.fn();
 const slotCreateManyMock = vi.fn();
 const slotUpdateManyMock = vi.fn();
@@ -72,6 +73,7 @@ vi.mock("@/lib/prisma", () => ({
     slotTorneo: {
       findMany: slotFindManyMock,
       findUnique: slotFindUniqueMock,
+      findFirst: slotFindFirstMock,
       create: slotCreateMock,
       createMany: slotCreateManyMock,
       updateMany: slotUpdateManyMock,
@@ -121,6 +123,9 @@ const {
   aggiornaSlotTorneo,
   assegnaSlotPartitaTorneo,
   elencaSlotTorneoLiberi,
+  prenotaSlotTorneo,
+  rimuoviPrenotazioneSlotTorneo,
+  trovaSlotPrenotato,
 } = await import("./torneo");
 
 beforeEach(() => {
@@ -150,6 +155,7 @@ beforeEach(() => {
   partitaDeleteManyMock.mockReset();
   slotFindManyMock.mockReset();
   slotFindUniqueMock.mockReset();
+  slotFindFirstMock.mockReset();
   slotCreateMock.mockReset();
   slotCreateManyMock.mockReset();
   slotUpdateManyMock.mockReset();
@@ -311,13 +317,18 @@ describe("trovaCategoriaTorneoPerId", () => {
 });
 
 describe("cancellaCategoriaTorneo", () => {
-  it("deletes only the Categoria matching id and edizioneTorneoId, guarded against Squadre collegate", async () => {
+  it("deletes only the Categoria matching id and edizioneTorneoId, guarded against Squadre collegate and Slot prenotati (Story 20.21)", async () => {
     categoriaDeleteManyMock.mockResolvedValue({ count: 1 });
 
     const result = await cancellaCategoriaTorneo("categoria-1", "edizione-1");
 
     expect(categoriaDeleteManyMock).toHaveBeenCalledWith({
-      where: { id: "categoria-1", edizioneTorneoId: "edizione-1", squadre: { none: {} } },
+      where: {
+        id: "categoria-1",
+        edizioneTorneoId: "edizione-1",
+        squadre: { none: {} },
+        slotPrenotati: { none: {} },
+      },
     });
     expect(result).toEqual({ count: 1 });
   });
@@ -989,7 +1000,7 @@ describe("assegnaSlotPartitaTorneo", () => {
 });
 
 describe("elencaSlotTorneoLiberi", () => {
-  it("returns only the Slot of the given fase/tabellone with no Partita collegata, ordered by data then ora", async () => {
+  it("returns only the Slot of the given fase/tabellone with no Partita collegata and no prenotazione (Story 20.21), ordered by data then ora", async () => {
     const righe = [{ id: "slot-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4" }];
     slotFindManyMock.mockResolvedValue(righe);
 
@@ -1001,6 +1012,7 @@ describe("elencaSlotTorneoLiberi", () => {
         fase: "SEMIFINALE",
         tabellone: "POSIZIONI_1_4",
         partite: { none: {} },
+        prenotazioneCategoriaTorneoId: null,
       },
       orderBy: [{ data: "asc" }, { ora: "asc" }],
     });
@@ -1018,8 +1030,85 @@ describe("elencaSlotTorneoLiberi", () => {
         fase: "GIRONE",
         tabellone: null,
         partite: { none: {} },
+        prenotazioneCategoriaTorneoId: null,
       },
       orderBy: [{ data: "asc" }, { ora: "asc" }],
     });
+  });
+});
+
+// Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata di uno
+// SlotTorneo per una riga precisa del prospetto ipotetico.
+describe("prenotaSlotTorneo", () => {
+  it("updates only the Slot matching BOTH id and edizioneTorneoId with the given categoria/ordinale", async () => {
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotTorneo("slot-1", "edizione-1", "categoria-1", 1);
+
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-1", edizioneTorneoId: "edizione-1" },
+      data: { prenotazioneCategoriaTorneoId: "categoria-1", prenotazioneOrdinale: 1 },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+
+  it("accepts a null ordinale for FINALE_VINCENTI/FINALE_PERDENTI rows", async () => {
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    await prenotaSlotTorneo("slot-1", "edizione-1", "categoria-1", null);
+
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-1", edizioneTorneoId: "edizione-1" },
+      data: { prenotazioneCategoriaTorneoId: "categoria-1", prenotazioneOrdinale: null },
+    });
+  });
+});
+
+describe("rimuoviPrenotazioneSlotTorneo", () => {
+  it("clears both prenotazione fields on the Slot matching id and edizioneTorneoId", async () => {
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await rimuoviPrenotazioneSlotTorneo("slot-1", "edizione-1");
+
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-1", edizioneTorneoId: "edizione-1" },
+      data: { prenotazioneCategoriaTorneoId: null, prenotazioneOrdinale: null },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+});
+
+describe("trovaSlotPrenotato", () => {
+  it("finds the Slot reserved for the exact riga (categoria + fase + tabellone + ordinale)", async () => {
+    const slot = { id: "slot-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4" };
+    slotFindFirstMock.mockResolvedValue(slot);
+
+    const result = await trovaSlotPrenotato("categoria-1", "SEMIFINALE", "POSIZIONI_1_4", 1);
+
+    expect(slotFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        prenotazioneCategoriaTorneoId: "categoria-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      },
+    });
+    expect(result).toBe(slot);
+  });
+
+  it("passes a null ordinale through for FINALE_VINCENTI/FINALE_PERDENTI rows", async () => {
+    slotFindFirstMock.mockResolvedValue(null);
+
+    const result = await trovaSlotPrenotato("categoria-1", "FINALE_VINCENTI", "POSIZIONI_1_4", null);
+
+    expect(slotFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        prenotazioneCategoriaTorneoId: "categoria-1",
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: null,
+      },
+    });
+    expect(result).toBeNull();
   });
 });

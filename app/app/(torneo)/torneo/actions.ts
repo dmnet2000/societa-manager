@@ -38,11 +38,16 @@ import {
   aggiornaSlotTorneo,
   assegnaSlotPartitaTorneo,
   elencaSlotTorneoLiberi,
+  elencaSlotOccupatiEdizione,
+  prenotaSlotTorneo,
+  rimuoviPrenotazioneSlotTorneo,
+  trovaSlotPrenotato,
 } from "@/lib/torneo";
 import { isSettimanaTorneoValida, NOME_SETTIMANA_MAX } from "@/lib/settimana-torneo";
 import { isGironeTorneoValido } from "@/lib/girone-torneo";
 import { isFaseTorneoValida } from "@/lib/fase-torneo";
 import { isTabelloneTorneoValido } from "@/lib/tabelloni-torneo";
+import { formatoOttoSquadre } from "@/lib/prospetto-ipotetico-torneo";
 import { decodificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
 import {
@@ -522,10 +527,28 @@ export async function cancellaCategoriaTorneoAction(
     if (risultato.count === 0) {
       const categoria = await trovaCategoriaTorneoPerId(id);
       if (categoria && categoria.edizioneTorneoId === edizioneTorneoId) {
+        // Story 20.21: la guardia ora blocca su due relazioni distinte
+        // (Squadre o Slot prenotati per il prospetto ipotetico) - stessa
+        // disambiguazione gia' fatta per cancellaEdizioneTorneoAction sopra
+        // (Story 20.9): serve dire all'Admin QUALE delle due sta bloccando,
+        // altrimenti andrebbe a cercare Squadre da cancellare quando in
+        // realta' e' uno Slot ancora prenotato (es. Categoria svuotata delle
+        // sue Squadre ma con una prenotazione dimenticata su una riga del
+        // suo prospetto ipotetico).
+        const squadre = await elencaSquadreTorneo(id);
+        if (squadre.length > 0) {
+          return {
+            error: {
+              code: "VALIDATION",
+              message: "Impossibile cancellare: questa Categoria ha ancora Squadre collegate.",
+            },
+          };
+        }
         return {
           error: {
             code: "VALIDATION",
-            message: "Impossibile cancellare: questa Categoria ha ancora Squadre collegate.",
+            message:
+              "Impossibile cancellare: questa Categoria ha ancora Slot prenotati per il prospetto ipotetico - rimuovi prima quelle prenotazioni.",
           },
         };
       }
@@ -1452,6 +1475,33 @@ function vincitorePerdenteId(partita: {
 // semplice (data/ora crescenti, via elencaSlotTorneoLiberi) - nessuna
 // logica di abbinamento intelligente tra specifiche Partite e specifici
 // Slot (mai richiesto da alcun AC).
+// Story 20.21: PRIMA del pool generico sotto, ogni Partita ancora senza
+// Slot prova la corrispondenza ESATTA con una prenotazione anticipata per
+// la sua stessa riga del prospetto ipotetico (Categoria + fase/tabellone +
+// ordinale - spec-20-21 Boundaries "Always": "per ciascuna semifinale/
+// finale si cerca prima uno Slot prenotato per quella riga esatta").
+// L'ordinale non e' un campo di PartitaTorneo: le Partite di una stessa
+// fase/tabellone sono ordinate per "numero" (elencaPartiteTorneo, Story
+// 20.11), che riflette sempre l'ordine di creazione - la prima e' quindi
+// sempre l'ordinale 1, la seconda (solo per SEMIFINALE, le uniche con due
+// righe per tabellone) l'ordinale 2; le finali hanno un solo ordinale
+// (null, nessuna ambiguita'). Una singola lettura di elencaPartiteTorneo
+// (non due) - il pool generico riusa lo stesso "partite" gia' letto qui,
+// mai una seconda query ridondante.
+// Review fix (3-layer review, Story 20.21 - Patch C): l'ordinale e' la
+// posizione della Partita nell'array COMPLETO "partiteDellaRiga" (tutte le
+// Partite di questa fase/tabellone, ordinate per numero), MAI nell'array
+// gia' filtrato per "senza Slot" - derivarlo da quest'ultimo sarebbe
+// fragile: se una fosse gia' assegnata e l'altra no, la posizione nel
+// filtrato non corrisponderebbe piu' all'ordinale reale della riga.
+// Review fix (Patch D): la ricerca+assegnazione della corrispondenza esatta
+// e' avvolta in un try/catch PER ITERAZIONE (mirror del blocco del pool
+// generico sotto) - un errore su una singola Partita (es. trovaSlotPrenotato
+// che fallisce) non deve piu' interrompere l'intera funzione saltando sia
+// le Partite restanti sia il fallback sul pool generico. Se
+// assegnaSlotPartitaTorneo risolve con count 0 (nessuna riga aggiornata,
+// mai un throw) la Partita finisce comunque in "rimaste", per ritentare sul
+// pool generico invece di restare silenziosamente senza Slot.
 async function assegnaSlotAutomaticamente(
   categoriaTorneoId: string,
   edizioneTorneoId: string,
@@ -1459,14 +1509,68 @@ async function assegnaSlotAutomaticamente(
   tabellone: TabelloneTorneo
 ): Promise<void> {
   try {
-    const [partite, slotLiberi] = await Promise.all([
-      elencaPartiteTorneo(categoriaTorneoId),
-      elencaSlotTorneoLiberi(edizioneTorneoId, fase, tabellone),
-    ]);
-    const partiteDaAssegnare = partite.filter(
-      (p) => p.fase === fase && p.tabellone === tabellone && !p.slotTorneoId
-    );
-    const numeroAssegnazioni = Math.min(partiteDaAssegnare.length, slotLiberi.length);
+    const partite = await elencaPartiteTorneo(categoriaTorneoId);
+    const partiteDellaRiga = partite.filter((p) => p.fase === fase && p.tabellone === tabellone);
+
+    const ordinali: (number | null)[] = fase === "SEMIFINALE" ? [1, 2] : [null];
+    const rimaste: typeof partiteDellaRiga = [];
+    for (let i = 0; i < partiteDellaRiga.length; i++) {
+      const partita = partiteDellaRiga[i];
+      if (partita.slotTorneoId) continue; // gia' assegnata, nulla da fare qui
+
+      let assegnata = false;
+      // Story 20.21 (Patch G, review fix): dichiarato FUORI dal try cosi'
+      // resta visibile per la pulizia sotto anche se assegnaSlotPartitaTorneo
+      // lancia un'eccezione (non solo se risolve con count 0).
+      let slotPrenotato: Awaited<ReturnType<typeof trovaSlotPrenotato>> = null;
+      try {
+        const ordinale = i < ordinali.length ? ordinali[i] : undefined;
+        slotPrenotato =
+          ordinale !== undefined
+            ? await trovaSlotPrenotato(categoriaTorneoId, fase, tabellone, ordinale)
+            : null;
+        if (slotPrenotato) {
+          const risultato = await assegnaSlotPartitaTorneo(
+            partita.id,
+            categoriaTorneoId,
+            slotPrenotato.id
+          );
+          if (risultato.count > 0) {
+            assegnata = true;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      // Review fix (Patch G, terzo giro di review): la pulizia della
+      // prenotazione trovata deve avvenire SEMPRE, indipendentemente dal
+      // successo della assegnaSlotPartitaTorneo sopra (count 0 o
+      // un'eccezione inclusi) - prima la Patch A la liberava SOLO nel ramo
+      // di successo, riaprendo esattamente il rischio di blocco permanente
+      // che doveva chiudere: questa funzione gira una sola volta al momento
+      // della generazione (mai ritentata), quindi una prenotazione il cui
+      // tentativo di consumo e' fallito non verrebbe MAI piu' liberata,
+      // bloccando per sempre sia quello Slot sia (tramite la guardia
+      // "slotPrenotati: { none: {} } }" di cancellaCategoriaTorneo) la
+      // cancellazione della Categoria. Se l'assegnazione specifica e'
+      // fallita, la Partita ricade comunque su "rimaste" sotto, per il
+      // pool generico - che ora include anche questo Slot appena liberato
+      // (elencaSlotTorneoLiberi lo rivede libero, prenotazioneCategoriaTorneoId
+      // di nuovo null).
+      if (slotPrenotato) {
+        try {
+          await rimuoviPrenotazioneSlotTorneo(slotPrenotato.id, edizioneTorneoId);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      if (!assegnata) {
+        rimaste.push(partita);
+      }
+    }
+
+    const slotLiberi = await elencaSlotTorneoLiberi(edizioneTorneoId, fase, tabellone);
+    const numeroAssegnazioni = Math.min(rimaste.length, slotLiberi.length);
     // Review fix (Blind Hunter + Verification Gap Reviewer): un try/catch
     // unico attorno all'intero ciclo interrompeva silenziosamente TUTTE le
     // assegnazioni successive al primo fallimento (es. un errore DB
@@ -1476,11 +1580,7 @@ async function assegnaSlotAutomaticamente(
     // assegnazione", non "tutto o niente" sull'intero batch.
     for (let i = 0; i < numeroAssegnazioni; i++) {
       try {
-        await assegnaSlotPartitaTorneo(
-          partiteDaAssegnare[i].id,
-          categoriaTorneoId,
-          slotLiberi[i].id
-        );
+        await assegnaSlotPartitaTorneo(rimaste[i].id, categoriaTorneoId, slotLiberi[i].id);
       } catch (err) {
         console.error(err);
       }
@@ -2107,6 +2207,208 @@ export async function assegnaSlotPartitaTorneoAction(
   } catch (err) {
     console.error(err);
     return { error: { code: "INTERNAL", message: "Impossibile assegnare lo Slot. Riprova." } };
+  }
+
+  return { success: true };
+}
+
+// Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata (o
+// rimozione, slotTorneoId vuoto - stesso principio di
+// assegnaSlotPartitaTorneoAction sopra) di uno Slot per una riga precisa del
+// prospetto ipotetico (Categoria + fase/tabellone/ordinale) - mirror di
+// assegnaSlotPartitaTorneoAction, con due differenze: qui non esiste ancora
+// una PartitaTorneo reale (la riga e' solo ipotetica, spec-20-20/20-21), e
+// il formato "8 squadre" (4+4) e' un requisito in piu', mai fidato dal
+// client (ricalcolato qui dalle Squadre reali della Categoria, spec-20-21
+// Boundaries "Always": nessun percorso di generazione reale esiste per un
+// formato diverso, una prenotazione li' sarebbe orfana).
+export async function prenotaSlotIpoteticoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Categoria non specificata." } };
+  }
+
+  const fase = String(formData.get("fase") ?? "");
+  if (!isFaseTorneoValida(fase) || fase === "GIRONE") {
+    return { error: { code: "VALIDATION", message: "Fase non valida per una prenotazione." } };
+  }
+
+  const tabelloneGrezzo = String(formData.get("tabellone") ?? "");
+  if (!isTabelloneTorneoValido(tabelloneGrezzo)) {
+    return { error: { code: "VALIDATION", message: "Tabellone non valido." } };
+  }
+  const tabellone = tabelloneGrezzo;
+
+  // ordinale e' significativo SOLO per SEMIFINALE (1|2, obbligatorio in quel
+  // caso) - per le finali resta sempre null, nessun campo inviato dal form
+  // (spec-20-21 Boundaries "Always").
+  const ordinaleGrezzo = String(formData.get("ordinale") ?? "").trim();
+  let ordinale: number | null = null;
+  if (fase === "SEMIFINALE") {
+    if (ordinaleGrezzo !== "1" && ordinaleGrezzo !== "2") {
+      return {
+        error: { code: "VALIDATION", message: "L'ordinale della semifinale deve essere 1 o 2." },
+      };
+    }
+    ordinale = Number(ordinaleGrezzo);
+  } else if (ordinaleGrezzo) {
+    return { error: { code: "VALIDATION", message: "Una finale non ha un ordinale." } };
+  }
+
+  // Stringa vuota = rimuovi la prenotazione esistente su questa riga, non un
+  // valore mancante da rifiutare (mirror assegnaSlotPartitaTorneoAction).
+  const slotTorneoIdGrezzo = String(formData.get("slotTorneoId") ?? "").trim();
+  const slotTorneoId = slotTorneoIdGrezzo || null;
+
+  try {
+    const categoria = await trovaCategoriaTorneoPerId(categoriaTorneoId);
+    if (!categoria) {
+      return { error: { code: "VALIDATION", message: "Categoria non trovata." } };
+    }
+
+    // La prenotazione precedente su QUESTA STESSA riga (se esiste) viene
+    // sempre liberata prima - "al più una prenotazione attiva per riga"
+    // (spec-20-21 Boundaries "Always"), sia che la si stia sostituendo con
+    // un'altra sia che la si stia rimuovendo del tutto.
+    const prenotazioneEsistente = await trovaSlotPrenotato(
+      categoriaTorneoId,
+      fase,
+      tabellone,
+      ordinale
+    );
+
+    // Review fix (3-layer review, Story 20.21 - Patch H): il ramo di
+    // RIMOZIONE va PRIMA delle due guardie sotto (tabellone gia' generato/
+    // formato 4+4) - rimuovere una prenotazione esistente deve restare
+    // sempre possibile, indipendentemente dallo stato di generazione o dal
+    // formato attuale della Categoria, altrimenti una prenotazione residua
+    // (per qualunque causa non ancora prevista) non avrebbe piu' alcuna via
+    // di rimozione tramite questa azione una volta che il tabellone e'
+    // stato generato o la Categoria e' uscita dal formato 4+4 - la stessa
+    // classe di blocco permanente che la Patch A voleva chiudere, solo con
+    // un innesco diverso. Le due guardie restano invece pienamente in
+    // vigore per CREARE o CAMBIARE una prenotazione verso un nuovo Slot,
+    // sotto.
+    if (!slotTorneoId) {
+      if (prenotazioneEsistente) {
+        await rimuoviPrenotazioneSlotTorneo(prenotazioneEsistente.id, categoria.edizioneTorneoId);
+      }
+      revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
+      return { success: true };
+    }
+
+    // Review fix (3-layer review, Story 20.21 - Patch E): una volta che il
+    // tabellone reale esiste (stessa guardia di idempotenza di
+    // generaTabelloneAction, contaPartiteTorneoTabellone), il prospetto
+    // ipotetico non e' piu' mostrato (tabellone/page.tsx) - ma una scheda
+    // rimasta aperta da prima della generazione potrebbe comunque inviare
+    // questo form, creando una prenotazione che non verra' MAI consumata
+    // (assegnaSlotAutomaticamente gira una sola volta, al momento della
+    // generazione) e che bloccherebbe permanentemente quello Slot.
+    const numeroPartiteTabellone = await contaPartiteTorneoTabellone(categoriaTorneoId);
+    if (numeroPartiteTabellone > 0) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "Il tabellone è già stato generato per questa Categoria: la prenotazione anticipata non è più disponibile.",
+        },
+      };
+    }
+
+    // spec-20-21 Boundaries "Always": disponibile SOLO per il formato "8
+    // squadre" (4+4) del prospetto ipotetico - mai fidarsi che il client
+    // abbia davvero nascosto il form per un'altra Categoria (id
+    // indovinato/scheda vecchia rimasta aperta su una Categoria poi
+    // svuotata/modificata). Review fix (Patch I): regola condivisa con
+    // tabellone/page.tsx tramite formatoOttoSquadre (lib/prospetto-ipotetico-torneo.ts) -
+    // unica fonte di verita', mai due implementazioni indipendenti della
+    // stessa soglia.
+    const squadre = await elencaSquadreTorneo(categoriaTorneoId);
+    const numeroGironeA = squadre.filter((s) => s.girone === "GIRONE_A").length;
+    const numeroGironeB = squadre.filter((s) => s.girone === "GIRONE_B").length;
+    if (!formatoOttoSquadre(numeroGironeA, numeroGironeB)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone.",
+        },
+      };
+    }
+
+    const slot = await trovaSlotTorneoPerId(slotTorneoId);
+    if (!slot) {
+      return { error: { code: "VALIDATION", message: "Slot non trovato." } };
+    }
+    if (slot.edizioneTorneoId !== categoria.edizioneTorneoId) {
+      return {
+        error: { code: "VALIDATION", message: "Lo Slot selezionato appartiene a un'altra Edizione." },
+      };
+    }
+    // Mai fidarsi che il client abbia filtrato correttamente la lista - lo
+    // Slot scelto deve avere ESATTAMENTE la fase/il tabellone di questa riga
+    // (mirror assegnaSlotPartitaTorneoAction).
+    if (slot.fase !== fase || slot.tabellone !== tabellone) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Lo Slot selezionato non corrisponde alla fase di questa riga.",
+        },
+      };
+    }
+
+    // Review fix (3-layer review, Story 20.21 - Patch B, difesa in
+    // profondita' anche se tabellone/page.tsx gia' filtra questi Slot dalla
+    // lista mostrata): mai fidarsi del client - rifiuta uno Slot gia'
+    // agganciato a una Partita reale (di QUALUNQUE Categoria dell'Edizione,
+    // lo Slot e' condiviso) o gia' prenotato per una riga DIVERSA da
+    // questa, altrimenti prenotaSlotTorneo lo "ruberebbe" silenziosamente.
+    const slotOccupatiEdizione = await elencaSlotOccupatiEdizione(categoria.edizioneTorneoId);
+    if (slotOccupatiEdizione.includes(slot.id)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Lo Slot selezionato è già assegnato a un incontro reale.",
+        },
+      };
+    }
+    const eGiaLaPrenotazioneDiQuestaRiga =
+      slot.prenotazioneCategoriaTorneoId === categoriaTorneoId &&
+      slot.prenotazioneOrdinale === ordinale;
+    if (slot.prenotazioneCategoriaTorneoId && !eGiaLaPrenotazioneDiQuestaRiga) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Lo Slot selezionato è già prenotato per un'altra riga del prospetto ipotetico.",
+        },
+      };
+    }
+
+    if (prenotazioneEsistente && prenotazioneEsistente.id !== slot.id) {
+      await rimuoviPrenotazioneSlotTorneo(prenotazioneEsistente.id, categoria.edizioneTorneoId);
+    }
+
+    const risultato = await prenotaSlotTorneo(
+      slot.id,
+      categoria.edizioneTorneoId,
+      categoriaTorneoId,
+      ordinale
+    );
+    if (risultato.count === 0) {
+      return { error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." } };
+    }
+
+    revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile prenotare lo Slot. Riprova." } };
   }
 
   return { success: true };

@@ -1,4 +1,4 @@
-import type { GironeTorneo } from "@prisma/client";
+import type { FaseTorneo, GironeTorneo, TabelloneTorneo } from "@prisma/client";
 import { ETICHETTA_GIRONE } from "./girone-torneo";
 import { TABELLONI_TORNEO } from "./tabelloni-torneo";
 
@@ -13,6 +13,20 @@ export type AccoppiamentoIpotetico = {
   etichetta: string;
   casa: string;
   ospite: string;
+  // Story 20.21 (Epic 20, Torneo Memorial): metadati della riga - identifica
+  // univocamente per quale (fase, tabellone, ordinale) reale
+  // generaTabelloneAction/generaFinaliSeCompletate creerebbero la
+  // PartitaTorneo corrispondente, servono a tabellone/page.tsx per montare
+  // il form di prenotazione anticipata dello Slot su quella riga esatta
+  // (PrenotaSlotIpoteticoForm.tsx). ordinale e' 1|2 per le due semifinali
+  // dello stesso tabellone, null per le finali (un solo Slot, nessuna
+  // ambiguita' - spec-20-21 Boundaries "Always"). Tutti e tre undefined
+  // SOLO per la finalina diretta del formato 6 (sezionePosizioni5_6Formato6
+  // sotto): quella riga non ha oggi alcun percorso di generazione reale
+  // (spec-20-20 Never), quindi nessuna prenotazione ha senso li'.
+  fase?: FaseTorneo;
+  tabellone?: TabelloneTorneo;
+  ordinale?: number | null;
 };
 
 export type SezioneProspettoIpotetico = {
@@ -68,11 +82,17 @@ function sezioneTabelloneFormato8(
         etichetta: "Semifinale 1",
         casa: posizione(posizioneAlta, "GIRONE_A"),
         ospite: posizione(posizioneBassa, "GIRONE_B"),
+        fase: "SEMIFINALE",
+        tabellone: tabelloneValue,
+        ordinale: 1,
       },
       {
         etichetta: "Semifinale 2",
         casa: posizione(posizioneAlta, "GIRONE_B"),
         ospite: posizione(posizioneBassa, "GIRONE_A"),
+        fase: "SEMIFINALE",
+        tabellone: tabelloneValue,
+        ordinale: 2,
       },
     ],
     finali: [
@@ -80,11 +100,17 @@ function sezioneTabelloneFormato8(
         etichetta: tabellone.etichettaVincenti,
         casa: "Vincente semifinale 1",
         ospite: "Vincente semifinale 2",
+        fase: "FINALE_VINCENTI",
+        tabellone: tabelloneValue,
+        ordinale: null,
       },
       {
         etichetta: tabellone.etichettaPerdenti,
         casa: "Perdente semifinale 1",
         ospite: "Perdente semifinale 2",
+        fase: "FINALE_PERDENTI",
+        tabellone: tabelloneValue,
+        ordinale: null,
       },
     ],
   };
@@ -118,6 +144,24 @@ function sezionePosizioni5_6Formato6(): SezioneProspettoIpotetico {
   };
 }
 
+// Review fix (3-layer review, Story 20.21 - Patch I): unica fonte di
+// verita' per la regola "Categoria in formato 8 squadre (4+4)" - prima
+// duplicata indipendentemente in tabellone/page.tsx (formatoOttoSquadre
+// locale) e in prenotaSlotIpoteticoAction (app/app/(torneo)/torneo/actions.ts,
+// controllo "numeroGironeA !== 4 || numeroGironeB !== 4"), stesso principio
+// "unica fonte di verita'" gia' seguito da GIRONI_TORNEO/TABELLONI_TORNEO.
+// Funzione pura, stesso trattamento di calcolaProspettoIpoteticoTorneo
+// sotto (che la riusa) - riceve solo i due conteggi gia' caricati dal
+// chiamante, nessuna query propria. Solo questo formato ha oggi un percorso
+// di generazione reale del tabellone (spec-20-21 Design Notes:
+// generaTabelloneAction richiede sempre >=4 Squadre in ENTRAMBI i gironi
+// per generare qualunque riga, non solo il 5°-8°) - la prenotazione
+// anticipata di uno Slot per una riga del prospetto ipotetico e' quindi
+// disponibile solo qui.
+export function formatoOttoSquadre(numeroGironeA: number, numeroGironeB: number): boolean {
+  return numeroGironeA === 4 && numeroGironeB === 4;
+}
+
 // spec-20-20 Boundaries "Always": formato dedotto SOLO dal conteggio
 // Squadre per Girone - entrambi con esattamente 4 -> formato 8, entrambi
 // con esattamente 3 -> formato 6, qualunque altra combinazione (gironi
@@ -127,7 +171,7 @@ export function calcolaProspettoIpoteticoTorneo(
   numeroGironeA: number,
   numeroGironeB: number
 ): SezioneProspettoIpotetico[] | null {
-  if (numeroGironeA === 4 && numeroGironeB === 4) {
+  if (formatoOttoSquadre(numeroGironeA, numeroGironeB)) {
     return [sezionePosizioni1_4(), sezionePosizioni5_8()];
   }
   if (numeroGironeA === 3 && numeroGironeB === 3) {

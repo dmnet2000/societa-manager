@@ -11,12 +11,17 @@ import { calcolaClassificaFinale } from "@/lib/classifica-finale-torneo";
 import { haRisultatoCompleto } from "@/lib/risultato-partita-torneo";
 import { GIRONI_TORNEO } from "@/lib/girone-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
-import { calcolaProspettoIpoteticoTorneo } from "@/lib/prospetto-ipotetico-torneo";
+import {
+  calcolaProspettoIpoteticoTorneo,
+  formatoOttoSquadre as calcolaFormatoOttoSquadre,
+} from "@/lib/prospetto-ipotetico-torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { GeneraTabelloneForm } from "./GeneraTabelloneForm";
+import { PrenotaSlotIpoteticoForm } from "./PrenotaSlotIpoteticoForm";
 import { RisultatoPartitaTorneoForm } from "../risultati/RisultatoPartitaTorneoForm";
+import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
 import styles from "../../../torneo.module.css";
 
 // Story 20.4 (Epic 20, Torneo Memorial): mirror di
@@ -108,6 +113,22 @@ export default async function TabelloneTorneoPage({
   const [numeroGironeA, numeroGironeB] = statoGironi.map((s) => s.numeroSquadre);
   const prospettoIpotetico = calcolaProspettoIpoteticoTorneo(numeroGironeA, numeroGironeB);
 
+  // Story 20.21: la prenotazione anticipata di uno Slot per una riga del
+  // prospetto ipotetico e' disponibile SOLO per il formato "8 squadre"
+  // (4+4) - generaTabelloneAction richiede oggi >=4 Squadre in ENTRAMBI i
+  // gironi per generare qualunque riga del tabellone (non solo il 5°-8°),
+  // quindi il formato "6 squadre" (3+3) non ha un percorso di generazione
+  // reale per nessuna riga (spec-20-21 Boundaries "Always"/Design Notes) -
+  // nemmeno per la sezione "Tabellone posizioni 1°-4°", pur identica nei
+  // due formati (calcolaProspettoIpoteticoTorneo, lib/prospetto-ipotetico-torneo.ts).
+  // Va quindi verificato sul FORMATO complessivo, mai sulla singola sezione.
+  // Review fix (3-layer review, Story 20.21 - Patch I): regola riusata da
+  // lib/prospetto-ipotetico-torneo.ts (formatoOttoSquadre, rinominata qui
+  // calcolaFormatoOttoSquadre per non collidere col nome della costante
+  // locale) - unica fonte di verita', stessa funzione chiamata anche da
+  // prenotaSlotIpoteticoAction (app/app/(torneo)/torneo/actions.ts).
+  const formatoOttoSquadre = calcolaFormatoOttoSquadre(numeroGironeA, numeroGironeB);
+
   // Classifica finale MAI persistita - ricalcolata al volo da qui a ogni
   // caricamento della pagina (spec-20-4 Boundaries, stesso principio di
   // calcolaClassificaGirone). null finche' le 4 finali non hanno tutte un
@@ -130,6 +151,45 @@ export default async function TabelloneTorneoPage({
     return slotTorneo.filter((s) => s.fase === p.fase && s.tabellone === p.tabellone);
   }
   const slotOccupati = new Set(slotOccupatiEdizione);
+  // Narrowed una volta qui - il notFound() sopra ha gia' escluso categoria
+  // null, ma TypeScript non propaga quel narrowing dentro una funzione
+  // annidata (slotPerPrenotazione sotto la referenzia in una closure).
+  const idCategoriaCorrente = categoria.id;
+
+  // Review fix (3-layer review, Story 20.21 - Patch B): a differenza di
+  // slotPerPartita sopra (mostra ANCHE gli Slot occupati, con un avviso
+  // "(occupato)" prima di sovrascrivere - spec-20-9 Design Notes), qui il
+  // <select> di prenotazione anticipata non deve MAI offrire uno Slot gia'
+  // agganciato a una Partita reale (di qualunque Categoria dell'Edizione,
+  // slotOccupati sopra) ne' uno gia' prenotato per una riga DIVERSA da
+  // questa - "rubarlo" silenziosamente non ha un percorso di recupero come
+  // la sovrascrittura Slot->Partita (che l'Admin puo' sempre rifare).
+  // Lo Slot attualmente prenotato per QUESTA riga (se esiste) resta pero'
+  // sempre incluso, altrimenti il <select> lo nasconderebbe pur essendo la
+  // sua stessa prenotazione corrente (mai selezionabile "Nessuno" per
+  // errore su un reload).
+  function slotPerPrenotazione(accoppiamento: {
+    fase: FaseTorneo;
+    tabellone: TabelloneTorneo;
+    ordinale?: number | null;
+  }) {
+    const ordinale = accoppiamento.ordinale ?? null;
+    const slotAttuale = slotTorneo.find(
+      (s) =>
+        s.prenotazioneCategoriaTorneoId === idCategoriaCorrente &&
+        s.fase === accoppiamento.fase &&
+        s.tabellone === accoppiamento.tabellone &&
+        s.prenotazioneOrdinale === ordinale
+    );
+    const slotDisponibili = slotTorneo.filter((s) => {
+      if (s.fase !== accoppiamento.fase || s.tabellone !== accoppiamento.tabellone) return false;
+      if (slotAttuale && s.id === slotAttuale.id) return true;
+      if (slotOccupati.has(s.id)) return false;
+      if (s.prenotazioneCategoriaTorneoId) return false;
+      return true;
+    });
+    return { slotDisponibili, slotPrenotatoId: slotAttuale?.id ?? null };
+  }
 
   return (
     <main>
@@ -190,28 +250,82 @@ export default async function TabelloneTorneoPage({
                   // fila. Altrove (semifinali, finali dei tabelloni 1°-4°/
                   // 5°-8°) l'etichetta resta perche' distinta dal titolo.
                   const haSemifinali = sezione.semifinali.length > 0;
+                  // Story 20.21: form di prenotazione anticipata montato
+                  // SOLO per il formato 4+4 (formatoOttoSquadre sopra) e
+                  // SOLO per righe con metadati fase/tabellone (undefined
+                  // per la finalina diretta del formato 6 - nessun percorso
+                  // di generazione reale esiste li', spec-20-20 Never).
+                  const mostraPrenotazione = formatoOttoSquadre;
                   return (
                     <div key={sezione.titolo}>
                       <h3>{sezione.titolo}</h3>
                       {haSemifinali && (
                         <>
                           <h4>Semifinali</h4>
-                          {sezione.semifinali.map((accoppiamento) => (
-                            <p key={accoppiamento.etichetta}>
-                              {accoppiamento.etichetta}: <strong>{accoppiamento.casa}</strong> vs{" "}
-                              <strong>{accoppiamento.ospite}</strong>
-                            </p>
-                          ))}
+                          {sezione.semifinali.map((accoppiamento) => {
+                            const { slotDisponibili, slotPrenotatoId } =
+                              mostraPrenotazione && accoppiamento.fase && accoppiamento.tabellone
+                                ? slotPerPrenotazione({
+                                    fase: accoppiamento.fase,
+                                    tabellone: accoppiamento.tabellone,
+                                    ordinale: accoppiamento.ordinale,
+                                  })
+                                : { slotDisponibili: [], slotPrenotatoId: null };
+                            return (
+                              <div key={accoppiamento.etichetta}>
+                                <p>
+                                  {accoppiamento.etichetta}: <strong>{accoppiamento.casa}</strong>{" "}
+                                  vs <strong>{accoppiamento.ospite}</strong>
+                                </p>
+                                {mostraPrenotazione &&
+                                  accoppiamento.fase &&
+                                  accoppiamento.tabellone && (
+                                    <PrenotaSlotIpoteticoForm
+                                      categoriaTorneoId={categoriaId}
+                                      fase={accoppiamento.fase}
+                                      tabellone={accoppiamento.tabellone}
+                                      ordinale={accoppiamento.ordinale ?? null}
+                                      etichettaRiga={accoppiamento.etichetta}
+                                      slotDisponibili={slotDisponibili}
+                                      slotPrenotatoId={slotPrenotatoId}
+                                    />
+                                  )}
+                              </div>
+                            );
+                          })}
                         </>
                       )}
                       <h4>Finali</h4>
-                      {sezione.finali.map((accoppiamento) => (
-                        <p key={accoppiamento.etichetta}>
-                          {haSemifinali && <>{accoppiamento.etichetta}: </>}
-                          <strong>{accoppiamento.casa}</strong> vs{" "}
-                          <strong>{accoppiamento.ospite}</strong>
-                        </p>
-                      ))}
+                      {sezione.finali.map((accoppiamento) => {
+                        const { slotDisponibili, slotPrenotatoId } =
+                          mostraPrenotazione && accoppiamento.fase && accoppiamento.tabellone
+                            ? slotPerPrenotazione({
+                                fase: accoppiamento.fase,
+                                tabellone: accoppiamento.tabellone,
+                                ordinale: accoppiamento.ordinale,
+                              })
+                            : { slotDisponibili: [], slotPrenotatoId: null };
+                        return (
+                          <div key={accoppiamento.etichetta}>
+                            <p>
+                              {haSemifinali && <>{accoppiamento.etichetta}: </>}
+                              <strong>{accoppiamento.casa}</strong> vs{" "}
+                              <strong>{accoppiamento.ospite}</strong>
+                            </p>
+                            {mostraPrenotazione && accoppiamento.fase && accoppiamento.tabellone && (
+                              <PrenotaSlotIpoteticoForm
+                                categoriaTorneoId={categoriaId}
+                                fase={accoppiamento.fase}
+                                tabellone={accoppiamento.tabellone}
+                                ordinale={accoppiamento.ordinale ?? null}
+                                etichettaRiga={accoppiamento.etichetta}
+                                slotDisponibili={slotDisponibili}
+                                slotPrenotatoId={slotPrenotatoId}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}

@@ -913,6 +913,14 @@ model CategoriaTorneo {
   updatedAt            DateTime        @updatedAt
   squadre              SquadraTorneo[]
   partite              PartitaTorneo[]
+  // Story 20.21 (Epic 20, Torneo Memorial): relazione inversa verso
+  // SlotTorneo.prenotazioneCategoriaTorneoId sotto - usata dalla guardia di
+  // cancellazione (cancellaCategoriaTorneo, lib/torneo.ts:
+  // "slotPrenotati: { none: {} } }", mirror squadre sopra): una Categoria
+  // con uno Slot ancora prenotato per una riga del suo prospetto ipotetico
+  // non e' eliminabile, anche senza piu' Squadre/Partite residue
+  // (spec-20-21 Boundaries "Always").
+  slotPrenotati        SlotTorneo[]
 
   @@map("categorie_torneo")
 }
@@ -1129,6 +1137,31 @@ model SlotTorneo {
   campo            Campo?           @relation(fields: [campoId], references: [id])
   fase             FaseTorneo
   tabellone        TabelloneTorneo?
+  // Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata per una
+  // riga precisa del prospetto ipotetico (Story 20.20) - generalizzazione
+  // della "prenotazione per fase" gia' esistente sopra (fase/tabellone),
+  // ora ristretta a una singola Categoria+posizione. prenotazioneOrdinale e'
+  // significativo SOLO quando fase = SEMIFINALE (1|2, distingue Semifinale 1
+  // da Semifinale 2 dello stesso tabellone), sempre null per
+  // FINALE_VINCENTI/FINALE_PERDENTI (un solo Slot serve, nessuna ambiguita')
+  // - validato in Server Action (prenotaSlotIpoteticoAction,
+  // app/app/(torneo)/torneo/actions.ts), mai un CHECK DB, stesso principio
+  // di numeroMassimoSquadre (spec-20-21 Boundaries "Always"). Nessun vincolo
+  // di unicita' DB ne' qui ne' su (fase, tabellone, prenotazioneOrdinale) -
+  // al piu' una prenotazione attiva per riga e' garantita solo a livello
+  // applicativo (prenotaSlotTorneo libera sempre prima l'eventuale
+  // prenotazione precedente sulla stessa riga), stesso principio "nessun
+  // vincolo che impedisca due Partite di puntare allo stesso Slot" gia'
+  // stabilito in Story 20.9 (spec-20-9 Boundaries "Never"). Disponibile solo
+  // per Categorie nel formato "8 squadre" (4+4): generaTabelloneAction
+  // richiede oggi >=4 Squadre in ENTRAMBI i gironi per generare qualunque
+  // riga del tabellone, quindi il formato "6 squadre" (3+3) non ha un
+  // percorso di generazione reale (spec-20-21 Design Notes) - nessun
+  // controllo di prenotazione esposto in quel caso, ma nessun blocco qui a
+  // livello dati (la Server Action e' il vero cancello).
+  prenotazioneCategoriaTorneoId String?
+  prenotazioneCategoriaTorneo   CategoriaTorneo? @relation(fields: [prenotazioneCategoriaTorneoId], references: [id])
+  prenotazioneOrdinale          Int?
   createdAt        DateTime         @default(now())
   // Relazione inversa verso PartitaTorneo.slotTorneoId sopra - usata dalla
   // guardia di cancellazione (cancellaSlotTorneo, lib/torneo.ts: "partite:

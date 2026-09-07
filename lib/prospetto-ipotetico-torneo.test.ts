@@ -36,38 +36,78 @@ describe("calcolaProspettoIpoteticoTorneo", () => {
       {
         titolo: "Tabellone posizioni 1°-4°",
         semifinali: [
-          { etichetta: "Semifinale 1", casa: "1° Girone A", ospite: "2° Girone B" },
-          { etichetta: "Semifinale 2", casa: "1° Girone B", ospite: "2° Girone A" },
+          {
+            etichetta: "Semifinale 1",
+            casa: "1° Girone A",
+            ospite: "2° Girone B",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: 1,
+          },
+          {
+            etichetta: "Semifinale 2",
+            casa: "1° Girone B",
+            ospite: "2° Girone A",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: 2,
+          },
         ],
         finali: [
           {
             etichetta: "Finale 1°/2° posto",
             casa: "Vincente semifinale 1",
             ospite: "Vincente semifinale 2",
+            fase: "FINALE_VINCENTI",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: null,
           },
           {
             etichetta: "Finale 3°/4° posto",
             casa: "Perdente semifinale 1",
             ospite: "Perdente semifinale 2",
+            fase: "FINALE_PERDENTI",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: null,
           },
         ],
       },
       {
         titolo: "Tabellone posizioni 5°-8°",
         semifinali: [
-          { etichetta: "Semifinale 1", casa: "3° Girone A", ospite: "4° Girone B" },
-          { etichetta: "Semifinale 2", casa: "3° Girone B", ospite: "4° Girone A" },
+          {
+            etichetta: "Semifinale 1",
+            casa: "3° Girone A",
+            ospite: "4° Girone B",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_5_8",
+            ordinale: 1,
+          },
+          {
+            etichetta: "Semifinale 2",
+            casa: "3° Girone B",
+            ospite: "4° Girone A",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_5_8",
+            ordinale: 2,
+          },
         ],
         finali: [
           {
             etichetta: "Finale 5°/6° posto",
             casa: "Vincente semifinale 1",
             ospite: "Vincente semifinale 2",
+            fase: "FINALE_VINCENTI",
+            tabellone: "POSIZIONI_5_8",
+            ordinale: null,
           },
           {
             etichetta: "Finale 7°/8° posto",
             casa: "Perdente semifinale 1",
             ospite: "Perdente semifinale 2",
+            fase: "FINALE_PERDENTI",
+            tabellone: "POSIZIONI_5_8",
+            ordinale: null,
           },
         ],
       },
@@ -91,19 +131,39 @@ describe("calcolaProspettoIpoteticoTorneo", () => {
       {
         titolo: "Tabellone posizioni 1°-4°",
         semifinali: [
-          { etichetta: "Semifinale 1", casa: "1° Girone A", ospite: "2° Girone B" },
-          { etichetta: "Semifinale 2", casa: "1° Girone B", ospite: "2° Girone A" },
+          {
+            etichetta: "Semifinale 1",
+            casa: "1° Girone A",
+            ospite: "2° Girone B",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: 1,
+          },
+          {
+            etichetta: "Semifinale 2",
+            casa: "1° Girone B",
+            ospite: "2° Girone A",
+            fase: "SEMIFINALE",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: 2,
+          },
         ],
         finali: [
           {
             etichetta: "Finale 1°/2° posto",
             casa: "Vincente semifinale 1",
             ospite: "Vincente semifinale 2",
+            fase: "FINALE_VINCENTI",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: null,
           },
           {
             etichetta: "Finale 3°/4° posto",
             casa: "Perdente semifinale 1",
             ospite: "Perdente semifinale 2",
+            fase: "FINALE_PERDENTI",
+            tabellone: "POSIZIONI_1_4",
+            ordinale: null,
           },
         ],
       },
@@ -113,5 +173,17 @@ describe("calcolaProspettoIpoteticoTorneo", () => {
         finali: [{ etichetta: "Finalina 5°/6° posto", casa: "3° Girone A", ospite: "3° Girone B" }],
       },
     ]);
+  });
+
+  // Story 20.21: la finalina diretta del formato 6 non ha alcun percorso di
+  // generazione reale (spec-20-20 Never) - nessun metadato fase/tabellone/
+  // ordinale su quella riga, cosi' tabellone/page.tsx non puo' montarci per
+  // sbaglio un form di prenotazione.
+  it("does not attach fase/tabellone/ordinale metadata to the direct finalina of the 6-format (spec-20-21)", () => {
+    const result = calcolaProspettoIpoteticoTorneo(3, 3);
+
+    expect(result![1].finali[0].fase).toBeUndefined();
+    expect(result![1].finali[0].tabellone).toBeUndefined();
+    expect(result![1].finali[0].ordinale).toBeUndefined();
   });
 });

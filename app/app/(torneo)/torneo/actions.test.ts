@@ -42,6 +42,10 @@ const cancellaSlotTorneoMock = vi.fn();
 const aggiornaSlotTorneoMock = vi.fn();
 const assegnaSlotPartitaTorneoMock = vi.fn();
 const elencaSlotTorneoLiberiMock = vi.fn();
+const elencaSlotOccupatiEdizioneMock = vi.fn();
+const prenotaSlotTorneoMock = vi.fn();
+const rimuoviPrenotazioneSlotTorneoMock = vi.fn();
+const trovaSlotPrenotatoMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const caricaVolantinoTorneoMock = vi.fn();
 
@@ -97,6 +101,10 @@ vi.mock("@/lib/torneo", () => ({
   aggiornaSlotTorneo: aggiornaSlotTorneoMock,
   assegnaSlotPartitaTorneo: assegnaSlotPartitaTorneoMock,
   elencaSlotTorneoLiberi: elencaSlotTorneoLiberiMock,
+  elencaSlotOccupatiEdizione: elencaSlotOccupatiEdizioneMock,
+  prenotaSlotTorneo: prenotaSlotTorneoMock,
+  rimuoviPrenotazioneSlotTorneo: rimuoviPrenotazioneSlotTorneoMock,
+  trovaSlotPrenotato: trovaSlotPrenotatoMock,
 }));
 
 vi.mock("next/cache", () => ({
@@ -122,6 +130,7 @@ const {
   aggiornaSlotTorneoAction,
   cancellaSlotTorneoAction,
   assegnaSlotPartitaTorneoAction,
+  prenotaSlotIpoteticoAction,
 } = await import("./actions");
 
 // Story 20.18: valori tipo string[] ora accettati (non solo string) - la
@@ -249,6 +258,19 @@ beforeEach(() => {
   // implicitamente.
   elencaSlotTorneoLiberiMock.mockReset();
   elencaSlotTorneoLiberiMock.mockResolvedValue([]);
+  // Story 20.21: nessuna prenotazione anticipata per default - la nuova
+  // ricerca "riga esatta" dentro assegnaSlotAutomaticamente e' quindi un
+  // no-op silenzioso a meno che un test specifico non fornisca una
+  // prenotazione, stesso principio del default "nessuno Slot libero" sopra.
+  trovaSlotPrenotatoMock.mockReset();
+  trovaSlotPrenotatoMock.mockResolvedValue(null);
+  prenotaSlotTorneoMock.mockReset();
+  rimuoviPrenotazioneSlotTorneoMock.mockReset();
+  // Story 20.21 (Patch B): nessuno Slot occupato da una Partita reale per
+  // default - i test che verificano il rifiuto impostano esplicitamente
+  // l'array con l'id dello Slot in questione.
+  elencaSlotOccupatiEdizioneMock.mockReset();
+  elencaSlotOccupatiEdizioneMock.mockResolvedValue([]);
   revalidatePathMock.mockReset();
   caricaVolantinoTorneoMock.mockReset();
 });
@@ -1197,6 +1219,7 @@ describe("cancellaCategoriaTorneoAction", () => {
       numeroMassimoSquadre: 8,
       edizioneTorneoId: "edizione-1",
     });
+    elencaSquadreTorneoMock.mockResolvedValue([{ id: "squadra-1", girone: "GIRONE_A" }]);
 
     const result = await cancellaCategoriaTorneoAction(
       undefined,
@@ -1207,6 +1230,35 @@ describe("cancellaCategoriaTorneoAction", () => {
       error: {
         code: "VALIDATION",
         message: "Impossibile cancellare: questa Categoria ha ancora Squadre collegate.",
+      },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  // Story 20.21: disambiguazione mirror di cancellaEdizioneTorneoAction
+  // (Story 20.9) - quando la Categoria non ha piu' Squadre, il blocco puo'
+  // essere solo l'altra relazione (Slot prenotati per il prospetto
+  // ipotetico), messaggio esplicito distinto.
+  it("blocks deletion with an explicit message when the Categoria has Slot prenotati but no Squadre left (Story 20.21)", async () => {
+    cancellaCategoriaTorneoMock.mockResolvedValue({ count: 0 });
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue({
+      id: "categoria-1",
+      nome: "Under 14",
+      numeroMassimoSquadre: 8,
+      edizioneTorneoId: "edizione-1",
+    });
+    elencaSquadreTorneoMock.mockResolvedValue([]);
+
+    const result = await cancellaCategoriaTorneoAction(
+      undefined,
+      buildFormData({ id: "categoria-1", edizioneTorneoId: "edizione-1" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile cancellare: questa Categoria ha ancora Slot prenotati per il prospetto ipotetico - rimuovi prima quelle prenotazioni.",
       },
     });
     expect(revalidatePathMock).not.toHaveBeenCalled();
@@ -4477,6 +4529,446 @@ describe("assegnaSlotPartitaTorneoAction", () => {
   });
 });
 
+// Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata di uno
+// Slot per una riga precisa del prospetto ipotetico - mirror di
+// assegnaSlotPartitaTorneoAction sopra, con in piu' il requisito di formato
+// "8 squadre" (4+4), mai fidato dal client.
+describe("prenotaSlotIpoteticoAction", () => {
+  const squadre4a4 = [
+    { id: "a1", girone: "GIRONE_A" },
+    { id: "a2", girone: "GIRONE_A" },
+    { id: "a3", girone: "GIRONE_A" },
+    { id: "a4", girone: "GIRONE_A" },
+    { id: "b1", girone: "GIRONE_B" },
+    { id: "b2", girone: "GIRONE_B" },
+    { id: "b3", girone: "GIRONE_B" },
+    { id: "b4", girone: "GIRONE_B" },
+  ];
+
+  const campiRigaValidi = {
+    categoriaTorneoId: "categoria-1",
+    fase: "SEMIFINALE",
+    tabellone: "POSIZIONI_1_4",
+    ordinale: "1",
+    slotTorneoId: "slot-1",
+  };
+
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when categoriaTorneoId is missing", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, categoriaTorneoId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Categoria non specificata." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects fase GIRONE (no reservation makes sense for a girone incontro)", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, fase: "GIRONE", ordinale: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Fase non valida per una prenotazione." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid fase value", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, fase: "QUALCOSA" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Fase non valida per una prenotazione." },
+    });
+  });
+
+  it("rejects an invalid tabellone value", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, tabellone: "QUALCOSA" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Tabellone non valido." },
+    });
+  });
+
+  it("requires ordinale 1 or 2 for a SEMIFINALE row", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, ordinale: "3" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "L'ordinale della semifinale deve essere 1 o 2." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an ordinale sent for a FINALE_VINCENTI/FINALE_PERDENTI row (always null, no ambiguity)", async () => {
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, fase: "FINALE_VINCENTI", ordinale: "1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Una finale non ha un ordinale." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error, not a generic INTERNAL, when the Categoria no longer exists", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Categoria non trovata." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // spec-20-21 Boundaries "Always": disponibile SOLO per il formato 4+4 -
+  // mai fidarsi del client, ricalcolato qui dalle Squadre reali.
+  it("rejects the reservation when the Categoria isn't in the 4+4 format (e.g. 3+3)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue([
+      { id: "a1", girone: "GIRONE_A" },
+      { id: "a2", girone: "GIRONE_A" },
+      { id: "a3", girone: "GIRONE_A" },
+      { id: "b1", girone: "GIRONE_B" },
+      { id: "b2", girone: "GIRONE_B" },
+      { id: "b3", girone: "GIRONE_B" },
+    ]);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "La prenotazione anticipata è disponibile solo per Categorie con 4 Squadre in ciascun girone.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'Slot non trovato' when the given slotTorneoId doesn't exist", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non trovato." },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Slot whose fase/tabellone don't match this riga", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_5_8",
+      edizioneTorneoId: "edizione-1",
+    });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Lo Slot selezionato non corrisponde alla fase di questa riga.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Slot belonging to a different Edizione", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-2",
+    });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Lo Slot selezionato appartiene a un'altra Edizione.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch E): mirror della
+  // guardia di idempotenza di generaTabelloneAction (contaPartiteTorneoTabellone)
+  // - una volta che il tabellone reale esiste, una prenotazione non
+  // verrebbe mai piu' consumata (assegnaSlotAutomaticamente gira una sola
+  // volta, al momento della generazione) e bloccherebbe permanentemente
+  // quello Slot.
+  it("rejects the reservation once the real tabellone has already been generated for this Categoria (Patch E)", async () => {
+    contaPartiteTorneoTabelloneMock.mockResolvedValue(4);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Il tabellone è già stato generato per questa Categoria: la prenotazione anticipata non è più disponibile.",
+      },
+    });
+    expect(elencaSquadreTorneoMock).not.toHaveBeenCalled();
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch B, difesa in
+  // profondita'): mai fidarsi che il client abbia filtrato correttamente
+  // slotDisponibili - uno Slot gia' agganciato a una Partita reale (di
+  // qualunque Categoria dell'Edizione) non deve mai essere "rubato" da una
+  // prenotazione.
+  it("rejects a Slot already linked to a real Partita of any Categoria in the Edizione (Patch B)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    elencaSlotOccupatiEdizioneMock.mockResolvedValue(["slot-1"]);
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Lo Slot selezionato è già assegnato a un incontro reale.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch B): uno Slot gia'
+  // prenotato per una riga DIVERSA (altra Categoria o altro ordinale) non
+  // deve mai essere sovrascritto silenziosamente da questa prenotazione.
+  it("rejects a Slot already reserved for a different riga (Patch B)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+      prenotazioneCategoriaTorneoId: "categoria-2",
+      prenotazioneOrdinale: 1,
+    });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Lo Slot selezionato è già prenotato per un'altra riga del prospetto ipotetico.",
+      },
+    });
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // Lo Slot gia' prenotato per QUESTA STESSA riga (stessa Categoria/
+  // ordinale) non deve mai essere respinto dal controllo "riga diversa" -
+  // re-inviare lo stesso Slot deve restare un no-op di successo.
+  it("does not reject a Slot already reserved for THIS SAME riga (re-submitting unchanged)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+      prenotazioneCategoriaTorneoId: "categoria-1",
+      prenotazioneOrdinale: 1,
+    });
+    trovaSlotPrenotatoMock.mockResolvedValue({ id: "slot-1" });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(prenotaSlotTorneoMock).toHaveBeenCalledWith("slot-1", "edizione-1", "categoria-1", 1);
+  });
+
+  it("books the Slot for this exact riga when everything checks out", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(prenotaSlotTorneoMock).toHaveBeenCalledWith("slot-1", "edizione-1", "categoria-1", 1);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1/categoria-1/tabellone");
+  });
+
+  it("passes a null ordinale through for a FINALE_VINCENTI riga", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "FINALE_VINCENTI",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({
+        categoriaTorneoId: "categoria-1",
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_1_4",
+        slotTorneoId: "slot-1",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(prenotaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      "categoria-1",
+      null
+    );
+  });
+
+  // spec-20-21 Boundaries "Always": riassegnare sovrascrive la prenotazione
+  // precedente sulla STESSA riga - lo Slot liberato torna disponibile.
+  it("frees the previous reservation on the same riga when it is replaced by a different Slot", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-nuovo",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    trovaSlotPrenotatoMock.mockResolvedValue({ id: "slot-vecchio" });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, slotTorneoId: "slot-nuovo" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith("slot-vecchio", "edizione-1");
+    expect(prenotaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-nuovo",
+      "edizione-1",
+      "categoria-1",
+      1
+    );
+  });
+
+  it("does not needlessly free/re-book when re-submitting the same already-reserved Slot", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    trovaSlotPrenotatoMock.mockResolvedValue({ id: "slot-1" });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(rimuoviPrenotazioneSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // spec-20-21 Code Map: slotTorneoId vuoto = RIMUOVI la prenotazione
+  // esistente su questa riga, non un valore mancante da rifiutare (mirror
+  // assegnaSlotPartitaTorneoAction).
+  it("removes an existing reservation on this riga when slotTorneoId is empty", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotPrenotatoMock.mockResolvedValue({ id: "slot-vecchio" });
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, slotTorneoId: "" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(trovaSlotTorneoPerIdMock).not.toHaveBeenCalled();
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith("slot-vecchio", "edizione-1");
+    expect(prenotaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op success when removing a reservation that no longer exists on this riga", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotPrenotatoMock.mockResolvedValue(null);
+
+    const result = await prenotaSlotIpoteticoAction(
+      undefined,
+      buildFormData({ ...campiRigaValidi, slotTorneoId: "" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(rimuoviPrenotazioneSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error, not a silent no-op, when the update matches no row (count 0)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockResolvedValue({
+      id: "slot-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      edizioneTorneoId: "edizione-1",
+    });
+    prenotaSlotTorneoMock.mockResolvedValue({ count: 0 });
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Slot non trovato in questa Edizione." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the reservation fails", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadre4a4);
+    trovaSlotTorneoPerIdMock.mockRejectedValue(new Error("db down"));
+
+    const result = await prenotaSlotIpoteticoAction(undefined, buildFormData(campiRigaValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile prenotare lo Slot. Riprova." },
+    });
+  });
+});
+
 // Story 20.9: wiring dell'auto-assegnazione best-effort dentro
 // generaTabelloneAction (4 semifinali) e generaFinaliSeCompletate (2
 // finali, side-effect di salvaRisultatoPartitaTorneoAction) - i test di
@@ -4690,6 +5182,388 @@ describe("automatic Slot assignment wiring (spec-20-9)", () => {
       "edizione-1",
       "FINALE_PERDENTI",
       "POSIZIONI_1_4"
+    );
+  });
+
+  // Story 20.21: prenotazione anticipata di uno Slot per una riga precisa
+  // del prospetto ipotetico (Categoria + fase/tabellone/ordinale) - deve
+  // avere sempre priorita' sul pool generico sopra (spec-20-21 Boundaries
+  // "Always": "per ciascuna semifinale/finale si cerca prima uno Slot
+  // prenotato per quella riga esatta").
+  it("assigns the exact reserved Slot to each of the 2 semifinali of a tabellone when both rows have a reservation (spec-20-21 AC #1)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    elencaPartiteTorneoMock.mockResolvedValue(partiteGironeComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+    assegnaSlotPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const semi1_1_4 = { id: "semi-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 1) {
+          return Promise.resolve({ id: "slot-riservato-1" });
+        }
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 2) {
+          return Promise.resolve({ id: "slot-riservato-2" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      "slot-riservato-1"
+    );
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-2",
+      "categoria-1",
+      "slot-riservato-2"
+    );
+    // Nessuna Partita di POSIZIONI_1_4 tocca il pool generico (vuoto di
+    // default in questo test) - entrambe le righe sono state gia' risolte
+    // per corrispondenza esatta.
+    expect(assegnaSlotPartitaTorneoMock).not.toHaveBeenCalledWith(
+      "semi-3",
+      "categoria-1",
+      expect.anything()
+    );
+    expect(assegnaSlotPartitaTorneoMock).not.toHaveBeenCalledWith(
+      "semi-4",
+      "categoria-1",
+      expect.anything()
+    );
+    // Review fix (Patch A): entrambe le prenotazioni appena consumate con
+    // successo vanno liberate, altrimenti cancellaCategoriaTorneo (guardia
+    // "slotPrenotati: none") bloccherebbe questa Categoria per sempre.
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-riservato-1",
+      "edizione-1"
+    );
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-riservato-2",
+      "edizione-1"
+    );
+  });
+
+  it("falls back to the generic pool only for the row without a reservation, while the reserved row still gets its exact Slot (spec-20-21, partial reservation)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+    assegnaSlotPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const semi1_1_4 = { id: "semi-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    // Solo l'ordinale 1 (Semifinale 1) del tabellone 1°-4° ha una
+    // prenotazione - l'ordinale 2 ricade quindi sul pool generico.
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 1) {
+          return Promise.resolve({ id: "slot-riservato-1" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+    elencaSlotTorneoLiberiMock.mockImplementation(
+      (_edizioneTorneoId: string, _fase: string, tabellone: string | null) => {
+        if (tabellone === "POSIZIONI_1_4") return Promise.resolve([{ id: "slot-generico" }]);
+        return Promise.resolve([]);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      "slot-riservato-1"
+    );
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-2",
+      "categoria-1",
+      "slot-generico"
+    );
+    // Review fix (Patch A): la prenotazione consumata con successo va
+    // liberata subito, altrimenti cancellaCategoriaTorneo (guardia
+    // "slotPrenotati: none") bloccherebbe questa Categoria per sempre.
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-riservato-1",
+      "edizione-1"
+    );
+    // Nessuna prenotazione da liberare per lo Slot generico - non e' mai
+    // stato uno Slot prenotato.
+    expect(rimuoviPrenotazioneSlotTorneoMock).not.toHaveBeenCalledWith(
+      "slot-generico",
+      expect.anything()
+    );
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch C): l'ordinale di
+  // ciascuna riga e' la sua posizione nell'array COMPLETO delle Partite di
+  // questa fase/tabellone (ordinate per numero), MAI nell'array gia'
+  // filtrato per "senza Slot" - qui la prima semifinale (posizione 0,
+  // ordinale 1) e' GIA' assegnata quando la funzione gira: se l'ordinale
+  // fosse derivato dalla posizione nel filtrato, la seconda semifinale
+  // (unico elemento del filtrato, posizione 0) riceverebbe per errore la
+  // prenotazione dell'ordinale 1 invece di quella dell'ordinale 2.
+  it("derives the ordinale from the full array position, not the already-filtered one, when one row is already assigned (spec-20-21 Patch C)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+    assegnaSlotPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    // semi-1 (ordinale 1) e' GIA' assegnato - solo semi-2 (ordinale 2) va
+    // ancora processato.
+    const semi1_1_4 = {
+      id: "semi-1",
+      fase: "SEMIFINALE",
+      tabellone: "POSIZIONI_1_4",
+      slotTorneoId: "slot-gia-assegnato",
+    };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 2) {
+          return Promise.resolve({ id: "slot-riservato-2" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    // semi-2 e' in posizione 1 dell'array COMPLETO (ordinale 2) - mai in
+    // posizione 0 dell'array filtrato (che darebbe ordinale 1 per errore).
+    expect(trovaSlotPrenotatoMock).toHaveBeenCalledWith(
+      "categoria-1",
+      "SEMIFINALE",
+      "POSIZIONI_1_4",
+      2
+    );
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-2",
+      "categoria-1",
+      "slot-riservato-2"
+    );
+    // semi-1 era gia' assegnato - mai ritoccato.
+    expect(assegnaSlotPartitaTorneoMock).not.toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      expect.anything()
+    );
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch D): un errore nella
+  // ricerca della corrispondenza esatta per UNA riga non deve interrompere
+  // l'elaborazione delle righe restanti ne' il fallback sul pool generico -
+  // ogni iterazione fallisce in isolamento (mirror del blocco gia' esistente
+  // per il pool generico sotto).
+  it("isolates a failure in the exact-match lookup to a single row, falling back to the generic pool for it (spec-20-21 Patch D)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+    assegnaSlotPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const semi1_1_4 = { id: "semi-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    // L'ordinale 1 fallisce (errore transitorio); l'ordinale 2 ha una
+    // prenotazione regolare.
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 1) {
+          return Promise.reject(new Error("db down"));
+        }
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 2) {
+          return Promise.resolve({ id: "slot-riservato-2" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+    elencaSlotTorneoLiberiMock.mockImplementation(
+      (_edizioneTorneoId: string, _fase: string, tabellone: string | null) => {
+        if (tabellone === "POSIZIONI_1_4") return Promise.resolve([{ id: "slot-generico" }]);
+        return Promise.resolve([]);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    // La riga con l'errore ricade sul pool generico, invece di restare
+    // senza Slot in silenzio o di far fallire l'intera funzione.
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      "slot-generico"
+    );
+    // La riga con la prenotazione regolare non e' comunque compromessa
+    // dall'errore sull'altra.
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-2",
+      "categoria-1",
+      "slot-riservato-2"
+    );
+  });
+
+  // Review fix (Patch D + Patch G, terzo giro di review): assegnaSlotPartitaTorneo
+  // puo' risolvere con count 0 (nessuna riga aggiornata) senza lanciare -
+  // anche in quel caso la Partita deve ricadere sul pool generico (Patch D)
+  // E la prenotazione trovata va comunque liberata (Patch G) - il suo
+  // tentativo di consumo e' comunque avvenuto, e questa funzione gira una
+  // sola volta al momento della generazione: lasciarla agganciata la
+  // bloccherebbe per sempre (stesso rischio che la Patch A voleva chiudere).
+  it("falls back to the generic pool AND frees the reservation when the exact-match assignment resolves with count 0 (spec-20-21 Patch D + Patch G)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+
+    const semi1_1_4 = { id: "semi-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 1) {
+          return Promise.resolve({ id: "slot-riservato-1" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+    // La corrispondenza esatta "fallisce silenziosamente" (count 0, es. lo
+    // Slot e' stato cancellato nel frattempo) - mai un throw.
+    assegnaSlotPartitaTorneoMock.mockImplementation((_id: string, _cat: string, slotId: string) => {
+      if (slotId === "slot-riservato-1") return Promise.resolve({ count: 0 });
+      return Promise.resolve({ count: 1 });
+    });
+    elencaSlotTorneoLiberiMock.mockImplementation(
+      (_edizioneTorneoId: string, _fase: string, tabellone: string | null) => {
+        if (tabellone === "POSIZIONI_1_4") return Promise.resolve([{ id: "slot-generico" }]);
+        return Promise.resolve([]);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      "slot-generico"
+    );
+    // Patch G: il tentativo e' comunque avvenuto - la prenotazione trovata
+    // va liberata anche se l'assegnazione specifica e' fallita (count 0),
+    // altrimenti resterebbe agganciata per sempre.
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-riservato-1",
+      "edizione-1"
+    );
+  });
+
+  // Review fix (3-layer review, Story 20.21 - Patch G): stesso principio
+  // del test sopra, ma per il ramo "eccezione" invece di "count 0" -
+  // assegnaSlotPartitaTorneo che LANCIA (non solo che risolve con count 0)
+  // non deve impedire la pulizia della prenotazione appena tentata.
+  it("frees the reservation even when the exact-match assignment throws (spec-20-21 Patch G)", async () => {
+    elencaSquadreTorneoMock.mockResolvedValue(squadreComplete);
+    creaPartiteTorneoMock.mockResolvedValue({ count: 4 });
+
+    const semi1_1_4 = { id: "semi-1", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi2_1_4 = { id: "semi-2", fase: "SEMIFINALE", tabellone: "POSIZIONI_1_4", slotTorneoId: null };
+    const semi1_5_8 = { id: "semi-3", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+    const semi2_5_8 = { id: "semi-4", fase: "SEMIFINALE", tabellone: "POSIZIONI_5_8", slotTorneoId: null };
+
+    elencaPartiteTorneoMock
+      .mockResolvedValueOnce(partiteGironeComplete) // classifica di girone
+      .mockResolvedValueOnce([semi1_1_4, semi2_1_4]) // assegnaSlotAutomaticamente POSIZIONI_1_4
+      .mockResolvedValueOnce([semi1_5_8, semi2_5_8]); // assegnaSlotAutomaticamente POSIZIONI_5_8
+
+    trovaSlotPrenotatoMock.mockImplementation(
+      (_categoriaTorneoId: string, fase: string, tabellone: string, ordinale: number | null) => {
+        if (fase === "SEMIFINALE" && tabellone === "POSIZIONI_1_4" && ordinale === 1) {
+          return Promise.resolve({ id: "slot-riservato-1" });
+        }
+        return Promise.resolve(null);
+      }
+    );
+    assegnaSlotPartitaTorneoMock.mockImplementation((_id: string, _cat: string, slotId: string) => {
+      if (slotId === "slot-riservato-1") return Promise.reject(new Error("db down"));
+      return Promise.resolve({ count: 1 });
+    });
+    elencaSlotTorneoLiberiMock.mockImplementation(
+      (_edizioneTorneoId: string, _fase: string, tabellone: string | null) => {
+        if (tabellone === "POSIZIONI_1_4") return Promise.resolve([{ id: "slot-generico" }]);
+        return Promise.resolve([]);
+      }
+    );
+
+    const result = await generaTabelloneAction(
+      undefined,
+      buildFormData({ categoriaTorneoId: "categoria-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaSlotPartitaTorneoMock).toHaveBeenCalledWith(
+      "semi-1",
+      "categoria-1",
+      "slot-generico"
+    );
+    expect(rimuoviPrenotazioneSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-riservato-1",
+      "edizione-1"
     );
   });
 });
