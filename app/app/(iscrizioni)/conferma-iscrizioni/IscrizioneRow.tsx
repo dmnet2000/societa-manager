@@ -13,10 +13,14 @@ export function IscrizioneRow({
   atleta,
   iscrizioneId,
   puoConfermare,
+  gruppi,
 }: {
   atleta: AtletaElenco;
   iscrizioneId: string | null;
   puoConfermare: boolean;
+  // Story 1.9: nomi dei Gruppi assegnati per la stagione corrente (sola
+  // visualizzazione, l'assegnazione resta gestita da /app/gruppi).
+  gruppi: string[];
 }) {
   const [error, setError] = useState<string | null>(null);
   const [stato, setStato] = useState<Stato>(
@@ -66,6 +70,7 @@ export function IscrizioneRow({
     <tr>
       <td>{atleta.nome}</td>
       <td>{atleta.codiceFiscale}</td>
+      <td>{gruppi.join(", ") || "–"}</td>
       <td>
         <div className={styles.stato}>
           {stato.iscritta ? (

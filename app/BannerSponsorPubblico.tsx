@@ -14,14 +14,23 @@ type Banner = {
 const INTERVALLO_MS = 5000;
 
 // Story 16.4: mirror strutturale di app/app/SponsorCarosello.tsx (Story
-// 16.3) - stesso useState/useEffect per l'avanzamento automatico/pausa,
-// stesse frecce/indicatori, stesso riuso di lib/carosello-indice.ts. Due
-// differenze deliberate (spec-16-4 Boundaries): indice iniziale casuale
-// invece di 0 (mai riaperto qui - questo e' un piede di pagina fisso sempre
-// visibile su ogni pagina pubblica, non un carosello che l'Utente apre di
-// volta in volta) e markup/stile per una striscia fissa a piena larghezza
-// invece di una card inline. Montato una sola volta dentro
-// FooterPubblico.tsx (gia' presente su tutte le pagine pubbliche).
+// 16.3) - stesso useState/useEffect per l'avanzamento automatico, stesse
+// frecce, stesso riuso di lib/carosello-indice.ts. Due differenze
+// deliberate (spec-16-4 Boundaries): indice iniziale casuale invece di 0
+// (mai riaperto qui - questo e' un piede di pagina fisso sempre visibile
+// su ogni pagina pubblica, non un carosello che l'Utente apre di volta in
+// volta) e markup/stile per una striscia fissa a piena larghezza invece di
+// una card inline. Montato una sola volta dentro FooterPubblico.tsx (gia'
+// presente su tutte le pagine pubbliche).
+// Richiesta esplicita dell'utente (story successiva a spec-16-4): rimossi
+// il pulsante di pausa/ripresa e i pallini indicatori, mai reintrodotti in
+// una revisione successiva senza una nuova richiesta esplicita - l'utente
+// e' stato avvisato che questo toglie l'unico modo per l'Utente pubblico
+// di fermare la rotazione automatica ogni 5s (WCAG 2.2.2 "Pause, Stop,
+// Hide", rispettato dal pulsante pausa rimosso qui e ancora rispettato dal
+// carosello interno gemello, SponsorCarosello.tsx, invariato) e ha scelto
+// consapevolmente di procedere comunque. Le frecce precedente/successivo
+// restano, unico controllo manuale rimasto.
 export function BannerSponsorPubblico({ banner }: { banner: Banner[] }) {
   // Review fix (3-layer review, Blind Hunter + Edge Case Hunter, trovato
   // indipendentemente da entrambi): un lazy initializer di useState gira
@@ -36,10 +45,6 @@ export function BannerSponsorPubblico({ banner }: { banner: Banner[] }) {
   // raccomandato da React per ogni valore che deve differire dall'HTML
   // renderizzato dal server.
   const [indice, setIndice] = useState(0);
-  // Stesso obbligo WCAG 2.2.2 (Pause, Stop, Hide) gia' rispettato dal
-  // carosello interno (Story 16.3, review fix Blind Hunter) - mai un
-  // carosello automatico senza un modo di fermarlo.
-  const [inPausa, setInPausa] = useState(false);
 
   // Review fix: indice iniziale casuale (spec-16-4) applicato qui, non nel
   // lazy initializer sopra - questo effetto gira SOLO lato client dopo il
@@ -65,15 +70,17 @@ export function BannerSponsorPubblico({ banner }: { banner: Banner[] }) {
   }, []);
 
   // Mirror esatto dell'effetto del carosello interno: nessun intervallo con
-  // 0-1 elementi ne' mentre l'Utente ha messo in pausa; dipende anche da
-  // `indice` cosi' una navigazione manuale riavvia il conteggio dei 5s.
+  // 0-1 elementi; dipende anche da `indice` cosi' una navigazione manuale
+  // (frecce) riavvia il conteggio dei 5s. Nessun controllo di pausa qui
+  // (rimosso su richiesta esplicita dell'utente, vedi commento in testa al
+  // file) - l'intervallo gira sempre finche' banner.length > 1.
   useEffect(() => {
-    if (banner.length <= 1 || inPausa) return;
+    if (banner.length <= 1) return;
     const id = setInterval(() => {
       setIndice((i) => avanti(i, banner.length));
     }, INTERVALLO_MS);
     return () => clearInterval(id);
-  }, [banner.length, indice, inPausa]);
+  }, [banner.length, indice]);
 
   // Nessun banner (nessuna riserva di spazio) se zero Sponsor Banner attivi
   // - FooterPubblico.tsx decide gia' lato server se montare questo
@@ -127,45 +134,14 @@ export function BannerSponsorPubblico({ banner }: { banner: Banner[] }) {
         )}
         <p className={styles.nome}>{attuale.nome}</p>
         {banner.length > 1 && (
-          <>
-            <button
-              type="button"
-              className={styles.freccia}
-              onClick={() => setIndice((i) => avanti(i, banner.length))}
-              aria-label="Sponsor successivo"
-            >
-              ›
-            </button>
-            <div className={styles.indicatori}>
-              {banner.map((b, i) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  className={
-                    i === indiceValido
-                      ? `${styles.pallino} ${styles.pallinoAttivo}`
-                      : styles.pallino
-                  }
-                  onClick={() => setIndice(i)}
-                  aria-label={`Vai allo sponsor ${i + 1} di ${banner.length}`}
-                  aria-current={i === indiceValido}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              className={styles.pausa}
-              onClick={() => setInPausa((p) => !p)}
-              aria-pressed={inPausa}
-              aria-label={
-                inPausa
-                  ? "Riprendi lo scorrimento automatico"
-                  : "Metti in pausa lo scorrimento automatico"
-              }
-            >
-              {inPausa ? "▶" : "❚❚"}
-            </button>
-          </>
+          <button
+            type="button"
+            className={styles.freccia}
+            onClick={() => setIndice((i) => avanti(i, banner.length))}
+            aria-label="Sponsor successivo"
+          >
+            ›
+          </button>
         )}
       </div>
     </div>

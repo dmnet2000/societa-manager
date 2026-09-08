@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { raggruppaSlotPerGruppo } from "@/lib/raggruppa-slot-per-gruppo";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { SlotTable } from "../SlotTable";
 import styles from "./orari.module.css";
@@ -60,6 +61,8 @@ export default async function OrariPage({
       : Promise.resolve([]),
   ]);
 
+  const sezioniGruppo = raggruppaSlotPerGruppo(gruppi, slot, gruppoId);
+
   return (
     <main>
       <TitoloPagina
@@ -99,7 +102,34 @@ export default async function OrariPage({
 
       <section className={styles.sezione}>
         <h2>Elenco Slot</h2>
-        <SlotTable slot={slot} messaggioVuoto="Nessuno Slot trovato." />
+        {
+          // Story 2.9 (review fix, Edge Case Hunter + Verification Gap
+          // Reviewer): raggruppamento estratto in una funzione pura testata
+          // (lib/raggruppa-slot-per-gruppo.ts) invece di restare inline
+          // nella pagina - stesso principio "mai una pagina testata
+          // direttamente" gia' seguito da ogni altro raggruppamento del
+          // progetto. Se il risultato e' vuoto (nessun Gruppo nella
+          // stagione, o un gruppoId nel filtro che non corrisponde piu' a
+          // nessun Gruppo esistente - es. link salvato dopo la cancellazione
+          // di quel Gruppo), un messaggio esplicito sostituisce l'intera
+          // sezione invece di lasciarla vuota senza spiegazione (stesso
+          // principio "mai un'area vuota silenziosa" gia' seguito per il
+          // caso "Gruppo senza Slot" qui sotto, riusando SlotTable stesso
+          // invece di introdurre un secondo stile di messaggio vuoto).
+          sezioniGruppo.length === 0 ? (
+            <SlotTable
+              slot={[]}
+              messaggioVuoto="Nessun Gruppo trovato per la stagione corrente o per il filtro selezionato."
+            />
+          ) : (
+            sezioniGruppo.map(({ gruppo, slot: slotGruppo }) => (
+              <div key={gruppo.id} className={styles.gruppoSezione}>
+                <h3 className={styles.gruppoTitolo}>{gruppo.nome}</h3>
+                <SlotTable slot={slotGruppo} messaggioVuoto="Nessuno Slot trovato." />
+              </div>
+            ))
+          )
+        }
       </section>
     </main>
   );

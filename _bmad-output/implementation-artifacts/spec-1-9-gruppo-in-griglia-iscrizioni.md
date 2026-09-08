@@ -2,9 +2,10 @@
 title: 'Story 1.9: Gruppo assegnato nella griglia Conferma Iscrizioni'
 type: 'feature'
 created: '2026-09-08'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context: []
+baseline_commit: 'f0e578111ef467a702f6571ebc67de70c3740baa'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -43,9 +44,9 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/app/(iscrizioni)/conferma-iscrizioni/page.tsx` -- query Gruppo/GruppoAtleta + colonna
-- [ ] `app/app/(iscrizioni)/conferma-iscrizioni/IscrizioneRow.tsx` -- nuova cella
-- [ ] `lib/guida/contenuti.ts` -- aggiornamento guida
+- [x] `app/app/(iscrizioni)/conferma-iscrizioni/page.tsx` -- query Gruppo/GruppoAtleta + colonna
+- [x] `app/app/(iscrizioni)/conferma-iscrizioni/IscrizioneRow.tsx` -- nuova cella
+- [x] `lib/guida/contenuti.ts` -- aggiornamento guida
 
 **Acceptance Criteria:**
 - Given un'Atleta assegnata a uno o più Gruppi nella stagione corrente, when Segreteria/Admin/Dirigente apre `/app/conferma-iscrizioni`, then vede il/i nome/i del Gruppo nella riga di quell'Atleta
@@ -60,3 +61,15 @@ context: []
 
 **Manual checks (dev locale rotto su questa macchina - verificare al primo deploy utile):**
 - Aprire `/app/conferma-iscrizioni` con Atlete sia assegnate che non assegnate a un Gruppo: verificare la colonna.
+- Verificare un'Atleta assegnata a più Gruppi: i nomi devono comparire in ordine alfabetico, stabile a ogni ricarico.
+
+## Suggested Review Order
+
+- Query Gruppo/GruppoAtleta per la stagione corrente + mappa atletaId -> nomi.
+  [`page.tsx:46`](../../app/app/(iscrizioni)/conferma-iscrizioni/page.tsx#L46)
+
+- Review fix: ordinamento alfabetico dei nomi per Atleta - senza, l'ordine dipendeva dal ritorno non garantito di Postgres (trovato indipendentemente da Blind Hunter ed Edge Case Hunter).
+  [`page.tsx:75`](../../app/app/(iscrizioni)/conferma-iscrizioni/page.tsx#L75)
+
+- Nuova cella nella riga.
+  [`IscrizioneRow.tsx:73`](../../app/app/(iscrizioni)/conferma-iscrizioni/IscrizioneRow.tsx#L73)

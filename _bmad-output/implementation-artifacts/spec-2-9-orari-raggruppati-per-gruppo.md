@@ -2,9 +2,10 @@
 title: 'Story 2.9: Vista Orari divisa per Gruppo'
 type: 'feature'
 created: '2026-09-08'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context: []
+baseline_commit: 'f0e578111ef467a702f6571ebc67de70c3740baa'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -44,7 +45,9 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/app/(orari-palestre)/orari/page.tsx` -- raggruppare la vista Slot per Gruppo
+- [x] `app/app/(orari-palestre)/orari/page.tsx` -- raggruppare la vista Slot per Gruppo
+- [x] `lib/raggruppa-slot-per-gruppo.ts` + test (non previsto nel Code Map iniziale, necessario) -- raggruppamento estratto come funzione pura testata, stesso principio di ogni altro raggruppamento del progetto
+- [x] `lib/guida/contenuti.ts` (non previsto nel Code Map iniziale, necessario) -- aggiornamento guida per la nuova struttura
 
 **Acceptance Criteria:**
 - Given più Gruppi con Slot nella stagione corrente, when Segreteria apre `/app/orari` senza filtri, then vede una sezione per Gruppo con i propri Slot, senza doverli filtrare manualmente
@@ -60,3 +63,14 @@ context: []
 
 **Manual checks (dev locale rotto su questa macchina - verificare al primo deploy utile):**
 - Aprire `/app/orari` con più Gruppi e Slot su Palestre diverse: verificare le sezioni e i filtri.
+- Aprire `/app/orari` con un `gruppoId` nella query string che non corrisponde più a nessun Gruppo esistente: verificare il messaggio esplicito invece di una sezione vuota.
+
+## Suggested Review Order
+
+**Il cuore della story: raggruppamento per Gruppo**
+
+- Funzione pura estratta e testata (review fix, Verification Gap Reviewer - ogni altro raggruppamento del progetto segue questo stesso principio, nessuna pagina viene mai testata direttamente).
+  [`lib/raggruppa-slot-per-gruppo.ts:24`](../../lib/raggruppa-slot-per-gruppo.ts#L24)
+
+- Uso nella pagina, incluso il fix per l'elenco Gruppi vuoto (trovato indipendentemente da Edge Case Hunter e Verification Gap Reviewer: prima di questo fix la sezione restava completamente vuota, senza messaggio, se zero Gruppi esistevano o se il filtro `gruppoId` non corrispondeva più a nessun Gruppo).
+  [`page.tsx:101`](../../app/app/(orari-palestre)/orari/page.tsx#L101)

@@ -72,6 +72,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui vedi lo stato di iscrizione di ogni Atleta per la stagione corrente.",
       "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
       "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
+      "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",
     ],
   },
   {
@@ -100,7 +101,8 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     titolo: "Orari (vista per Palestra/Gruppo)",
     ruoliAmmessi: ["SEGRETERIA"],
     corpo: [
-      "Qui vedi tutti gli Slot (giorno, orario, campo, gruppo) della stagione corrente, filtrabili per Palestra o per Gruppo.",
+      "Qui vedi gli Slot (giorno, orario, campo) della stagione corrente divisi in una sezione per ciascun Gruppo, filtrabili per Palestra o per un singolo Gruppo.",
+      "Un Gruppo senza Slot nel filtro attuale compare comunque, con un messaggio esplicito - così vedi subito quali Gruppi non hanno ancora orari assegnati.",
       "Questa vista è pensata per la Segreteria: sola lettura, nessuna creazione o modifica di Slot da qui.",
     ],
   },

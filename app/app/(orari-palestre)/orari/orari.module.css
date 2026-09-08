@@ -13,6 +13,19 @@
   color: var(--color-text-secondary);
 }
 
+/* Story 2.9 - intestazione di sezione per Gruppo, mirror di .card h3 in
+   palestre.module.css (stesso pattern di sotto-titolo nel progetto). */
+.gruppoSezione {
+  margin-top: var(--space-4);
+}
+
+.gruppoTitolo {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
 .filtro {
   display: flex;
   flex-wrap: wrap;

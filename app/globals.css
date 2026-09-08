@@ -31,8 +31,10 @@
      CookieBanner.module.css (.bannerSopraBannerSponsor), cosi' i due
      elementi fissi non si sovrappongono mai sulla home (unico punto dove
      coesistono). 60px = striscia sottile che contiene comunque un target di
-     tocco 44px (frecce/pallini/pausa) centrato verticalmente senza essere
-     tagliato da overflow-x: auto sulla striscia.
+     tocco 44px (le frecce, unici controlli rimasti dopo la rimozione di
+     pallini/pausa - vedi commento in testa a BannerSponsorPubblico.tsx)
+     centrato verticalmente senza essere tagliato da overflow-x: auto sulla
+     striscia.
   */
   --altezza-banner-sponsor-pubblico: 60px;
 

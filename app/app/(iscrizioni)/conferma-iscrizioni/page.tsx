@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
@@ -42,6 +43,46 @@ export default async function ConfermaIscrizioniPage() {
     iscrizioni.map((iscrizione) => [iscrizione.atletaId, iscrizione.id])
   );
 
+  // Story 1.9: Gruppo assegnato per l'Anno Agonistico corrente - mirror del
+  // pattern gia' in uso in /app/gruppi/page.tsx (GruppoAtleta/Gruppo non
+  // sono protetti da RLS, AD-9, Prisma diretto). Un'Atleta puo' appartenere
+  // a piu' Gruppi nella stessa stagione (AD-8/Story 9.21) - la mappa
+  // atletaId -> nomi ne raccoglie tutti, non solo il primo. Se l'Anno
+  // Agonistico corrente non esiste ancora, la colonna resta vuota per
+  // tutte le righe (stesso stato di Iscrizione oggi).
+  const [gruppoAtleteRows, gruppi] = annoCorrente
+    ? await Promise.all([
+        prisma.gruppoAtleta.findMany({
+          where: { annoAgonisticoId: annoCorrente.id },
+          select: { atletaId: true, gruppoId: true },
+        }),
+        prisma.gruppo.findMany({
+          where: { annoAgonisticoId: annoCorrente.id },
+          select: { id: true, nome: true },
+        }),
+      ])
+    : [[], []];
+  const nomeGruppoPerId = new Map(gruppi.map((gruppo) => [gruppo.id, gruppo.nome]));
+  const gruppiPerAtleta = new Map<string, string[]>();
+  for (const riga of gruppoAtleteRows) {
+    const nome = nomeGruppoPerId.get(riga.gruppoId);
+    if (!nome) continue;
+    const elenco = gruppiPerAtleta.get(riga.atletaId) ?? [];
+    elenco.push(nome);
+    gruppiPerAtleta.set(riga.atletaId, elenco);
+  }
+  // Review fix (3-layer review, Blind Hunter + Edge Case Hunter, trovato
+  // indipendentemente da entrambi): ne' gruppoAtleteRows ne' gruppi hanno un
+  // orderBy - per un'Atleta con piu' Gruppi (AD-8/Story 9.21) l'ordine dei
+  // nomi dipenderebbe dall'ordine di ritorno di Postgres, non garantito e
+  // potenzialmente diverso da un caricamento all'altro. Ordinati qui,
+  // un'unica volta per Atleta, invece di aggiungere un ORDER BY a entrambe
+  // le query sorgente (l'ordine finale dipende dal nome del Gruppo, non
+  // dall'ordine delle righe GruppoAtleta).
+  for (const elenco of gruppiPerAtleta.values()) {
+    elenco.sort((a, b) => a.localeCompare(b));
+  }
+
   return (
     <main>
       <TitoloPagina
@@ -54,6 +95,7 @@ export default async function ConfermaIscrizioniPage() {
             <tr>
               <th>Nome</th>
               <th>Codice Fiscale</th>
+              <th>Gruppo</th>
               <th>Stato Iscrizione</th>
             </tr>
           </thead>
@@ -64,6 +106,7 @@ export default async function ConfermaIscrizioniPage() {
                 atleta={atleta}
                 iscrizioneId={iscrizioneIdPerAtleta.get(atleta.id) ?? null}
                 puoConfermare={puoConfermare}
+                gruppi={gruppiPerAtleta.get(atleta.id) ?? []}
               />
             ))}
           </tbody>
