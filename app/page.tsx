@@ -6,8 +6,6 @@ import {
   leggiNomeSettore,
   leggiUrlPaginaFacebook,
 } from "@/lib/configurazione-applicazione";
-import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
-import { raggruppaSponsorPerTipo } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
 import {
   formattaDataIso,
   lunediDellaSettimana,
@@ -23,7 +21,6 @@ import {
   haAccettatoCookieNonEssenziali,
   parseValoreConsenso,
 } from "@/lib/cookie-consenso";
-import { SponsorPubblicoCard } from "./SponsorPubblicoCard";
 import { CookieBanner } from "./CookieBanner";
 import { HeaderPubblico } from "./HeaderPubblico";
 import { FooterPubblico } from "./FooterPubblico";
@@ -32,11 +29,13 @@ import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
 // sostituisce la dashboard interna spostata su /app - vedi app/app/page.tsx.
-// Solo layout/scheletro in Story 18.1 (AC #7); Story 18.2 aggiunge la prima
-// sezione di contenuto (Sponsor), Story 18.3 la sezione Partite, Story 18.4
-// la sezione Foto di squadra. Logo/nome del settore/Sponsor/Partite/Foto
-// possono cambiare in qualunque momento - stesso motivo di
-// dynamic = "force-dynamic" gia' in uso su /accedi.
+// Solo layout/scheletro in Story 18.1 (AC #7); Story 18.2 aveva aggiunto la
+// prima sezione di contenuto (Sponsor, rimossa da questa pagina in Story
+// 16.5 - spostata su /sponsor, ora ridondante col banner sponsor rotante
+// fisso di Story 16.4), Story 18.3 la sezione Partite, Story 18.4 la sezione
+// Foto di squadra. Logo/nome del settore/Partite/Foto possono cambiare in
+// qualunque momento - stesso motivo di dynamic = "force-dynamic" gia' in uso
+// su /accedi.
 export const dynamic = "force-dynamic";
 
 // Story 18.3: mirror del wrapper locale gia' in uso in
@@ -106,7 +105,7 @@ export default async function HomePubblicaPage() {
 
   const [
     nomeSettore,
-    sponsorAttivi,
+    conteggioBannerSponsorFisso,
     partiteSettimanaRaw,
     gruppiStagione,
     fotoPerGruppo,
@@ -124,29 +123,22 @@ export default async function HomePubblicaPage() {
       console.error(err);
       return null;
     }),
-    // Story 18.2 (AC #1/#2/#3): stessa query di app/app/(sponsor)/sponsor/page.tsx
-    // (Sponsor non protetto da RLS, AD-9, Prisma diretto) - solo Sponsor
-    // attivi. Review fix (Blind Hunter): "select" esplicito - il confine
-    // "cosa e' sicuro esporre a un Visitatore anonimo" e' imposto dalla
-    // query stessa, non solo dalla disciplina del .map() sotto (un futuro
-    // campo interno aggiunto al model Sponsor non arriverebbe qui senza
-    // un cambio esplicito a questo select).
+    // Story 16.5: la sezione statica Sponsor (Story 18.2, con la query
+    // completa che leggeva Banner+Convenzioni per la griglia qui sotto) e'
+    // stata spostata su /sponsor - questa home non ha piu' bisogno dei dati
+    // Sponsor in se', solo di sapere se il banner sponsor rotante fisso
+    // (Story 16.4, montato da FooterPubblico piu' sotto) sara' visibile, per
+    // scostare il CookieBanner verso l'alto quando i due elementi fissi
+    // coesisterebbero altrimenti (vedi sopraBannerSponsor sotto). Query
+    // minima e dedicata (solo un conteggio, stesso filtro tipo/attiva gia'
+    // usato dalla query "vera" del banner in FooterPubblico.tsx) - non piu'
+    // un riuso della query Story 18.2 (rimossa), che prima copriva anche
+    // questo bisogno gratuitamente.
     prisma.sponsor
-      .findMany({
-        where: { attiva: true },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          nome: true,
-          tipo: true,
-          descrizione: true,
-          updatedAt: true,
-          linkEsterno: true,
-        },
-      })
+      .count({ where: { tipo: "BANNER", attiva: true } })
       .catch((err) => {
         console.error(err);
-        return [];
+        return 0;
       }),
     // Story 18.3 (AC #1/#2/#3): mirror del filtro/orderBy gia' in uso in
     // app/app/(partite-campionati)/partite/page.tsx, senza lo scoping per
@@ -224,20 +216,11 @@ export default async function HomePubblicaPage() {
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
 
-  // Story 18.2: riuso diretto della stessa funzione pura gia' usata da
-  // /app/sponsor (Story 16.2), nessuna duplicazione della logica di
-  // raggruppamento.
-  const { banner, convenzioni } = raggruppaSponsorPerTipo(
-    sponsorAttivi.map((s) => ({
-      id: s.id,
-      nome: s.nome,
-      tipo: s.tipo,
-      descrizione: s.descrizione,
-      updatedAt: s.updatedAt.toISOString(),
-      linkEsterno: s.linkEsterno,
-    }))
-  );
-  const mostraSponsor = banner.length > 0 || convenzioni.length > 0;
+  // Story 16.5: sostituisce banner.length > 0 (rimosso insieme alla sezione
+  // Sponsor statica) come base per sopraBannerSponsor sotto - stesso
+  // significato booleano ("il banner sponsor rotante fisso sara' visibile su
+  // questa pagina"), ora derivato dal conteggio dedicato sopra.
+  const mostraBannerSponsorFisso = conteggioBannerSponsorFisso > 0;
 
   // Story 18.3: riuso di raggruppaPerSettimana (gia' esportata e testata,
   // Story 10.3) anche solo per UNA settimana - da' gratis l'ordinamento
@@ -323,54 +306,14 @@ export default async function HomePubblicaPage() {
           </div>
         </div>
 
-        {/* Story 18.2 (AC #2): nessuna sezione se non ci sono Sponsor attivi
-            (ne' Banner ne' Convenzioni) - stesso principio gia' applicato in
-            Story 16.3 (carosello Banner) e nello scheletro di Story 18.1. */}
-        {mostraSponsor && (
-          // Review fix (Blind Hunter): aria-label esplicito - senza, la
-          // sezione non ha un nome accessibile proprio (i due <h2> interni
-          // non bastano) e non verrebbe esposta come landmark nominato.
-          <section className={styles.sezioneSponsor} aria-label="Sponsor">
-
-            {banner.length > 0 && (
-              <div className={styles.gruppoSponsor}>
-                <h2 className={styles.titoloSponsor}>I nostri sponsor</h2>
-                <div className={styles.listaSponsor}>
-                  {banner.map((sponsor) => (
-                    <SponsorPubblicoCard
-                      key={sponsor.id}
-                      sponsor={sponsor}
-                      immagineUrl={urlPubblicoImmagineSponsor(supabase, sponsor.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {convenzioni.length > 0 && (
-              <div className={styles.gruppoSponsor}>
-                <h2 className={styles.titoloSponsor}>Convenzioni</h2>
-                <div className={styles.listaSponsor}>
-                  {convenzioni.map((sponsor) => (
-                    <SponsorPubblicoCard
-                      key={sponsor.id}
-                      sponsor={sponsor}
-                      immagineUrl={urlPubblicoImmagineSponsor(supabase, sponsor.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
         {/* Story 18.3 (AC #2): nessuna sezione se nessun Gruppo ha partite
-            nella settimana corrente - stesso principio della sezione
-            Sponsor sopra. */}
+            nella settimana corrente - stesso principio gia' applicato in
+            Story 16.3 (carosello Banner) e nello scheletro di Story 18.1
+            (la sezione Sponsor che seguiva questo commento e' stata
+            spostata su /sponsor, Story 16.5). */}
         {mostraPartite && (
-          // Review fix: aria-labelledby invece di aria-label - a
-          // differenza della sezione Sponsor sopra (due <h2>, nessuno dei
-          // due riassume l'intera sezione), qui c'e' un solo <h2> che gia'
-          // fa da nome accessibile: ripeterne il testo in aria-label lo
+          // Review fix: aria-labelledby (non aria-label) - un solo <h2> qui
+          // gia' fa da nome accessibile: ripeterne il testo in aria-label lo
           // avrebbe solo duplicato.
           <section className={styles.sezionePartite} aria-labelledby="titolo-partite-settimana">
             <h2 id="titolo-partite-settimana" className={styles.titoloSezione}>
@@ -421,7 +364,7 @@ export default async function HomePubblicaPage() {
         )}
 
         {/* Story 18.4 (AC #3): nessuna sezione se nessun Gruppo ha caricato
-            una foto - stesso principio delle sezioni Sponsor/Partite sopra.
+            una foto - stesso principio della sezione Partite sopra.
             aria-labelledby (non aria-label), stesso motivo della sezione
             Partite: un solo <h2> qui, nessun bisogno di ripeterne il testo. */}
         {mostraFotoSquadra && (
@@ -461,14 +404,17 @@ export default async function HomePubblicaPage() {
           "?preferenze-cookie=1"; CookieBanner legge il param da solo con
           useSearchParams() (reattivo anche se questa pagina resta montata,
           vedi commento nel componente). */}
-      {/* Story 16.4: riusa lo stesso conteggio Sponsor Banner gia' calcolato
-          sopra (Story 18.2, nessuna nuova query) per decidere se questo
-          CookieBanner deve spostarsi sopra il banner sponsor fisso montato
-          da FooterPubblico.tsx qualche riga sopra - unico punto del sito
-          pubblico dove i due elementi fissi coesistono. */}
+      {/* Story 16.4: decide se questo CookieBanner deve spostarsi sopra il
+          banner sponsor fisso montato da FooterPubblico.tsx qualche riga
+          sopra - unico punto del sito pubblico dove i due elementi fissi
+          coesistono. Story 16.5: mostraBannerSponsorFisso (sopra) sostituisce
+          banner.length > 0 come base di questo booleano - la sezione Sponsor
+          statica di Story 18.2, di cui "banner" faceva parte, e' stata
+          rimossa da questa pagina e spostata su /sponsor; il conteggio
+          dedicato risolto nel Promise.all sopra la sostituisce. */}
       <CookieBanner
         valoreIniziale={valoreConsensoIniziale}
-        sopraBannerSponsor={banner.length > 0}
+        sopraBannerSponsor={mostraBannerSponsorFisso}
       />
     </>
   );

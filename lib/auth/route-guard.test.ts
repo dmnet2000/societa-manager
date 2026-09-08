@@ -34,13 +34,15 @@ describe("rottaRiservata", () => {
     expect(rottaRiservata("/reimposta-password")).toBe(true);
   });
 
-  it("rifiuta le 6 pagine pubbliche esistenti (isPublicRoute)", () => {
+  it("rifiuta le 7 pagine pubbliche esistenti (isPublicRoute)", () => {
     expect(rottaRiservata("/")).toBe(true);
     expect(rottaRiservata("/squadre")).toBe(true);
     expect(rottaRiservata("/calendario")).toBe(true);
     expect(rottaRiservata("/staff")).toBe(true);
     expect(rottaRiservata("/contatti")).toBe(true);
     expect(rottaRiservata("/torneo")).toBe(true);
+    // Story 16.5: nuova pagina pubblica dedicata Sponsor.
+    expect(rottaRiservata("/sponsor")).toBe(true);
   });
 
   it("consente uno slug nuovo, non riservato", () => {

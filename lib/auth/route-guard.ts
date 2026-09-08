@@ -64,6 +64,15 @@ export const PUBLIC_ROUTES = [
   // dalla migrazione 20260825010000_add_torneo_voce_menu_pubblico) veniva
   // reindirizzato a /accedi invece di vedere la pagina pubblica.
   "/torneo",
+  // Story 16.5: nuova pagina pubblica dedicata Sponsor (mirror strutturale
+  // di /squadre,/calendario,/staff,/torneo) - stesso identico bug gia'
+  // corretto per quelle in Story 18.7/20.6 (vedi commenti sopra): senza
+  // questa voce un Visitatore anonimo che apre /sponsor verrebbe
+  // reindirizzato a /accedi invece di vedere la pagina pubblica, anche se
+  // nessuna voce di menu punta ancora li' (spec-16-5 Never: nessuna voce di
+  // navigazione aggiunta in codice, scelta editoriale di Admin/Site Manager
+  // via /app/menu-pubblico) - un URL diretto deve comunque funzionare.
+  "/sponsor",
 ];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte

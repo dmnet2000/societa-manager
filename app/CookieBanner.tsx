@@ -53,9 +53,11 @@ export function CookieBanner({
   // CookieBanner e' ancora montato, Story 18.6) i due elementi fissi
   // potrebbero coesistere alla prima visita. Quando presente, questo
   // CookieBanner si sposta piu' in alto della sua altezza cosi' non si
-  // sovrappongono mai. app/page.tsx riusa il conteggio Sponsor Banner gia'
-  // disponibile li' (Story 18.2) per calcolare questo booleano - nessuna
-  // nuova query qui.
+  // sovrappongono mai. Story 16.5: app/page.tsx calcola questo booleano con
+  // una query dedicata (solo un conteggio Sponsor Banner attivi) - prima
+  // (Story 18.2) riusava gratuitamente i dati gia' letti per la sezione
+  // Sponsor statica della home, rimossa in quella story e spostata su
+  // /sponsor.
   sopraBannerSponsor?: boolean;
 }) {
   const router = useRouter();

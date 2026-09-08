@@ -104,6 +104,16 @@ describe("getRouteDecision", () => {
     expect(isPublicRoute("/torneo")).toBe(true);
   });
 
+  // Story 16.5: nuova pagina pubblica dedicata /sponsor - stesso identico
+  // bug gia' corretto sopra per Story 18.7/20.6, prevenuto qui aggiungendo
+  // "/sponsor" a PUBLIC_ROUTES direttamente in questa story (nessuna voce di
+  // menu punta ancora li', spec-16-5 Never - ma un URL diretto deve
+  // comunque funzionare per un Visitatore anonimo).
+  it("allows unauthenticated access to '/sponsor' (nuova pagina pubblica dedicata - Story 16.5)", async () => {
+    expect(await getRouteDecision("/sponsor", false, [])).toEqual({ action: "allow" });
+    expect(isPublicRoute("/sponsor")).toBe(true);
+  });
+
   // Review fix (Blind Hunter, Story 18.1): usava "/" prima che diventasse
   // pubblica (Story 18.1) - il test era diventato ridondante col test
   // pubblico appena sopra e non copriva piu' nessun caso di autenticazione

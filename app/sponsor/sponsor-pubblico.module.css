@@ -1,0 +1,109 @@
+/* Story 16.5: modulo dedicato al CONTENUTO della pagina /sponsor,
+   convenzione del progetto "un CSS module per pagina, mai condiviso" (stessa
+   gia' applicata a squadre.module.css/calendario.module.css/
+   torneo-pubblico.module.css). .main/.titolo/.messaggioVuoto sotto sono
+   mirror letterale degli stessi stili in squadre.module.css/
+   torneo-pubblico.module.css per le pagine pubbliche sorelle. Le classi
+   Sponsor (.titoloSponsor/.sezioneSponsor/.gruppoSponsor/.listaSponsor/
+   .schedaSponsor/.anteprimaSponsor/.linkImmagineSponsor) sono spostate qui
+   invariate da home-pubblica.module.css (Story 18.2/18.12), dove la sezione
+   statica Sponsor e' stata rimossa in questa stessa story - nessuna nuova
+   regola, solo relocate. */
+
+/* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
+   var(--color-surface-alt). Mirror di .main in squadre.module.css/
+   torneo-pubblico.module.css. */
+.main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+  background: #f2f5f7;
+}
+
+/* {typography.display-section}, stesso token del titolo di /squadre,
+   /calendario, /torneo. */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+/* Intestazione dedicata alla sezione Sponsor (components.sponsor-strip,
+   diversa da .titolo sopra: {typography.label-tag} con letter-spacing 3px
+   in override, non 1.5px di default). Spostata invariata da
+   home-pubblica.module.css (Story 18.12). */
+.titoloSponsor {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  /* {colors.grigio} #5B6472 - letterale. */
+  color: #5b6472;
+}
+
+/* ===== SPONSOR =====
+   Spostate invariate da home-pubblica.module.css (Story 18.2/18.12) - stesse
+   card, nessuna nuova regola. */
+.sezioneSponsor {
+  padding: var(--space-8) var(--space-6);
+  /* {colors.bordo-chiaro} #E5E9EE - letterale, diverso da var(--color-border). */
+  border-top: 1px solid #e5e9ee;
+  border-bottom: 1px solid #e5e9ee;
+}
+
+.gruppoSponsor + .gruppoSponsor {
+  margin-top: var(--space-6);
+}
+
+.listaSponsor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.schedaSponsor {
+  /* {colors.bordo-chiaro} #E5E9EE - letterale. {rounded.none} - nessun
+     angolo arrotondato tranne le 2 eccezioni esplicite del sistema
+     (Accedi, icone social), che non includono le card. */
+  border: 1px solid #e5e9ee;
+  border-radius: 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.anteprimaSponsor {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #e5e9ee;
+  border-radius: 0;
+}
+
+.linkImmagineSponsor {
+  display: block;
+}
+
+/* {colors.focus-ring} #0072A3 - sfondo chiaro qui (bianco/scheda sponsor),
+   non var(--color-focus-ring) (falso amico, #006da6). */
+.linkImmagineSponsor:focus-visible {
+  outline: 2px solid #0072a3;
+  outline-offset: 2px;
+}

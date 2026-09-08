@@ -1,5 +1,5 @@
 import type { SponsorVetrina } from "@/lib/sponsor/raggruppa-sponsor-per-tipo";
-import styles from "./home-pubblica.module.css";
+import styles from "./sponsor-pubblico.module.css";
 
 // Story 18.2: struttura visiva di riferimento da SponsorVetrinaCard.tsx
 // (app/app/(sponsor)/sponsor/SponsorVetrinaCard.tsx) - copiata, non
@@ -11,6 +11,11 @@ import styles from "./home-pubblica.module.css";
 // invece di ridichiararlo a mano - terza copia indipendente della stessa
 // forma dati altrimenti (la seconda, in SponsorVetrinaCard.tsx, e'
 // preesistente e fuori scope di questa story).
+// Story 16.5: spostato da app/SponsorPubblicoCard.tsx (era usato solo dalla
+// sezione Sponsor della home, ora rimossa) in app/sponsor/ insieme alla
+// nuova pagina pubblica dedicata - stesso componente, invariato, solo
+// l'import dello style aggiornato al nuovo modulo di questa pagina
+// (sponsor-pubblico.module.css invece di home-pubblica.module.css).
 type Props = {
   sponsor: SponsorVetrina;
   immagineUrl: string;
