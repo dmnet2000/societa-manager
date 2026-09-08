@@ -419,7 +419,12 @@ describe("filtraVociNavigazione", () => {
   // figlia del gruppo "Gestione sito" invece di voce diretta - Segreteria
   // non ha accesso a Impostazioni/Foto squadre, quindi il gruppo mostra solo
   // Sponsor, ma resta comunque un nodo "gruppo", non piu' "voce".
-  it("Segreteria vede tre gruppi coesistenti (Atleti, Orari/Palestre, Gestione sito) e nessun'altra voce diretta oltre /guida (Story 16.2/17.1/19.4)", () => {
+  // Story 2.10: /app/gruppi estesa a SEGRETERIA (ramo di sola lettura in
+  // pagina, invariato qui - questo file filtra solo per Ruolo) - compare
+  // come voce diretta "Gruppi" tra i gruppi "Orari/Palestre" e "Gestione
+  // sito" (posizione di dichiarazione in PROTECTED_ROUTES, subito dopo
+  // /app/palestre e prima di /app/sponsor).
+  it("Segreteria vede tre gruppi coesistenti (Atleti, Orari/Palestre, Gestione sito), la voce diretta Gruppi e /guida (Story 16.2/17.1/19.4/2.10)", () => {
     const voci = filtraVociNavigazione(["SEGRETERIA"]);
     expect(voci).toEqual([
       {
@@ -435,6 +440,7 @@ describe("filtraVociNavigazione", () => {
         label: "Orari/Palestre",
         figlie: [{ href: "/app/orari", label: "Orari" }],
       },
+      { tipo: "voce", href: "/app/gruppi", label: "Gruppi" },
       {
         tipo: "gruppo",
         label: "Gestione sito",

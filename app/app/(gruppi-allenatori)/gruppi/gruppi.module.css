@@ -20,6 +20,17 @@
   color: var(--color-text-secondary);
 }
 
+/* Story 2.10 (review fix, Blind Hunter + Edge Case Hunter) - mirror di
+   .messaggioVuoto gia' in uso altrove nel progetto (es.
+   notifiche.module.css), messaggio esplicito per il ramo di sola lettura
+   Segreteria quando l'elenco Gruppi e' vuoto. */
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 .campo {
   display: flex;
   flex-direction: column;

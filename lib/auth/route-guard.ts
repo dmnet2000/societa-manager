@@ -202,7 +202,18 @@ export const PROTECTED_ROUTES: {
     navLabel: "Palestre",
     gruppo: "Orari/Palestre",
   },
-  { prefix: "/app/gruppi", ruoliAmmessi: ["ADMIN", "DIRIGENTE"], navLabel: "Gruppi" },
+  {
+    // Story 2.10: SEGRETERIA aggiunta - vede la stessa rotta in sola
+    // lettura (nome Gruppo/categoria/elenco Atlete, gating in
+    // gruppi/page.tsx), Admin/Dirigente restano invariati sulla pagina di
+    // gestione completa (creazione/modifica Gruppi, assegnazione
+    // Allenatori/Atlete, foto squadra) - stessa precedenza gia' stabilita
+    // altrove nel progetto quando un Utente cumula piu' Ruoli con capacita'
+    // diverse sulla stessa rotta (es. /app/conferma-iscrizioni).
+    prefix: "/app/gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
+    navLabel: "Gruppi",
+  },
   {
     prefix: "/app/i-miei-gruppi",
     ruoliAmmessi: ["ALLENATORE"],

@@ -150,7 +150,7 @@ describe("getRouteDecision", () => {
     });
   });
 
-  it("redirects Site Manager away from /app/gruppi (Story 19.2, resta ADMIN/DIRIGENTE-only)", async () => {
+  it("redirects Site Manager away from /app/gruppi (Story 19.2/2.10, resta ADMIN/DIRIGENTE/SEGRETERIA-only)", async () => {
     expect(await getRouteDecision("/app/gruppi", true, ["SITE_MANAGER"])).toEqual({
       action: "redirect",
       location: "/app/non-autorizzato",
@@ -329,6 +329,18 @@ describe("getRouteDecision", () => {
       action: "allow",
     });
     expect(await getRouteDecision("/app/gruppi", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  // Review fix (Verification Gap Reviewer): mancava il test per questa
+  // esatta combinazione route+ruolo, unico in questo file a testare
+  // davvero il varco di autorizzazione (getRouteDecision/middleware.ts) per
+  // Segreteria su /app/gruppi - il test di voci-navigazione.test.ts copre
+  // solo la visibilita' della voce di menu (raggruppaVociNavigazione),
+  // funzione diversa, non l'autorizzazione stessa.
+  it("allows Segreteria on /app/gruppi (Story 2.10, ramo di sola lettura in pagina)", async () => {
+    expect(await getRouteDecision("/app/gruppi", true, ["SEGRETERIA"])).toEqual({
       action: "allow",
     });
   });

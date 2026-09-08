@@ -7,7 +7,7 @@ import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
-import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
+import { parseRuoli } from "@/lib/ruoli";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
@@ -31,11 +31,43 @@ export default async function GruppiPage() {
   // non esiste ancora, nessun Gruppo puo' comunque esistere per
   // definizione (creaGruppo lo risolve/crea sempre per primo), quindi
   // l'elenco resta semplicemente vuoto.
-  const [ruoli, annoCorrente, supabase] = await Promise.all([
-    risolviRuoliPerAiutoContestuale(),
+  const [annoCorrente, supabase] = await Promise.all([
     trovaAnnoAgonisticoCorrente(),
     createClient(),
   ]);
+
+  // Story 2.10 (review fix, Blind Hunter): ruoli risolto qui direttamente
+  // (mirror letterale di conferma-iscrizioni/page.tsx per puoConfermare),
+  // MAI tramite risolviRuoliPerAiutoContestuale() - quell'helper e'
+  // esplicitamente documentato come fail-soft "puramente cosmetico"
+  // (lib/guida/risolvi-ruoli-pagina.ts: "una funzione puramente cosmetica
+  // non deve mai romperla"), pensato solo per l'icona di aiuto contestuale.
+  // Usarlo per soloVisualizzazione avrebbe significato che un errore di
+  // sessione transitorio lo farebbe silenziosamente tornare [], facendo
+  // cadere soloVisualizzazione a false e mostrando la vista di gestione
+  // completa (creazione/modifica Gruppi) a un Utente Segreteria - esposizione
+  // dell'interfaccia esattamente opposta allo scopo di questa story (le
+  // Server Action restano comunque protette da requireRuolo, spec-2-10
+  // Boundaries "Never", ma l'esposizione della sola UI non andava
+  // permessa). Nessun try/catch qui, deliberatamente: se getUser() fallisce
+  // davvero, la pagina fallisce in modo visibile (errore) invece di
+  // ricadere silenziosamente sulla vista piu' privilegiata - stesso
+  // principio di fail-closed gia' in uso in conferma-iscrizioni/page.tsx.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const ruoli = parseRuoli(user?.app_metadata?.ruoli);
+
+  // Story 2.10: Segreteria vede questa stessa rotta in sola lettura (nome
+  // Gruppo/categoria/elenco Atlete), mai il ramo di gestione. Un Utente con
+  // Admin o Dirigente (anche insieme a Segreteria) vede sempre il ramo di
+  // gestione invariato - stessa precedenza gia' stabilita altrove nel
+  // progetto quando un Utente cumula piu' Ruoli con capacita' diverse sulla
+  // stessa rotta.
+  const soloVisualizzazione =
+    ruoli.includes("SEGRETERIA") &&
+    !ruoli.includes("ADMIN") &&
+    !ruoli.includes("DIRIGENTE");
   // Gruppo/Allenatore/GruppoAllenatore/GruppoAtleta non sono protetti da RLS
   // (AD-9): gestibili via Prisma diretto, come Palestra/Campo (Story 2.1).
   // Scala ridotta (poche decine di Gruppi/Allenatori, ~200 Atlete al
@@ -66,7 +98,12 @@ export default async function GruppiPage() {
             },
           })
         : Promise.resolve([]),
-      prisma.allenatore.findMany({ orderBy: [{ nome: "asc" }, { cognome: "asc" }] }),
+      // Story 2.10: Segreteria (ramo di sola lettura) non mostra il
+      // dropdown "Assegna Allenatore" - questa query serve solo al ramo di
+      // gestione, saltata quando soloVisualizzazione.
+      soloVisualizzazione
+        ? Promise.resolve([])
+        : prisma.allenatore.findMany({ orderBy: [{ nome: "asc" }, { cognome: "asc" }] }),
       elencaAtlete(supabase),
       annoCorrente
         ? prisma.gruppoAtleta.findMany({
@@ -80,22 +117,30 @@ export default async function GruppiPage() {
       // Story 9.19: stesso pattern di join in memoria gia' usato in
       // vista-dirigente/page.tsx - CertificatoMedico e' RLS-protetta (AD-4/
       // AD-9), mai un include Prisma diretto.
-      elencaCertificati(supabase),
+      // Story 2.10: saltata nel ramo di sola lettura Segreteria - quel ramo
+      // non mostra badge di scadenza Certificato.
+      soloVisualizzazione ? Promise.resolve([]) : elencaCertificati(supabase),
       // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento nella
       // tabella Atlete - stesso pattern di lettura gia' usato da
       // conferma-tesseramenti/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
       // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
-      annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
-      annoCorrente
-        ? prisma.tesseramento.findMany({
+      // Story 2.10: saltate nel ramo di sola lettura Segreteria - quel ramo
+      // non mostra le colonne Iscrizione/Tesseramento.
+      soloVisualizzazione || !annoCorrente
+        ? Promise.resolve([])
+        : elencaIscrizioniPerAnno(supabase, annoCorrente.id),
+      soloVisualizzazione || !annoCorrente
+        ? Promise.resolve([])
+        : prisma.tesseramento.findMany({
             where: { annoAgonisticoId: annoCorrente.id },
             select: { atletaId: true },
-          })
-        : Promise.resolve([]),
+          }),
       // Story 18.4: UNA sola chiamata Storage per l'intero elenco Gruppi,
       // non N chiamate leggiInfoFotoSquadra() per-Gruppo dentro il .map()
       // sotto - vedi lib/storage/foto-squadra.ts.
-      elencaGruppiConFoto(supabase),
+      // Story 2.10: saltata nel ramo di sola lettura Segreteria - quel ramo
+      // non mostra la foto squadra.
+      soloVisualizzazione ? Promise.resolve(new Map<string, string | null>()) : elencaGruppiConFoto(supabase),
     ]);
 
   // Mappa costruita lato server per abbinare le Atlete (lette via RLS) alle
@@ -121,6 +166,65 @@ export default async function GruppiPage() {
   // che portano dati aggiuntivi (dataFineValidita/stato).
   const idAtleteIscritte = new Set(iscrizioni.map((i) => i.atletaId));
   const idAtleteTesserate = new Set(tesseramenti.map((t) => t.atletaId));
+
+  // Story 2.10: ramo di sola lettura per Segreteria - stessi dati
+  // (gruppi/atlete via atletaPerId/gruppoAtleteRows) gia' risolti sopra,
+  // nessuna query duplicata. Mai <NuovoGruppoForm>/<GruppoRow> (fortemente
+  // accoppiati a creazione/modifica Gruppi, fuori scope di questa storia).
+  if (soloVisualizzazione) {
+    return (
+      <main>
+        <TitoloPagina titolo="Gruppi" contenuto={contenutoPerRotta("/app/gruppi", ruoli)} />
+
+        <section className={styles.sezione}>
+          <h2>Elenco Gruppi</h2>
+          {
+            // Review fix (Blind Hunter + Edge Case Hunter, trovato
+            // indipendentemente da entrambi): un elenco Gruppi vuoto (nessun
+            // Anno Agonistico corrente, o una stagione senza ancora alcun
+            // Gruppo) mostrava una tabella con solo l'intestazione, senza
+            // spiegazione - a differenza del ramo di gestione, questo ramo
+            // non ha il form "Nuovo Gruppo" a suggerire "non esiste ancora
+            // nulla, creane uno", quindi il vuoto risultava piu' ambiguo.
+            gruppi.length === 0 ? (
+              <p className={styles.messaggioVuoto}>
+                Nessun Gruppo trovato per la stagione corrente.
+              </p>
+            ) : (
+              <div className={styles.scrollWrapper}>
+                <table className={styles.tabella}>
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Categoria</th>
+                      <th>Atlete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gruppi.map((gruppo) => {
+                      const nomiAtlete = gruppoAtleteRows
+                        .filter((riga) => riga.gruppoId === gruppo.id)
+                        .map((riga) => atletaPerId.get(riga.atletaId)?.nome)
+                        .filter((nome): nome is string => nome !== undefined)
+                        .sort((a, b) => a.localeCompare(b));
+
+                      return (
+                        <tr key={gruppo.id}>
+                          <td>{gruppo.nome}</td>
+                          <td>{gruppo.categoria}</td>
+                          <td>{nomiAtlete.length > 0 ? nomiAtlete.join(", ") : "–"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main>
