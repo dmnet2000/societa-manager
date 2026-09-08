@@ -222,8 +222,14 @@ export const PROTECTED_ROUTES: {
   { prefix: "/app/mio-orario", ruoliAmmessi: ["ALLENATORE", "ATLETA"], navLabel: "Il mio orario" },
   { prefix: "/app/presenze", ruoliAmmessi: ["ALLENATORE"], navLabel: "Presenze" },
   {
+    // Story 3.4: SEGRETERIA aggiunta - vede una terza sezione in sola
+    // lettura (griglia mensile per Gruppo, tutti i Gruppi della stagione
+    // corrente, non solo quelli di un Allenatore), gating in
+    // storico-presenze/page.tsx - stessa precedenza gia' stabilita altrove
+    // quando un Utente cumula piu' Ruoli con capacita' diverse sulla stessa
+    // rotta (es. /app/gruppi, Story 2.10).
     prefix: "/app/storico-presenze",
-    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    ruoliAmmessi: ["ALLENATORE", "ATLETA", "SEGRETERIA"],
     navLabel: "Storico presenze",
   },
   {

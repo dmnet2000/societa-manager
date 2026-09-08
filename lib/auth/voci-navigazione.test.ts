@@ -424,7 +424,12 @@ describe("filtraVociNavigazione", () => {
   // come voce diretta "Gruppi" tra i gruppi "Orari/Palestre" e "Gestione
   // sito" (posizione di dichiarazione in PROTECTED_ROUTES, subito dopo
   // /app/palestre e prima di /app/sponsor).
-  it("Segreteria vede tre gruppi coesistenti (Atleti, Orari/Palestre, Gestione sito), la voce diretta Gruppi e /guida (Story 16.2/17.1/19.4/2.10)", () => {
+  // Story 3.4: /app/storico-presenze estesa a SEGRETERIA (griglia mensile
+  // presenze, sola consultazione, gating in storico-presenze/page.tsx) -
+  // compare come voce diretta "Storico presenze" tra "Gruppi" e il gruppo
+  // "Gestione sito" (posizione di dichiarazione in PROTECTED_ROUTES, dopo
+  // /app/presenze e prima di /app/certificato-medico/impostazioni).
+  it("Segreteria vede tre gruppi coesistenti (Atleti, Orari/Palestre, Gestione sito), le voci dirette Gruppi/Storico presenze e /guida (Story 16.2/17.1/19.4/2.10/3.4)", () => {
     const voci = filtraVociNavigazione(["SEGRETERIA"]);
     expect(voci).toEqual([
       {
@@ -441,6 +446,7 @@ describe("filtraVociNavigazione", () => {
         figlie: [{ href: "/app/orari", label: "Orari" }],
       },
       { tipo: "voce", href: "/app/gruppi", label: "Gruppi" },
+      { tipo: "voce", href: "/app/storico-presenze", label: "Storico presenze" },
       {
         tipo: "gruppo",
         label: "Gestione sito",

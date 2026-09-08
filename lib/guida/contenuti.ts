@@ -244,10 +244,12 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     rotta: "/app/storico-presenze",
     titolo: "Storico presenze",
-    ruoliAmmessi: ["ALLENATORE", "ATLETA"],
+    // Story 3.4: SEGRETERIA aggiunta - sola consultazione, nessuna scrittura.
+    ruoliAmmessi: ["ALLENATORE", "ATLETA", "SEGRETERIA"],
     corpo: [
       "Come Atleta vedi qui il tuo storico personale di presenze, con statistiche di trend.",
       "Come Allenatore vedi invece una griglia mensile per Gruppo, un'Atleta per riga e una colonna per ogni giorno del mese selezionato.",
+      "Come Segreteria vedi la stessa griglia mensile, ma per qualsiasi Gruppo della stagione corrente, non solo per i tuoi.",
       "Le presenze mostrate riflettono lo Slot attuale (giorno/ora/Gruppo) al momento della visualizzazione, non uno snapshot storico immutabile.",
     ],
   },

@@ -431,6 +431,12 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows Segreteria on /storico-presenze (Story 3.4)", async () => {
+    expect(await getRouteDecision("/app/storico-presenze", true, ["SEGRETERIA"])).toEqual({
+      action: "allow",
+    });
+  });
+
   it("redirects to /non-autorizzato on /storico-presenze for other roles (AC #4: Genitore escluso)", async () => {
     expect(await getRouteDecision("/app/storico-presenze", true, ["GENITORE"])).toEqual({
       action: "redirect",
