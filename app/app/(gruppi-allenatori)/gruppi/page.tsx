@@ -197,25 +197,64 @@ export default async function GruppiPage() {
                     <tr>
                       <th>Nome</th>
                       <th>Categoria</th>
-                      <th>Atlete</th>
+                      <th>Atleta</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {gruppi.map((gruppo) => {
-                      const nomiAtlete = gruppoAtleteRows
-                        .filter((riga) => riga.gruppoId === gruppo.id)
-                        .map((riga) => atletaPerId.get(riga.atletaId)?.nome)
-                        .filter((nome): nome is string => nome !== undefined)
-                        .sort((a, b) => a.localeCompare(b));
+                    {
+                      // Richiesta esplicita dell'utente: un'Atleta per riga
+                      // invece di un elenco unito da virgole in un'unica
+                      // cella - Nome/Categoria del Gruppo ripetuti su ogni
+                      // riga (nessun rowSpan, nessun precedente di quel
+                      // pattern in questo progetto). Un Gruppo senza Atlete
+                      // assegnate mostra comunque una riga con "–" (stesso
+                      // principio "mai una riga sparita in silenzio" gia'
+                      // seguito sopra per l'elenco Gruppi vuoto).
+                      // Review fix (Blind Hunter): questo stesso file usa
+                      // gia' un pattern consolidato per sopprimere il bordo
+                      // tra righe interne allo stesso Gruppo, lasciandolo
+                      // solo sull'ultima (.rigaAtlete/.rigaAllenatori/
+                      // .rigaFotoSquadra sotto, nel ramo di gestione) -
+                      // riusato qui identico (styles.rigaInterna) invece di
+                      // lasciare un separatore identico tra ogni riga
+                      // Atleta e tra un Gruppo e il successivo.
+                      // Secondo criterio di ordinamento (atleta.id) per un
+                      // risultato deterministico quando due Atlete dello
+                      // stesso Gruppo condividono lo stesso nome.
+                      gruppi.flatMap((gruppo) => {
+                        const atleteDelGruppo = gruppoAtleteRows
+                          .filter((riga) => riga.gruppoId === gruppo.id)
+                          .map((riga) => atletaPerId.get(riga.atletaId))
+                          .filter((atleta): atleta is NonNullable<typeof atleta> => atleta !== undefined)
+                          .sort(
+                            (a, b) => a.nome.localeCompare(b.nome) || a.id.localeCompare(b.id)
+                          );
 
-                      return (
-                        <tr key={gruppo.id}>
-                          <td>{gruppo.nome}</td>
-                          <td>{gruppo.categoria}</td>
-                          <td>{nomiAtlete.length > 0 ? nomiAtlete.join(", ") : "–"}</td>
-                        </tr>
-                      );
-                    })}
+                        if (atleteDelGruppo.length === 0) {
+                          return (
+                            <tr key={gruppo.id}>
+                              <td>{gruppo.nome}</td>
+                              <td>{gruppo.categoria}</td>
+                              <td>–</td>
+                            </tr>
+                          );
+                        }
+
+                        return atleteDelGruppo.map((atleta, indice) => {
+                          const ultimaRiga = indice === atleteDelGruppo.length - 1;
+                          return (
+                            <tr
+                              key={`${gruppo.id}-${atleta.id}`}
+                              className={ultimaRiga ? undefined : styles.rigaInterna}
+                            >
+                              <td>{gruppo.nome}</td>
+                              <td>{gruppo.categoria}</td>
+                              <td>{atleta.nome}</td>
+                            </tr>
+                          );
+                        });
+                      })
+                    }
                   </tbody>
                 </table>
               </div>

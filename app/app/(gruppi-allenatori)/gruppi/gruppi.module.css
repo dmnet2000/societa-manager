@@ -31,6 +31,16 @@
   font-style: italic;
 }
 
+/* Richiesta esplicita dell'utente (un'Atleta per riga nel ramo di sola
+   lettura Segreteria, review fix Blind Hunter): stesso principio gia' in
+   uso in questo file per il ramo di gestione (.rigaAtlete/.rigaAllenatori/
+   .rigaFotoSquadra piu' sotto) - sopprime il bordo tra righe interne allo
+   stesso Gruppo, lasciandolo solo sull'ultima riga di ciascun blocco, cosi'
+   il separatore visivo segnala solo il passaggio a un Gruppo diverso. */
+.rigaInterna > td {
+  border-bottom: none;
+}
+
 .campo {
   display: flex;
   flex-direction: column;
