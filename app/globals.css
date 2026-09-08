@@ -24,6 +24,18 @@
   --color-focus-ring: #006da6;
   --color-focus-ring-on-navy: #ffffff;
 
+  /* Story 16.4: unica fonte di verita' dell'altezza del banner sponsor
+     rotante fisso del sito pubblico (BannerSponsorPubblico.tsx) - riusata
+     identica dalla riserva di spazio in FooterPubblico.module.css
+     (.footerConBannerSponsor) e dall'offset verso l'alto di
+     CookieBanner.module.css (.bannerSopraBannerSponsor), cosi' i due
+     elementi fissi non si sovrappongono mai sulla home (unico punto dove
+     coesistono). 60px = striscia sottile che contiene comunque un target di
+     tocco 44px (frecce/pallini/pausa) centrato verticalmente senza essere
+     tagliato da overflow-x: auto sulla striscia.
+  */
+  --altezza-banner-sponsor-pubblico: 60px;
+
   --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   --radius-sm: 6px;

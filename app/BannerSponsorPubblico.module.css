@@ -1,0 +1,144 @@
+/* Story 16.4: banner sponsor rotante fisso ("come un piè di pagina") su
+   tutto il sito pubblico - registro "Poster Sportivo", mirror
+   palette/tipografia di FooterPubblico.module.css/torneo-pubblico.module.css
+   (Sponsor 16.3/18.2 vive gia' su questo registro). Sfondo
+   {colors.blu-carbone} #0F2438 letterale, stesso valore/motivo del footer
+   condiviso, per continuita' visiva con l'altro elemento fisso di piede di
+   pagina del sito pubblico. Altezza var(--altezza-banner-sponsor-pubblico)
+   (app/globals.css) - unica fonte di verita', riusata identica dalla
+   riserva di spazio in FooterPubblico.module.css e dall'offset di
+   CookieBanner.module.css. */
+.banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  height: var(--altezza-banner-sponsor-pubblico);
+  background: #0f2438;
+  border-top: 2px solid var(--color-primary);
+  /* overflow-x: auto invece di flex-wrap - un'altezza fissa (unica fonte di
+     verita' condivisa con la riserva di spazio del footer) non puo' crescere
+     per accogliere un a-capo su schermi stretti con molti Sponsor attivi
+     (frecce+pallini+pausa); scorrimento orizzontale invece, stesso principio
+     gia' in uso per contenuto largo altrove nel sito pubblico
+     (torneo-pubblico.module.css .tabellaScroll). */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.riga {
+  height: 100%;
+  min-width: min-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  white-space: nowrap;
+}
+
+.immagine {
+  display: block;
+  max-height: 44px;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.linkImmagine {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* {typography.meta} + bianco - stesso trattamento testuale del nome gia'
+   usato nel carosello interno (sponsor-carosello.module.css .nome), colore
+   invertito perche' qui lo sfondo e' scuro. */
+.nome {
+  flex-shrink: 0;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.freccia {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* {colors.focus-ring-chiaro} #FFFFFF - stesso token gia' in uso su sfondo
+   scuro in FooterPubblico.module.css (.iconaSocial:focus-visible), non
+   var(--color-focus-ring) (falso amico su sfondo scuro). outline-offset
+   negativo: la striscia e' alta solo var(--altezza-banner-sponsor-pubblico),
+   un outline verso l'esterno verrebbe tagliato da overflow-y: hidden sopra. */
+.freccia:focus-visible,
+.pallino:focus-visible,
+.pausa:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
+}
+
+.indicatori {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Mirror di .pallino in sponsor-carosello.module.css: area cliccabile
+   44x44px, pallino visibile piccolo (8px) via ::after - lezione gia' nota
+   nel progetto (min-height sul contenitore non basta da solo). */
+.pallino {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.pallino::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* {colors.testo-scuro-muto} #838E9E - stesso valore gia' in uso su questo
+     stesso sfondo blu-carbone in FooterPubblico.module.css. */
+  background: #838e9e;
+}
+
+.pallinoAttivo::after {
+  background: var(--color-primary);
+}
+
+.pausa {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 11px;
+  cursor: pointer;
+}

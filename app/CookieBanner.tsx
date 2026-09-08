@@ -44,8 +44,19 @@ function impostaConsenso(valore: ValoreConsenso) {
 
 export function CookieBanner({
   valoreIniziale,
+  sopraBannerSponsor = false,
 }: {
   valoreIniziale: ValoreConsenso | undefined;
+  // Story 16.4: il banner sponsor rotante fisso (BannerSponsorPubblico.tsx,
+  // montato dentro FooterPubblico.tsx su ogni pagina pubblica) e' una
+  // seconda striscia fissa in basso - sulla home (unico punto dove
+  // CookieBanner e' ancora montato, Story 18.6) i due elementi fissi
+  // potrebbero coesistere alla prima visita. Quando presente, questo
+  // CookieBanner si sposta piu' in alto della sua altezza cosi' non si
+  // sovrappongono mai. app/page.tsx riusa il conteggio Sponsor Banner gia'
+  // disponibile li' (Story 18.2) per calcolare questo booleano - nessuna
+  // nuova query qui.
+  sopraBannerSponsor?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -112,7 +123,11 @@ export function CookieBanner({
     <div
       ref={bannerRef}
       tabIndex={-1}
-      className={styles.banner}
+      className={
+        sopraBannerSponsor
+          ? `${styles.banner} ${styles.bannerSopraBannerSponsor}`
+          : styles.banner
+      }
       role="region"
       aria-label="Consenso cookie"
     >

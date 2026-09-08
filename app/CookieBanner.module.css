@@ -29,6 +29,18 @@
   box-shadow: 0 -4px 16px rgba(15, 36, 56, 0.12);
 }
 
+/* Story 16.4: offset verso l'alto quando il banner sponsor rotante fisso
+   (BannerSponsorPubblico.tsx) e' presente, cosi' i due elementi fissi non si
+   sovrappongono mai (unico punto dove coesistono, la home). Altezza letta
+   da var(--altezza-banner-sponsor-pubblico) (app/globals.css, unica fonte
+   di verita', stessa condivisa dalla riserva di spazio in
+   FooterPubblico.module.css). Specificita' 0-2-0 (.banner.bannerSopraBannerSponsor
+   nel selettore composto sotto), vince deliberatamente su .banner sopra
+   (0-1-0) indipendentemente dall'ordine nel file. */
+.banner.bannerSopraBannerSponsor {
+  bottom: calc(var(--altezza-banner-sponsor-pubblico) + var(--space-4));
+}
+
 .testo {
   flex: 1 1 260px;
   font-family: Arial, sans-serif;

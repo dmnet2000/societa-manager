@@ -39,6 +39,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "In questa sezione trovi i Banner pubblicitari e le Convenzioni attive della società, con immagine e descrizione.",
       "Per le Convenzioni puoi generare un voucher con il tuo Nome e Cognome, che certifica che fai parte della società e hai diritto alla scontistica indicata - il voucher viene mostrato a schermo, non salvato.",
       "Se sei Admin, Dirigente o Site manager, in fondo alla pagina trovi anche il pannello di gestione per creare, modificare, attivare o disattivare gli Sponsor.",
+      "I Banner pubblicitari attivi (non le Convenzioni) compaiono anche in una striscia fissa in fondo a ogni pagina del sito pubblico, sempre visibile, con rotazione automatica tra più Sponsor - attivare o disattivare un Banner qui aggiorna anche quella striscia.",
     ],
   },
   {

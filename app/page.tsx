@@ -461,7 +461,15 @@ export default async function HomePubblicaPage() {
           "?preferenze-cookie=1"; CookieBanner legge il param da solo con
           useSearchParams() (reattivo anche se questa pagina resta montata,
           vedi commento nel componente). */}
-      <CookieBanner valoreIniziale={valoreConsensoIniziale} />
+      {/* Story 16.4: riusa lo stesso conteggio Sponsor Banner gia' calcolato
+          sopra (Story 18.2, nessuna nuova query) per decidere se questo
+          CookieBanner deve spostarsi sopra il banner sponsor fisso montato
+          da FooterPubblico.tsx qualche riga sopra - unico punto del sito
+          pubblico dove i due elementi fissi coesistono. */}
+      <CookieBanner
+        valoreIniziale={valoreConsensoIniziale}
+        sopraBannerSponsor={banner.length > 0}
+      />
     </>
   );
 }

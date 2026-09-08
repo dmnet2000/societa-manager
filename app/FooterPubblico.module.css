@@ -41,6 +41,39 @@
   padding-bottom: calc(44px + var(--space-4) * 2);
 }
 
+/* Story 16.4: riserva di spazio quando il banner sponsor rotante fisso
+   (BannerSponsorPubblico.tsx, position:fixed in basso su TUTTE le pagine
+   pubbliche) e' presente - mirror del pattern gia' in uso sopra per
+   .footerConCookieBanner, ma con l'altezza letta da
+   var(--altezza-banner-sponsor-pubblico) (app/globals.css, unica fonte di
+   verita') invece di un valore letterale: a differenza del CookieBanner
+   (contenuto variabile, puo' andare a capo su schermi stretti), la striscia
+   sponsor ha un'altezza fissa esatta, nessun margine extra necessario.
+   Combinabile con .footerConCookieBanner sopra (entrambe le classi possono
+   applicarsi insieme sulla home, unico punto dove i due elementi fissi
+   coesistono - FooterPubblico.tsx applica entrambe quando entrambe le
+   condizioni sono vere). */
+.footerConBannerSponsor {
+  padding-bottom: var(--altezza-banner-sponsor-pubblico);
+}
+
+/* Selettore composto (2 classi, specificita' 0-2-0) - vince deliberatamente
+   sulle due regole singole sopra (0-1-0 ciascuna) indipendentemente
+   dall'ordine nel file, quando FooterPubblico.tsx applica entrambe le classi
+   insieme (solo sulla home, unico punto dove CookieBanner e banner sponsor
+   coesistono). Senza questa regola le due proprieta' padding-bottom
+   confliggenti si sovrascriverebbero a vicenda (stessa proprieta', stessa
+   specificita': vincerebbe solo l'ultima dichiarata nel file, riservando
+   spazio per un solo elemento fisso invece che per entrambi impilati -
+   CookieBanner e' spostato sopra il banner sponsor da
+   CookieBanner.module.css .bannerSopraBannerSponsor, quindi lo spazio da
+   riservare sotto il contenuto del footer e' la somma delle due altezze). */
+.footerConCookieBanner.footerConBannerSponsor {
+  padding-bottom: calc(
+    44px + var(--space-4) * 2 + var(--altezza-banner-sponsor-pubblico)
+  );
+}
+
 /* Story 18.20: logo Polisportiva - stessa dimensione di .logoPolisportiva
    in HeaderPubblico.module.css per coerenza tra i due punti in cui compare. */
 .logoPolisportiva {
