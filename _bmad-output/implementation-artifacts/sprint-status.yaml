@@ -384,9 +384,17 @@ development_status:
   # FR-13) dipende da Story 7.1 (configurazione SMTP, FR-31) - va completata
   # prima. Story 7.2 (logo) non e' bloccante ma viene fatta nello stesso
   # passaggio per efficienza.
+  # last_updated: 2026-09-08 (Story 7.3 aggiunta - segnalazione utente
+  # "vedo un triangolo nero" al posto del logo nella scheda del browser.
+  # Diagnosi dal vivo su volleymogliano.it: causa reale era app/favicon.ico,
+  # un file segnaposto (Next.js scaffold) mai rimosso, in competizione col
+  # <link rel="icon"> dinamico del logo gia' corretto - eliminato il file.
+  # Epic 7 riaperto per questa singola estensione, stesso principio degli
+  # elenchi aperti (Epic 9/11/17/18/21).)
   epic-7: done
   7-1-configurazione-smtp: done
   7-2-configurazione-logo-applicazione: done
+  7-3-favicon-logo-reale: done
   epic-7-retrospective: optional
 
   4-3-mail-automatica-alla-segreteria: done
@@ -1986,5 +1994,11 @@ development_status:
   # (elencaAtlete/elencaAtletePubbliche) fanno entrambe .order("nome",
   # {ascending:true}) sulla tabella atlete - esattamente il pattern
   # segnalato, nessun indice oggi copre Atleta.nome (solo codiceFiscale
-  # @unique). Vedi epics.md#Story 21.1. NESSUNA IMPLEMENTAZIONE ANCORA.
-  21-1-indice-atleta-nome: review
+  # @unique). Vedi epics.md#Story 21.1.
+  # last_updated: 2026-09-08 (riga sotto era rimasta "review"/"NESSUNA
+  # IMPLEMENTAZIONE ANCORA" nonostante spec-21-1-indice-atleta-nome.md fosse
+  # gia' status:'done' - verificato nel codice: @@index([nome]) presente su
+  # schema.prisma (model Atleta) e migrazione 20260901000000_add_index_atlete_nome
+  # gia' esistente. Corretto qui per allineare il tracking allo stato reale,
+  # nessuna nuova implementazione in questo aggiornamento.)
+  21-1-indice-atleta-nome: done
