@@ -2002,3 +2002,20 @@ development_status:
   # gia' esistente. Corretto qui per allineare il tracking allo stato reale,
   # nessuna nuova implementazione in questo aggiornamento.)
   21-1-indice-atleta-nome: done
+
+  # Epic 22 (Statistiche sito pubblico) aperto 2026-09-09, richiesta
+  # esplicita dell'utente: "vorrei avere una statistica sugli accessi al
+  # sito statico". Opzioni presentate (Cloudflare Web Analytics vs. soluzione
+  # custom in-app) - scelto Cloudflare Web Analytics (gia' ospitati su
+  # Cloudflare Workers, zero manutenzione, nessun cookie). Vedi epics.md#Epic 22.
+  epic-22: done
+
+  # Story 22.1: script beacon condizionale in app/FooterPubblico.tsx (unico
+  # componente montato da ogni pagina pubblica, mai da /app/*), token via
+  # NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN (fail-soft se assente). Review a 3
+  # livelli: finding privacy/GDPR (IP inviato a un fornitore terzo pur senza
+  # cookie) presentato all'utente - scelto di procedere aggiornando anche
+  # l'informativa privacy (fuori dal codice, testo suggerito fornito in
+  # chat). docs/deploy-produzione.md aggiornato con una nuova Fase 8. 2052/
+  # 2052 test verdi, build riuscita.
+  22-1-cloudflare-web-analytics: done

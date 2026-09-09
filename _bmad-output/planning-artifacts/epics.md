@@ -3621,3 +3621,22 @@ so that le query che ordinano le Atlete per nome (`elencaAtlete`/`elencaAtletePu
 1. **Given** lo schema Prisma **When** la migrazione viene applicata **Then** esiste un indice btree su `atlete.nome`
 2. **And** nessuna query esistente (`elencaAtlete`, `elencaAtletePubbliche`, o qualunque altro lookup su `atlete`) cambia risultato o comportamento - solo il costo di esecuzione può migliorare
 3. **And** nessuna regressione sui test esistenti (un indice non ha comportamento testabile a livello applicativo - nessun nuovo test necessario oltre a `npx prisma validate`)
+
+## Epic 22: Statistiche sito pubblico
+
+*(Aperto 2026-09-09, richiesta esplicita dell'utente: "vorrei avere una statistica sugli accessi al sito statico". Analisi delle opzioni presentata all'utente: Cloudflare Web Analytics (zero manutenzione, gratuito, nessun cookie, dati nella dashboard Cloudflare - il progetto è già ospitato su Cloudflare Workers) vs. una soluzione custom in-app (tabella di conteggio + pagina statistiche dentro `/app`, più lavoro di sviluppo, dati sotto controllo diretto). Scelto Cloudflare Web Analytics. Elenco potenzialmente aperto se in futuro servisse integrare i dati anche dentro il gestionale.*
+
+### Story 22.1: Cloudflare Web Analytics sul sito pubblico
+
+As a Amministratore del Settore,
+I want vedere quante persone visitano il sito pubblico e quali pagine,
+so that posso capire l'interesse reale verso il sito senza dover interrogare direttamente il database.
+
+**Contesto tecnico:** Cloudflare Web Analytics si attiva includendo un piccolo script beacon (`https://static.cloudflareinsights.com/beacon.min.js`, con un token pubblico non segreto specifico del sito, ottenuto dalla dashboard Cloudflare) su ogni pagina pubblica - i dati aggregati si consultano poi nella dashboard Cloudflare (Analytics & Logs → Web Analytics), non dentro il gestionale. Nessun cookie, nessun impatto sul banner cookie esistente (Story 18.6/18.17). Il progetto non ha un layout condiviso per le sole pagine pubbliche (ogni pagina pubblica renderizza autonomamente `HeaderPubblico`/`FooterPubblico`) - `FooterPubblico.tsx` (`app/FooterPubblico.tsx`) è l'unico punto già montato da OGNI pagina pubblica (incluse le pagine dinamiche del Site Manager, `app/[...slug]/page.tsx`) e MAI dalle pagine autenticate `/app/*` - punto di inserimento naturale per non tracciare l'uso interno del gestionale insieme al sito pubblico. Token passato via variabile d'ambiente pubblica (`NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN`, non segreta per natura - pensata per essere incluso lato client) - script omesso interamente (fail-soft) se la variabile non è impostata, nessun impatto se non configurata in un ambiente (es. locale/anteprima).
+
+**Acceptance Criteria:**
+
+1. **Given** la variabile d'ambiente `NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN` è impostata in produzione **When** un Visitatore anonimo apre una qualunque pagina pubblica **Then** lo script beacon di Cloudflare Web Analytics viene caricato
+2. **And** nessuna pagina autenticata (`/app/*`) carica lo script - solo il sito pubblico è tracciato
+3. **And** se la variabile d'ambiente non è impostata, nessuno script viene caricato e nessuna pagina ne risente (nessun errore, nessun elemento rotto)
+4. **And** nessun nuovo cookie viene impostato dal sito per effetto di questa story (Cloudflare Web Analytics è cookie-less by design) - nessuna modifica al banner cookie esistente

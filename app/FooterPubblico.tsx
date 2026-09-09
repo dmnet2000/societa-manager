@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -103,6 +104,14 @@ export async function FooterPubblico({
   }));
   const mostraBannerSponsor = bannerSponsorMappato.length > 0;
 
+  // Story 22.1: risolto una sola volta qui (stesso stile del resto della
+  // funzione, ogni altra configurazione e' risolta in cima e poi riusata) -
+  // .trim() perche' una svista di configurazione (spazi copiati per errore
+  // dal dashboard Cloudflare) non deve produrre un token vuoto/malformato
+  // inviato a ogni Visitatore; il fallback fail-soft "nessuno script" resta
+  // corretto anche per un valore solo-spazi.
+  const tokenAnalytics = process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN?.trim();
+
   // Story 16.4: le due classi di riserva spazio sono indipendenti e
   // combinabili (spec-16-4 Code Map) - sulla home possono applicarsi
   // entrambe insieme (CookieBanner + banner sponsor entrambi potenzialmente
@@ -188,6 +197,26 @@ export async function FooterPubblico({
       </footer>
       {mostraBannerSponsor && (
         <BannerSponsorPubblico banner={bannerSponsorMappato} />
+      )}
+      {/* Story 22.1: Cloudflare Web Analytics - questo componente e' l'unico
+          gia' montato da OGNI pagina pubblica e MAI dalle pagine autenticate
+          /app/* (che hanno un proprio layout separato, app/app/layout.tsx) -
+          nessun layout condiviso esiste per le sole pagine pubbliche, questo
+          e' il punto piu' vicino a un simile layout. Token pubblico (non un
+          segreto, pensato per essere incluso lato client) - fail-soft:
+          nessuno script viene caricato se la variabile non e' impostata
+          (locale/anteprima), nessun impatto sul sito. Cookie-less by design
+          (nessun cookie impostato) - NON valutato se l'invio dell'IP del
+          Visitatore a Cloudflare come processore terzo richieda comunque una
+          menzione nell'informativa privacy, questione distinta dal solo
+          banner cookie (Story 18.6/18.17) e non ancora decisa con l'utente. */}
+      {tokenAnalytics && (
+        <Script
+          id="cf-web-analytics"
+          strategy="afterInteractive"
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon={JSON.stringify({ token: tokenAnalytics })}
+        />
       )}
     </>
   );

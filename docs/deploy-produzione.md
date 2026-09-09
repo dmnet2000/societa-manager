@@ -130,6 +130,12 @@ Il build/deploy tecnico va a buon fine (verificato dopo l'upgrade a Workers Paid
 1. **Sottodominio `workers.dev`** (automatico, gratis): `societa-manager.<account>.workers.dev`, va abilitato la prima volta nelle impostazioni del Worker se non già attivo — nessuna configurazione DNS.
 2. **Dominio personalizzato**: il dominio deve avere la zona DNS su Cloudflare (gratis aggiungerlo, anche senza piano a pagamento del dominio), poi **Settings → Domains & Routes → Add Custom Domain** nel progetto Worker — record DNS e certificato SSL creati automaticamente.
 
+## Fase 8 — Story 22.1: Cloudflare Web Analytics `[ ]`
+
+1. Account Cloudflare → **Analytics & Logs → Web Analytics → Aggiungi un sito** (dominio di produzione) → copiare il `token` dal tag JS mostrato (`data-cf-beacon='{"token": "..."}'`). Non è un segreto (pensato per essere incluso lato client), ma va comunque impostato come le altre `NEXT_PUBLIC_*` di questo progetto: aggiungerlo alla stessa lista della Fase 5 (**Settings → Variables and Secrets**) come `NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN` — stesso meccanismo già verificato funzionante per `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` sopra, non una Build variable di Fase 2.
+2. **Attenzione ai deploy di anteprima** (Fase 2, punto 5: ogni branch/PR genera un deploy automatico): se le Variables and Secrets sono condivise a livello di intero progetto Worker (non scoping per ambiente), ogni visita a un URL di anteprima durante test/QA finisce nella STESSA dashboard Web Analytics della produzione, sporcando le statistiche. Se questo diventa un problema reale, valutare un secondo "sito" Web Analytics dedicato all'ambiente di anteprima (token diverso) o l'uso degli Environment separati di Cloudflare Workers Builds (non ancora configurati da questo progetto).
+3. Dopo il deploy, verificare (DevTools → Network, su una pagina pubblica) la richiesta a `static.cloudflareinsights.com/beacon.min.js` - se assente, il token non è stato propagato in fase di build (mai a runtime per una `NEXT_PUBLIC_*`, vedi Fase 5 sopra).
+
 ## Riferimenti
 
 - Architettura completa: `_bmad-output/planning-artifacts/architecture/architecture-societa-manager-2026-07-13/ARCHITECTURE-SPINE.md` (AD-7 Cron, AD-11 Ruoli/Middleware, stack Cloudflare)
