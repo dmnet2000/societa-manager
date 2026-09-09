@@ -31,14 +31,33 @@
   font-style: italic;
 }
 
-/* Richiesta esplicita dell'utente (un'Atleta per riga nel ramo di sola
-   lettura Segreteria, review fix Blind Hunter): stesso principio gia' in
-   uso in questo file per il ramo di gestione (.rigaAtlete/.rigaAllenatori/
-   .rigaFotoSquadra piu' sotto) - sopprime il bordo tra righe interne allo
-   stesso Gruppo, lasciandolo solo sull'ultima riga di ciascun blocco, cosi'
-   il separatore visivo segnala solo il passaggio a un Gruppo diverso. */
-.rigaInterna > td {
-  border-bottom: none;
+/* Story 2.12: una sezione distinta per Gruppo nel ramo di sola lettura
+   Segreteria (intestazione + tabella propria a colonna singola "Atleta"),
+   al posto dell'unica tabella con Nome/Categoria ripetuti per riga -
+   sostituisce .rigaInterna (rimossa, dead code: con una tabella per Gruppo
+   non serve piu' sopprimere il bordo tra righe dello stesso Gruppo). Mirror
+   di .gruppoSezione/.gruppoTitolo in orari.module.css (Story 2.9, stessa
+   identica richiesta applicata a un'altra pagina) - copiato invece di
+   importato cross-modulo, convenzione "un CSS module per pagina" gia'
+   stabilita in questo progetto. */
+.gruppoSezione {
+  margin-top: var(--space-4);
+}
+
+.gruppoTitolo {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* Categoria mostrata nell'intestazione di sezione invece che ripetuta per
+   riga Atleta (a differenza di .gruppoTitolo in orari.module.css, che non
+   ha bisogno di una categoria) - tono secondario per non competere con il
+   nome del Gruppo. */
+.gruppoCategoria {
+  font-weight: 400;
+  color: var(--color-text-secondary);
 }
 
 .campo {

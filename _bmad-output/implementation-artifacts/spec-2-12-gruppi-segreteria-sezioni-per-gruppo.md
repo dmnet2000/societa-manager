@@ -2,7 +2,7 @@
 title: 'Story 2.12: Vista Gruppi Segreteria - sezioni divise per Gruppo'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context: []
 baseline_commit: '8f93123cb9b5d85376734147d2ac8a1aed3fc065'
@@ -45,9 +45,9 @@ baseline_commit: '8f93123cb9b5d85376734147d2ac8a1aed3fc065'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `lib/raggruppa-atlete-per-gruppo.ts` + test -- funzione pura estratta e testata
-- [ ] `app/app/(gruppi-allenatori)/gruppi/page.tsx` -- ramo Segreteria ristrutturato in sezioni per Gruppo
-- [ ] `app/app/(gruppi-allenatori)/gruppi/gruppi.module.css` -- nuove classi, pulizia di `.rigaInterna` se diventata dead code
+- [x] `lib/raggruppa-atlete-per-gruppo.ts` + test -- funzione pura estratta e testata
+- [x] `app/app/(gruppi-allenatori)/gruppi/page.tsx` -- ramo Segreteria ristrutturato in sezioni per Gruppo
+- [x] `app/app/(gruppi-allenatori)/gruppi/gruppi.module.css` -- nuove classi, `.rigaInterna` rimossa (dead code confermato)
 
 **Acceptance Criteria:**
 - Given più Gruppi con Atlete nella stagione corrente, when Segreteria apre `/app/gruppi`, then vede una sezione distinta per Gruppo (intestazione + tabella propria), non un'unica tabella con Nome/Categoria ripetuti
@@ -57,9 +57,11 @@ baseline_commit: '8f93123cb9b5d85376734147d2ac8a1aed3fc065'
 ## Verification
 
 **Commands:**
-- `npx tsc --noEmit` -- expected: pulito
-- `npm run lint` -- expected: 0 errori
-- `npx vitest run` -- expected: tutti verdi
+- `npx tsc --noEmit` -- pulito
+- `npm run lint` -- 0 errori
+- `npx vitest run` -- 2073/2073 verdi (135 file di test)
+
+**Review a 3 livelli:** Verification Gap Reviewer non ha trovato gap (test della funzione pura verificati riga per riga, comportamento confrontato con la logica inline precedente - unica differenza il cambio dichiarato "riga con –" → "messaggio esplicito" per Gruppo senza Atlete, confermato voluto dalla spec). Edge Case Hunter ha sollevato due rischi teorici (chiavi React duplicate, riga GruppoAtleta orfana) entrambi esclusi: il primo dal vincolo `@@unique([atletaId, gruppoId, annoAgonisticoId])` già esistente sul DB, il secondo perché identico al comportamento preesistente del codice inline (mai introdotto da questo diff). Blind Hunter ha trovato per lo più la stessa classe di osservazioni già sollevate (e deferite) per l'identica ristrutturazione di `/app/orari` (Story 2.9: `<div>` invece di `<section>`, nessun `aria-labelledby` tra intestazione e tabella) o pattern preesistenti invariati (localeCompare senza locale, complessità O(N×M) - entrambi mirror esatti di `raggruppaSlotPerGruppo`, già accettati). Un solo fix applicato: spazio tra nome e categoria spostato dentro lo `<span>` invece di un `{" "}` letterale a se stante, per non rischiare di perderlo in un futuro refactor.
 
 **Manual checks (dev locale rotto su questa macchina - verificare al primo deploy utile):**
 - Aprire `/app/gruppi` con un Utente Segreteria e più Gruppi: verificare sezioni distinte, ciascuna con la propria intestazione e tabella.

@@ -366,6 +366,26 @@ development_status:
   2-6-vista-orario-personale-allenatore: done
   2-7-vista-orario-personale-atleta: done
   2-8-vista-orari-trasversale-segreteria: done
+
+  # last_updated: 2026-09-09 (nota di tracking: le story 1.9, 2.9, 2.10, 2.11
+  # - tutte gia' implementate e done in una sessione precedente, spec
+  # corrispondenti gia' status:'done' in _bmad-output/implementation-artifacts/
+  # - non erano mai state aggiunte a questo file. Non backfillate qui per
+  # evitare di ricostruire dettagli non verificati a posteriori; aggiunta
+  # solo la 2.12, la prima story di questa sessione per cui il tracking
+  # viene tenuto aggiornato correttamente.)
+  # Story 2.12 aggiunta su richiesta esplicita dell'utente 2026-09-09:
+  # "sezione segreteria gruppi mettere divisione tra i vari gruppi non
+  # mostrare tutto in un unica tabella" - stessa ristrutturazione gia' fatta
+  # per /app/orari (Story 2.9): una sezione per Gruppo (intestazione +
+  # tabella propria a colonna singola "Atleta") invece di un'unica tabella
+  # con Nome/Categoria ripetuti per riga. Raggruppamento estratto in
+  # lib/raggruppa-atlete-per-gruppo.ts (testato, mirror di
+  # raggruppaSlotPerGruppo). Review a 3 livelli: nessun gap, un solo fix
+  # minore applicato (spaziatura nome/categoria nell'intestazione). 2073/
+  # 2073 test verdi, tsc/lint puliti. Vedi
+  # spec-2-12-gruppi-segreteria-sezioni-per-gruppo.md.
+  2-12-gruppi-segreteria-sezioni-per-gruppo: review
   epic-2-retrospective: optional
 
   epic-3: done

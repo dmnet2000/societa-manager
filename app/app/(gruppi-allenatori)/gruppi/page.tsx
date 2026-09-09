@@ -6,6 +6,7 @@ import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
+import { raggruppaAtletePerGruppo } from "@/lib/raggruppa-atlete-per-gruppo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { parseRuoli } from "@/lib/ruoli";
 import { TitoloPagina } from "@/app/AiutoContestuale";
@@ -191,73 +192,59 @@ export default async function GruppiPage() {
                 Nessun Gruppo trovato per la stagione corrente.
               </p>
             ) : (
-              <div className={styles.scrollWrapper}>
-                <table className={styles.tabella}>
-                  <thead>
-                    <tr>
-                      <th>Nome</th>
-                      <th>Categoria</th>
-                      <th>Atleta</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              // Story 2.12: richiesta esplicita dell'utente - una divisione
+              // reale tra i vari Gruppi (una sezione con intestazione propria
+              // e una tabella propria ciascuna), non piu' un'unica tabella
+              // con Nome/Categoria ripetuti su ogni riga Atleta. Stessa
+              // ristrutturazione gia' applicata a /app/orari per la
+              // identica richiesta (Story 2.9): raggruppamento estratto in
+              // una funzione pura testata (raggruppaAtletePerGruppo) invece
+              // di restare inline, mai una pagina di questo progetto viene
+              // testata direttamente.
+              raggruppaAtletePerGruppo(gruppi, gruppoAtleteRows, atletaPerId).map(
+                ({ gruppo, atlete }) => (
+                  <div key={gruppo.id} className={styles.gruppoSezione}>
+                    {/* Review fix (Blind Hunter): spazio dentro lo <span>
+                        invece di un {" "} letterale a se stante tra i due
+                        elementi - un futuro refactor che tocchi solo lo <span>
+                        non rischia piu' di far sparire lo spazio insieme a un
+                        {" "} apparentemente ridondante. */}
+                    <h3 className={styles.gruppoTitolo}>
+                      {gruppo.nome}
+                      <span className={styles.gruppoCategoria}> ({gruppo.categoria})</span>
+                    </h3>
                     {
-                      // Richiesta esplicita dell'utente: un'Atleta per riga
-                      // invece di un elenco unito da virgole in un'unica
-                      // cella - Nome/Categoria del Gruppo ripetuti su ogni
-                      // riga (nessun rowSpan, nessun precedente di quel
-                      // pattern in questo progetto). Un Gruppo senza Atlete
-                      // assegnate mostra comunque una riga con "–" (stesso
-                      // principio "mai una riga sparita in silenzio" gia'
-                      // seguito sopra per l'elenco Gruppi vuoto).
-                      // Review fix (Blind Hunter): questo stesso file usa
-                      // gia' un pattern consolidato per sopprimere il bordo
-                      // tra righe interne allo stesso Gruppo, lasciandolo
-                      // solo sull'ultima (.rigaAtlete/.rigaAllenatori/
-                      // .rigaFotoSquadra sotto, nel ramo di gestione) -
-                      // riusato qui identico (styles.rigaInterna) invece di
-                      // lasciare un separatore identico tra ogni riga
-                      // Atleta e tra un Gruppo e il successivo.
-                      // Secondo criterio di ordinamento (atleta.id) per un
-                      // risultato deterministico quando due Atlete dello
-                      // stesso Gruppo condividono lo stesso nome.
-                      gruppi.flatMap((gruppo) => {
-                        const atleteDelGruppo = gruppoAtleteRows
-                          .filter((riga) => riga.gruppoId === gruppo.id)
-                          .map((riga) => atletaPerId.get(riga.atletaId))
-                          .filter((atleta): atleta is NonNullable<typeof atleta> => atleta !== undefined)
-                          .sort(
-                            (a, b) => a.nome.localeCompare(b.nome) || a.id.localeCompare(b.id)
-                          );
-
-                        if (atleteDelGruppo.length === 0) {
-                          return (
-                            <tr key={gruppo.id}>
-                              <td>{gruppo.nome}</td>
-                              <td>{gruppo.categoria}</td>
-                              <td>–</td>
-                            </tr>
-                          );
-                        }
-
-                        return atleteDelGruppo.map((atleta, indice) => {
-                          const ultimaRiga = indice === atleteDelGruppo.length - 1;
-                          return (
-                            <tr
-                              key={`${gruppo.id}-${atleta.id}`}
-                              className={ultimaRiga ? undefined : styles.rigaInterna}
-                            >
-                              <td>{gruppo.nome}</td>
-                              <td>{gruppo.categoria}</td>
-                              <td>{atleta.nome}</td>
-                            </tr>
-                          );
-                        });
-                      })
+                      // Un Gruppo senza Atlete assegnate mostra comunque la
+                      // propria sezione con un messaggio esplicito - stesso
+                      // principio "mai una sezione/riga sparita in silenzio"
+                      // gia' seguito sopra per l'elenco Gruppi vuoto (spec-
+                      // 2-12 Boundaries "Always").
+                      atlete.length === 0 ? (
+                        <p className={styles.messaggioVuoto}>
+                          Nessuna Atleta assegnata a questo Gruppo.
+                        </p>
+                      ) : (
+                        <div className={styles.scrollWrapper}>
+                          <table className={styles.tabella}>
+                            <thead>
+                              <tr>
+                                <th>Atleta</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {atlete.map((atleta) => (
+                                <tr key={atleta.id}>
+                                  <td>{atleta.nome}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
                     }
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                )
+              )
             )
           }
         </section>
