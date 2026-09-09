@@ -1398,6 +1398,19 @@ development_status:
   # validate puliti. Vedi spec-18-29-link-instagram-configurabile.md.
   18-29-link-instagram-configurabile: review
 
+  # Story 18.30 aggiunta su richiesta esplicita dell'utente 2026-09-09:
+  # "sistema le icone di facebook e di istagram con icone ufficiali dei
+  # social" - due nuovi componenti SVG condivisi (app/IconaFacebook.tsx,
+  # app/IconaInstagram.tsx, path da Font Awesome Free 6/CC BY 4.0, attribuiti
+  # nel commento) sostituiscono il testo segnaposto "F"/"IG" in
+  # FooterPubblico.tsx e contatti/page.tsx. Review (Blind Hunter): 2 fix
+  # applicati (dimensioni per-icona proporzionali al viewBox invece di una
+  # gabbia quadrata comune, che avrebbe reso le due icone di peso visivo
+  # diverso; attribuzione di licenza aggiunta, mancante inizialmente).
+  # 2073/2073 test verdi, tsc/lint/build puliti. Vedi
+  # spec-18-30-icone-social-ufficiali.md.
+  18-30-icone-social-ufficiali: review
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi

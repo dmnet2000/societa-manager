@@ -14,6 +14,8 @@ import {
 } from "@/lib/storage/logo-polisportiva";
 import { urlPubblicoImmagineSponsor } from "@/lib/storage/sponsor";
 import { BannerSponsorPubblico } from "./BannerSponsorPubblico";
+import { IconaFacebook } from "./IconaFacebook";
+import { IconaInstagram } from "./IconaInstagram";
 import styles from "./FooterPubblico.module.css";
 
 // Story 18.8: estratto da app/page.tsx, mirror del principio gia' spiegato
@@ -198,13 +200,13 @@ export async function FooterPubblico({
                   rel="noopener noreferrer"
                   aria-label="Pagina Facebook della società"
                 >
-                  F
+                  <IconaFacebook />
                 </a>
               )}
               {/* Story 18.29: mirror esatto del trattamento Facebook sopra -
-                  icona "IG" (nessuna libreria di icone in questo progetto),
                   fail-soft se non configurata. Ordine Facebook poi Instagram
-                  (stesso ordine in /contatti). */}
+                  (stesso ordine in /contatti). Story 18.30: icona ufficiale
+                  al posto del testo segnaposto "IG". */}
               {urlPaginaInstagram && (
                 <a
                   className={styles.iconaSocial}
@@ -213,7 +215,7 @@ export async function FooterPubblico({
                   rel="noopener noreferrer"
                   aria-label="Pagina Instagram della società"
                 >
-                  IG
+                  <IconaInstagram />
                 </a>
               )}
             </div>

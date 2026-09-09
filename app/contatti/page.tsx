@@ -6,6 +6,8 @@ import {
 } from "@/lib/configurazione-applicazione";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
+import { IconaFacebook } from "../IconaFacebook";
+import { IconaInstagram } from "../IconaInstagram";
 import styles from "./contatti.module.css";
 
 // Story 18.11: quinta pagina pubblica reale (dopo Home, Squadre, Calendario,
@@ -107,7 +109,7 @@ export default async function ContattiPage() {
                       rel="noopener noreferrer"
                       aria-label="Pagina Facebook della società"
                     >
-                      F
+                      <IconaFacebook />
                     </a>
                   )}
                   {urlPaginaInstagram && (
@@ -118,7 +120,7 @@ export default async function ContattiPage() {
                       rel="noopener noreferrer"
                       aria-label="Pagina Instagram della società"
                     >
-                      IG
+                      <IconaInstagram />
                     </a>
                   )}
                 </div>

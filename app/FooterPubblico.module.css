@@ -133,7 +133,13 @@ img.logoPolisportiva {
    richiesti"). {rounded.full}, area cliccabile reale 44x44px anche con
    resa visiva 38px (hit-area via padding). Colori: sfondo
    {colors.placeholder-hatch-alt} #17384F, testo var(--color-primary)
-   (eccezione, stesso hex di {colors.azzurro}), hover invertito. */
+   (eccezione, stesso hex di {colors.azzurro}), hover invertito. Story 18.30:
+   font-family/font-size/font-weight rimossi - servivano solo al glifo
+   testuale "F"/"IG" ora sostituito dalle icone SVG ufficiali
+   (IconaFacebook.tsx/IconaInstagram.tsx, dimensioni fisse sul componente
+   stesso - mirror della convenzione di icone-azione-riga.tsx, mai una
+   classe CSS per dimensionare un'icona condivisa), che ereditano il colore
+   da qui via fill="currentColor". */
 .iconaSocial {
   display: inline-flex;
   align-items: center;
@@ -143,9 +149,6 @@ img.logoPolisportiva {
   border-radius: 9999px;
   background: #17384f;
   color: var(--color-primary);
-  font-family: "Arial Black", sans-serif;
-  font-size: 13px;
-  font-weight: 900;
   text-decoration: none;
   transition:
     background 0.2s ease,

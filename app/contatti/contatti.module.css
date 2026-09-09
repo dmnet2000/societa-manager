@@ -123,12 +123,15 @@
   border-radius: 9999px;
   background: #17384f;
   color: var(--color-primary);
-  font-family: "Arial Black", sans-serif;
-  font-size: 14px;
-  font-weight: 900;
   text-decoration: none;
 }
 
+/* Story 18.30: font-family/font-size/font-weight rimossi dal .iconaSocial
+   sopra - servivano solo al glifo testuale "F"/"IG" ora sostituito dalle
+   icone SVG ufficiali (IconaFacebook.tsx/IconaInstagram.tsx, dimensioni
+   fisse sul componente stesso - mirror di FooterPubblico.module.css e
+   della convenzione di icone-azione-riga.tsx), che ereditano il colore via
+   fill="currentColor". */
 .iconaSocial:hover {
   background: var(--color-primary);
   color: #0f2438;
