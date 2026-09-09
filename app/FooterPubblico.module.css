@@ -5,12 +5,11 @@
    solo per i 4 valori con hex identico gia' verificati nella storia. */
 
 .footer {
-  /* Review fix (code review Story 18.17, Blind Hunter): il footer ora ha 3
-     figli potenzialmente presenti (copyright, icona social opzionale,
-     link "Preferenze cookie") - senza un display esplicito che li impila,
-     i due elementi inline-flex (icona + link) fluirebbero sulla stessa
-     riga invece che uno sotto l'altro, nonostante i margin-top pensati per
-     separarli in righe distinte. */
+  /* Story 18.28: il footer ha ora 2 figli diretti (.rigaPrincipale e il
+     link "Preferenze cookie") - display:flex + flex-direction:column li
+     impila ancora verticalmente, ma copyright/logo/icone social non sono
+     piu' figli diretti del <footer>, sono raggruppati dentro
+     .rigaPrincipale sotto (che li dispone in riga, non piu' impilati). */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -74,12 +73,44 @@
   );
 }
 
+/* Story 18.28: riga che raggruppa copyright, logo Polisportiva e icone
+   social - unico contenitore flex-row del footer, sostituisce l'impilamento
+   verticale precedente (spec-18-28 Code Map). flex-wrap: gli elementi vanno
+   a capo su viewport stretti invece di causare overflow orizzontale o
+   schiacciarsi; justify-content:center la ricentra naturalmente sui soli
+   elementi presenti (nessuno spazio vuoto/separatore orfano quando logo e/o
+   social non sono configurati, stesso principio fail-soft gia' in uso su
+   ogni elemento condizionale di questo componente). */
+.rigaPrincipale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+/* Review fix (Blind Hunter): wrapper accessibile (role="group") per le
+   icone Facebook/Instagram affiancate - display:contents lo rimuove dal
+   flusso visivo, le icone restano figli diretti di .rigaPrincipale ai fini
+   di gap/wrap, invariato rispetto a prima di questo raggruppamento. */
+.gruppoSocial {
+  display: contents;
+}
+
+/* Story 18.28: margine di default del browser azzerato - l'allineamento
+   verticale con logo/icone dentro .rigaPrincipale (align-items:center) e'
+   pulito solo se il <p> non porta il proprio margin-block implicito. */
+.copyright {
+  margin: 0;
+}
+
 /* Story 18.20: logo Polisportiva - stessa dimensione di .logoPolisportiva
-   in HeaderPubblico.module.css per coerenza tra i due punti in cui compare. */
+   in HeaderPubblico.module.css per coerenza tra i due punti in cui compare.
+   Story 18.28: margin-top rimosso - ridondante/in conflitto con il gap di
+   .rigaPrincipale, che ora spazia i figli direttamente. */
 .logoPolisportiva {
   display: inline-flex;
   align-items: center;
-  margin-top: var(--space-4);
 }
 
 /* Review fix (code review Story 18.20, Edge Case Hunter): stesso problema
@@ -109,7 +140,6 @@ img.logoPolisportiva {
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin-top: var(--space-4);
   border-radius: 9999px;
   background: #17384f;
   color: var(--color-primary);

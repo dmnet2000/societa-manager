@@ -1,6 +1,7 @@
 import {
   leggiContattiPubblici,
   leggiUrlPaginaFacebook,
+  leggiUrlPaginaInstagram,
   nessunContattoPubblicoConfigurato,
 } from "@/lib/configurazione-applicazione";
 import { HeaderPubblico } from "../HeaderPubblico";
@@ -16,7 +17,7 @@ export default async function ContattiPage() {
   // Nessuna sessione qui (pagina pubblica). ConfigurazioneApplicazione non
   // e' protetta da RLS (AD-9), Prisma diretto. .catch() fail-soft su
   // entrambe le letture, stesso pattern di ogni pagina pubblica del progetto.
-  const [contatti, urlPaginaFacebook] = await Promise.all([
+  const [contatti, urlPaginaFacebook, urlPaginaInstagram] = await Promise.all([
     leggiContattiPubblici().catch((err) => {
       console.error(err);
       return { indirizzoSede: null, telefonoPubblico: null, emailPubblica: null };
@@ -28,17 +29,24 @@ export default async function ContattiPage() {
       console.error(err);
       return null;
     }),
+    // Story 18.29: stesso pattern fail-soft di urlPaginaFacebook sopra.
+    leggiUrlPaginaInstagram().catch((err) => {
+      console.error(err);
+      return null;
+    }),
   ]);
 
   const { indirizzoSede, telefonoPubblico, emailPubblica } = contatti;
 
-  // AC #3: "nessun campo" include il social (urlPaginaFacebook), non solo i
-  // 3 campi introdotti da questa storia - vedi Dev Notes della storia.
+  // AC #3: "nessun campo" include il social (urlPaginaFacebook,
+  // urlPaginaInstagram - Story 18.29), non solo i 3 campi introdotti da
+  // questa storia - vedi Dev Notes della storia.
   const nessunContatto = nessunContattoPubblicoConfigurato({
     indirizzoSede,
     telefonoPubblico,
     emailPubblica,
     urlPaginaFacebook,
+    urlPaginaInstagram,
   });
 
   return (
@@ -81,18 +89,39 @@ export default async function ContattiPage() {
                 </a>
               </div>
             )}
-            {urlPaginaFacebook && (
+            {/* Story 18.29: campo "Social" mostrato se almeno uno dei due e'
+                configurato (non solo Facebook come prima) - le due icone,
+                quando entrambe presenti, sono affiancate dentro
+                .gruppoSocial sotto un'unica etichetta (spec-18-29 Code Map),
+                stesso ordine Facebook poi Instagram gia' in uso in
+                FooterPubblico.tsx. */}
+            {(urlPaginaFacebook || urlPaginaInstagram) && (
               <div className={styles.campo}>
                 <span className={styles.etichetta}>Social</span>
-                <a
-                  className={styles.iconaSocial}
-                  href={urlPaginaFacebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Pagina Facebook della società"
-                >
-                  F
-                </a>
+                <div className={styles.gruppoSocial}>
+                  {urlPaginaFacebook && (
+                    <a
+                      className={styles.iconaSocial}
+                      href={urlPaginaFacebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Pagina Facebook della società"
+                    >
+                      F
+                    </a>
+                  )}
+                  {urlPaginaInstagram && (
+                    <a
+                      className={styles.iconaSocial}
+                      href={urlPaginaInstagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Pagina Instagram della società"
+                    >
+                      IG
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </div>

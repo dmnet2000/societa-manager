@@ -5,6 +5,7 @@ import {
   leggiUrlPaginaFacebook,
   leggiContattiPubblici,
   leggiUrlSitoPolisportiva,
+  leggiUrlPaginaInstagram,
 } from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -15,6 +16,7 @@ import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero"
 import { leggiInfoLogoPolisportiva, urlPubblicoLogoPolisportiva } from "@/lib/storage/logo-polisportiva";
 import { EmailSegreteriaForm } from "./EmailSegreteriaForm";
 import { PaginaFacebookForm } from "./PaginaFacebookForm";
+import { PaginaInstagramForm } from "./PaginaInstagramForm";
 import { ContattiPubbliciForm } from "./ContattiPubbliciForm";
 import { TokenFacebookForm } from "./TokenFacebookForm";
 import { FotoHeroForm } from "./FotoHeroForm";
@@ -71,6 +73,7 @@ export default async function ImpostazioniPage() {
     fotoHero,
     logoPolisportiva,
     urlSitoPolisportiva,
+    urlPaginaInstagram,
   ] = await Promise.all([
     leggiEmailSegreteria().catch((err) => {
       console.error(err);
@@ -104,6 +107,11 @@ export default async function ImpostazioniPage() {
       return { esiste: false, aggiornatoIl: null };
     }),
     leggiUrlSitoPolisportiva().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.29: stesso pattern fail-soft di urlPaginaFacebook sopra.
+    leggiUrlPaginaInstagram().catch((err) => {
       console.error(err);
       return null;
     }),
@@ -160,6 +168,14 @@ export default async function ImpostazioniPage() {
           </p>
         )}
         <PaginaFacebookForm urlAttuale={urlPaginaFacebook} />
+
+        <h2 className={styles.titoloSezione}>Pagina Instagram</h2>
+        {/* Story 18.29: nessun avviso soft (a differenza di Email
+            Segreteria/Pagina Facebook sopra) - mirror del trattamento gia'
+            riservato a "Contatti pubblici"/"Foto sfondo hero": l'assenza si
+            traduce solo nella non comparsa dell'icona in footer/contatti,
+            nessun comportamento a valle bloccato. */}
+        <PaginaInstagramForm urlAttuale={urlPaginaInstagram} />
 
         <h2 className={styles.titoloSezione}>Contatti pubblici</h2>
         {/* Nessun avviso soft qui (a differenza di Email Segreteria/Pagina

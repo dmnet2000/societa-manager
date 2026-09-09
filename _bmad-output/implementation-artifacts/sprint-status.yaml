@@ -1358,6 +1358,26 @@ development_status:
   # demandata all'utente post-deploy. Commit lasciato all'utente.
   18-27-scheda-gruppo-larghezza-tripla: review
 
+  # Story 18.28 aggiunta su richiesta esplicita dell'utente 2026-09-09:
+  # "nella parte del footer vorrei vedere allineati per riga il copyright,
+  # il logo polisportiva e il collegamento social" - copyright/logo
+  # Polisportiva/icone social raggruppati in un nuovo contenitore flex-row
+  # (.rigaPrincipale, FooterPubblico.tsx/module.css), "Preferenze cookie"
+  # invariato sotto. Vedi spec-18-28-footer-riga-allineata.md.
+  18-28-footer-riga-allineata: review
+
+  # Story 18.29 aggiunta nella stessa richiesta: "aggiungerei anche il link
+  # a instagram con la relativa configurazione". Mirror esatto del
+  # meccanismo Facebook esistente (campo urlPaginaInstagram, form Admin,
+  # Server Action, icona "IG" in footer e /contatti) - solo un link
+  # semplice, MAI un feed embed (decisione gia' presa in Story 18.5).
+  # Implementata insieme alla 18.28 (stessi file). Review a 3 livelli:
+  # nessun gap reale, 3 finding minori corretti (flex-direction ridondante,
+  # commento ambiguo su urlSitoPolisportiva, gruppo accessibile per le
+  # icone social nel footer). 2067/2067 test verdi, tsc/lint/build/prisma
+  # validate puliti. Vedi spec-18-29-link-instagram-configurabile.md.
+  18-29-link-instagram-configurabile: review
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi

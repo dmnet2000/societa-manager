@@ -96,6 +96,17 @@
   outline-offset: 2px;
 }
 
+/* Story 18.29: contenitore per affiancare le icone Facebook/Instagram sotto
+   la stessa etichetta "Social" - oggi .campo ne contiene al massimo una
+   sola, questo wrapper le dispone in riga quando entrambe sono presenti,
+   senza toccare il layout verticale di .campo (che resta column per
+   etichetta+valore negli altri campi). */
+.gruppoSocial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* Icona social - {rounded.full}, area cliccabile reale minimo 44x44px
    (DESIGN.md.components.contact-block.social-icon-shape/.social-icon-hit-area,
    mirror esplicito di components.footer.social-icon-hit-area). Colori

@@ -423,9 +423,18 @@ model ConfigurazioneApplicazione {
   // Story 18.20: URL del sito della Polisportiva (l'associazione madre
   // multi-settore) - link esterno mostrato sotto al suo logo (bucket
   // Storage "logo-polisportiva") sia nell'header sia nel footer pubblici.
-  // Mirror di urlPaginaFacebook, nessun campo social (deciso con l'utente:
-  // solo il link al sito, niente icone multi-piattaforma).
+  // Mirror di urlPaginaFacebook, nessun campo social dedicato alla
+  // Polisportiva stessa (deciso con l'utente: solo il link al suo sito,
+  // niente icone multi-piattaforma per QUESTA entità) - non correlato ai
+  // social del Settore sotto (urlPaginaFacebook/urlPaginaInstagram), entità
+  // distinta.
   urlSitoPolisportiva String?
+  // Story 18.29: URL della Pagina Instagram pubblica - mirror esatto di
+  // urlPaginaFacebook, ma solo un link semplice (icona cliccabile), MAI un
+  // feed embed: Instagram non ha un equivalente ufficiale gratuito del
+  // Facebook Page Plugin senza Token API (decisione gia' presa con l'utente
+  // in Story 18.5, non riaperta qui).
+  urlPaginaInstagram  String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

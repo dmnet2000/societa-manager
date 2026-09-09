@@ -14,6 +14,7 @@ const leggiConfigurazioneSocialFacebookMock = vi.fn();
 const caricaFotoHeroMock = vi.fn();
 const caricaLogoPolisportivaMock = vi.fn();
 const salvaUrlSitoPolisportivaMock = vi.fn();
+const salvaUrlPaginaInstagramMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -25,6 +26,7 @@ vi.mock("@/lib/configurazione-applicazione", () => ({
   salvaUrlPaginaFacebook: salvaUrlPaginaFacebookMock,
   salvaContattiPubblici: salvaContattiPubbliciMock,
   salvaUrlSitoPolisportiva: salvaUrlSitoPolisportivaMock,
+  salvaUrlPaginaInstagram: salvaUrlPaginaInstagramMock,
 }));
 
 const supabaseClientFinto = { client: "finto" };
@@ -57,6 +59,7 @@ const {
   caricaFotoHeroAction,
   caricaLogoPolisportivaAction,
   salvaUrlSitoPolisportivaAction,
+  salvaUrlPaginaInstagramAction,
 } = await import("./actions");
 
 const MAGIC_BYTES: Record<string, number[]> = {
@@ -133,12 +136,20 @@ beforeEach(() => {
   caricaLogoPolisportivaMock.mockResolvedValue(undefined);
   salvaUrlSitoPolisportivaMock.mockReset();
   salvaUrlSitoPolisportivaMock.mockResolvedValue(undefined);
+  salvaUrlPaginaInstagramMock.mockReset();
+  salvaUrlPaginaInstagramMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
 
 function buildFormDataSitoPolisportiva(valore: string) {
   const formData = new FormData();
   formData.append("urlSitoPolisportiva", valore);
+  return formData;
+}
+
+function buildFormDataInstagram(valore: string) {
+  const formData = new FormData();
+  formData.append("urlPaginaInstagram", valore);
   return formData;
 }
 
@@ -995,6 +1006,143 @@ describe("salvaUrlSitoPolisportivaAction (Server Action)", () => {
         code: "INTERNAL",
         message: "Impossibile salvare il sito della Polisportiva. Riprova.",
       },
+    });
+  });
+});
+
+// Story 18.29: mirror esatto di salvaUrlPaginaFacebookAction (Story 18.5).
+describe("salvaUrlPaginaInstagramAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Dirigente/Site Manager", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("https://www.instagram.com/miasocieta")
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+    expect(salvaUrlPaginaInstagramMock).not.toHaveBeenCalled();
+  });
+
+  it("salva il valore fornito (trim applicato) e revalida /impostazioni", async () => {
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("  https://www.instagram.com/miasocieta  ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaUrlPaginaInstagramMock).toHaveBeenCalledWith(
+      "https://www.instagram.com/miasocieta"
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("salva null quando il campo e' lasciato vuoto (rimuove la configurazione)", async () => {
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("   ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaUrlPaginaInstagramMock).toHaveBeenCalledWith(null);
+  });
+
+  it("returns VALIDATION per un URL senza protocollo http/https", async () => {
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("javascript:alert(1)")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlPaginaInstagramMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un URL con protocollo data:", async () => {
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("data:text/html,<script>alert(1)</script>")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlPaginaInstagramMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un URL non parsabile", async () => {
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("non-un-url")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlPaginaInstagramMock).not.toHaveBeenCalled();
+  });
+
+  // Review fix mirror (confine esatto gia' verificato per Facebook sopra).
+  it("accepts a URL of exactly 500 characters (confine esatto)", async () => {
+    const prefisso = "https://www.instagram.com/";
+    const valoreAlLimite = `${prefisso}${"x".repeat(500 - prefisso.length)}`;
+    expect(valoreAlLimite.length).toBe(500);
+
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram(valoreAlLimite)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaUrlPaginaInstagramMock).toHaveBeenCalledWith(valoreAlLimite);
+  });
+
+  it("returns VALIDATION at 501 characters (confine esatto)", async () => {
+    const prefisso = "https://www.instagram.com/";
+    const valoreTroppoLungo = `${prefisso}${"x".repeat(501 - prefisso.length)}`;
+    expect(valoreTroppoLungo.length).toBe(501);
+
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram(valoreTroppoLungo)
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    });
+    expect(salvaUrlPaginaInstagramMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL fail-closed quando salvaUrlPaginaInstagram lancia", async () => {
+    salvaUrlPaginaInstagramMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaUrlPaginaInstagramAction(
+      undefined,
+      buildFormDataInstagram("https://www.instagram.com/miasocieta")
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare la Pagina Instagram. Riprova." },
     });
   });
 });

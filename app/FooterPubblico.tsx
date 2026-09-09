@@ -6,6 +6,7 @@ import {
   leggiNomeSettore,
   leggiUrlPaginaFacebook,
   leggiUrlSitoPolisportiva,
+  leggiUrlPaginaInstagram,
 } from "@/lib/configurazione-applicazione";
 import {
   leggiInfoLogoPolisportiva,
@@ -46,6 +47,7 @@ export async function FooterPubblico({
     urlPaginaFacebook,
     logoPolisportiva,
     urlSitoPolisportiva,
+    urlPaginaInstagram,
     bannerSponsor,
   ] = await Promise.all([
     leggiNomeSettore().catch((err) => {
@@ -62,6 +64,11 @@ export async function FooterPubblico({
       return { esiste: false, aggiornatoIl: null as string | null };
     }),
     leggiUrlSitoPolisportiva().catch((err) => {
+      console.error(err);
+      return null;
+    }),
+    // Story 18.29: stesso pattern fail-soft di urlPaginaFacebook sopra.
+    leggiUrlPaginaInstagram().catch((err) => {
       console.error(err);
       return null;
     }),
@@ -133,47 +140,85 @@ export async function FooterPubblico({
     // (copyright/link vs. Sponsor in evidenza).
     <>
       <footer className={classiFooter}>
-        <p>
-          &copy; {new Date().getFullYear()} {nomeVisualizzato}
-        </p>
-        {/* Story 18.20: logo Polisportiva, dopo il copyright e prima
-            dell'icona Facebook del Settore - stessa struttura condizionale
-            di HeaderPubblico.tsx (link se l'URL e' impostato, altrimenti
-            solo l'immagine). alt non vuoto, stesso motivo di HeaderPubblico.tsx. */}
-        {logoPolisportiva.esiste &&
-          (urlSitoPolisportiva ? (
-            <a
-              href={urlSitoPolisportiva}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.logoPolisportiva}
-            >
+        {/* Story 18.28: copyright, logo Polisportiva e icone social erano
+            impilati verticalmente (figli diretti di <footer>, che ha
+            flex-direction:column) - richiesta esplicita dell'utente di
+            vederli sulla stessa riga. Questo div raggruppa i 3 elementi in
+            un contenitore flex-row indipendente (.rigaPrincipale), senza
+            toccare la condizionalita' di NESSuno di essi (stessa logica
+            invariata sotto) ne' il link "Preferenze cookie", che resta fuori
+            da questo div, ultimo figlio del <footer> come oggi. */}
+        <div className={styles.rigaPrincipale}>
+          <p className={styles.copyright}>
+            &copy; {new Date().getFullYear()} {nomeVisualizzato}
+          </p>
+          {/* Story 18.20: logo Polisportiva, dopo il copyright e prima
+              dell'icona Facebook del Settore - stessa struttura condizionale
+              di HeaderPubblico.tsx (link se l'URL e' impostato, altrimenti
+              solo l'immagine). alt non vuoto, stesso motivo di HeaderPubblico.tsx. */}
+          {logoPolisportiva.esiste &&
+            (urlSitoPolisportiva ? (
+              <a
+                href={urlSitoPolisportiva}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.logoPolisportiva}
+              >
+                <img
+                  src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
+                  alt="Logo della Polisportiva"
+                />
+              </a>
+            ) : (
               <img
+                className={styles.logoPolisportiva}
                 src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
                 alt="Logo della Polisportiva"
               />
-            </a>
-          ) : (
-            <img
-              className={styles.logoPolisportiva}
-              src={`${urlPubblicoLogoPolisportiva(supabase)}?v=${encodeURIComponent(logoPolisportiva.aggiornatoIl ?? "")}`}
-              alt="Logo della Polisportiva"
-            />
-          ))}
-        {/* Se non configurato, nessuna icona compare - fail-soft, stesso
-            principio di ogni altro elemento condizionale pubblico (non
-            un'area vuota "rotta", semplicemente non c'e' nulla da mostrare). */}
-        {urlPaginaFacebook && (
-          <a
-            className={styles.iconaSocial}
-            href={urlPaginaFacebook}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Pagina Facebook della società"
-          >
-            F
-          </a>
-        )}
+            ))}
+          {/* Se non configurato, nessuna icona compare - fail-soft, stesso
+              principio di ogni altro elemento condizionale pubblico (non
+              un'area vuota "rotta", semplicemente non c'e' nulla da mostrare).
+              Review fix (Blind Hunter): le due icone sono ora raggruppate
+              sotto role="group"/aria-label "Social" - parità con /contatti,
+              che ha gia' un'etichetta visibile "Social" per lo stesso
+              concetto; qui non c'e' spazio per un'etichetta visibile (il
+              footer e' compatto), ma uno screen reader deve poter percepire
+              lo stesso raggruppamento. display:contents: il wrapper non deve
+              introdurre un box nel flusso flex di .rigaPrincipale, le icone
+              restano figli diretti ai fini di spaziatura/wrap. Renderizzato
+              solo se almeno un social e' configurato - mai un gruppo vuoto. */}
+          {(urlPaginaFacebook || urlPaginaInstagram) && (
+            <div role="group" aria-label="Social" className={styles.gruppoSocial}>
+              {urlPaginaFacebook && (
+                <a
+                  className={styles.iconaSocial}
+                  href={urlPaginaFacebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Pagina Facebook della società"
+                >
+                  F
+                </a>
+              )}
+              {/* Story 18.29: mirror esatto del trattamento Facebook sopra -
+                  icona "IG" (nessuna libreria di icone in questo progetto),
+                  fail-soft se non configurata. Ordine Facebook poi Instagram
+                  (stesso ordine in /contatti). */}
+              {urlPaginaInstagram && (
+                <a
+                  className={styles.iconaSocial}
+                  href={urlPaginaInstagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Pagina Instagram della società"
+                >
+                  IG
+                </a>
+              )}
+            </div>
+          )}
+        </div>
         {/* Story 18.17 (secondo giro): sostituisce il pulsante fisso
             permanente di CookieBanner.tsx, rimosso su richiesta dell'utente
             ("ancora troppo invasivo e visibile"). Presente su ogni pagina

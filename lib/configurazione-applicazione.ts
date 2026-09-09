@@ -125,20 +125,26 @@ export async function salvaContattiPubblici(valori: {
 // Funzione pura (nessun accesso DB) - usata da app/contatti/page.tsx per il
 // ramo "stato vuoto" (AC #3) e testata direttamente qui, invece di un test
 // di rendering JSX su un componente di pagina pubblica (convenzione assente
-// in questo progetto). "Nessun campo" include il social (urlPaginaFacebook),
-// non solo i 3 campi introdotti da questa storia - EXPERIENCE.md elenca i
-// 4 come ugualmente opzionali sotto la stessa regola.
+// in questo progetto). "Nessun campo" include il social (urlPaginaFacebook,
+// urlPaginaInstagram - Story 18.29), non solo i 3 campi introdotti da questa
+// storia - EXPERIENCE.md elenca i campi come ugualmente opzionali sotto la
+// stessa regola.
 export function nessunContattoPubblicoConfigurato(contatti: {
   indirizzoSede: string | null;
   telefonoPubblico: string | null;
   emailPubblica: string | null;
   urlPaginaFacebook: string | null;
+  // Story 18.29: quinto campo - conta come campo a pieno titolo, mirror
+  // esatto del trattamento gia' riservato a urlPaginaFacebook (spec-18-29
+  // I/O matrix).
+  urlPaginaInstagram: string | null;
 }): boolean {
   return (
     !contatti.indirizzoSede &&
     !contatti.telefonoPubblico &&
     !contatti.emailPubblica &&
-    !contatti.urlPaginaFacebook
+    !contatti.urlPaginaFacebook &&
+    !contatti.urlPaginaInstagram
   );
 }
 
@@ -159,5 +165,25 @@ export async function salvaUrlSitoPolisportiva(url: string | null): Promise<void
     where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
     create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlSitoPolisportiva: url },
     update: { urlSitoPolisportiva: url },
+  });
+}
+
+// Story 18.29: mirror esatto di leggiUrlPaginaFacebook/salvaUrlPaginaFacebook
+// sopra - URL della Pagina Instagram pubblica, solo un link semplice (icona
+// cliccabile in footer/contatti), MAI un feed embed (vedi commento sul
+// campo in prisma/schema.prisma).
+export async function leggiUrlPaginaInstagram(): Promise<string | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { urlPaginaInstagram: true },
+  });
+  return configurazione?.urlPaginaInstagram ?? null;
+}
+
+export async function salvaUrlPaginaInstagram(url: string | null): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaInstagram: url },
+    update: { urlPaginaInstagram: url },
   });
 }

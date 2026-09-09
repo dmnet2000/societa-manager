@@ -26,6 +26,8 @@ const {
   nessunContattoPubblicoConfigurato,
   leggiUrlSitoPolisportiva,
   salvaUrlSitoPolisportiva,
+  leggiUrlPaginaInstagram,
+  salvaUrlPaginaInstagram,
   nomeSettoreAbbreviato,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
@@ -312,13 +314,14 @@ describe("salvaContattiPubblici", () => {
 });
 
 describe("nessunContattoPubblicoConfigurato", () => {
-  it("returns true when all 4 fields (including social) are null", () => {
+  it("returns true when all 5 fields (including social) are null", () => {
     expect(
       nessunContattoPubblicoConfigurato({
         indirizzoSede: null,
         telefonoPubblico: null,
         emailPubblica: null,
         urlPaginaFacebook: null,
+        urlPaginaInstagram: null,
       })
     ).toBe(true);
   });
@@ -330,6 +333,7 @@ describe("nessunContattoPubblicoConfigurato", () => {
         telefonoPubblico: null,
         emailPubblica: null,
         urlPaginaFacebook: null,
+        urlPaginaInstagram: null,
       })
     ).toBe(false);
   });
@@ -341,6 +345,7 @@ describe("nessunContattoPubblicoConfigurato", () => {
         telefonoPubblico: "+39 012 3456789",
         emailPubblica: null,
         urlPaginaFacebook: null,
+        urlPaginaInstagram: null,
       })
     ).toBe(false);
   });
@@ -352,6 +357,7 @@ describe("nessunContattoPubblicoConfigurato", () => {
         telefonoPubblico: null,
         emailPubblica: "info@esempio.it",
         urlPaginaFacebook: null,
+        urlPaginaInstagram: null,
       })
     ).toBe(false);
   });
@@ -363,17 +369,34 @@ describe("nessunContattoPubblicoConfigurato", () => {
         telefonoPubblico: null,
         emailPubblica: null,
         urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+        urlPaginaInstagram: null,
       })
     ).toBe(false);
   });
 
-  it("returns false when all 4 fields are set", () => {
+  // Story 18.29 (spec I/O matrix): mirror esatto del test sopra per Facebook
+  // - Instagram conta come campo a pieno titolo, non solo un "extra" del
+  // social Facebook gia' esistente.
+  it("returns false when only urlPaginaInstagram (social) is set - conta come campo a pieno titolo", () => {
+    expect(
+      nessunContattoPubblicoConfigurato({
+        indirizzoSede: null,
+        telefonoPubblico: null,
+        emailPubblica: null,
+        urlPaginaFacebook: null,
+        urlPaginaInstagram: "https://www.instagram.com/miasocieta",
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when all 5 fields are set", () => {
     expect(
       nessunContattoPubblicoConfigurato({
         indirizzoSede: "Via dello Sport 1",
         telefonoPubblico: "+39 012 3456789",
         emailPubblica: "info@esempio.it",
         urlPaginaFacebook: "https://www.facebook.com/miasocieta",
+        urlPaginaInstagram: "https://www.instagram.com/miasocieta",
       })
     ).toBe(false);
   });
@@ -458,6 +481,72 @@ describe("salvaUrlSitoPolisportiva", () => {
       where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlSitoPolisportiva: null },
       update: { urlSitoPolisportiva: null },
+    });
+  });
+});
+
+// Story 18.29: mirror esatto dei describe sopra per leggiUrlPaginaFacebook/salvaUrlPaginaFacebook.
+describe("leggiUrlPaginaInstagram", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored urlPaginaInstagram", async () => {
+    findUniqueMock.mockResolvedValue({
+      urlPaginaInstagram: "https://www.instagram.com/miasocieta",
+    });
+
+    const result = await leggiUrlPaginaInstagram();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { urlPaginaInstagram: true },
+    });
+    expect(result).toBe("https://www.instagram.com/miasocieta");
+  });
+
+  it("returns null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiUrlPaginaInstagram();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ urlPaginaInstagram: null });
+
+    const result = await leggiUrlPaginaInstagram();
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("salvaUrlPaginaInstagram", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
+    await salvaUrlPaginaInstagram("https://www.instagram.com/miasocieta");
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: {
+        id: ID_CONFIGURAZIONE_APPLICAZIONE,
+        urlPaginaInstagram: "https://www.instagram.com/miasocieta",
+      },
+      update: { urlPaginaInstagram: "https://www.instagram.com/miasocieta" },
+    });
+  });
+
+  it("allows clearing the value back to null", async () => {
+    await salvaUrlPaginaInstagram(null);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaInstagram: null },
+      update: { urlPaginaInstagram: null },
     });
   });
 });

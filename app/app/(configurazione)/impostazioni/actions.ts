@@ -8,6 +8,7 @@ import {
   salvaUrlPaginaFacebook,
   salvaContattiPubblici,
   salvaUrlSitoPolisportiva,
+  salvaUrlPaginaInstagram,
 } from "@/lib/configurazione-applicazione";
 import {
   leggiConfigurazioneSocialFacebook,
@@ -498,6 +499,53 @@ export async function salvaUrlSitoPolisportivaAction(
       error: {
         code: "INTERNAL",
         message: "Impossibile salvare il sito della Polisportiva. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type PaginaInstagramActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+// Story 18.29: mirror esatto di salvaUrlPaginaFacebookAction sopra - stesso
+// perimetro Ruoli (URL semplice, non un token/embed - nessuna restrizione
+// aggiuntiva rispetto a Facebook), stessa validazione (urlEsternoValido
+// riusata invariata), stringa vuota rimuove la configurazione.
+export async function salvaUrlPaginaInstagramAction(
+  _prevState: PaginaInstagramActionState,
+  formData: FormData
+): Promise<PaginaInstagramActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE", "SITE_MANAGER"]);
+  if (forbidden) return forbidden;
+
+  const valore = String(formData.get("urlPaginaInstagram") ?? "").trim();
+
+  if (valore && !urlEsternoValido(valore)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "URL non valido (deve iniziare con http:// o https:// ed essere entro 500 caratteri).",
+      },
+    };
+  }
+
+  try {
+    // Stringa vuota = l'Admin/Dirigente/Site Manager vuole rimuovere la
+    // configurazione (l'icona Instagram smette di comparire in footer e
+    // /contatti) - stesso principio di salvaUrlPaginaFacebookAction.
+    await salvaUrlPaginaInstagram(valore || null);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare la Pagina Instagram. Riprova.",
       },
     };
   }
