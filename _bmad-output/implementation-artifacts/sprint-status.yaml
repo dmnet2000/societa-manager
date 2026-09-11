@@ -1426,6 +1426,19 @@ development_status:
   # spec-19-16-visibilita-pubblica-gruppi.md.
   19-16-visibilita-pubblica-gruppi: review
 
+  # Story 18.31 aggiunta su richiesta esplicita dell'utente 2026-09-11:
+  # "per il calendario delle partite sito statica sposta piu' a destra
+  # ancora il testo di 50px e allarga di 100 px la fascia perche' piccola" -
+  # diagnosi dal vivo su volleymogliano.it/calendario: la card e' piccola
+  # perche' la griglia fissa a 2 colonne lascia meta' riga vuota quando una
+  # settimana ha una sola partita (il caso piu' comune). Chiarito con
+  # l'utente: colonna singola sempre (non +100px letterali a 2 colonne, che
+  # avrebbe fatto sovrapporre le card con 2+ partite/settimana). .meta
+  # (testo data/ora/palestra) spostato di altri 50px. Solo CSS, nessuna
+  # review a 3 livelli (blast radius minimo). tsc/lint/2080 test puliti.
+  # Vedi spec-18-31-calendario-card-larghezza-testo.md.
+  18-31-calendario-card-larghezza-testo: review
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi

@@ -57,12 +57,17 @@
   color: var(--color-text-secondary);
 }
 
-/* match-grid: 2 colonne desktop, 1 colonna sotto i 900px - stesso
-   breakpoint/idioma gia' in uso per team-grid/footer-grid (DESIGN.md ->
-   Layout e Spaziatura). */
+/* Richiesta esplicita dell'utente (2026-09-11): una sola colonna sempre,
+   non piu' 2 colonne desktop - una card di una settimana con una sola
+   partita occupava solo meta' riga, lasciando l'altra colonna vuota e
+   facendo apparire la card "piccola" rispetto allo spazio disponibile.
+   Una sola colonna fa si' che ogni card occupi sempre l'intera larghezza
+   di .main, indipendentemente dal numero di partite della settimana -
+   nessun rischio di sovrapposizione tra card affiancate (scartato come
+   alternativa, vedi deferred-work.md). */
 .matchGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: var(--space-4);
 }
 
@@ -70,10 +75,6 @@
   .titolo {
     font-size: 22px;
     line-height: 1.1;
-  }
-
-  .matchGrid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -152,12 +153,15 @@
    visivamente con lo sfondo bianco della pagina sottostante ("bianco su
    bianco"). padding-left aggiuntivo sposta il testo a destra, fuori dalla
    zona del taglio, senza toccare categoria/squadre sopra (non a rischio,
-   il taglio e' quasi nullo in alto). */
+   il taglio e' quasi nullo in alto). Richiesta esplicita dell'utente
+   (2026-09-11): ulteriori 50px verso destra, ancora oltre il fix originale -
+   var(--space-4) non piu' sufficiente da solo secondo il riscontro visivo
+   dell'utente. */
 .meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  padding-left: var(--space-4);
+  padding-left: calc(var(--space-4) + 50px);
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 400;
