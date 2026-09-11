@@ -121,11 +121,14 @@
   color: #eaf4fb;
 }
 
-/* {typography.display-card}. */
+/* {typography.display-card}. Richiesta esplicita dell'utente (2026-09-11):
+   spostata di 100px verso destra (stesso meccanismo padding-left gia' in
+   uso per .meta piu' sotto). */
 .squadre {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  padding-left: 100px;
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
   font-size: 22px;
   font-weight: 900;
