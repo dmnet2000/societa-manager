@@ -511,6 +511,14 @@ model Gruppo {
   // insieme in nessuna pagina esistente. Backfill alfabetico per nome nella
   // migrazione che introduce questa colonna.
   ordine            Int
+  // Story 19.16 (Epic 19, Ruolo Site Manager): interruttore di visibilita'
+  // sulla pagina pubblica /squadre - mirror esatto di VoceMenuPubblico.visibile
+  // (Story 19.6/19.7), stesso principio "mai un hard-delete lato Utente, solo
+  // un flag di visibilita'". Default true (non false come VoceMenuPubblico
+  // parte per definizione da un elenco vuoto): nessun Gruppo esistente deve
+  // sparire da /squadre al deploy di questa colonna (spec-19-16 Boundaries
+  // "Always"), l'Admin nasconde selettivamente solo cio' che vuole.
+  visibilePubblico  Boolean                  @default(true)
 
   @@map("gruppi")
 }

@@ -1,0 +1,12 @@
+-- Story 19.16 (Epic 19, Ruolo Site Manager): interruttore di visibilita'
+-- pubblica per Gruppo, controllabile da /app/ordine-squadre - mirror esatto
+-- di VoceMenuPubblico.visibile (20260819000000_add_voce_menu_pubblico), ma
+-- con DEFAULT true (non false): nessun Gruppo esistente deve sparire da
+-- /squadre al deploy di questa migrazione (spec-19-16 Boundaries "Always"),
+-- a differenza di VoceMenuPubblico che nasce gia' con un elenco vuoto.
+-- Gruppo resta non protetto da RLS (AD-9, tabella strutturale gia'
+-- esistente) - nessuna modifica RLS qui, solo l'aggiunta della colonna.
+-- DEFAULT true si applica sia alle righe esistenti (nessun backfill
+-- separato necessario, a differenza di Gruppo.ordine) sia a ogni nuovo
+-- Gruppo creato da questo punto in poi.
+ALTER TABLE "gruppi" ADD COLUMN "visibilePubblico" BOOLEAN NOT NULL DEFAULT true;

@@ -93,3 +93,28 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Story 19.16: badgeSuccesso/badgeDanger, mirror esatto di
+   menu-pubblico.module.css (Story 19.7) - duplicato per modulo, stessa
+   convenzione gia' in uso nel progetto (nessuno stylesheet condiviso tra
+   route group). Usati per l'indicatore Visibile/Nascosta accanto ai bottoni
+   Su/Giù/Nascondi-Mostra. */
+.badgeSuccesso,
+.badgeDanger {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badgeSuccesso {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeDanger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}

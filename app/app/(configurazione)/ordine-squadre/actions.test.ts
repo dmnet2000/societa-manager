@@ -4,6 +4,7 @@ const requireRuoloMock = vi.fn();
 const trovaAnnoAgonisticoCorrenteMock = vi.fn();
 const elencaGruppiOrdinatiMock = vi.fn();
 const riordinaGruppiMock = vi.fn();
+const impostaVisibilitaGruppoMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -17,13 +18,14 @@ vi.mock("@/lib/anno-agonistico", () => ({
 vi.mock("@/lib/ordine-squadre", () => ({
   elencaGruppiOrdinati: elencaGruppiOrdinatiMock,
   riordinaGruppi: riordinaGruppiMock,
+  impostaVisibilitaGruppo: impostaVisibilitaGruppoMock,
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { spostaGruppoAction } = await import("./actions");
+const { spostaGruppoAction, impostaVisibilitaGruppoAction } = await import("./actions");
 
 function buildFormData(fields: Record<string, string> = {}) {
   const formData = new FormData();
@@ -50,6 +52,8 @@ beforeEach(() => {
   elencaGruppiOrdinatiMock.mockResolvedValue(gruppiFinti());
   riordinaGruppiMock.mockReset();
   riordinaGruppiMock.mockResolvedValue(undefined);
+  impostaVisibilitaGruppoMock.mockReset();
+  impostaVisibilitaGruppoMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
 
@@ -160,6 +164,73 @@ describe("spostaGruppoAction", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile riordinare le squadre. Riprova." },
+    });
+  });
+});
+
+describe("impostaVisibilitaGruppoAction", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin/Site Manager", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await impostaVisibilitaGruppoAction(
+      undefined,
+      buildFormData({ id: "b", visibilePubblico: "false" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SITE_MANAGER"]);
+    expect(impostaVisibilitaGruppoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un valore di visibilità non valido/mancante", async () => {
+    const result = await impostaVisibilitaGruppoAction(
+      undefined,
+      buildFormData({ id: "b", visibilePubblico: "forse" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Valore di visibilità non valido." },
+    });
+    expect(impostaVisibilitaGruppoMock).not.toHaveBeenCalled();
+  });
+
+  it("nasconde il Gruppo e revalida /app/ordine-squadre e /squadre", async () => {
+    const result = await impostaVisibilitaGruppoAction(
+      undefined,
+      buildFormData({ id: "b", visibilePubblico: "false" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(impostaVisibilitaGruppoMock).toHaveBeenCalledWith("b", false);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/ordine-squadre");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/squadre");
+  });
+
+  it("rende di nuovo visibile il Gruppo", async () => {
+    const result = await impostaVisibilitaGruppoAction(
+      undefined,
+      buildFormData({ id: "b", visibilePubblico: "true" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(impostaVisibilitaGruppoMock).toHaveBeenCalledWith("b", true);
+  });
+
+  it("returns INTERNAL fail-closed quando impostaVisibilitaGruppo lancia", async () => {
+    impostaVisibilitaGruppoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await impostaVisibilitaGruppoAction(
+      undefined,
+      buildFormData({ id: "b", visibilePubblico: "false" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare la visibilità della squadra. Riprova.",
+      },
     });
   });
 });

@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import type { Ruolo } from "@prisma/client";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { elencaGruppiOrdinati, riordinaGruppi } from "@/lib/ordine-squadre";
+import {
+  elencaGruppiOrdinati,
+  riordinaGruppi,
+  impostaVisibilitaGruppo,
+} from "@/lib/ordine-squadre";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -73,6 +77,50 @@ export async function spostaGruppoAction(
     console.error(err);
     return {
       error: { code: "INTERNAL", message: "Impossibile riordinare le squadre. Riprova." },
+    };
+  }
+
+  revalidatePath("/app/ordine-squadre");
+  revalidatePath("/squadre");
+  return { success: true };
+}
+
+// Story 19.16 (Epic 19, Ruolo Site Manager): mirror esatto di
+// impostaVisibileVoceMenuPubblicoAction (app/app/(configurazione)/menu-pubblico/actions.ts) -
+// stesso perimetro di Ruoli e stessa doppia revalidatePath di
+// spostaGruppoAction sopra. Nessun controllo "almeno un Gruppo visibile"
+// (a differenza della voce di menu, dove nascondere l'ultima voce visibile
+// romperebbe la NavPubblica su ogni pagina pubblica): /squadre gestisce gia'
+// esplicitamente il caso "0 Gruppi visibili" con lo stesso messaggio
+// dell'AC #4 di Story 18.8 (spec-19-16 I/O matrix), nessuna interazione da
+// impedire qui.
+export async function impostaVisibilitaGruppoAction(
+  _prevState: OrdineSquadreActionState,
+  formData: FormData
+): Promise<OrdineSquadreActionState> {
+  const forbidden = await requireRuolo(RUOLI_ORDINE_SQUADRE);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const visibilePubblicoGrezzo = formData.get("visibilePubblico");
+
+  // Mirror del fix gia' applicato a impostaVisibileVoceMenuPubblicoAction:
+  // un valore mancante/malformato non deve essere trattato come "false"
+  // silenziosamente.
+  if (visibilePubblicoGrezzo !== "true" && visibilePubblicoGrezzo !== "false") {
+    return { error: { code: "VALIDATION", message: "Valore di visibilità non valido." } };
+  }
+  const visibilePubblico = visibilePubblicoGrezzo === "true";
+
+  try {
+    await impostaVisibilitaGruppo(id, visibilePubblico);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare la visibilità della squadra. Riprova.",
+      },
     };
   }
 

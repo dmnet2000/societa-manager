@@ -170,6 +170,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui scegli l'ordine con cui le squadre della stagione corrente compaiono sulla pagina pubblica \"/squadre\".",
       "Ogni squadra ha due bottoni Su/Giù: spostala per cambiarne la posizione, il salvataggio è immediato.",
+      "Il bottone Nascondi/Mostra controlla se la squadra compare su \"/squadre\": una squadra nascosta sparisce dal sito pubblico ma resta gestibile normalmente da /app/gruppi, e riprende la propria posizione se la rendi di nuovo visibile.",
       "Questa vista non permette di creare squadre né di assegnare Allenatori/Atlete - per quello serve il Ruolo Admin o Dirigente su /app/gruppi.",
     ],
   },

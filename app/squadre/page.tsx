@@ -60,7 +60,14 @@ export default async function SquadrePage() {
     annoCorrente
       ? prisma.gruppo
           .findMany({
-            where: { annoAgonisticoId: annoCorrente.id },
+            // Story 19.16 (Epic 19, Ruolo Site Manager): visibilePubblico
+            // aggiunto al where esistente - un Gruppo nascosto da
+            // /app/ordine-squadre non compare in nessun blocco categoria,
+            // come se non esistesse per un Visitatore (spec-19-16 Boundaries
+            // "Always"). Nessun impatto su /app/gruppi ne' su /calendario:
+            // questo e' l'unico punto che filtra i Gruppi come entita' di
+            // prima classe con card individuali.
+            where: { annoAgonisticoId: annoCorrente.id, visibilePubblico: true },
             // Story 19.15 (Epic 19, Ruolo Site Manager): ordinamento
             // configurabile da /app/ordine-squadre (bottoni Su/Giù),
             // sostituisce l'ordine alfabetico fisso di Story 18.8 - la

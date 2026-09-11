@@ -70,6 +70,9 @@ export default async function OrdineSquadrePage() {
                   id: gruppo.id,
                   nome: gruppo.nome,
                   categoria: gruppo.categoria,
+                  // Story 19.16: gia' incluso da elencaGruppiOrdinati (nessun
+                  // "select" in quella query, nessuna modifica li' necessaria).
+                  visibilePubblico: gruppo.visibilePubblico,
                 }}
                 primo={indice === 0}
                 ultimo={indice === gruppi.length - 1}

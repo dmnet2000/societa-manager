@@ -16,7 +16,9 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const { elencaGruppiOrdinati, riordinaGruppi } = await import("./ordine-squadre");
+const { elencaGruppiOrdinati, riordinaGruppi, impostaVisibilitaGruppo } = await import(
+  "./ordine-squadre"
+);
 
 beforeEach(() => {
   findManyMock.mockReset();
@@ -57,6 +59,26 @@ describe("riordinaGruppi", () => {
     expect(updateMock).toHaveBeenNthCalledWith(3, {
       where: { id: "b" },
       data: { ordine: 2 },
+    });
+  });
+});
+
+describe("impostaVisibilitaGruppo", () => {
+  it("writes visibilePubblico = true per l'id dato", async () => {
+    await impostaVisibilitaGruppo("a", true);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: "a" },
+      data: { visibilePubblico: true },
+    });
+  });
+
+  it("writes visibilePubblico = false per l'id dato", async () => {
+    await impostaVisibilitaGruppo("a", false);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: "a" },
+      data: { visibilePubblico: false },
     });
   });
 });

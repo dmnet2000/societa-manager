@@ -36,3 +36,15 @@ export async function riordinaGruppi(idInOrdine: string[]): Promise<void> {
     )
   );
 }
+
+// Story 19.16 (Epic 19, Ruolo Site Manager): mirror minimale di
+// impostaVisibileVoceMenuPubblico (lib/menu-pubblico.ts) - un solo
+// prisma.gruppo.update, nessuna transazione (a differenza di riordinaGruppi,
+// qui una sola riga cambia). Un Gruppo nascosto mantiene comunque il proprio
+// "ordine" (spec-19-16 I/O matrix: riprende la posizione se poi riabilitato).
+export async function impostaVisibilitaGruppo(
+  id: string,
+  visibilePubblico: boolean
+): Promise<void> {
+  await prisma.gruppo.update({ where: { id }, data: { visibilePubblico } });
+}

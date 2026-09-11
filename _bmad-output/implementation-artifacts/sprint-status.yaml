@@ -1411,6 +1411,21 @@ development_status:
   # spec-18-30-icone-social-ufficiali.md.
   18-30-icone-social-ufficiali: review
 
+  # Story 19.16 aggiunta su richiesta esplicita dell'utente 2026-09-11:
+  # "serve da profilo admin poter abilitare alla visualizzazione su sito
+  # esterno i vari gruppi" - nuovo campo Gruppo.visibilePubblico (default
+  # true, nessuna regressione al deploy), controllato da un nuovo bottone
+  # Nascondi/Mostra su /app/ordine-squadre (gia' esistente, Story 19.15,
+  # stesso perimetro ADMIN/SITE_MANAGER) - mirror esatto del meccanismo
+  # gia' in uso per VoceMenuPubblico.visibile (Story 19.6/19.7).
+  # app/squadre/page.tsx filtra ora con visibilePubblico: true. Review a 3
+  # livelli: nessun problema reale, tutti i finding o identici al
+  # comportamento gia' accettato nel meccanismo gemello o rischi teorici
+  # irrilevanti - nessuna correzione applicata. 2080/2080 test verdi,
+  # tsc/lint/build/prisma validate puliti. Vedi
+  # spec-19-16-visibilita-pubblica-gruppi.md.
+  19-16-visibilita-pubblica-gruppi: review
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi
