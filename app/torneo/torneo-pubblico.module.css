@@ -426,6 +426,14 @@
   margin-bottom: var(--space-4);
 }
 
+/* Story 20.28: contenitore di una riga del prospetto ipotetico (etichetta +
+   eventuale Slot prenotato) - prima era un singolo <p>, ora un piccolo
+   gruppo di 2 elementi; nessuno stile di layout necessario oltre a un
+   piccolo distacco dalla riga successiva. */
+.rigaProspetto {
+  margin-bottom: var(--space-2);
+}
+
 /* Story 20.9 (Epic 20, Torneo Memorial): riga Slot/Palestra + "Naviga"
    dentro una .matchCard - composes .meta (stesso colore/dimensione della
    riga risultato sopra) ma in riga flessibile con il link "Naviga", mirror
@@ -450,5 +458,37 @@
 
 .linkNaviga:focus-visible {
   outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Story 20.28 (review fix, Blind Hunter): variante di .metaSlot/.linkNaviga
+   per il prospetto ipotetico pubblico, che vive su sfondo chiaro (.main),
+   non dentro una .matchCard scura - il colore quasi bianco #EAF4FB di
+   .meta (composto da .metaSlot) sarebbe stato praticamente illeggibile li'
+   (contrasto ~1:1). Stessa struttura/dimensione/spaziatura di .metaSlot,
+   dichiarata per intero invece di comporre .meta - evita qualunque
+   ambiguita' di cascata tra due colori sullo stesso elemento. Nessun
+   padding-left (quello di .meta serve solo dentro una .matchCard dal
+   taglio diagonale, qui non pertinente). */
+.metaSlotChiaro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.linkNavigaChiaro {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.linkNavigaChiaro:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }

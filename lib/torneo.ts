@@ -506,6 +506,46 @@ export async function elencaSlotTorneo(edizioneTorneoId: string) {
   });
 }
 
+// Story 20.28 (Epic 20, Torneo Memorial): funzione pura estratta per non
+// duplicare la stessa logica di ricerca inline in due punti (review fix,
+// Verification Gap Reviewer) - stesso principio "raggruppa/cerca per
+// display va estratto in una funzione pura testata" già consolidato nel
+// progetto. Cerca in un elenco GIÀ letto (nessun IO qui, a differenza di
+// trovaSlotPrenotato sopra che interroga il DB una riga alla volta) lo
+// SlotTorneo prenotato per una riga precisa del prospetto ipotetico -
+// stessa combinazione di criteri di trovaSlotPrenotato/slotAttuale in
+// tabellone/page.tsx, qui applicata a un array in memoria (usata da
+// app/torneo/page.tsx, che legge già l'intero elenco Slot dell'Edizione in
+// una sola query per mostrare le prenotazioni sul prospetto ipotetico
+// pubblico - una query per riga sarebbe stata più lenta su una pagina
+// pubblica servita ad ogni richiesta, force-dynamic). Generica sul tipo
+// (T extends {...}) per non accoppiarsi alla forma esatta restituita da
+// elencaSlotTorneo (che include anche palestra/campo, non necessari qui).
+export function trovaSlotPrenotatoInMemoria<
+  T extends {
+    prenotazioneCategoriaTorneoId: string | null;
+    fase: FaseTorneo;
+    tabellone: TabelloneTorneo | null;
+    prenotazioneOrdinale: number | null;
+  },
+>(
+  slotTorneo: T[],
+  categoriaTorneoId: string,
+  fase: FaseTorneo,
+  tabellone: TabelloneTorneo,
+  ordinale: number | null
+): T | null {
+  return (
+    slotTorneo.find(
+      (s) =>
+        s.prenotazioneCategoriaTorneoId === categoriaTorneoId &&
+        s.fase === fase &&
+        s.tabellone === tabellone &&
+        s.prenotazioneOrdinale === ordinale
+    ) ?? null
+  );
+}
+
 // Serve alla Server Action per disambiguare, su un cancellaSlotTorneo con
 // count 0, "Slot non trovato" da "bloccato da una Partita collegata" -
 // stesso identico ruolo di trovaSquadraTorneoPerId per

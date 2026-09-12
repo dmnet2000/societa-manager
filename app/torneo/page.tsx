@@ -4,6 +4,8 @@ import {
   elencaCategorieTorneo,
   elencaSquadreTorneo,
   elencaPartiteTorneo,
+  elencaSlotTorneo,
+  trovaSlotPrenotatoInMemoria,
 } from "@/lib/torneo";
 import { leggiInfoVolantinoTorneo, urlPubblicoVolantinoTorneo } from "@/lib/storage/volantino-torneo";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
@@ -26,17 +28,31 @@ import styles from "./torneo-pubblico.module.css";
 // QUALE (lib/link-naviga-palestra.ts, gia' verificata dal vivo altrove nel
 // progetto, es. /calendario), null se la Palestra non ha ne' coordinate ne'
 // indirizzo (nessun link mostrato in quel caso, mai un href vuoto).
-function MetaSlot({ slotTorneo }: { slotTorneo: SlotPubblico | null }) {
+function MetaSlot({
+  slotTorneo,
+  suSfondoChiaro = false,
+}: {
+  slotTorneo: SlotPubblico | null;
+  // Story 20.28 (review fix, Blind Hunter): .metaSlot/.linkNaviga usano un
+  // colore quasi bianco (#EAF4FB), leggibile SOLO sullo sfondo blu scuro di
+  // .matchCard (unico contesto in cui questo componente veniva usato finora).
+  // Il prospetto ipotetico lo riusa pero' su sfondo chiaro (.main) - stesso
+  // colore li' sarebbe praticamente invisibile (contrasto ~1:1). true
+  // seleziona la variante scura leggibile su sfondo chiaro
+  // (.metaSlotChiaro/.linkNavigaChiaro), false (default, invariato) preserva
+  // il comportamento delle partite reali dentro .matchCard.
+  suSfondoChiaro?: boolean;
+}) {
   if (!slotTorneo) {
     return null;
   }
   const linkNaviga = costruisciLinkNaviga(slotTorneo.palestra);
   return (
-    <div className={styles.metaSlot}>
+    <div className={suSfondoChiaro ? styles.metaSlotChiaro : styles.metaSlot}>
       <span>{formattaSlotTestoBreve(slotTorneo)}</span>
       {linkNaviga && (
         <a
-          className={styles.linkNaviga}
+          className={suSfondoChiaro ? styles.linkNavigaChiaro : styles.linkNaviga}
           href={linkNaviga}
           target="_blank"
           rel="noopener noreferrer"
@@ -119,7 +135,7 @@ export default async function TorneoPubblicoPage() {
   // continuava a mostrare risultati/classifica finale con quegli stessi
   // nomi). Un fallimento di una delle due ora azzera sempre entrambe
   // insieme, mai solo una.
-  const [volantino, datiCategorie] = await Promise.all([
+  const [volantino, datiCategorie, slotTorneo] = await Promise.all([
     // Story 20.5: stesso pattern fail-soft di leggiInfoFotoHero/
     // leggiInfoLogoPolisportiva in impostazioni/page.tsx - un errore
     // Storage transitorio non deve far fallire l'intera pagina, solo
@@ -145,6 +161,23 @@ export default async function TorneoPubblicoPage() {
         }
       })
     ),
+    // Story 20.28: SlotTorneo dell'intera Edizione, UNA sola query - serve a
+    // mostrare, sul prospetto ipotetico pubblico, uno Slot gia' prenotato in
+    // anticipo dall'Admin (Story 20.21) per una riga specifica, prima ancora
+    // che il tabellone reale esista. A differenza di tabellone/page.tsx
+    // (stessa query eseguita una volta PER Categoria, pagina di dettaglio),
+    // qui viene letta una sola volta per l'intera pagina condivisa da tutte
+    // le Categorie dell'Edizione - una query in meno di quante Categorie
+    // esistono, non un mirror posizionale 1:1. Richiesta esplicita
+    // dell'utente dopo aver verificato dal vivo che le prenotazioni non
+    // comparivano: rinegozia il "Never" di Story 20.27 (che escludeva la
+    // prenotazione anticipata dalla vista pubblica) SOLO per la
+    // visualizzazione - il form di prenotazione resta admin-only (spec-20-28
+    // Boundaries "Never", invariato).
+    elencaSlotTorneo(edizione.id).catch((err) => {
+      console.error(err);
+      return [];
+    }),
   ]);
 
   return (
@@ -449,24 +482,55 @@ export default async function TorneoPubblicoPage() {
                             <div key={sezione.titolo} className={styles.blocoTabellone}>
                               <p className={styles.etichettaSettimana}>{sezione.titolo}</p>
                               {sezione.semifinali.map((accoppiamento) => (
-                                <p
-                                  key={accoppiamento.etichetta}
-                                  className={styles.messaggioSezione}
-                                >
-                                  {accoppiamento.etichetta}:{" "}
-                                  <strong>{accoppiamento.casa}</strong> vs{" "}
-                                  <strong>{accoppiamento.ospite}</strong>
-                                </p>
+                                <div key={accoppiamento.etichetta} className={styles.rigaProspetto}>
+                                  <p className={styles.messaggioSezione}>
+                                    {accoppiamento.etichetta}:{" "}
+                                    <strong>{accoppiamento.casa}</strong> vs{" "}
+                                    <strong>{accoppiamento.ospite}</strong>
+                                  </p>
+                                  {/* Story 20.28: Slot eventualmente prenotato
+                                      in anticipo per questa riga - sola
+                                      visualizzazione, stesso componente
+                                      MetaSlot gia' usato per le partite reali
+                                      ma con la variante di colore leggibile
+                                      su sfondo chiaro (review fix, Blind
+                                      Hunter: il colore originale, pensato per
+                                      lo sfondo scuro di .matchCard, sarebbe
+                                      stato illeggibile qui). */}
+                                  {accoppiamento.fase && accoppiamento.tabellone && (
+                                    <MetaSlot
+                                      suSfondoChiaro
+                                      slotTorneo={trovaSlotPrenotatoInMemoria(
+                                        slotTorneo,
+                                        categoria.id,
+                                        accoppiamento.fase,
+                                        accoppiamento.tabellone,
+                                        accoppiamento.ordinale ?? null
+                                      )}
+                                    />
+                                  )}
+                                </div>
                               ))}
                               {sezione.finali.map((accoppiamento) => (
-                                <p
-                                  key={accoppiamento.etichetta}
-                                  className={styles.messaggioSezione}
-                                >
-                                  {haSemifinali && <>{accoppiamento.etichetta}: </>}
-                                  <strong>{accoppiamento.casa}</strong> vs{" "}
-                                  <strong>{accoppiamento.ospite}</strong>
-                                </p>
+                                <div key={accoppiamento.etichetta} className={styles.rigaProspetto}>
+                                  <p className={styles.messaggioSezione}>
+                                    {haSemifinali && <>{accoppiamento.etichetta}: </>}
+                                    <strong>{accoppiamento.casa}</strong> vs{" "}
+                                    <strong>{accoppiamento.ospite}</strong>
+                                  </p>
+                                  {accoppiamento.fase && accoppiamento.tabellone && (
+                                    <MetaSlot
+                                      suSfondoChiaro
+                                      slotTorneo={trovaSlotPrenotatoInMemoria(
+                                        slotTorneo,
+                                        categoria.id,
+                                        accoppiamento.fase,
+                                        accoppiamento.tabellone,
+                                        accoppiamento.ordinale ?? null
+                                      )}
+                                    />
+                                  )}
+                                </div>
                               ))}
                             </div>
                           );

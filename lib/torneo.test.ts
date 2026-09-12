@@ -117,6 +117,7 @@ const {
   creaSlotTorneo,
   creaSlotTorneoPerSelezione,
   elencaSlotTorneo,
+  trovaSlotPrenotatoInMemoria,
   trovaSlotTorneoPerId,
   trovaCampoPerId,
   cancellaSlotTorneo,
@@ -882,6 +883,120 @@ describe("elencaSlotTorneo", () => {
       orderBy: [{ data: "asc" }, { ora: "asc" }],
     });
     expect(result).toBe(righe);
+  });
+});
+
+// Story 20.28 (Epic 20, Torneo Memorial): funzione pura, nessun mock Prisma
+// necessario - cerca in un elenco gia' letto (es. da elencaSlotTorneo)
+// invece di interrogare il DB, a differenza di trovaSlotPrenotato sopra.
+describe("trovaSlotPrenotatoInMemoria", () => {
+  function slot(overrides: {
+    id: string;
+    prenotazioneCategoriaTorneoId: string | null;
+    fase: string;
+    tabellone: string | null;
+    prenotazioneOrdinale: number | null;
+  }) {
+    return overrides as never;
+  }
+
+  it("returns the matching Slot when categoria+fase+tabellone+ordinale corrispondono tutti", () => {
+    const slotTorneo = [
+      slot({
+        id: "slot-1",
+        prenotazioneCategoriaTorneoId: "cat-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      }),
+    ];
+
+    const result = trovaSlotPrenotatoInMemoria(
+      slotTorneo,
+      "cat-1",
+      "SEMIFINALE" as never,
+      "POSIZIONI_1_4" as never,
+      1
+    );
+
+    expect(result).toBe(slotTorneo[0]);
+  });
+
+  it("returns null when nessuno Slot ha una prenotazione per questa Categoria", () => {
+    const slotTorneo = [
+      slot({
+        id: "slot-1",
+        prenotazioneCategoriaTorneoId: null,
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      }),
+    ];
+
+    expect(
+      trovaSlotPrenotatoInMemoria(slotTorneo, "cat-1", "SEMIFINALE" as never, "POSIZIONI_1_4" as never, 1)
+    ).toBeNull();
+  });
+
+  it("distingue le due Semifinali dello stesso tabellone tramite l'ordinale", () => {
+    const slotTorneo = [
+      slot({
+        id: "slot-1",
+        prenotazioneCategoriaTorneoId: "cat-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      }),
+      slot({
+        id: "slot-2",
+        prenotazioneCategoriaTorneoId: "cat-1",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 2,
+      }),
+    ];
+
+    expect(
+      trovaSlotPrenotatoInMemoria(slotTorneo, "cat-1", "SEMIFINALE" as never, "POSIZIONI_1_4" as never, 2)
+    ).toBe(slotTorneo[1]);
+  });
+
+  it("returns null per una riga di Finale (ordinale null) quando lo Slot trovato ha un ordinale diverso da null", () => {
+    const slotTorneo = [
+      slot({
+        id: "slot-1",
+        prenotazioneCategoriaTorneoId: "cat-1",
+        fase: "FINALE_VINCENTI",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      }),
+    ];
+
+    expect(
+      trovaSlotPrenotatoInMemoria(
+        slotTorneo,
+        "cat-1",
+        "FINALE_VINCENTI" as never,
+        "POSIZIONI_1_4" as never,
+        null
+      )
+    ).toBeNull();
+  });
+
+  it("non confonde Categorie diverse con la stessa fase/tabellone/ordinale", () => {
+    const slotTorneo = [
+      slot({
+        id: "slot-1",
+        prenotazioneCategoriaTorneoId: "cat-2",
+        fase: "SEMIFINALE",
+        tabellone: "POSIZIONI_1_4",
+        prenotazioneOrdinale: 1,
+      }),
+    ];
+
+    expect(
+      trovaSlotPrenotatoInMemoria(slotTorneo, "cat-1", "SEMIFINALE" as never, "POSIZIONI_1_4" as never, 1)
+    ).toBeNull();
   });
 });
 

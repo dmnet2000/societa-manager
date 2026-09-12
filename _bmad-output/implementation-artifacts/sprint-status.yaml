@@ -1439,6 +1439,22 @@ development_status:
   # Vedi spec-18-31-calendario-card-larghezza-testo.md.
   18-31-calendario-card-larghezza-testo: review
 
+  # Story 20.28 aggiunta su richiesta esplicita dell'utente 2026-09-12: "nella
+  # sezione sito statico non vedo gli slot assegnati sui tabelloni delle
+  # semifinali" - diagnosi dal vivo (screenshot pubblico + confronto con
+  # admin condiviso dall'utente): il tabellone reale non era ancora generato,
+  # l'utente aveva solo prenotato in anticipo gli Slot per le righe del
+  # prospetto ipotetico (Story 20.21) - la vista pubblica non li mostrava mai
+  # per scelta esplicita della Story 20.27. Rinegoziato quel "Never" SOLO per
+  # la visualizzazione (mai il form, resta admin-only). Review a 3 livelli:
+  # trovato e corretto un bug serio (testo dello Slot illeggibile su sfondo
+  # chiaro, stesso colore pensato solo per lo sfondo scuro delle card reali)
+  # e una logica di ricerca duplicata/non testata (estratta in
+  # lib/torneo.ts, trovaSlotPrenotatoInMemoria, 5 nuovi test). 2085/2085 test
+  # verdi, tsc/lint/build puliti. Vedi
+  # spec-20-28-prenotazione-slot-visibile-pubblico.md.
+  20-28-prenotazione-slot-visibile-pubblico: review
+
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
   # (bmad-create-epics-and-stories + party mode, 2026-08-18, vedi
