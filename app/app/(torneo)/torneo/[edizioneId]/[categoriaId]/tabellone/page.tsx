@@ -82,15 +82,31 @@ export default async function TabelloneTorneoPage({
   // completa" di un girone a 4 squadre con un incontro ancora da giocare.
   // Iterata su GIRONI_TORNEO (unica fonte di verita', lib/girone-torneo.ts)
   // invece di ripetere "GIRONE_A"/"GIRONE_B" come stringhe letterali.
-  const statoGironi = GIRONI_TORNEO.map((girone) => {
-    const squadreDelGirone = squadre.filter((s) => s.girone === girone.value);
+  // Review fix: "squadreSufficienti" confrontava solo ">= 4" per singolo
+  // girone, mai aggiornato quando spec-20-26 ha introdotto il formato 3+3 -
+  // una Categoria 3+3 con gironi completi restava quindi bloccata per
+  // sempre (pulsante "Genera tabellone" mai abilitato), pur essendo gia'
+  // accettata da generaTabelloneAction lato server. Il conteggio per Girone
+  // e la stessa unica fonte di verita' (formatoOttoSquadre/formatoSeiSquadre)
+  // sono ora calcolati PRIMA di statoGironi cosi' da riusarli qui invece di
+  // una soglia fissa indipendente dal Girone opposto.
+  const conteggioSquadrePerGirone = GIRONI_TORNEO.map((girone) => ({
+    girone,
+    numeroSquadre: squadre.filter((s) => s.girone === girone.value).length,
+  }));
+  const [numeroGironeA, numeroGironeB] = conteggioSquadrePerGirone.map((c) => c.numeroSquadre);
+  const formatoOttoSquadre = calcolaFormatoOttoSquadre(numeroGironeA, numeroGironeB);
+  const formatoSeiSquadre = calcolaFormatoSeiSquadre(numeroGironeA, numeroGironeB);
+  const formatoValido = formatoOttoSquadre || formatoSeiSquadre;
+
+  const statoGironi = conteggioSquadrePerGirone.map(({ girone, numeroSquadre }) => {
     const partiteDelGirone = partite.filter(
       (p) => p.fase === "GIRONE" && p.squadraCasa.girone === girone.value
     );
     return {
       girone,
-      numeroSquadre: squadreDelGirone.length,
-      squadreSufficienti: squadreDelGirone.length >= 4,
+      numeroSquadre,
+      squadreSufficienti: formatoValido,
       risultatiCompleti:
         partiteDelGirone.length > 0 && partiteDelGirone.every(haRisultatoCompleto),
     };
@@ -103,29 +119,11 @@ export default async function TabelloneTorneoPage({
   // renderizzato SOLO dentro il ramo JSX "tabellone non ancora generato"
   // sotto (quel ramo gia' garantisce !tabelloneGenerato - nessun guard
   // duplicato qui). Deriva il formato ESCLUSIVAMENTE dal conteggio di
-  // Squadre per Girone gia' calcolato sopra in statoGironi (che itera
-  // GIRONI_TORNEO, l'unica fonte di verita' - review fix, Blind Hunter:
-  // niente stringhe letterali "GIRONE_A"/"GIRONE_B" duplicate qui per
-  // rifiltrare "squadre" una seconda volta). L'ordine di statoGironi segue
-  // sempre GIRONI_TORNEO (Girone A poi Girone B). Funzione pura: null per
-  // qualunque combinazione non riconosciuta (gironi sbilanciati, conteggi
-  // diversi da 3/4, iscrizioni incomplete) - in quel caso nessuna sezione
-  // viene renderizzata piu' sotto.
-  const [numeroGironeA, numeroGironeB] = statoGironi.map((s) => s.numeroSquadre);
+  // Squadre per Girone gia' calcolato sopra (conteggioSquadrePerGirone).
+  // Funzione pura: null per qualunque combinazione non riconosciuta (gironi
+  // sbilanciati, conteggi diversi da 3/4, iscrizioni incomplete) - in quel
+  // caso nessuna sezione viene renderizzata piu' sotto.
   const prospettoIpotetico = calcolaProspettoIpoteticoTorneo(numeroGironeA, numeroGironeB);
-
-  // Story 20.21: la prenotazione anticipata di uno Slot per una riga del
-  // prospetto ipotetico e' disponibile per i formati "8 squadre" (4+4) e,
-  // da spec-20-26, "6 squadre" (3+3) - entrambi hanno ora un percorso di
-  // generazione reale per OGNI riga del tabellone (generaTabelloneAction,
-  // app/app/(torneo)/torneo/actions.ts). Review fix (3-layer review, Story
-  // 20.21 - Patch I): regola riusata da lib/prospetto-ipotetico-torneo.ts
-  // (formatoOttoSquadre/formatoSeiSquadre, rinominate qui per non collidere
-  // coi nomi delle costanti locali) - unica fonte di verita', stesse
-  // funzioni chiamate anche da prenotaSlotIpoteticoAction
-  // (app/app/(torneo)/torneo/actions.ts).
-  const formatoOttoSquadre = calcolaFormatoOttoSquadre(numeroGironeA, numeroGironeB);
-  const formatoSeiSquadre = calcolaFormatoSeiSquadre(numeroGironeA, numeroGironeB);
 
   // Classifica finale MAI persistita - ricalcolata al volo da qui a ogni
   // caricamento della pagina (spec-20-4 Boundaries, stesso principio di
@@ -206,7 +204,7 @@ export default async function TabelloneTorneoPage({
               {statoGironi
                 .map(({ girone, numeroSquadre, squadreSufficienti, risultatiCompleti }) => {
                   if (!squadreSufficienti) {
-                    return `${girone.label}: ${numeroSquadre} squadre (servono almeno 4)`;
+                    return `${girone.label}: ${numeroSquadre} squadre (servono 4 in entrambi i gironi, oppure 3 in entrambi)`;
                   }
                   if (!risultatiCompleti) {
                     return `${girone.label}: ${numeroSquadre} squadre (risultati di girone non ancora completi)`;
