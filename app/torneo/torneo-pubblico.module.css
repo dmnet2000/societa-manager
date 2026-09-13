@@ -604,18 +604,36 @@
 /* Richiesta esplicita dell'utente dopo aver visto il podio dal vivo: la
    tabella delle posizioni 4+ e' a sole 2 colonne (Posizione/Squadra), a
    differenza di .tabellaClassifica condivisa con la classifica di girone
-   (7 colonne, sopra) - "width: 100%" ereditato da li' la allargava a
-   piena pagina senza motivo. "width: 1%" + "white-space: nowrap" sulla
-   prima colonna (trucco standard per una colonna larga quanto il proprio
-   contenuto in table-layout auto) la restringe al minimo; "width: auto" +
-   margini automatici sulla tabella intera la centra sulla pagina invece
-   di occupare tutta la larghezza disponibile. */
+   (7 colonne, sopra) - "width: 100%" di li' la allargava a piena pagina
+   senza motivo. Dichiarata per intero (non "composes: tabellaClassifica" -
+   review fix: il centraggio non risultava applicato dal vivo, probabile
+   ambiguita' di cascata tra le due classi composte) - nessuna ambiguita'
+   di ordine tra due regole separate. "width: 1%" + "white-space: nowrap"
+   sulla prima colonna (trucco standard per una colonna larga quanto il
+   proprio contenuto in table-layout auto) la restringe al minimo; "width:
+   auto" + "margin: 0 auto" sulla tabella intera la centra sulla pagina. */
 .tabellaClassificaFinale {
-  composes: tabellaClassifica;
   width: auto;
   max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto var(--space-4);
+  border-collapse: collapse;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.tabellaClassificaFinale th,
+.tabellaClassificaFinale td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid #e6ebef;
+}
+
+.tabellaClassificaFinale th {
+  font-weight: 700;
+  color: #5b6472;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
 }
 
 .tabellaClassificaFinale th:first-child,
