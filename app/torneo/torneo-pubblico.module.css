@@ -507,3 +507,96 @@
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* Story 20.31 (Epic 20, Torneo Memorial): podio della classifica finale
+   (1°-3° posto) - griglia a 3 colonne, "align-items: end" allinea le card
+   sul fondo cosi' che la card del 1° posto (piu' alta, padding maggiore)
+   emerga verso l'alto senza margini negativi. Il markup resta sempre nello
+   stesso ordine 1°-2°-3° (segue l'ordine di calcolaClassificaFinale) - su
+   schermi larghi "order" sotto sposta visivamente il 2° a sinistra e il 3°
+   resta a destra, sotto i 900px "order" torna al default e l'ordine di
+   lettura naturale (1°-2°-3°) coincide con l'ordine del DOM. */
+.podio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .podio {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
+/* Card podio: stesso taglio diagonale/{rounded.none} di .matchCard, ma
+   contenuto centrato (non e' un incontro con due squadre allineate a
+   sinistra, e' un'unica Squadra su un piedistallo) e uno sfondo dedicato
+   per medaglia invece di {colors.azzurro-partite}. Contrasto testo bianco
+   verificato: #7A5C00 (oro) 6.25:1, #5B6472 (argento, stesso hex gia' in
+   uso per .matchCardCompletata - riusato qui, non un terzo grigio nuovo)
+   5.98:1, #7A4B27 (bronzo) 7.34:1 - tutti sopra la soglia AA 4.5:1. */
+.cardPodio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  color: #ffffff;
+  padding: var(--space-4);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.cardPodioPrimo {
+  background: #7a5c00;
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-8);
+}
+
+.cardPodioSecondo {
+  background: #5b6472;
+}
+
+.cardPodioTerzo {
+  background: #7a4b27;
+}
+
+@media (min-width: 901px) {
+  .cardPodioPrimo {
+    order: 2;
+  }
+
+  .cardPodioSecondo {
+    order: 1;
+  }
+
+  .cardPodioTerzo {
+    order: 3;
+  }
+}
+
+.medaglia {
+  font-size: 32px;
+  line-height: 1;
+}
+
+/* {typography.display-card} - stessa tipografia di .squadre in .matchCard,
+   qui per il numero di posizione. */
+.posizionePodio {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.nomeSquadraPodio {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}

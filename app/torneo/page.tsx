@@ -23,6 +23,14 @@ import { FooterPubblico } from "../FooterPubblico";
 import { TabellaIncontriCategoria } from "./TabellaIncontriCategoria";
 import styles from "./torneo-pubblico.module.css";
 
+// Story 20.31 (Epic 20, Torneo Memorial): podio della classifica finale -
+// indice 0/1/2 delle prime 3 righe di calcolaClassificaFinale (sempre 1°/2°/
+// 3° in quell'ordine) mappato sull'emoji medaglia e sulla classe CSS che
+// posiziona la card nell'ordine visivo 2°-1°-3° su schermi larghi
+// (torneo-pubblico.module.css, .cardPodioPrimo/Secondo/Terzo).
+const MEDAGLIE_PODIO = ["🥇", "🥈", "🥉"];
+const CLASSI_PODIO = [styles.cardPodioPrimo, styles.cardPodioSecondo, styles.cardPodioTerzo];
+
 // Mostrato dentro ogni match-card (girone/semifinale/finale) SOLO quando la
 // Partita ha uno Slot assegnato - "Naviga" riusa costruisciLinkNaviga TALE E
 // QUALE (lib/link-naviga-palestra.ts, gia' verificata dal vivo altrove nel
@@ -680,22 +688,46 @@ export default async function TorneoPubblicoPage() {
                           incontri del tabellone.
                         </p>
                       ) : (
-                        <table className={styles.tabellaClassifica}>
-                          <thead>
-                            <tr>
-                              <th>Posizione</th>
-                              <th>Squadra</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {classificaFinale.map((riga) => (
-                              <tr key={riga.squadra.id}>
-                                <td>{riga.posizione}°</td>
-                                <td>{riga.squadra.nome}</td>
-                              </tr>
+                        <>
+                          {/* Story 20.31: le prime 3 posizioni diventano un podio
+                              (2°-1°-3° su schermi larghi, 1°-2°-3° impilato sotto i
+                              900px) - calcolaClassificaFinale restituisce sempre
+                              l'array ordinato per posizione crescente a partire da
+                              1 (lib/classifica-finale-torneo.ts), l'indice coincide
+                              quindi con "posizione - 1" per le prime 3 righe. */}
+                          <div className={styles.podio}>
+                            {classificaFinale.slice(0, 3).map((riga, indice) => (
+                              <div
+                                key={riga.squadra.id}
+                                className={`${styles.cardPodio} ${CLASSI_PODIO[indice]}`}
+                              >
+                                <div className={styles.medaglia} aria-hidden="true">
+                                  {MEDAGLIE_PODIO[indice]}
+                                </div>
+                                <div className={styles.posizionePodio}>{riga.posizione}°</div>
+                                <div className={styles.nomeSquadraPodio}>{riga.squadra.nome}</div>
+                              </div>
                             ))}
-                          </tbody>
-                        </table>
+                          </div>
+                          {classificaFinale.length > 3 && (
+                            <table className={styles.tabellaClassifica}>
+                              <thead>
+                                <tr>
+                                  <th>Posizione</th>
+                                  <th>Squadra</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {classificaFinale.slice(3).map((riga) => (
+                                  <tr key={riga.squadra.id}>
+                                    <td>{riga.posizione}°</td>
+                                    <td>{riga.squadra.nome}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </>
                       )}
                     </>
                   )}
