@@ -710,7 +710,7 @@ export default async function TorneoPubblicoPage() {
                             ))}
                           </div>
                           {classificaFinale.length > 3 && (
-                            <table className={styles.tabellaClassifica}>
+                            <table className={styles.tabellaClassificaFinale}>
                               <thead>
                                 <tr>
                                   <th>Posizione</th>
