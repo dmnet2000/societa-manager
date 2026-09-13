@@ -366,25 +366,37 @@ export default async function TorneoPubblicoPage() {
                               </p>
                             ) : (
                               <div className={styles.matchGrid}>
-                                {partiteDelGirone.map((partita) => (
-                                  <div className={styles.matchCard} key={partita.id}>
-                                    {/* Story 20.11: numero di gara progressivo
-                                        dell'Edizione, sempre calcolato
-                                        server-side. */}
-                                    <div className={styles.numeroGara}>Gara {partita.numero}</div>
-                                    <div className={styles.squadre}>
-                                      <span>{partita.squadraCasa.nome}</span>
-                                      <span className={styles.vs}>vs</span>
-                                      <span>{partita.squadraOspite.nome}</span>
+                                {partiteDelGirone.map((partita) => {
+                                  // Richiesta esplicita dell'utente: distinguere a colpo
+                                  // d'occhio le partite gia' giocate da quelle ancora in
+                                  // programma - risultatoTesto gia' calcolato una sola volta
+                                  // e riusato sia per il colore sia per il testo della card.
+                                  const risultatoTesto = formattaRisultatoPartitaTorneo(partita);
+                                  return (
+                                    <div
+                                      className={
+                                        risultatoTesto
+                                          ? `${styles.matchCard} ${styles.matchCardCompletata}`
+                                          : styles.matchCard
+                                      }
+                                      key={partita.id}
+                                    >
+                                      {/* Story 20.11: numero di gara progressivo
+                                          dell'Edizione, sempre calcolato
+                                          server-side. */}
+                                      <div className={styles.numeroGara}>Gara {partita.numero}</div>
+                                      <div className={styles.squadre}>
+                                        <span>{partita.squadraCasa.nome}</span>
+                                        <span className={styles.vs}>vs</span>
+                                        <span>{partita.squadraOspite.nome}</span>
+                                      </div>
+                                      <div className={styles.meta}>
+                                        {risultatoTesto ?? <em>In programma</em>}
+                                      </div>
+                                      <MetaSlot slotTorneo={partita.slotTorneo} />
                                     </div>
-                                    <div className={styles.meta}>
-                                      {formattaRisultatoPartitaTorneo(partita) ?? (
-                                        <em>In programma</em>
-                                      )}
-                                    </div>
-                                    <MetaSlot slotTorneo={partita.slotTorneo} />
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </>
@@ -562,74 +574,100 @@ export default async function TorneoPubblicoPage() {
                           <div key={tabellone.value} className={styles.blocoTabellone}>
                             <p className={styles.etichettaSettimana}>{tabellone.label}</p>
                             <div className={styles.matchGrid}>
-                              {semifinali.map((partita) => (
-                                <div className={styles.matchCard} key={partita.id}>
-                                  {/* Story 20.11: numero di gara progressivo
-                                      dell'Edizione, sempre calcolato
-                                      server-side. */}
-                                  <div className={styles.numeroGara}>Gara {partita.numero}</div>
-                                  <div className={styles.categoria}>Semifinale</div>
-                                  <div className={styles.squadre}>
-                                    <span>{partita.squadraCasa.nome}</span>
-                                    <span className={styles.vs}>vs</span>
-                                    <span>{partita.squadraOspite.nome}</span>
+                              {semifinali.map((partita) => {
+                                const risultatoTesto = formattaRisultatoPartitaTorneo(partita);
+                                return (
+                                  <div
+                                    className={
+                                      risultatoTesto
+                                        ? `${styles.matchCard} ${styles.matchCardCompletata}`
+                                        : styles.matchCard
+                                    }
+                                    key={partita.id}
+                                  >
+                                    {/* Story 20.11: numero di gara progressivo
+                                        dell'Edizione, sempre calcolato
+                                        server-side. */}
+                                    <div className={styles.numeroGara}>Gara {partita.numero}</div>
+                                    <div className={styles.categoria}>Semifinale</div>
+                                    <div className={styles.squadre}>
+                                      <span>{partita.squadraCasa.nome}</span>
+                                      <span className={styles.vs}>vs</span>
+                                      <span>{partita.squadraOspite.nome}</span>
+                                    </div>
+                                    <div className={styles.meta}>
+                                      {risultatoTesto ?? <em>In programma</em>}
+                                    </div>
+                                    <MetaSlot slotTorneo={partita.slotTorneo} />
                                   </div>
-                                  <div className={styles.meta}>
-                                    {formattaRisultatoPartitaTorneo(partita) ?? (
-                                      <em>In programma</em>
-                                    )}
-                                  </div>
-                                  <MetaSlot slotTorneo={partita.slotTorneo} />
-                                </div>
-                              ))}
-                              {finaleVincenti && (
-                                <div className={styles.matchCard} key={finaleVincenti.id}>
-                                  {/* Story 20.11: numero di gara progressivo
-                                      dell'Edizione, sempre calcolato
-                                      server-side. */}
-                                  <div className={styles.numeroGara}>
-                                    Gara {finaleVincenti.numero}
-                                  </div>
-                                  <div className={styles.categoria}>
-                                    {tabellone.etichettaVincenti}
-                                  </div>
-                                  <div className={styles.squadre}>
-                                    <span>{finaleVincenti.squadraCasa.nome}</span>
-                                    <span className={styles.vs}>vs</span>
-                                    <span>{finaleVincenti.squadraOspite.nome}</span>
-                                  </div>
-                                  <div className={styles.meta}>
-                                    {formattaRisultatoPartitaTorneo(finaleVincenti) ?? (
-                                      <em>In programma</em>
-                                    )}
-                                  </div>
-                                  <MetaSlot slotTorneo={finaleVincenti.slotTorneo} />
-                                </div>
-                              )}
-                              {finalePerdenti && (
-                                <div className={styles.matchCard} key={finalePerdenti.id}>
-                                  {/* Story 20.11: numero di gara progressivo
-                                      dell'Edizione, sempre calcolato
-                                      server-side. */}
-                                  <div className={styles.numeroGara}>
-                                    Gara {finalePerdenti.numero}
-                                  </div>
-                                  <div className={styles.categoria}>
-                                    {tabellone.etichettaPerdenti}
-                                  </div>
-                                  <div className={styles.squadre}>
-                                    <span>{finalePerdenti.squadraCasa.nome}</span>
-                                    <span className={styles.vs}>vs</span>
-                                    <span>{finalePerdenti.squadraOspite.nome}</span>
-                                  </div>
-                                  <div className={styles.meta}>
-                                    {formattaRisultatoPartitaTorneo(finalePerdenti) ?? (
-                                      <em>In programma</em>
-                                    )}
-                                  </div>
-                                  <MetaSlot slotTorneo={finalePerdenti.slotTorneo} />
-                                </div>
-                              )}
+                                );
+                              })}
+                              {finaleVincenti &&
+                                (() => {
+                                  const risultatoTesto = formattaRisultatoPartitaTorneo(finaleVincenti);
+                                  return (
+                                    <div
+                                      className={
+                                        risultatoTesto
+                                          ? `${styles.matchCard} ${styles.matchCardCompletata}`
+                                          : styles.matchCard
+                                      }
+                                      key={finaleVincenti.id}
+                                    >
+                                      {/* Story 20.11: numero di gara progressivo
+                                          dell'Edizione, sempre calcolato
+                                          server-side. */}
+                                      <div className={styles.numeroGara}>
+                                        Gara {finaleVincenti.numero}
+                                      </div>
+                                      <div className={styles.categoria}>
+                                        {tabellone.etichettaVincenti}
+                                      </div>
+                                      <div className={styles.squadre}>
+                                        <span>{finaleVincenti.squadraCasa.nome}</span>
+                                        <span className={styles.vs}>vs</span>
+                                        <span>{finaleVincenti.squadraOspite.nome}</span>
+                                      </div>
+                                      <div className={styles.meta}>
+                                        {risultatoTesto ?? <em>In programma</em>}
+                                      </div>
+                                      <MetaSlot slotTorneo={finaleVincenti.slotTorneo} />
+                                    </div>
+                                  );
+                                })()}
+                              {finalePerdenti &&
+                                (() => {
+                                  const risultatoTesto = formattaRisultatoPartitaTorneo(finalePerdenti);
+                                  return (
+                                    <div
+                                      className={
+                                        risultatoTesto
+                                          ? `${styles.matchCard} ${styles.matchCardCompletata}`
+                                          : styles.matchCard
+                                      }
+                                      key={finalePerdenti.id}
+                                    >
+                                      {/* Story 20.11: numero di gara progressivo
+                                          dell'Edizione, sempre calcolato
+                                          server-side. */}
+                                      <div className={styles.numeroGara}>
+                                        Gara {finalePerdenti.numero}
+                                      </div>
+                                      <div className={styles.categoria}>
+                                        {tabellone.etichettaPerdenti}
+                                      </div>
+                                      <div className={styles.squadre}>
+                                        <span>{finalePerdenti.squadraCasa.nome}</span>
+                                        <span className={styles.vs}>vs</span>
+                                        <span>{finalePerdenti.squadraOspite.nome}</span>
+                                      </div>
+                                      <div className={styles.meta}>
+                                        {risultatoTesto ?? <em>In programma</em>}
+                                      </div>
+                                      <MetaSlot slotTorneo={finalePerdenti.slotTorneo} />
+                                    </div>
+                                  );
+                                })()}
                             </div>
                           </div>
                         );

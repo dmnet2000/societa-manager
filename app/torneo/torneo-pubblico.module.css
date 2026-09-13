@@ -364,6 +364,21 @@
   clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
 
+/* Richiesta esplicita dell'utente: distinguere a colpo d'occhio le partite
+   gia' giocate (risultato inserito) da quelle ancora in programma - sfondo
+   {colors.grigio} #5B6472 (stesso hex gia' in uso in questo modulo per
+   .titoloGirone/.tabellaIncontri th, nessun nuovo colore introdotto) al
+   posto di {colors.azzurro-partite}, che resta cosi' riservato alle
+   partite ancora da giocare (piu' "vive", meritano piu' risalto).
+   Contrasto testo verificato: bianco 5.98:1, {colors.testo-chiaro-partite}
+   #EAF4FB 5.37:1, {colors.magenta-chiaro} #FFCBE6 4.25:1 - tutti pari o
+   superiori ai valori gia' verificati su {colors.azzurro-partite}
+   (rispettivamente 5.46:1/4.89:1/3.88:1), nessuna regressione di
+   leggibilita' sugli stessi elementi (.squadre, .categoria/.meta, .vs). */
+.matchCardCompletata {
+  background: #5b6472;
+}
+
 /* {typography.label-tag} + {colors.testo-chiaro-partite} #EAF4FB - stesso
    token di .categoria in calendario.module.css, qui usata per l'etichetta
    di fase (Semifinale/Finale 1°-2° posto/ecc.) nel tabellone. */
