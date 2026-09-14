@@ -8,7 +8,13 @@
    amministrativo, design diverso - spec-20-6 Boundaries). Nessun nuovo
    custom property in app/globals.css: stessa disciplina delle due pagine
    mirror, hex letterali commentati con il nome del token DESIGN.md
-   d'origine, eccezione solo per i valori con hex identico gia' verificati. */
+   d'origine, eccezione solo per i valori con hex identico gia' verificati.
+   Story 20.32 (richiesta esplicita dell'utente, leggibilita' mobile): .squadre
+   qui ha guadagnato flex-wrap e una riduzione font-size sotto i 900px non
+   presenti nell'equivalente .squadre di calendario.module.css - il "mirror
+   stilistico" dichiarato sopra non e' piu' letterale su questo specifico
+   dettaglio, divergenza intenzionale e scoped alla sola /torneo (bug
+   segnalato solo li'), non retrofittata su /calendario. */
 
 /* Story 20.14: contenuto centrato su schermi larghi - allora unica
    eccezione esplicita e confermata con l'utente al "mirror stilistico"
@@ -400,10 +406,17 @@
   composes: categoria;
 }
 
-/* {typography.display-card}. */
+/* {typography.display-card}. Richiesta esplicita dell'utente: su schermo
+   cellulare il contenuto delle match-card (nomi squadra) non risultava
+   interamente leggibile. flex-wrap: wrap (sempre attivo, non solo sotto
+   breakpoint) evita che due nomi squadra lunghi restino forzati su un'unica
+   riga piu' larga della card - senza wrap, il taglio diagonale/overflow:
+   hidden di .matchCard tagliava silenziosamente il testo in eccesso invece
+   di semplicemente andare a capo. */
 .squadre {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
   font-size: 20px;
@@ -411,10 +424,31 @@
   line-height: 1.15;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  /* Review fix (Blind Hunter, Story 20.32): flex-wrap sposta a capo un nome
+     squadra INTERO su una riga propria, ma un singolo nome senza spazi
+     resterebbe comunque piu' largo della card - overflow-wrap lo spezza
+     anche internamente se necessario, invece di farlo tagliare in
+     silenzio da .matchCard { overflow: hidden }. */
+  overflow-wrap: break-word;
+}
+
+/* Stesso breakpoint di .titolo/.matchGrid sopra (unico usato in questo
+   modulo) - riduce la dimensione del nome squadra sotto i 900px, mirror
+   dello stesso trattamento gia' riservato al solo titolo di pagina. Senza
+   questa regola il font-size restava fisso a 20px indipendentemente dalla
+   larghezza schermo, la causa piu' diretta del testo troppo grande
+   segnalato su mobile. */
+@media (max-width: 900px) {
+  .squadre {
+    font-size: 16px;
+  }
 }
 
 /* {colors.magenta-chiaro} #FFCBE6 - stesso valore/motivo di .vs in
-   calendario.module.css. */
+   calendario.module.css (qui pero' solo per il colore: font-size: inherit
+   eredita da .squadre, quindi da Story 20.32 in poi ".vs" scende anch'esso
+   a 16px sotto i 900px insieme al nome squadra - stesso meccanismo,
+   nessuna regola propria da mantenere allineata). */
 .vs {
   color: #ffcbe6;
   font-size: inherit;
@@ -423,7 +457,11 @@
 
 /* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB, stesso
    padding-left di .meta in calendario.module.css (evita il testo a ridosso
-   del taglio diagonale in basso a sinistra). */
+   del taglio diagonale in basso a sinistra). Story 20.32: ne' questa ne'
+   .categoria/.numeroGara sopra (11px) sono state ridotte ulteriormente
+   sotto i 900px - gia' compatte, non l'elemento segnalato come "troppo
+   grande" dall'utente (i nomi squadra in .squadre, 20px, erano il
+   problema reale). */
 .meta {
   padding-left: var(--space-4);
   font-family: Arial, sans-serif;

@@ -4,7 +4,7 @@
 
 ## Goal
 
-Dare alla società uno strumento completo per gestire il Torneo Memorial annuale: creare edizioni e categorie, iscrivere squadre (anche esterne) nei gironi, registrare risultati con calcolo automatico di punti e classifiche, generare il tabellone di semifinale/finale, programmare gli incontri su palestre/orari, e pubblicare tutto (classifiche, tabellone, volantino) in una sezione pubblica del sito coerente con il resto del sito. L'epica non è presente nei documenti di pianificazione originali (PRD/architettura/UX risalgono al 2026-07-13, l'epica è stata aggiunta il 2026-08-19 su richiesta esplicita dell'utente): i vincoli sotto derivano dal testo dell'epica stessa e dai pattern architetturali/di design generali del progetto applicati per analogia.
+Dare alla società la gestione end-to-end del torneo annuale "Memorial": creazione dell'edizione e delle categorie, iscrizione delle squadre (anche esterne, non collegate ai Gruppi interni) nei due gironi all'italiana, inserimento risultati con calcolo automatico di punti/classifica, generazione automatica del tabellone di semifinale/finale per il posizionamento 1°-8°, pianificazione di slot orari/palestre/campi per gli incontri, e una sezione pubblica sul sito che mostra volantino, classifiche, tabellone e risultati senza che il pubblico debba chiedere informazioni. Nota: nessun documento di pianificazione (PRD, architettura, brief, UX designs) datato prima del 2026-08-19 menziona il Torneo — l'epica è stata aggiunta dopo la loro stesura; il contesto sotto deriva dall'epica stessa e dai pattern architetturali/di design trasversali già stabiliti per il resto del progetto, che l'epica esplicitamente riusa.
 
 ## Stories
 
@@ -23,46 +23,44 @@ Dare alla società uno strumento completo per gestire il Torneo Memorial annuale
 - Story 20.13: Nome personalizzato delle Settimane del Torneo
 - Story 20.14: Contenuti centrati nella pagina pubblica del Torneo
 - Story 20.15: Vista tabellare delle squadre iscritte per Girone
-- Story 20.16: Punti realizzati nei set e quoziente set/punti come spareggio
-- Story 20.17: Sfondo grigio chiaro su `/torneo` e ordinamento griglie per Slot
-- Story 20.18: Campi delle Palestre nella generazione in blocco degli Slot
-- Story 20.19: Vista tabellare di tutti gli incontri di una Categoria
+- Story 20.16: Punti realizzati nei set e nuovo criterio di spareggio (quoziente set/punti)
+- Story 20.17: Sfondo grigio chiaro su `/torneo` e ordinamento delle griglie incontri per Slot
+- Story 20.18: Campi delle Palestre nella generazione in blocco degli Slot di girone
+- Story 20.19: Vista tabellare di tutti gli incontri di una Categoria su `/torneo`
 
 ## Requirements & Constraints
 
-- Un'edizione annuale copre in genere 2 weekend ("settimane") con 2 categorie a weekend, fino a 8 squadre per categoria, divise in 2 gironi all'italiana (tutti contro tutti nel proprio girone).
-- Ogni incontro è al meglio dei 3 set; punteggio incontro: 3 punti (2-0), 2 punti (2-1), 1 punto (1-2), 0 punti (0-2). Un punteggio incoerente con "al meglio dei 3" è rifiutato con errore esplicito.
-- Classifica di girone: ordinata per punti totali; a parità, quoziente set (set vinti/persi) e poi quoziente punti realizzati/subiti nei set decidono lo spareggio, poi alfabetico come fallback finale (il criterio "set vinti assoluti" iniziale è stato sostituito dai quozienti). Denominatore zero nei quozienti va gestito esplicitamente (es. come valore massimo), mai come errore di divisione.
-- Tabellone eliminazione diretta: 1°-4° posto da 1°/2° di ciascun girone (incrocio 1°A-2°B, 1°B-2°A), 5°-8° posto da 3°/4° di ciascun girone, stesso schema di incrocio; generabile solo a classifiche di girone complete.
-- Le squadre del torneo (anche club esterni) sono un'entità propria, indipendente da Gruppo/Atleta/Allenatore della società.
-- Gestione riservata a ADMIN/DIRIGENTE (stesso perimetro di Epic 10 Campionati/Partite); nessun nuovo Ruolo introdotto per l'epica.
-- Ogni entità cancellabile deve rifiutare l'eliminazione in presenza di dipendenze (edizione con categorie/squadre iscritte, categoria con squadre, squadra con incontri) finché non esiste un percorso di pulizia esplicito (Story 20.8 lo introduce per le partite).
-- Volantino: immagine PNG/JPEG, max 2MB, stessa validazione già in uso nel progetto per l'immagine hero pubblica.
-- Numero di gara: intero progressivo per edizione (non per categoria), mai editabile a mano, calcolato server-side, protetto da vincolo unico DB contro collisioni concorrenti.
+- Gestione riservata ad Admin/Dirigente (`requireRuolo(["ADMIN","DIRIGENTE"])`), stesso perimetro già in uso per il dominio sportivo (Campionati/Partite); un utente senza quei ruoli viene reindirizzato, stesso pattern di ogni altra rotta protetta.
+- Ogni nuova tabella strutturale del torneo va in `ENABLE RLS` con `REVOKE` espliciti, anche se non è prevista alcuna policy applicativa per essa — non basta assumere l'assenza di GRANT (convenzione fissata dopo che 17 tabelle risultarono esposte pubblicamente per omissione).
+- Eliminazioni con dipendenze sono fail-closed (stesso principio già in uso altrove): un'Edizione non si elimina con Categorie/Squadre iscritte, una Categoria non si elimina con Squadre, una Squadra non si elimina con incontri registrati — salvo la via di sblocco esplicita introdotta da Story 20.8 (cancellazione di tutte le partite di una Categoria).
+- Upload immagine (volantino) segue lo stesso pattern di validazione già in uso per la foto hero: PNG/JPEG, 2MB, tramite `lib/storage/validazione-immagine.ts`; un file non conforme è rifiutato con lo stesso messaggio già usato altrove.
+- La sezione pubblica non deve mai mostrare tabelle/errori fuorvianti quando mancano ancora dati (es. Categoria senza risultati, Categoria senza incontri generati) — mostrare lo stato reale (squadre iscritte senza classifica, nessun pulsante se non c'è nulla da elencare) invece di un vuoto ambiguo.
 
 ## Technical Decisions
 
-- Nuove tabelle strutturali (EdizioneTorneo, CategoriaTorneo, SquadraTorneo, PartitaTorneo, SlotTorneo): come ogni tabella strutturale del progetto vanno messe in ENABLE RLS con REVOKE espliciti, anche quando l'accesso applicativo passa comunque da un ruolo privilegiato.
-- Riuso diretto (nessuna nuova anagrafica) delle entità Palestra e Campo già esistenti per l'assegnazione delle partite a orari/luoghi; SlotTorneo è scoped per Edizione (non per Categoria), perché più categorie giocano in parallelo nello stesso weekend.
-- Unione discriminata fase/tabellone: `fase = GIRONE ⟺ tabellone IS NULL` è imposta sia su PartitaTorneo sia su SlotTorneo, con lo stesso vincolo a livello DB.
-- Assegnazione Slot: manuale per il girone; automatica best-effort (primo slot libero della fase/tabellone corretti) al momento della generazione per semifinali/finali; sempre modificabile a mano dopo; nessun blocco se mancano slot (il torneo funziona comunque).
-- Riuso di pattern esistenti: validazione/storage immagine già in uso per la foto hero pubblica (bucket pubblico dedicato per il volantino); calcolo/link "Naviga" verso una palestra già in uso su `/calendario`.
-- Generazione in blocco degli slot di girone: una riga selezionabile per ciascun Campo di ciascuna Palestra (preselezionate di default), letta sempre server-side; una Palestra senza Campi resta una riga singola.
+- Data access: le nuove tabelle del torneo sono "non protette da RLS applicativa" nel senso di AD-9 (accesso via Prisma con connessione privilegiata), ma restano comunque `ENABLE RLS` + `REVOKE` per la convenzione di sicurezza del progetto (vedi Requirements).
+- Naming: modelli Prisma in italiano, PascalCase singolare (`EdizioneTorneo`, `CategoriaTorneo`, `SquadraTorneo`, `PartitaTorneo`, `SlotTorneo`); Id come UUID; date in formato ISO/lessicograficamente ordinabile; Server Action con verbo esplicito (es. `generaCalendarioGironiAction`, `generaTabelloneAction`); errori come `{ error: { code, message } }`.
+- Modello: `SquadraTorneo` è un'entità leggera indipendente da `Gruppo`/`Atleta`/`Allenatore` (il torneo ospita anche club esterni) — nessun riuso diretto del modello Campionato/Partita di Epic 10, solo un riferimento di pattern per struttura risultato/parziali.
+- Regolamento: girone all'italiana, incontri al meglio dei 3 set, punti incontro 3 (vittoria 2-0) / 2 (vittoria 2-1) / 1 (sconfitta 1-2) / 0 (sconfitta 2-0). Classifica di girone: punti desc, poi (dopo Story 20.16) quoziente set desc, poi quoziente punti desc, poi alfabetico — sostituisce il criterio "set vinti assoluti" di Story 20.3.
+- Tabellone: incrocio standard 1°girone A-2°girone B / 1°girone B-2°girone A per il posizionamento 1°-4°, stesso schema con 3°/4° per il posizionamento 5°-8°; finali generate automaticamente come side-effect quando le semifinali sono risolte.
+- `SlotTorneo` è scoped per Edizione (non per Categoria), riusa `Palestra`/`Campo` (Epic 2) via FK dirette e l'enum `FaseTorneo`/union discriminata già in uso su `PartitaTorneo` (fase GIRONE ⟺ tabellone NULL); `PartitaTorneo.slotTorneoId` è nullable, l'assegnazione è sempre best-effort (mai bloccante) e sempre modificabile a mano.
+- Numerazione gare (`PartitaTorneo.numero`) è per Edizione (sequenza unica cross-categoria), mai editabile a mano, protetta da vincolo unico DB contro race di generazione concorrente.
+- Riuso diretto: link "Naviga" verso la palestra (`lib/link-naviga-palestra.ts`), stesso meccanismo di `/calendario`.
 
 ## UX & Interaction Patterns
 
-- La sezione pubblica `/torneo` segue il sistema di design "Poster Sportivo" già in uso nel resto del sito pubblico (nessuno stile ad hoc): sfondo grigio chiaro coerente con la pagina Squadre (non bianco), nessun riquadro bianco/ombra per sezione (contenuto direttamente su sfondo pagina, mirror della pagina Calendario), contenuto centrato con larghezza massima su schermi ampi senza regressioni mobile.
-- Finché una categoria non ha risultati, si mostrano le squadre iscritte senza classifica (mai una tabella vuota fuorviante); le squadre iscritte per girone si presentano in un'unica tabella con una colonna per girone.
-- Gli incontri nelle griglie (girone e semifinali) sono ordinati per data/ora dello slot assegnato; un incontro senza slot va sempre in fondo.
-- Una vista tabellare completa di tutti gli incontri di una categoria (gironi + semifinali + finali) è disponibile dietro un pulsante di attivazione per categoria, sempre in aggiunta alla vista a card esistente, mai in sostituzione.
-- La pagina di gestione interna (area riservata) e la pagina pubblica restano moduli CSS/percorso separati: una modifica visiva a una non deve mai propagarsi involontariamente all'altra.
+- Registro visivo "Poster Sportivo" (DESIGN.md/EXPERIENCE.md, 2026-08-13): nessun webfont, solo stack di sistema (`Arial Black`/`Arial Narrow`/`Impact`/`Arial`), tagli diagonali, blocchi colore pieni; da riusare tale e quale, nessuno stile ad hoc per il torneo.
+- Le pagine pubbliche del sito non hanno oggi un contenitore centrato a livello pagina (solo blocchi isolati); `/torneo` introduce la prima eccezione (Story 20.14, scope limitato alla sola pagina, non un retrofit delle altre).
+- Sezioni pubbliche mostrate direttamente sullo sfondo pagina, senza riquadro bianco/ombra per sotto-sezione (mirror di `.sezioneSettimana` in `/calendario`) — lo sfondo di `/torneo` è grigio chiaro `#F2F5F7` (stesso valore di `/squadre`), diverso dal bianco di `/calendario`/`/staff`/`/contatti`.
+- Griglie di incontri (grafiche) restano sempre visibili; viste tabellari sono aggiuntive, dietro un pulsante esplicito che le rivela per singola Categoria (stato indipendente per Categoria), mai un toggle che nasconde la griglia grafica.
 
 ## Cross-Story Dependencies
 
-- Catena dati di base: 20.2 richiede 20.1 (categoria); 20.3 richiede 20.2 (squadre/gironi); 20.4 richiede 20.3 (classifiche di girone complete); 20.6 (vetrina pubblica) richiede tutte le 20.1-20.5.
-- 20.7 (nome edizione) e 20.13 (nome settimane) estendono il modello di Edizione usato ovunque da 20.1/20.6.
-- 20.8 dipende dalle regole di cancellazione introdotte in 20.1/20.2 e sblocca la catena Squadra→Categoria→Edizione.
-- 20.9 introduce lo Slot e si aggancia alla generazione automatica di semifinali/finali di 20.4; 20.11 (numerazione), 20.12 e 20.18 (generazione in blocco per Campo) estendono ulteriormente 20.9.
-- 20.10, 20.14 e 20.17 sono iterazioni successive sullo stesso file di stile della pagina pubblica: ciascuna deve preservare le decisioni delle precedenti (rimozione riquadro bianco, poi centratura, poi sfondo grigio + ordinamento per slot).
-- 20.15 e 20.19 aggiungono viste sulla stessa pagina pubblica senza toccare le viste/i dati esistenti.
-- 20.16 sovrascrive esplicitamente il criterio di spareggio stabilito in 20.3 e deve riflettersi identicamente sia sulla vista pubblica sia su quella admin dei risultati.
+- Catena dati: 20.1 (Edizione/Categoria) → 20.2 (Squadre/gironi) → 20.3 (calendario/risultati/classifica girone) → 20.4 (tabellone/classifica finale). 20.5 (volantino) e 20.7 (nome edizione) estendono `EdizioneTorneo` indipendentemente. 20.6 (vetrina pubblica) consuma tutte le 20.1-20.5.
+- 20.8 (cancellazione partite) sblocca la catena di eliminazione altrimenti bloccata da 20.2/20.3/20.4 non appena esiste un calendario.
+- 20.9 (Slot) introduce `SlotTorneo` e il campo `PartitaTorneo.slotTorneoId`, riusato da 20.12 (generazione in blocco), 20.17 (ordinamento incontri per Slot) e 20.18 (Campi negli Slot di girone, estende 20.12).
+- 20.11 (numero progressivo) è prerequisito informativo di 20.19 (vista tabellare, ordina per `numero`).
+- 20.10 → 20.14 → 20.17 sono modifiche CSS/layout sequenziali sulla stessa pagina pubblica (`app/torneo/torneo-pubblico.module.css`/`page.tsx`), ciascuna verificata dal vivo dopo il deploy della precedente — non toccano mai le pagine admin.
+- 20.16 (quoziente set/punti) sostituisce il criterio di spareggio stabilito in 20.3 e deve riflettersi identicamente sia in `/torneo` pubblico sia nella pagina admin risultati.
+- 20.13 (nome Settimane) è indipendente ma mirror diretto del pattern di 20.7 sullo stesso modello `EdizioneTorneo`.
+- 20.15/20.19 sono viste di sola lettura sulla pagina pubblica, esplicitamente fuori scope per le pagine admin equivalenti.

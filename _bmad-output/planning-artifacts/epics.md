@@ -3640,3 +3640,23 @@ so that posso capire l'interesse reale verso il sito senza dover interrogare dir
 2. **And** nessuna pagina autenticata (`/app/*`) carica lo script - solo il sito pubblico è tracciato
 3. **And** se la variabile d'ambiente non è impostata, nessuno script viene caricato e nessuna pagina ne risente (nessun errore, nessun elemento rotto)
 4. **And** nessun nuovo cookie viene impostato dal sito per effetto di questa story (Cloudflare Web Analytics è cookie-less by design) - nessuna modifica al banner cookie esistente
+
+## Epic 23: Fotogallery pubblica su Google Drive
+
+*(Aperto 2026-09-14, richiesta esplicita dell'utente: "vorrei creare per il sito statico una fotogallery, ma le foto andranno caricate da google drive". Studio di fattibilità condotto in party mode col team software-development (Mary/John/Sally/Winston/Amelia) prima di aprire questa epica - vedi memoria della party (`_bmad-output/party-mode/memories/installed/.memlog.md`) per il percorso della discussione. Elenco APERTO come Epic 9/11/17/18/21 - nessuna story ancora scritta, tre decisioni restano da chiudere con l'utente prima che la prima story sia specificabile con Acceptance Criteria reali (vedi "Decisioni aperte" sotto).*
+
+*Vincolo di partenza che ha guidato tutto il design: evitare di usare/pagare storage Supabase per le foto - Google Drive resta la fonte reale dei file.*
+
+*Design convergente dalla party (vincolante per le story, salvo rinegoziazione esplicita con l'utente):*
+- *Upload dal gestionale (Admin/Dirigente), non da una cartella Drive condivisa liberamente - una Server Action mirror di quelle esistenti per foto squadra (Story 19.4)/sponsor, con resize e correzione orientamento EXIF fatti lato nostro PRIMA di qualunque scrittura su Drive.*
+- *Storage reale su Google Drive: scrittura via OAuth2 su un account Google del club GIA' ESISTENTE (non un service account - i service account hanno quota storage zero di default e richiederebbero una Shared Drive/Google Workspace a pagamento per scrivere file, opzione scartata in party per costo). Refresh token salvato nei secret di Cloudflare Workers.*
+- *Nessuna coda di moderazione separata: l'upload passa già dal gestionale (Admin/Dirigente), quindi è già moderato per costruzione.*
+- *Modello dati: nuova tabella tipo `FotoGalleria` (mirror di `SponsorBanner`/`PaginaPubblica`) con almeno `driveFileId` + metadati.*
+- *Lettura pubblica: MAI esporre link Drive diretti al Visitatore (fragili, rate-limited, Drive non è pensato come CDN) - una route Worker dedicata (es. `/api/galleria/[fotoId]`) scarica da Drive via lo stesso token e la serve con cache edge Cloudflare (Cache API), nessuno storage persistente nostro.*
+- *Gestione errori: se il refresh token OAuth scade/viene revocato, l'upload deve fallire con un errore esplicito per l'Admin ("riautentica l'account Google del club"), mai un salvataggio parziale con `driveFileId` orfano in DB senza file reale dietro.*
+- *Rischio accettato consapevolmente dall'utente in party: la scrittura su Drive dipende da un account Google di una persona reale del club (quello già esistente), non da un'identità del club stessa - se quella persona lascia il club o revoca l'accesso, l'upload smette di funzionare finché non si riautentica.*
+
+*Decisioni aperte (da chiudere con l'utente, in fase di clarify della prima story):*
+1. *Organizzazione della galleria: una sezione per Squadra/evento con sottocartelle Drive distinte, o un flusso unico cronologico? Cambia sia lo schema dati sia la UI pubblica.*
+2. *Metadati per foto: serve una didascalia? una data? un collegamento a Squadra/evento?*
+3. *Dove vive l'upload nel gestionale: una sezione dedicata nuova, o dentro una pagina esistente (es. la stessa di foto squadra)?*
