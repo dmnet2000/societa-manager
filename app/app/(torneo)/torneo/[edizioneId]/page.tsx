@@ -93,6 +93,8 @@ export default async function EdizioneTorneoPage({
           edizioneTorneoId={edizione.id}
           nomeSettimana1={edizione.nomeSettimana1}
           nomeSettimana2={edizione.nomeSettimana2}
+          nascondiConcluseSettimana1={edizione.nascondiConcluseSettimana1}
+          nascondiConcluseSettimana2={edizione.nascondiConcluseSettimana2}
         />
       </section>
 

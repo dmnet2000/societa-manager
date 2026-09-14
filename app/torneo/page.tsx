@@ -6,6 +6,7 @@ import {
   elencaPartiteTorneo,
   elencaSlotTorneo,
   trovaSlotPrenotatoInMemoria,
+  categoriaTorneoVisibileSuPubblico,
 } from "@/lib/torneo";
 import { leggiInfoVolantinoTorneo, urlPubblicoVolantinoTorneo } from "@/lib/storage/volantino-torneo";
 import { calcolaClassificaGirone } from "@/lib/classifica-girone-torneo";
@@ -188,6 +189,32 @@ export default async function TorneoPubblicoPage() {
     }),
   ]);
 
+  // Story 20.29 (Epic 20, Torneo Memorial): tabelloneGenerato/classificaFinale
+  // calcolati QUI, una sola volta per Categoria (non piu' duplicati fra il
+  // filtro di visibilita' sotto e il .map di rendering piu' in basso - review
+  // fix, Blind Hunter: la stessa coppia di righe viveva identica in entrambi
+  // i punti). classificaFinale gia' incapsula "tabellone generato E tutte le
+  // finali complete" (null altrimenti), quindi "categoriaConclusa" per il
+  // filtro sotto e' semplicemente classificaFinale !== null.
+  const datiCategorieConStato = datiCategorie.map(({ categoria, squadre, partite }) => {
+    const tabelloneGenerato = partite.some((p) => p.fase !== "GIRONE");
+    const classificaFinale = tabelloneGenerato ? calcolaClassificaFinale(partite) : null;
+    return { categoria, squadre, partite, tabelloneGenerato, classificaFinale };
+  });
+
+  // Filtro a monte su datiCategorieConStato, prima del .map di rendering
+  // sotto - il predicato "questa Categoria va mostrata, dato il flag della
+  // sua Settimana" e' ora una funzione pura testata (lib/torneo.ts,
+  // categoriaTorneoVisibileSuPubblico, review fix Verification Gap
+  // Reviewer). Il flag e' letto dalla Settimana della Categoria
+  // (nascondiConcluseSettimana1/2 su edizione) - ricalcolato al volo a ogni
+  // caricamento pagina, mai una lista congelata di id (spec-20-29 Boundaries
+  // "Always"): una Categoria che si conclude DOPO l'attivazione del flag
+  // sparisce comunque al successivo caricamento, senza un nuovo click Admin.
+  const datiCategorieVisibili = datiCategorieConStato.filter(({ categoria, classificaFinale }) =>
+    categoriaTorneoVisibileSuPubblico(categoria, edizione, classificaFinale !== null)
+  );
+
   return (
     <>
       <HeaderPubblico />
@@ -222,20 +249,27 @@ export default async function TorneoPubblicoPage() {
           <p className={styles.messaggioVuoto}>
             Nessuna categoria del Torneo pubblicata per questa edizione.
           </p>
+        ) : datiCategorieVisibili.length === 0 ? (
+          // Story 20.29: tutte le Categorie esistono ma sono nascoste
+          // (entrambi i flag attivi + tutte concluse, o un'unica Settimana
+          // con tutte concluse e il suo flag attivo) - messaggio esplicito
+          // e distinto dal ramo sopra (qui le Categorie esistono, non sono
+          // semplicemente assenti, spec-20-29 Boundaries "Always").
+          <p className={styles.messaggioVuoto}>
+            Tutte le Categorie di questa edizione sono concluse.
+          </p>
         ) : (
-          datiCategorie.map(({ categoria, squadre, partite }) => {
+          datiCategorieVisibili.map(({ categoria, squadre, partite, tabelloneGenerato, classificaFinale }) => {
             // Il calendario di girone esiste per questa Categoria se e solo
             // se almeno una PartitaTorneo e' gia' stata generata - stesso
             // criterio di risultati/page.tsx.
             const calendarioGenerato = partite.length > 0;
-            // Il tabellone semifinali/finali esiste se e solo se almeno una
-            // PartitaTorneo ha fase diversa da GIRONE - stesso criterio di
-            // tabellone/page.tsx.
-            const tabelloneGenerato = partite.some((p) => p.fase !== "GIRONE");
-            // Classifica finale MAI persistita - ricalcolata al volo da qui
-            // a ogni caricamento della pagina (spec-20-6 Boundaries), null
-            // finche' le 4 finali non hanno tutte un risultato completo.
-            const classificaFinale = tabelloneGenerato ? calcolaClassificaFinale(partite) : null;
+            // tabelloneGenerato/classificaFinale sono gia' calcolati sopra
+            // (datiCategorieConStato) - mai una seconda volta qui (review
+            // fix, Blind Hunter). Classifica finale MAI persistita -
+            // ricalcolata al volo da qui a ogni caricamento della pagina
+            // (spec-20-6 Boundaries), null finche' le 4 finali non hanno
+            // tutte un risultato completo.
 
             // Story 20.15: precalcolato una sola volta a livello di
             // Categoria (non dentro il loop GIRONI_TORNEO.map sotto, che ora

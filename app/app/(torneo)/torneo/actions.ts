@@ -9,6 +9,7 @@ import {
   trovaEdizioneTorneoPerId,
   creaEdizioneTorneo,
   aggiornaNomiSettimaneTorneo,
+  aggiornaVisibilitaSettimanaTorneo,
   cancellaEdizioneTorneo,
   elencaCategorieTorneo,
   creaCategoriaTorneo,
@@ -337,6 +338,71 @@ export async function aggiornaNomiSettimaneAction(
   // Revalida sia la pagina di dettaglio Edizione (admin, dove il form vive)
   // sia la pagina pubblica del Torneo (spec-20-13 Code Map) - entrambe
   // mostrano l'etichetta di Settimana derivata da questi due campi.
+  revalidatePath(`/app/torneo/${edizione.id}`);
+  revalidatePath("/torneo");
+  return { success: true };
+}
+
+// Story 20.29 (Epic 20, Torneo Memorial): mirror di impostaVisibilitaGruppoAction
+// (app/(configurazione)/ordine-squadre/actions.ts, Story 19.16) - un bottone/
+// toggle per Settimana (mai per singola Categoria, spec-20-29 Boundaries
+// "Always"), nessuna lista di Categorie inviata dal client: il filtro sulla
+// vista pubblica (app/torneo/page.tsx) ricalcola sempre al volo quali
+// Categorie di quella Settimana sono gia' concluse. Stesso perimetro
+// ADMIN/DIRIGENTE e stessa doppia revalidatePath (admin + pubblica) di
+// aggiornaNomiSettimaneAction sopra - i due bottoni vivono nella stessa
+// sezione "Nomi delle Settimane" e i due flag sono letti dalla stessa pagina
+// pubblica.
+export async function aggiornaVisibilitaSettimanaTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  const settimana = String(formData.get("settimana") ?? "");
+  if (!settimana) {
+    return { error: { code: "VALIDATION", message: "La settimana è obbligatoria." } };
+  }
+  if (!isSettimanaTorneoValida(settimana)) {
+    return { error: { code: "VALIDATION", message: "Settimana non valida." } };
+  }
+
+  // Mirror del controllo esplicito di impostaVisibilitaGruppoAction: un
+  // valore mancante/malformato non deve essere trattato silenziosamente
+  // come "false".
+  const nascondiConcluseGrezzo = formData.get("nascondiConcluse");
+  if (nascondiConcluseGrezzo !== "true" && nascondiConcluseGrezzo !== "false") {
+    return { error: { code: "VALIDATION", message: "Valore non valido." } };
+  }
+  const nascondiConcluse = nascondiConcluseGrezzo === "true";
+
+  // Mirror del controllo "Edizione non trovata" di aggiornaNomiSettimaneAction
+  // sopra: un edizioneTorneoId non piu' esistente (Edizione cancellata in
+  // un'altra scheda, campo nascosto stantio) viene rifiutato esplicitamente
+  // qui, prima dell'aggiornamento.
+  const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+  if (!edizione) {
+    return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+  }
+
+  try {
+    await aggiornaVisibilitaSettimanaTorneo(edizione.id, settimana, nascondiConcluse);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare la visibilità della Settimana. Riprova.",
+      },
+    };
+  }
+
   revalidatePath(`/app/torneo/${edizione.id}`);
   revalidatePath("/torneo");
   return { success: true };

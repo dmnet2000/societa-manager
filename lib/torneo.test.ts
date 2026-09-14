@@ -94,6 +94,8 @@ const {
   trovaEdizioneTorneoCorrente,
   creaEdizioneTorneo,
   aggiornaNomiSettimaneTorneo,
+  aggiornaVisibilitaSettimanaTorneo,
+  categoriaTorneoVisibileSuPubblico,
   cancellaEdizioneTorneo,
   elencaCategorieTorneo,
   trovaCategoriaTorneoPerId,
@@ -241,6 +243,80 @@ describe("aggiornaNomiSettimaneTorneo", () => {
       data: dati,
     });
     expect(result).toBe(edizione);
+  });
+});
+
+describe("aggiornaVisibilitaSettimanaTorneo", () => {
+  it("updates nascondiConcluseSettimana1 for SETTIMANA_1", async () => {
+    const edizione = { id: "edizione-1", anno: 2027, nascondiConcluseSettimana1: true };
+    edizioneUpdateMock.mockResolvedValue(edizione);
+
+    const result = await aggiornaVisibilitaSettimanaTorneo("edizione-1", "SETTIMANA_1", true);
+
+    expect(edizioneUpdateMock).toHaveBeenCalledWith({
+      where: { id: "edizione-1" },
+      data: { nascondiConcluseSettimana1: true },
+    });
+    expect(result).toBe(edizione);
+  });
+
+  it("updates nascondiConcluseSettimana2 for SETTIMANA_2, leaving SETTIMANA_1 untouched", async () => {
+    const edizione = { id: "edizione-1", anno: 2027, nascondiConcluseSettimana2: false };
+    edizioneUpdateMock.mockResolvedValue(edizione);
+
+    const result = await aggiornaVisibilitaSettimanaTorneo("edizione-1", "SETTIMANA_2", false);
+
+    expect(edizioneUpdateMock).toHaveBeenCalledWith({
+      where: { id: "edizione-1" },
+      data: { nascondiConcluseSettimana2: false },
+    });
+    expect(result).toBe(edizione);
+  });
+});
+
+// Story 20.29 (Epic 20, Torneo Memorial): funzione pura, nessun mock Prisma
+// necessario - il predicato "questa Categoria va mostrata su /torneo, dato
+// il flag della sua Settimana" (review fix, Verification Gap Reviewer:
+// prima testabile solo indirettamente tramite app/torneo/page.tsx). Copre
+// le righe della I/O matrix di spec-20-29.
+describe("categoriaTorneoVisibileSuPubblico", () => {
+  it("is visible when the flag of its Settimana is off, regardless of categoriaConclusa", () => {
+    const categoria = { settimana: "SETTIMANA_1" as const };
+    const edizione = { nascondiConcluseSettimana1: false, nascondiConcluseSettimana2: false };
+
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, true)).toBe(true);
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, false)).toBe(true);
+  });
+
+  it("is hidden when the flag is on and the Categoria is conclusa", () => {
+    const categoria = { settimana: "SETTIMANA_1" as const };
+    const edizione = { nascondiConcluseSettimana1: true, nascondiConcluseSettimana2: false };
+
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, true)).toBe(false);
+  });
+
+  it("stays visible when the flag is on but the Categoria is still ongoing (categoriaConclusa false)", () => {
+    const categoria = { settimana: "SETTIMANA_1" as const };
+    const edizione = { nascondiConcluseSettimana1: true, nascondiConcluseSettimana2: false };
+
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, false)).toBe(true);
+  });
+
+  it("a flag active on SETTIMANA_1 never hides a Categoria of SETTIMANA_2", () => {
+    const categoria = { settimana: "SETTIMANA_2" as const };
+    const edizione = { nascondiConcluseSettimana1: true, nascondiConcluseSettimana2: false };
+
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, true)).toBe(true);
+  });
+
+  it("a Categoria with no tabellone generated stays visible even with the flag active (categoriaConclusa is always false in that case)", () => {
+    const categoria = { settimana: "SETTIMANA_1" as const };
+    const edizione = { nascondiConcluseSettimana1: true, nascondiConcluseSettimana2: false };
+
+    // Nessun tabellone generato -> il chiamante (app/torneo/page.tsx) calcola
+    // sempre categoriaConclusa false in questo caso (classificaFinale resta
+    // null finche' tabelloneGenerato e' false).
+    expect(categoriaTorneoVisibileSuPubblico(categoria, edizione, false)).toBe(true);
   });
 });
 

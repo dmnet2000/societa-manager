@@ -45,6 +45,51 @@ export async function aggiornaNomiSettimaneTorneo(
   return prisma.edizioneTorneo.update({ where: { id: edizioneTorneoId }, data: dati });
 }
 
+// Story 20.29 (Epic 20, Torneo Memorial): mirror minimale di
+// impostaVisibilitaGruppo (lib/ordine-squadre.ts, Story 19.16) - un solo
+// prisma.edizioneTorneo.update, un campo booleano per Settimana
+// (nascondiConcluseSettimana1/2, spec-20-29 Code Map). "settimana" seleziona
+// QUALE dei due campi scrivere, mai entrambi insieme - un bottone/toggle per
+// Settimana (spec-20-29 Boundaries "Always"), non un controllo globale.
+export async function aggiornaVisibilitaSettimanaTorneo(
+  edizioneTorneoId: string,
+  settimana: SettimanaTorneo,
+  nascondiConcluse: boolean
+) {
+  const campo =
+    settimana === "SETTIMANA_1" ? "nascondiConcluseSettimana1" : "nascondiConcluseSettimana2";
+  return prisma.edizioneTorneo.update({
+    where: { id: edizioneTorneoId },
+    data: { [campo]: nascondiConcluse },
+  });
+}
+
+// Story 20.29 (Epic 20, Torneo Memorial): funzione pura estratta (review
+// fix, Verification Gap Reviewer - questo predicato viveva SOLO inline in
+// app/torneo/page.tsx, "datiCategorieVisibili = datiCategorie.filter(...)",
+// senza alcun test unitario nonostante fosse la logica centrale della
+// storia) - "questa Categoria va mostrata su /torneo, dato il flag della
+// sua Settimana". Nessuna IO qui, mirror di trovaSlotPrenotatoInMemoria
+// sopra: "categoriaConclusa" e' un booleano gia' calcolato dal chiamante
+// (tabelloneGenerato && classificaFinale !== null,
+// lib/classifica-finale-torneo.ts) invece di essere ricalcolato qui - la
+// stessa Categoria non genera cosi' due volte la stessa classificaFinale
+// (una per decidere la visibilita', una per il rendering del tabellone/
+// della classifica piu' sotto in page.tsx), eliminando la duplicazione del
+// criterio "conclusa" gia' segnalata (finding convergente del Blind
+// Hunter).
+export function categoriaTorneoVisibileSuPubblico(
+  categoria: { settimana: SettimanaTorneo },
+  edizione: { nascondiConcluseSettimana1: boolean; nascondiConcluseSettimana2: boolean },
+  categoriaConclusa: boolean
+): boolean {
+  const nascondiConcluse =
+    categoria.settimana === "SETTIMANA_1"
+      ? edizione.nascondiConcluseSettimana1
+      : edizione.nascondiConcluseSettimana2;
+  return !nascondiConcluse || !categoriaConclusa;
+}
+
 // Story 20.6: "Edizione corrente" per la sezione pubblica del Torneo (nuova
 // nozione, nessun campo "corrente" esplicito in EdizioneTorneo) - stesso
 // criterio "anno piu' alto" gia' implicito nell'ordinamento di

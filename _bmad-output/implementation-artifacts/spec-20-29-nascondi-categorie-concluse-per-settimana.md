@@ -2,7 +2,7 @@
 title: 'Story 20.29: Nascondere le Categorie concluse per Settimana sulla vista pubblica del Torneo'
 type: 'feature'
 created: '2026-09-13'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context: []
 baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
@@ -55,11 +55,11 @@ baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `prisma/schema.prisma` + migrazione -- due campi booleani su `EdizioneTorneo`
-- [ ] `lib/torneo.ts` -- funzione di scrittura dei due flag + test
-- [ ] `actions.ts` -- Server Action di salvataggio + test
-- [ ] Form Admin -- due controlli "Nascondi le Categorie concluse" per Settimana, nella pagina Edizione
-- [ ] `app/torneo/page.tsx` -- filtro delle Categorie concluse per Settimana con flag attivo + messaggio dedicato quando tutto risulta nascosto
+- [x] `prisma/schema.prisma` + migrazione -- due campi booleani su `EdizioneTorneo`
+- [x] `lib/torneo.ts` -- funzione di scrittura dei due flag + test
+- [x] `actions.ts` -- Server Action di salvataggio + test
+- [x] Form Admin -- due controlli "Nascondi le Categorie concluse" per Settimana, nella pagina Edizione
+- [x] `app/torneo/page.tsx` -- filtro delle Categorie concluse per Settimana con flag attivo + messaggio dedicato quando tutto risulta nascosto
 
 **Acceptance Criteria:**
 - Given un'Edizione con Categorie concluse in Settimana 1, when l'Admin attiva "Nascondi le Categorie concluse" per Settimana 1, then quelle Categorie spariscono da `/torneo` mentre le Categorie di Settimana 2 restano invariate
@@ -77,4 +77,44 @@ baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
 **Manual checks (dev locale rotto su questa macchina - verificare al primo deploy utile):**
 - Attivare/disattivare il flag per una Settimana con Categorie concluse e verificare la comparsa/sparizione immediata su `/torneo`.
 - Verificare che l'area amministrativa mostri sempre tutte le Categorie indipendentemente dai flag.
+
+## Suggested Review Order
+
+**Modello dati**
+
+- Due campi booleani additivi su `EdizioneTorneo`, default `false`, mirror diretto dei nomi Settimana.
+  [`schema.prisma:906`](../../prisma/schema.prisma#L906)
+
+- Migrazione additiva, nessun backfill: `NOT NULL DEFAULT false` copre già le Edizioni esistenti.
+  [`migration.sql:9`](../../prisma/migrations/20260914000000_add_nascondi_concluse_settimana_edizione_torneo/migration.sql#L9)
+
+**Logica di visibilità (predicato puro, testato)**
+
+- Entry point: predicato puro estratto in review fix per essere testabile in isolamento, riusato da lettura e scrittura.
+  [`torneo.ts:81`](../../lib/torneo.ts#L81)
+
+- Scrittura del flag: un solo campo aggiornato per volta, mai i due insieme (un bottone = una Settimana).
+  [`torneo.ts:54`](../../lib/torneo.ts#L54)
+
+- Stato calcolato una sola volta per Categoria e riusato sia dal filtro sia dal rendering sottostante.
+  [`app/torneo/page.tsx:199`](../../app/torneo/page.tsx#L199)
+
+- Filtro a monte su `datiCategorieConStato`, applica il predicato prima del render.
+  [`app/torneo/page.tsx:214`](../../app/torneo/page.tsx#L214)
+
+**Server Action e form Admin**
+
+- Validazione esplicita (settimana valida, `nascondiConcluse` mai default silenzioso), doppia `revalidatePath`.
+  [`actions.ts:356`](../../app/app/(torneo)/torneo/actions.ts#L356)
+
+- Bottone/toggle indipendente per Settimana, con conferma visiva `role="status"` dopo il salvataggio.
+  [`NomiSettimaneTorneoForm.tsx:32`](../../app/app/(torneo)/torneo/[edizioneId]/NomiSettimaneTorneoForm.tsx#L32)
+
+**Test e contenuti di supporto**
+
+- 5 casi unitari sul predicato: flag spento, flag+conclusa, flag+in corso, isolamento tra Settimane, categoria senza tabellone.
+  [`torneo.test.ts:282`](../../lib/torneo.test.ts#L282)
+
+- Guida in-app aggiornata per il nuovo bottone (regola permanente del progetto).
+  [`contenuti.ts:562`](../../lib/guida/contenuti.ts#L562)
 

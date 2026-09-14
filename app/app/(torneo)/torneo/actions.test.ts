@@ -14,6 +14,7 @@ const trovaEdizioneTorneoPerIdMock = vi.fn();
 const trovaPalestraPerIdMock = vi.fn();
 const creaEdizioneTorneoMock = vi.fn();
 const aggiornaNomiSettimaneTorneoMock = vi.fn();
+const aggiornaVisibilitaSettimanaTorneoMock = vi.fn();
 const cancellaEdizioneTorneoMock = vi.fn();
 const creaCategoriaTorneoMock = vi.fn();
 const aggiornaCategoriaTorneoMock = vi.fn();
@@ -73,6 +74,7 @@ vi.mock("@/lib/torneo", () => ({
   trovaPalestraPerId: trovaPalestraPerIdMock,
   creaEdizioneTorneo: creaEdizioneTorneoMock,
   aggiornaNomiSettimaneTorneo: aggiornaNomiSettimaneTorneoMock,
+  aggiornaVisibilitaSettimanaTorneo: aggiornaVisibilitaSettimanaTorneoMock,
   cancellaEdizioneTorneo: cancellaEdizioneTorneoMock,
   creaCategoriaTorneo: creaCategoriaTorneoMock,
   aggiornaCategoriaTorneo: aggiornaCategoriaTorneoMock,
@@ -114,6 +116,7 @@ vi.mock("next/cache", () => ({
 const {
   creaEdizioneTorneoAction,
   aggiornaNomiSettimaneAction,
+  aggiornaVisibilitaSettimanaTorneoAction,
   cancellaEdizioneTorneoAction,
   creaCategoriaTorneoAction,
   aggiornaCategoriaTorneoAction,
@@ -189,6 +192,7 @@ beforeEach(() => {
   trovaPalestraPerIdMock.mockResolvedValue({ id: "palestra-1", nome: "Palestra Comunale" });
   creaEdizioneTorneoMock.mockReset();
   aggiornaNomiSettimaneTorneoMock.mockReset();
+  aggiornaVisibilitaSettimanaTorneoMock.mockReset();
   cancellaEdizioneTorneoMock.mockReset();
   creaCategoriaTorneoMock.mockReset();
   aggiornaCategoriaTorneoMock.mockReset();
@@ -866,6 +870,164 @@ describe("aggiornaNomiSettimaneAction", () => {
       error: {
         code: "INTERNAL",
         message: "Impossibile aggiornare i nomi delle Settimane. Riprova.",
+      },
+    });
+  });
+});
+
+describe("aggiornaVisibilitaSettimanaTorneoAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        settimana: "SETTIMANA_1",
+        nascondiConcluse: "true",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when edizioneTorneoId is missing", async () => {
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({ settimana: "SETTIMANA_1", nascondiConcluse: "true" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Edizione non specificata." },
+    });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when settimana is missing", async () => {
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", nascondiConcluse: "true" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La settimana è obbligatoria." },
+    });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when settimana is not a valid SettimanaTorneo", async () => {
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        settimana: "SETTIMANA_3",
+        nascondiConcluse: "true",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Settimana non valida." },
+    });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when nascondiConcluse is missing/malformed instead of silently treating it as false", async () => {
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({ edizioneTorneoId: "edizione-1", settimana: "SETTIMANA_1" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Valore non valido." },
+    });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Edizione no longer exists", async () => {
+    trovaEdizioneTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-inesistente",
+        settimana: "SETTIMANA_1",
+        nascondiConcluse: "true",
+      })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Edizione non trovata." },
+    });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("activates the flag for SETTIMANA_1 and revalidates both the admin and the public page", async () => {
+    trovaEdizioneTorneoPerIdMock.mockResolvedValue({ id: "edizione-1" });
+    aggiornaVisibilitaSettimanaTorneoMock.mockResolvedValue({});
+
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        settimana: "SETTIMANA_1",
+        nascondiConcluse: "true",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).toHaveBeenCalledWith(
+      "edizione-1",
+      "SETTIMANA_1",
+      true
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/edizione-1");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/torneo");
+  });
+
+  it("deactivates the flag for SETTIMANA_2 (nascondiConcluse: false)", async () => {
+    trovaEdizioneTorneoPerIdMock.mockResolvedValue({ id: "edizione-1" });
+    aggiornaVisibilitaSettimanaTorneoMock.mockResolvedValue({});
+
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        settimana: "SETTIMANA_2",
+        nascondiConcluse: "false",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaVisibilitaSettimanaTorneoMock).toHaveBeenCalledWith(
+      "edizione-1",
+      "SETTIMANA_2",
+      false
+    );
+  });
+
+  it("returns a friendly error, no crash, when the update throws", async () => {
+    trovaEdizioneTorneoPerIdMock.mockResolvedValue({ id: "edizione-1" });
+    aggiornaVisibilitaSettimanaTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiornaVisibilitaSettimanaTorneoAction(
+      undefined,
+      buildFormData({
+        edizioneTorneoId: "edizione-1",
+        settimana: "SETTIMANA_1",
+        nascondiConcluse: "true",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare la visibilità della Settimana. Riprova.",
       },
     });
   });

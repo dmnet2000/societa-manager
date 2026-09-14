@@ -37,14 +37,14 @@ enum Ruolo {
 // I Ruoli sono anche specchiati in app_metadata di Supabase Auth (AD-11) —
 // Prisma resta la fonte di verita', app_metadata e' una cache per il Proxy.
 model Utente {
-  id             String           @id @default(uuid())
-  supabaseAuthId String           @unique
-  email          String           @unique
-  attivo         Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  ruoli          UtenteRuolo[]
-  allenatore     Allenatore?
-  genitoriAtlete GenitoreAtleta[]
+  id                  String                @id @default(uuid())
+  supabaseAuthId      String                @unique
+  email               String                @unique
+  attivo              Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  ruoli               UtenteRuolo[]
+  allenatore          Allenatore?
+  genitoriAtlete      GenitoreAtleta[]
   // Story 9.41: lista (non "?") - un Utente puo' agganciare piu' righe di
   // PrecaricamentoRuolo (una per Ruolo bloccato, es. Segreteria+Dirigente).
   precaricamentiRuolo PrecaricamentoRuolo[]
@@ -877,33 +877,45 @@ enum SettimanaTorneo {
 // vincolo alle "Categorie con squadre iscritte" - SquadraTorneo non esiste
 // ancora, arriva con la Story 20.2).
 model EdizioneTorneo {
-  id             String            @id @default(uuid())
-  anno           Int               @unique
+  id                         String            @id @default(uuid())
+  anno                       Int               @unique
   // Story 20.7: nome proprio dell'Edizione (obbligatorio, deciso con
   // l'utente) - distinto dall'Anno, nessun vincolo di unicita' (due
   // Edizioni possono condividere lo stesso Nome). Immutabile dopo la
   // creazione, stesso trattamento di "anno" (nessuna azione di modifica
   // per EdizioneTorneo, solo creazione/cancellazione).
-  nome           String
+  nome                       String
   // Story 20.13: nome personalizzato per ciascuna delle due Settimane del
   // Torneo (facoltativo) - fallback sull'etichetta generica esistente
   // (ETICHETTA_SETTIMANA, lib/settimana-torneo.ts) se null, mai una stringa
   // vuota persistita (spec-20-13 I/O matrix). SettimanaTorneo (l'enum) resta
   // invariato: questi due campi sono solo l'etichetta mostrata, non toccano
   // la creazione/modifica delle Categorie.
-  nomeSettimana1 String?
-  nomeSettimana2 String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  categorie      CategoriaTorneo[]
+  nomeSettimana1             String?
+  nomeSettimana2             String?
+  // Story 20.29: nascondere su /torneo (vista pubblica) le Categorie GIA'
+  // CONCLUSE (stesso criterio di app/torneo/page.tsx: tabelloneGenerato &&
+  // classificaFinale !== null) di ciascuna Settimana - mirror diretto di
+  // nomeSettimana1/nomeSettimana2 sopra (stessa granularita' "per Settimana",
+  // non per singola Categoria, spec-20-29 Boundaries "Always"). Default
+  // false: nessuna Categoria nascosta finche' l'Admin non lo decide
+  // esplicitamente, nessuna regressione sulle Edizioni esistenti. Il filtro
+  // sulla vista pubblica ricalcola sempre al volo quali Categorie sono
+  // concluse - questi due campi sono solo l'interruttore, mai una lista
+  // congelata di id nascosti.
+  nascondiConcluseSettimana1 Boolean           @default(false)
+  nascondiConcluseSettimana2 Boolean           @default(false)
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  categorie                  CategoriaTorneo[]
   // Story 20.9: relazione inversa richiesta da Prisma per
   // SlotTorneo.edizioneTorneoId sotto - stesso trattamento di "categorie"
   // sopra.
-  slot           SlotTorneo[]
+  slot                       SlotTorneo[]
   // Story 20.11: relazione inversa richiesta da Prisma per
   // PartitaTorneo.edizioneTorneoId sotto - stesso trattamento di
   // "categorie"/"slot" sopra.
-  partite        PartitaTorneo[]
+  partite                    PartitaTorneo[]
 
   @@map("edizioni_torneo")
 }
@@ -1128,14 +1140,14 @@ model PartitaTorneo {
 // Slot.oraInizio, nessuna aritmetica di date/orari richiesta da questa
 // storia.
 model SlotTorneo {
-  id               String           @id @default(uuid())
-  edizioneTorneoId String
-  edizioneTorneo   EdizioneTorneo   @relation(fields: [edizioneTorneoId], references: [id])
-  etichetta        String
-  data             String
-  ora              String
-  palestraId       String
-  palestra         Palestra         @relation(fields: [palestraId], references: [id])
+  id                            String           @id @default(uuid())
+  edizioneTorneoId              String
+  edizioneTorneo                EdizioneTorneo   @relation(fields: [edizioneTorneoId], references: [id])
+  etichetta                     String
+  data                          String
+  ora                           String
+  palestraId                    String
+  palestra                      Palestra         @relation(fields: [palestraId], references: [id])
   // Story 20.18 (Epic 20, Torneo Memorial): FK opzionale verso Campo (Epic 2,
   // riuso diretto - mai una nuova anagrafica) - una Palestra a doppio campo
   // puo' cosi' ospitare due SlotTorneo paralleli sullo stesso orario, uno per
@@ -1150,10 +1162,10 @@ model SlotTorneo {
   // ogni fase diversa da GIRONE, un edit permesso lo cancellerebbe altrimenti
   // in silenzio. Nessun onDelete esplicito (default Postgres/Prisma:
   // Restrict), mirror palestraId sopra.
-  campoId          String?
-  campo            Campo?           @relation(fields: [campoId], references: [id])
-  fase             FaseTorneo
-  tabellone        TabelloneTorneo?
+  campoId                       String?
+  campo                         Campo?           @relation(fields: [campoId], references: [id])
+  fase                          FaseTorneo
+  tabellone                     TabelloneTorneo?
   // Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata per una
   // riga precisa del prospetto ipotetico (Story 20.20) - generalizzazione
   // della "prenotazione per fase" gia' esistente sopra (fase/tabellone),
@@ -1179,12 +1191,12 @@ model SlotTorneo {
   prenotazioneCategoriaTorneoId String?
   prenotazioneCategoriaTorneo   CategoriaTorneo? @relation(fields: [prenotazioneCategoriaTorneoId], references: [id])
   prenotazioneOrdinale          Int?
-  createdAt        DateTime         @default(now())
+  createdAt                     DateTime         @default(now())
   // Relazione inversa verso PartitaTorneo.slotTorneoId sopra - usata dalla
   // guardia di cancellazione (cancellaSlotTorneo, lib/torneo.ts: "partite:
   // { none: {} } }", mirror cancellaSquadraTorneo) e dall'helper che trova
   // gli Slot liberi per l'auto-assegnazione (elencaSlotTorneoLiberi).
-  partite          PartitaTorneo[]
+  partite                       PartitaTorneo[]
 
   @@map("slot_torneo")
 }
