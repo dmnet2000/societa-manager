@@ -366,35 +366,50 @@ export default async function TorneoPubblicoPage() {
                           </p>
                         ) : (
                           <>
-                            <table className={styles.tabellaClassifica}>
-                              <thead>
-                                <tr>
-                                  {/* Review fix (Blind Hunter, Story 20.16): scope="col"
-                                      aggiunto a tutte le intestazioni per coerenza con
-                                      .tabellaSquadreGironi (Story 20.15), che gia' lo usa. */}
-                                  <th scope="col">Squadra</th>
-                                  <th scope="col">Punti</th>
-                                  <th scope="col">Partite giocate</th>
-                                  <th scope="col">Set vinti</th>
-                                  <th scope="col">Set persi</th>
-                                  <th scope="col">Punti fatti</th>
-                                  <th scope="col">Punti subiti</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {classifica.map((riga) => (
-                                  <tr key={riga.squadra.id}>
-                                    <td>{riga.squadra.nome}</td>
-                                    <td>{riga.punti}</td>
-                                    <td>{riga.partiteGiocate}</td>
-                                    <td>{riga.setVinti}</td>
-                                    <td>{riga.setPersi}</td>
-                                    <td>{riga.puntiFatti}</td>
-                                    <td>{riga.puntiSubiti}</td>
+                            {/* Story 20.32 (Epic 20, Torneo Memorial): wrapper di scroll
+                                orizzontale - gap gia' documentato in deferred-work.md
+                                (Story 20.16: 7 colonne, nessun overflow-x sul
+                                contenitore) e causa reale della segnalazione mobile
+                                dell'utente. Verificato dal vivo su volleymogliano.it/torneo
+                                a 375px: senza questo wrapper, la tabella forzava .main
+                                (flex column globale, app/globals.css `body{display:flex}`)
+                                a un min-content di ~539px invece di stringersi ai 360px
+                                di viewport - l'intera pagina restava piu' larga dello
+                                schermo (nessun elemento aveva overflow proprio: era .main
+                                stesso a non ridimensionarsi). Mirror esatto di
+                                .tabellaScroll gia' in uso per .tabellaIncontri piu' sotto
+                                in questo stesso file. */}
+                            <div className={styles.tabellaScroll}>
+                              <table className={styles.tabellaClassifica}>
+                                <thead>
+                                  <tr>
+                                    {/* Review fix (Blind Hunter, Story 20.16): scope="col"
+                                        aggiunto a tutte le intestazioni per coerenza con
+                                        .tabellaSquadreGironi (Story 20.15), che gia' lo usa. */}
+                                    <th scope="col">Squadra</th>
+                                    <th scope="col">Punti</th>
+                                    <th scope="col">Partite giocate</th>
+                                    <th scope="col">Set vinti</th>
+                                    <th scope="col">Set persi</th>
+                                    <th scope="col">Punti fatti</th>
+                                    <th scope="col">Punti subiti</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody>
+                                  {classifica.map((riga) => (
+                                    <tr key={riga.squadra.id}>
+                                      <td>{riga.squadra.nome}</td>
+                                      <td>{riga.punti}</td>
+                                      <td>{riga.partiteGiocate}</td>
+                                      <td>{riga.setVinti}</td>
+                                      <td>{riga.setPersi}</td>
+                                      <td>{riga.puntiFatti}</td>
+                                      <td>{riga.puntiSubiti}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
 
                             {partiteDelGirone.length === 0 ? (
                               // Review fix (Blind Hunter): mirror del messaggio
@@ -464,34 +479,36 @@ export default async function TorneoPubblicoPage() {
                   // o un Girone interamente senza Squadre) restano semplici
                   // celle <td> vuote - nessun testo placeholder (deciso in
                   // fase di pianificazione, Ask First).
-                  <table className={styles.tabellaSquadreGironi}>
-                    <thead>
-                      <tr>
-                        {GIRONI_TORNEO.map((girone) => (
-                          <th key={girone.value} scope="col">
-                            {girone.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({
-                        length: Math.max(...squadrePerGirone.map((arr) => arr.length)),
-                      }).map((_, indiceRiga) => (
-                        <tr key={indiceRiga}>
-                          {squadrePerGirone.map((squadreDelGirone, indiceGirone) => (
-                            // Review fix (Blind Hunter): key su girone.value
-                            // (stabile), non sull'indice di array - coerente
-                            // con la key gia' usata sopra sull'<th> dello
-                            // stesso Girone.
-                            <td key={GIRONI_TORNEO[indiceGirone].value}>
-                              {squadreDelGirone[indiceRiga]?.nome ?? null}
-                            </td>
+                  <div className={styles.tabellaScroll}>
+                    <table className={styles.tabellaSquadreGironi}>
+                      <thead>
+                        <tr>
+                          {GIRONI_TORNEO.map((girone) => (
+                            <th key={girone.value} scope="col">
+                              {girone.label}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {Array.from({
+                          length: Math.max(...squadrePerGirone.map((arr) => arr.length)),
+                        }).map((_, indiceRiga) => (
+                          <tr key={indiceRiga}>
+                            {squadrePerGirone.map((squadreDelGirone, indiceGirone) => (
+                              // Review fix (Blind Hunter): key su girone.value
+                              // (stabile), non sull'indice di array - coerente
+                              // con la key gia' usata sopra sull'<th> dello
+                              // stesso Girone.
+                              <td key={GIRONI_TORNEO[indiceGirone].value}>
+                                {squadreDelGirone[indiceRiga]?.nome ?? null}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
 
                 <section

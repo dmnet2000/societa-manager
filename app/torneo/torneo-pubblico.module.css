@@ -35,8 +35,29 @@
    esplicitamente 'sezione Squadre' tra le superfici a sfondo grigio-chiaro
    dedicato"). /calendario, /staff, /contatti restano bianche (invariate,
    fuori scope di questa richiesta - solo /torneo confermata con l'utente). */
+
+/* Story 20.32 (Epic 20, Torneo Memorial): "width: 100%" e' la causa reale
+   della segnalazione mobile dell'utente ("la pagina non si ridimensiona") -
+   verificato dal vivo su volleymogliano.it/torneo con un iframe a 375px.
+   `<body>` e' un flex container a livello globale (app/globals.css,
+   `body { display: flex; flex-direction: column }`, sticky footer). Un
+   figlio flex senza una "width" esplicita non si stringe mai sotto il
+   proprio min-content (regola CSS "automatic minimum size" degli item
+   flex) - con "margin: 0 auto" per centrare sotto max-width, ma senza
+   "width", .main veniva quindi dimensionato sul contenuto piu' largo
+   (volantino/tabelle) invece che sul viewport, a qualunque larghezza
+   schermo. Review fix (Blind Hunter): app/globals.css ha anche
+   `html, body { max-width: 100vw; overflow-x: hidden }` - questo non
+   evitava il sintomo, lo trasformava: senza scrollbar visibile, il
+   contenuto oltre i 100vw veniva semplicemente tagliato/invisibile invece
+   che raggiungibile scorrendo, coerente con "non tutto e' visibile in modo
+   corretto" segnalato dall'utente. "width: 100%" rende .main un box a
+   dimensione esplicita (mai piu' calcolata dal contenuto) - si restringe
+   correttamente sotto max-width su schermi stretti, il centraggio di
+   margin: 0 auto resta invariato sopra i 1000px. */
 .main {
   max-width: 1000px;
+  width: 100%;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
   background: #f2f5f7;
@@ -170,10 +191,15 @@
   outline-offset: 2px;
 }
 
-/* Wrapper di scroll orizzontale - a differenza di .tabellaClassifica/
-   .tabellaSquadreGironi sotto (gap noto, deferred-work.md), questa tabella
-   nuova ha 6 colonne fin da subito: nessun motivo di ripetere lo stesso gap
-   in una tabella scritta oggi. */
+/* Wrapper di scroll orizzontale - riusato da tabellaIncontri sotto (6
+   colonne fin da subito) e, da Story 20.32, anche da .tabellaClassifica/
+   .tabellaSquadreGironi piu' sotto nel file (gap chiuso, erano senza
+   wrapper - vedi deferred-work.md per la cronologia). Review fix (Blind
+   Hunter, Story 20.32): nessun affordance visivo di scrollabilita' (fade/
+   ombra) ne' `role="region"`/`tabindex` per lo scroll da tastiera su
+   nessuna delle tre tabelle - gap di accessibilita' preesistente (dalla
+   Story 20.19 che ha introdotto questo wrapper), ora solo esteso a due
+   tabelle in piu' invece che corretto, vedi deferred-work.md. */
 .tabellaScroll {
   overflow-x: auto;
 }
@@ -273,8 +299,16 @@
   color: var(--color-text-secondary);
 }
 
+/* Story 20.32: min-width + white-space:nowrap, stesso trattamento di
+   .tabellaIncontri sopra - senza, il wrapper .tabellaScroll da solo avrebbe
+   comunque impedito l'overflow di pagina, ma le 7 colonne si sarebbero
+   compresse/spezzate su piu' righe dentro celle troppo strette (larghezza
+   .main gia' ridotta a ~312px su mobile) invece di offrire uno scroll
+   orizzontale leggibile, stessa esperienza gia' scelta per .tabellaIncontri
+   (Story 20.19). */
 .tabellaClassifica {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   margin-bottom: var(--space-4);
   font-family: Arial, sans-serif;
@@ -284,6 +318,7 @@
 .tabellaClassifica th,
 .tabellaClassifica td {
   text-align: left;
+  white-space: nowrap;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid #e6ebef;
 }
