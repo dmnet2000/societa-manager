@@ -694,6 +694,7 @@ describe("creaSlotTorneo", () => {
       etichetta: "Campo 1 - Sabato mattina",
       data: "2026-09-05",
       ora: "09:00",
+      settimana: "SETTIMANA_1" as const,
       palestraId: "palestra-1",
       fase: "GIRONE" as const,
       tabellone: null,
@@ -717,6 +718,7 @@ describe("creaSlotTorneo", () => {
       etichetta: "Semifinale 1",
       data: "2026-09-05",
       ora: "09:00",
+      settimana: "SETTIMANA_1" as const,
       palestraId: "palestra-1",
       fase: "SEMIFINALE" as const,
       tabellone: "POSIZIONI_1_4" as const,
@@ -749,6 +751,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [
         { palestraId: "palestra-1", campoId: "campo-1" },
         { palestraId: "palestra-1", campoId: "campo-2" },
@@ -769,6 +772,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-1",
           campoId: "campo-1",
           fase: "GIRONE",
@@ -779,6 +783,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-1",
           campoId: "campo-2",
           fase: "GIRONE",
@@ -789,6 +794,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-2",
           campoId: null,
           fase: "GIRONE",
@@ -812,6 +818,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [{ palestraId: "palestra-1", campoId: "campo-1" }],
     });
 
@@ -822,6 +829,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-1",
           campoId: "campo-1",
           fase: "GIRONE",
@@ -846,6 +854,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [
         { palestraId: "palestra-1", campoId: "campo-1" },
         // campo-2 appartiene a palestra-2, non a palestra-1 - scartata.
@@ -862,6 +871,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-1",
           campoId: "campo-1",
           fase: "GIRONE",
@@ -886,6 +896,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [
         { palestraId: "palestra-1", campoId: "campo-1" },
         { palestraId: "palestra-1", campoId: "campo-1" },
@@ -899,6 +910,7 @@ describe("creaSlotTorneoPerSelezione", () => {
           etichetta: "Sabato pomeriggio",
           data: "2026-09-05",
           ora: "15:00",
+          settimana: "SETTIMANA_1",
           palestraId: "palestra-1",
           campoId: "campo-1",
           fase: "GIRONE",
@@ -921,6 +933,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [],
     });
 
@@ -936,6 +949,7 @@ describe("creaSlotTorneoPerSelezione", () => {
       etichetta: "Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       selezioni: [{ palestraId: "palestra-1", campoId: null }],
     });
 
@@ -1111,6 +1125,7 @@ describe("aggiornaSlotTorneo", () => {
       etichetta: "Campo 1 - Sabato mattina (rinominato)",
       data: "2026-09-06",
       ora: "10:00",
+      settimana: "SETTIMANA_2" as const,
       palestraId: "palestra-2",
       campoId: "campo-2",
     };
@@ -1134,6 +1149,7 @@ describe("aggiornaSlotTorneo", () => {
       etichetta: "Semifinale 1-4",
       data: "2026-09-06",
       ora: "15:00",
+      settimana: null,
       palestraId: "palestra-1",
       campoId: null,
     };
@@ -1143,6 +1159,30 @@ describe("aggiornaSlotTorneo", () => {
 
     expect(slotUpdateManyMock).toHaveBeenCalledWith({
       where: { id: "slot-2", edizioneTorneoId: "edizione-1" },
+      data: dati,
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+
+  // Story 20.30 (Epic 20, Torneo Memorial): mirror del test campoId sopra -
+  // settimana e' modificabile come ogni altro campo del form di modifica
+  // (spec-20-30 Boundaries "Always"), inclusa la prima valorizzazione di uno
+  // Slot legacy con settimana ancora null.
+  it("accepts a settimana value, allowing a legacy null Slot to be set for the first time", async () => {
+    const dati = {
+      etichetta: "Campo 1 - Sabato mattina",
+      data: "2026-09-06",
+      ora: "10:00",
+      settimana: "SETTIMANA_1" as const,
+      palestraId: "palestra-1",
+      campoId: null,
+    };
+    slotUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneo("slot-3", "edizione-1", dati);
+
+    expect(slotUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "slot-3", edizioneTorneoId: "edizione-1" },
       data: dati,
     });
     expect(result).toEqual({ count: 1 });

@@ -6,6 +6,7 @@ import { FASI_TORNEO } from "@/lib/fase-torneo";
 import { TABELLONI_TORNEO } from "@/lib/tabelloni-torneo";
 import { codificaSelezioneSlotGirone } from "@/lib/selezione-slot-girone";
 import { campiDellaPalestraSelezionata } from "@/lib/campi-palestra-torneo";
+import { SETTIMANE_TORNEO } from "@/lib/settimana-torneo";
 import styles from "./torneo.module.css";
 
 type Palestra = { id: string; nome: string; campi: { id: string; nome: string }[] };
@@ -118,6 +119,27 @@ export function NuovoSlotTorneoForm({
         <div className={styles.campo}>
           <label htmlFor="nuovo-slot-ora">Ora</label>
           <input id="nuovo-slot-ora" name="ora" type="time" required />
+        </div>
+        {/* Story 20.30 (Epic 20, Torneo Memorial): obbligatorio, unico per
+            l'intero form - si applica a TUTTI gli Slot creati in blocco per
+            il girone (spec-20-30 Code Map), mirror esatto del <select> Fase
+            sotto (stesso placeholder disabilitato "Seleziona..."). Non
+            controllato (nessuno stato React): niente altrove nel form dipende
+            dalla Settimana scelta, a differenza di "fase"/"palestraSelezionata"
+            sotto - il reset nativo del form dopo un salvataggio riuscito
+            (formRef.current?.reset()) lo riporta gia' correttamente a "". */}
+        <div className={styles.campo}>
+          <label htmlFor="nuovo-slot-settimana">Settimana</label>
+          <select id="nuovo-slot-settimana" name="settimana" required defaultValue="">
+            <option value="" disabled>
+              Seleziona...
+            </option>
+            {SETTIMANE_TORNEO.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
         {mostraPalestra && (
           <div className={styles.campo}>

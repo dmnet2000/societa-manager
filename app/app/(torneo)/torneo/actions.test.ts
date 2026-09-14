@@ -3645,6 +3645,7 @@ const campiSlotGironeValidi = {
   etichetta: "Campo 1 - Sabato mattina",
   data: "2026-09-05",
   ora: "09:00",
+  settimana: "SETTIMANA_1",
   palestraId: "palestra-1",
   fase: "GIRONE",
   selezioneSlotGirone: ["palestra-1|"],
@@ -3655,6 +3656,7 @@ const campiSlotSemifinaleValidi = {
   etichetta: "Campo 1 - Sabato pomeriggio",
   data: "2026-09-05",
   ora: "15:00",
+  settimana: "SETTIMANA_1",
   palestraId: "palestra-1",
   fase: "SEMIFINALE",
   tabellone: "POSIZIONI_1_4",
@@ -3925,6 +3927,49 @@ describe("creaSlotTorneoAction", () => {
     expect(result).toEqual({ success: true });
   });
 
+  // Story 20.30 (Epic 20, Torneo Memorial): la Settimana e' ora obbligatoria
+  // per OGNI nuovo Slot, girone incluso (spec-20-30 I/O matrix: "Admin crea
+  // un nuovo Slot senza scegliere la Settimana" -> rifiutata, stesso
+  // trattamento di un campo obbligatorio mancante come etichetta).
+  it("returns a validation error when settimana is missing (GIRONE)", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, settimana: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La settimana è obbligatoria." },
+    });
+    expect(creaSlotTorneoPerSelezioneMock).not.toHaveBeenCalled();
+  });
+
+  // Mirror del test sopra per il ramo semifinale/finale (creaSlotTorneo,
+  // non creaSlotTorneoPerSelezione) - la Settimana e' obbligatoria per
+  // entrambi i percorsi di creazione (spec-20-30 Boundaries "Always").
+  it("returns a validation error when settimana is missing (semifinale/finale)", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotSemifinaleValidi, settimana: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La settimana è obbligatoria." },
+    });
+    expect(creaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when settimana is not a valid SettimanaTorneo value", async () => {
+    const result = await creaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiSlotGironeValidi, settimana: "SETTIMANA_3" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Settimana non valida." },
+    });
+    expect(creaSlotTorneoPerSelezioneMock).not.toHaveBeenCalled();
+  });
+
   // Story 20.18: la fase GIRONE legge ora la checklist selezioneSlotGirone
   // (formData.getAll, non un singolo palestraId) - ogni valore
   // "palestraId|campoId" e' parsato e passato a creaSlotTorneoPerSelezione
@@ -3948,6 +3993,7 @@ describe("creaSlotTorneoAction", () => {
       etichetta: "Campo 1 - Sabato mattina",
       data: "2026-09-05",
       ora: "09:00",
+      settimana: "SETTIMANA_1",
       selezioni: [
         { palestraId: "palestra-1", campoId: "campo-1" },
         { palestraId: "palestra-1", campoId: "campo-2" },
@@ -4060,6 +4106,7 @@ describe("creaSlotTorneoAction", () => {
       etichetta: "Campo 1 - Sabato pomeriggio",
       data: "2026-09-05",
       ora: "15:00",
+      settimana: "SETTIMANA_1",
       palestraId: "palestra-1",
       fase: "SEMIFINALE",
       tabellone: "POSIZIONI_1_4",
@@ -4372,6 +4419,62 @@ describe("aggiornaSlotTorneoAction", () => {
     expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
   });
 
+  // Story 20.30 (Epic 20, Torneo Memorial): a differenza della creazione, la
+  // Settimana e' FACOLTATIVA in modifica (spec-20-30 Code Map) - un campo
+  // omesso/vuoto e' un "non impostata" legittimo, mai un errore.
+  it("accepts a missing settimana on update, passing null (no regression for legacy Slot)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-2" });
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData(campiModificaGironeValidi)
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      expect.objectContaining({ settimana: null })
+    );
+  });
+
+  // I/O matrix (spec-20-30): "Admin modifica uno Slot legacy (settimana
+  // null) impostando una Settimana" -> salvata, da quel momento lo Slot
+  // partecipa al nuovo filtro.
+  it("sets settimana for the first time on a legacy Slot (I/O matrix)", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+    trovaCampoPerIdMock.mockResolvedValue({ id: "campo-2", palestraId: "palestra-2" });
+    aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, settimana: "SETTIMANA_2" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaSlotTorneoMock).toHaveBeenCalledWith(
+      "slot-1",
+      "edizione-1",
+      expect.objectContaining({ settimana: "SETTIMANA_2" })
+    );
+  });
+
+  it("rejects a tampered settimana value that is not a valid SettimanaTorneo", async () => {
+    trovaSlotTorneoPerIdMock.mockResolvedValue(slotGironeEsistente);
+
+    const result = await aggiornaSlotTorneoAction(
+      undefined,
+      buildFormData({ ...campiModificaGironeValidi, settimana: "SETTIMANA_3" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Settimana non valida." },
+    });
+    expect(aggiornaSlotTorneoMock).not.toHaveBeenCalled();
+  });
+
   it("updates etichetta/data/ora/Palestra of a SEMIFINALE Slot, forcing campoId to null (AC)", async () => {
     trovaSlotTorneoPerIdMock.mockResolvedValue(slotSemifinaleEsistente);
     aggiornaSlotTorneoMock.mockResolvedValue({ count: 1 });
@@ -4386,6 +4489,7 @@ describe("aggiornaSlotTorneoAction", () => {
       etichetta: "Semifinale (rinominata)",
       data: "2026-09-06",
       ora: "16:00",
+      settimana: null,
       palestraId: "palestra-2",
       campoId: null,
     });
@@ -4453,6 +4557,7 @@ describe("aggiornaSlotTorneoAction", () => {
       etichetta: "Campo 1 - Sabato mattina (rinominato)",
       data: "2026-09-06",
       ora: "10:00",
+      settimana: null,
       palestraId: "palestra-2",
       campoId: "campo-2",
     });

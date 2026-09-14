@@ -762,6 +762,23 @@ export async function creaSlotTorneoAction(
   if ("error" in validazione) return validazione;
   const { etichetta, data, ora } = validazione.valori;
 
+  // Story 20.30 (Epic 20, Torneo Memorial): Settimana obbligatoria per OGNI
+  // nuovo Slot (spec-20-30 Boundaries "Always") - a differenza di campoId
+  // (opzionale, per-fase) resta fuori da validaCampiSlot perche' il ramo di
+  // MODIFICA (aggiornaSlotTorneoAction sotto) riusa la stessa funzione ma
+  // tratta la Settimana come facoltativa (spec-20-30 Code Map: "obbligatoria
+  // in creazione, modificabile in modifica") - stessa disciplina "letto
+  // direttamente da formData, mai dentro l'unione discriminata condivisa"
+  // gia' applicata a campoId/palestraId per il ramo GIRONE.
+  const settimanaGrezza = String(formData.get("settimana") ?? "").trim();
+  if (!settimanaGrezza) {
+    return { error: { code: "VALIDATION", message: "La settimana è obbligatoria." } };
+  }
+  if (!isSettimanaTorneoValida(settimanaGrezza)) {
+    return { error: { code: "VALIDATION", message: "Settimana non valida." } };
+  }
+  const settimana = settimanaGrezza;
+
   try {
     // Mirror del controllo "Edizione non trovata" di creaCategoriaTorneoAction
     // sopra: un edizioneTorneoId non piu' esistente (Edizione cancellata in
@@ -793,6 +810,7 @@ export async function creaSlotTorneoAction(
         etichetta,
         data,
         ora,
+        settimana,
         selezioni,
       });
       if (risultato.nessunaPalestraCensita) {
@@ -850,6 +868,7 @@ export async function creaSlotTorneoAction(
         etichetta,
         data,
         ora,
+        settimana,
         palestraId,
         fase,
         tabellone,
@@ -944,6 +963,24 @@ export async function aggiornaSlotTorneoAction(
     if ("error" in validazione) return validazione;
     const { etichetta, data, ora, fase } = validazione.valori;
 
+    // Story 20.30 (Epic 20, Torneo Memorial): a differenza di
+    // creaSlotTorneoAction sopra, qui la Settimana e' FACOLTATIVA (spec-20-30
+    // Code Map: "obbligatoria in creazione, modificabile in modifica") - un
+    // valore vuoto e' un "non impostata" legittimo (Slot legacy che resta
+    // null, o un Admin che la rimuove esplicitamente), mai un errore. Un
+    // valore non vuoto ma manomesso/non valido resta pero' rifiutato, mai
+    // fidandosi del client (stessa disciplina di ogni altro <select>
+    // dell'epica) - verificato PRIMA della risoluzione di Palestra/Campo
+    // sotto (nessuna chiamata DB inutile per un valore gia' scartabile).
+    const settimanaGrezza = String(formData.get("settimana") ?? "").trim();
+    let settimana: SettimanaTorneo | null = null;
+    if (settimanaGrezza) {
+      if (!isSettimanaTorneoValida(settimanaGrezza)) {
+        return { error: { code: "VALIDATION", message: "Settimana non valida." } };
+      }
+      settimana = settimanaGrezza;
+    }
+
     const palestraId =
       validazione.valori.fase === "GIRONE"
         ? String(formData.get("palestraId") ?? "").trim()
@@ -985,6 +1022,7 @@ export async function aggiornaSlotTorneoAction(
       etichetta,
       data,
       ora,
+      settimana,
       palestraId,
       campoId,
     });

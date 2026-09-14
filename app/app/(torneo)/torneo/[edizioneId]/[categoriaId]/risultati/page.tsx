@@ -153,6 +153,7 @@ export default async function RisultatiTorneoPage({
                     partita={partita}
                     slotDisponibili={slotGirone}
                     slotOccupati={slotOccupati}
+                    categoriaSettimana={categoria.settimana}
                   />
                 ))
               )}

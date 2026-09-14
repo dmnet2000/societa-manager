@@ -2,7 +2,7 @@
 title: 'Story 20.30: Settimana esplicita sugli Slot del Torneo e filtro degli Slot passati/occupati nel menu di assegnazione'
 type: 'feature'
 created: '2026-09-13'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context: []
 baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
@@ -58,11 +58,11 @@ baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `prisma/schema.prisma` + migrazione -- `SlotTorneo.settimana` nullable
-- [ ] `lib/torneo.ts` -- funzioni di scrittura estese + helper puro di filtro + test
-- [ ] `actions.ts` -- creazione (singola e in blocco) e modifica validano/passano `settimana`
-- [ ] `NuovoSlotTorneoForm.tsx` + `SlotTorneoRow.tsx` -- nuovo `<select>` Settimana
-- [ ] `RisultatoPartitaTorneoForm.tsx` + le due pagine chiamanti -- filtro del menu con l'helper puro
+- [x] `prisma/schema.prisma` + migrazione -- `SlotTorneo.settimana` nullable
+- [x] `lib/torneo.ts` -- funzioni di scrittura estese (`creaSlotTorneo`/`creaSlotTorneoPerSelezione`/`aggiornaSlotTorneo`) + test. Deviazione dal Code Map: l'helper puro di filtro NON vive qui - `lib/torneo.ts` importa `"server-only"`, che avrebbe rotto il bundle client di `RisultatoPartitaTorneoForm.tsx` (Client Component). Spostato in quel file stesso, mirror dello stile gia' in uso per `calcolaRigheSelezioneGirone`/`slotNonModificabilePerCampo` (helper puro esportato da una Client Component, testato nel proprio `.test.ts`).
+- [x] `actions.ts` -- creazione (singola e in blocco) e modifica validano/passano `settimana` + test
+- [x] `NuovoSlotTorneoForm.tsx` + `SlotTorneoRow.tsx` -- nuovo `<select>` Settimana
+- [x] `RisultatoPartitaTorneoForm.tsx` + le due pagine chiamanti -- filtro del menu con l'helper puro `slotDaNascondereNelMenu` (definito in `RisultatoPartitaTorneoForm.tsx`, vedi sopra) + test
 
 **Acceptance Criteria:**
 - Given uno Slot di Settimana 1 gia' occupato, when l'Admin apre il menu Slot di una Categoria di Settimana 2, then quello Slot non compare
@@ -81,4 +81,52 @@ baseline_commit: 'd9ea1ddf2ee5fafdb3998f1938b6f65a771c2608'
 **Manual checks (dev locale rotto su questa macchina - verificare al primo deploy utile):**
 - Creare due Slot (uno per Settimana), occupare quello di Settimana 1 con una Partita, verificare che sparisca dal menu di una Categoria di Settimana 2 ma resti nel menu di una Categoria di Settimana 1.
 - Verificare che uno Slot esistente (creato prima di questa story, Settimana non impostata) continui a comparire ovunque come oggi.
+
+## Suggested Review Order
+
+**Modello dati**
+
+- Campo nullable additivo, collegamento reale (non dedotto dalla data) alla Settimana del torneo.
+  [`schema.prisma:1163`](../../prisma/schema.prisma#L1163)
+
+**Logica di nascondimento (predicato puro, testato)**
+
+- Entry point: entrambe le condizioni insieme (Settimana precedente E occupato), mai per uno Slot legacy `null`.
+  [`RisultatoPartitaTorneoForm.tsx:53`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/risultati/RisultatoPartitaTorneoForm.tsx#L53)
+
+- Applicato in un solo punto condiviso, prima del `.map` che costruisce le `<option>`.
+  [`RisultatoPartitaTorneoForm.tsx:267`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/risultati/RisultatoPartitaTorneoForm.tsx#L267)
+
+- `categoria.settimana` già disponibile, passato ai 4 punti di chiamata senza nuove query.
+  [`tabellone/page.tsx:375`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/tabellone/page.tsx#L375)
+
+- Stesso prop passato dalla pagina gironi.
+  [`risultati/page.tsx:156`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/risultati/page.tsx#L156)
+
+**Scrittura: obbligatoria in creazione, facoltativa in modifica**
+
+- `creaSlotTorneoAction`: validazione esplicita, la Settimana è obbligatoria per ogni nuovo Slot.
+  [`actions.ts:749`](../../app/app/(torneo)/torneo/actions.ts#L749)
+
+- `aggiornaSlotTorneoAction`: vuoto è "non impostata" legittimo, mai un errore; un valore manomesso resta rifiutato.
+  [`actions.ts:911`](../../app/app/(torneo)/torneo/actions.ts#L911)
+
+- `creaSlotTorneo`/`creaSlotTorneoPerSelezione`: parametro propagato a ogni riga creata in blocco per il girone.
+  [`torneo.ts:445`](../../lib/torneo.ts#L445)
+
+- `aggiornaSlotTorneo`: nullable, permette sia di lasciare/rimuovere la Settimana sia di valorizzarla la prima volta.
+  [`torneo.ts:639`](../../lib/torneo.ts#L639)
+
+**Form Admin**
+
+- Nuovo `<select>` obbligatorio, unico per l'intero form di creazione in blocco.
+  [`NuovoSlotTorneoForm.tsx:132`](../../app/app/(torneo)/torneo/NuovoSlotTorneoForm.tsx#L132)
+
+- Stesso `<select>`, facoltativo, nel form di modifica di uno Slot esistente.
+  [`SlotTorneoRow.tsx:251`](../../app/app/(torneo)/torneo/SlotTorneoRow.tsx#L251)
+
+**Test**
+
+- 7 casi sul predicato puro: entrambe le condizioni, una sola, legacy null, Slot assegnato a se stesso, Settimana successiva occupata.
+  [`RisultatoPartitaTorneoForm.test.ts:20`](../../app/app/(torneo)/torneo/[edizioneId]/[categoriaId]/risultati/RisultatoPartitaTorneoForm.test.ts#L20)
 

@@ -7,7 +7,7 @@ import {
   formattaRisultatoPartitaTorneo,
 } from "@/lib/risultato-partita-torneo";
 import { IconaModifica } from "@/app/icone-azione-riga";
-import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
+import type { FaseTorneo, SettimanaTorneo, TabelloneTorneo } from "@prisma/client";
 import styles from "../../../torneo.module.css";
 
 // Story 20.9 (Epic 20, Torneo Memorial): dati minimi di uno SlotTorneo per
@@ -25,7 +25,42 @@ type SlotTorneoOpzione = {
   // del Campo compare sempre accanto al nome della Palestra, ovunque uno
   // SlotTorneo con Campo assegnato viene mostrato).
   campo: { nome: string } | null;
+  // Story 20.30 (Epic 20, Torneo Memorial): nullable - null per ogni Slot
+  // creato prima di questa storia (legacy, mai nascosto dal filtro sotto) o
+  // non ancora editato da un Admin. Usato SOLO da slotDaNascondereNelMenu
+  // sotto, mai mostrato in questo form (spec-20-30 Boundaries "Always").
+  settimana: SettimanaTorneo | null;
 };
+
+// Story 20.30 (Epic 20, Torneo Memorial): funzione pura - nessun import
+// "server-only" in questo file (Client Component), a differenza di
+// lib/torneo.ts: definita/esportata qui, mirror esatto dello stile gia' in
+// uso per calcolaRigheSelezioneGirone (NuovoSlotTorneoForm.tsx)/
+// slotNonModificabilePerCampo (SlotTorneoRow.tsx) - un helper puro che una
+// Client Component riusa e' testato a se' nel proprio file component, non in
+// lib/. Nasconde uno Slot dal menu di assegnazione quando ENTRAMBE le
+// condizioni valgono insieme (spec-20-30 Boundaries "Always", decisione
+// dell'utente: "una sola non basta"): la sua Settimana e' valorizzata ed e'
+// precedente a quella della Categoria corrente (unico caso possibile con le
+// due Settimane esistenti: SETTIMANA_1 < SETTIMANA_2, Story 20.1) E lo Slot
+// e' gia' occupato da un'ALTRA Partita (stesso insieme "occupati" gia' in
+// uso per l'avviso "(occupato)" sotto). Lo Slot attualmente assegnato a
+// QUESTA Partita (slotAssegnatoId) non e' mai considerato "occupato da
+// un'altra Partita" qui, quindi resta sempre selezionabile, qualunque sia la
+// sua Settimana/stato - nessun ramo dedicato necessario, la stessa
+// condizione lo esclude gia' implicitamente. Uno Slot con settimana null
+// (legacy, mai editato) non e' MAI nascosto - comportamento identico a oggi.
+export function slotDaNascondereNelMenu(
+  slot: { id: string; settimana: SettimanaTorneo | null },
+  categoriaSettimana: SettimanaTorneo,
+  slotOccupati: Set<string>,
+  slotAssegnatoId: string | null
+): boolean {
+  if (!slot.settimana) return false;
+  const settimanaPrecedente = slot.settimana === "SETTIMANA_1" && categoriaSettimana === "SETTIMANA_2";
+  if (!settimanaPrecedente) return false;
+  return slotOccupati.has(slot.id) && slot.id !== slotAssegnatoId;
+}
 
 type Partita = {
   id: string;
@@ -63,10 +98,16 @@ export function RisultatoPartitaTorneoForm({
   partita,
   slotDisponibili,
   slotOccupati,
+  categoriaSettimana,
 }: {
   partita: Partita;
   slotDisponibili: SlotTorneoOpzione[];
   slotOccupati: Set<string>;
+  // Story 20.30 (Epic 20, Torneo Memorial): Settimana della Categoria di
+  // QUESTA Partita (gia' disponibile ai due genitori, nessuna nuova query) -
+  // usata solo da slotDaNascondereNelMenu sopra per filtrare slotDisponibili
+  // prima del <select> sotto.
+  categoriaSettimana: SettimanaTorneo;
 }) {
   const [inModifica, setInModifica] = useState(false);
   const [state, formAction, pending] = useActionState(
@@ -215,13 +256,31 @@ export function RisultatoPartitaTorneoForm({
           defaultValue={partita.slotTorneoId ?? ""}
         >
           <option value="">Nessuno</option>
-          {slotDisponibili.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.etichetta} — {s.data} {s.ora} — {s.palestra.nome}
-              {s.campo && ` - ${s.campo.nome}`}
-              {slotOccupati.has(s.id) && s.id !== partita.slotTorneoId ? " (occupato)" : ""}
-            </option>
-          ))}
+          {/* Story 20.30 (Epic 20, Torneo Memorial): filtro applicato QUI,
+              prima della .map che costruisce le <option> - unico punto
+              condiviso da risultati/page.tsx e tabellone/page.tsx (spec-20-30
+              Boundaries "Always": nessuna duplicazione della logica tra le
+              due pagine chiamanti). Uno Slot nascosto da qui non compare piu'
+              affatto nel menu (non un'opzione disabilitata) - mirror del
+              trattamento gia' scelto per ogni altra Categoria/opzione
+              filtrata nell'epica. */}
+          {slotDisponibili
+            .filter(
+              (s) =>
+                !slotDaNascondereNelMenu(
+                  s,
+                  categoriaSettimana,
+                  slotOccupati,
+                  partita.slotTorneoId
+                )
+            )
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.etichetta} — {s.data} {s.ora} — {s.palestra.nome}
+                {s.campo && ` - ${s.campo.nome}`}
+                {slotOccupati.has(s.id) && s.id !== partita.slotTorneoId ? " (occupato)" : ""}
+              </option>
+            ))}
         </select>
         <button disabled={slotPending} type="submit" className={styles.bottoneCompatto}>
           {partita.slotTorneoId ? "Aggiorna Slot" : "Assegna Slot"}

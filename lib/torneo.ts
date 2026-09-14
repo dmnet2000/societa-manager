@@ -434,11 +434,20 @@ export async function trovaCampoPerId(id: string) {
 // (creaSlotTorneoAction, tramite trovaCampoPerId) - stessa disciplina "mai
 // fidarsi del client" gia' stabilita per aggiornaSlotTorneoAction (Story
 // 20.22).
+// Story 20.30 (Epic 20, Torneo Memorial): "settimana" aggiunta ai campi
+// scrivibili - collegamento reale a SettimanaTorneo (non dedotto dalla
+// data, decisione dell'utente al checkpoint di questa storia), obbligatoria
+// in creazione (validaCampiSlot, app/(torneo)/torneo/actions.ts) per ogni
+// nuovo Slot creato da qui in poi. Nessun backfill: gli Slot creati PRIMA di
+// questa storia restano con "settimana" null finche' un Admin non li
+// modifica esplicitamente (aggiornaSlotTorneo sotto, spec-20-30 Boundaries
+// "Always").
 export async function creaSlotTorneo(dati: {
   edizioneTorneoId: string;
   etichetta: string;
   data: string;
   ora: string;
+  settimana: SettimanaTorneo;
   palestraId: string;
   fase: FaseTorneo;
   tabellone: TabelloneTorneo | null;
@@ -482,6 +491,10 @@ export async function creaSlotTorneoPerSelezione(dati: {
   etichetta: string;
   data: string;
   ora: string;
+  // Story 20.30: unica per l'intero form (mirror etichetta/data/ora sopra) -
+  // ogni riga creata in blocco per il girone condivide la stessa Settimana,
+  // obbligatoria (validata prima della chiamata, mai qui).
+  settimana: SettimanaTorneo;
   selezioni: { palestraId: string; campoId: string | null }[];
 }) {
   // Review fix (Verification Gap Reviewer): select invece di include - solo
@@ -522,6 +535,7 @@ export async function creaSlotTorneoPerSelezione(dati: {
       etichetta: dati.etichetta,
       data: dati.data,
       ora: dati.ora,
+      settimana: dati.settimana,
       palestraId: s.palestraId,
       campoId: s.campoId,
       fase: "GIRONE" as const,
@@ -629,6 +643,11 @@ export async function aggiornaSlotTorneo(
     etichetta: string;
     data: string;
     ora: string;
+    // Story 20.30: modificabile come etichetta/data/ora/Palestra/Campo (mai
+    // immutabile come fase/tabellone) - nullable, mirror di campoId sopra:
+    // permette sia di lasciare/rimuovere la Settimana (Slot legacy) sia di
+    // valorizzarla per la prima volta.
+    settimana: SettimanaTorneo | null;
     palestraId: string;
     campoId: string | null;
   }

@@ -372,6 +372,7 @@ export default async function TabelloneTorneoPage({
                         partita={partita}
                         slotDisponibili={slotPerPartita(partita)}
                         slotOccupati={slotOccupati}
+                        categoriaSettimana={categoria.settimana}
                       />
                     ))}
                   </>
@@ -396,6 +397,7 @@ export default async function TabelloneTorneoPage({
                           partita={finaleVincenti}
                           slotDisponibili={slotPerPartita(finaleVincenti)}
                           slotOccupati={slotOccupati}
+                          categoriaSettimana={categoria.settimana}
                         />
                       </>
                     )}
@@ -406,6 +408,7 @@ export default async function TabelloneTorneoPage({
                           partita={finalePerdenti}
                           slotDisponibili={slotPerPartita(finalePerdenti)}
                           slotOccupati={slotOccupati}
+                          categoriaSettimana={categoria.settimana}
                         />
                       </>
                     )}

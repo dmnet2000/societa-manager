@@ -6,7 +6,8 @@ import { ETICHETTA_FASE } from "@/lib/fase-torneo";
 import { ETICHETTA_TABELLONE } from "@/lib/tabelloni-torneo";
 import { IconaModifica, IconaCancella } from "@/app/icone-azione-riga";
 import { campiDellaPalestraSelezionata } from "@/lib/campi-palestra-torneo";
-import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
+import { SETTIMANE_TORNEO } from "@/lib/settimana-torneo";
+import type { FaseTorneo, SettimanaTorneo, TabelloneTorneo } from "@prisma/client";
 import styles from "./torneo.module.css";
 
 type Slot = {
@@ -14,6 +15,12 @@ type Slot = {
   etichetta: string;
   data: string;
   ora: string;
+  // Story 20.30 (Epic 20, Torneo Memorial): nullable - null per ogni Slot
+  // creato prima di questa storia (legacy) o non ancora editato. Modificabile
+  // qui come etichetta/data/ora/Palestra/Campo (mai immutabile come fase/
+  // tabellone sotto) - il <select> sotto permette anche di valorizzarla per
+  // la prima volta su uno Slot legacy.
+  settimana: SettimanaTorneo | null;
   fase: FaseTorneo;
   tabellone: TabelloneTorneo | null;
   edizioneTorneoId: string;
@@ -231,6 +238,29 @@ export function SlotTorneoRow({ slot, palestre }: { slot: Slot; palestre: Palest
                     defaultValue={slot.ora}
                     required
                   />
+                </div>
+                {/* Story 20.30 (Epic 20, Torneo Memorial): mirror esatto del
+                    <select> Settimana di NuovoSlotTorneoForm.tsx, ma
+                    FACOLTATIVO qui (spec-20-30 Code Map: "obbligatoria in
+                    creazione, modificabile in modifica") - l'opzione vuota
+                    "Non impostata" resta selezionabile, a differenza del
+                    form di creazione, per poter lasciare/rimuovere la
+                    Settimana su uno Slot legacy. defaultValue "" quando
+                    slot.settimana e' null. */}
+                <div className={styles.campo}>
+                  <label htmlFor={`slot-settimana-${slot.id}`}>Settimana</label>
+                  <select
+                    id={`slot-settimana-${slot.id}`}
+                    name="settimana"
+                    defaultValue={slot.settimana ?? ""}
+                  >
+                    <option value="">Non impostata</option>
+                    {SETTIMANE_TORNEO.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className={styles.campo}>
                   <label htmlFor={`slot-palestra-${slot.id}`}>Palestra</label>

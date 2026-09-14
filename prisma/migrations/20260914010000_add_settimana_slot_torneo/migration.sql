@@ -1,0 +1,11 @@
+-- Story 20.30 (Epic 20, Torneo Memorial): SlotTorneo guadagna un campo
+-- esplicito "settimana" - collegamento reale a SettimanaTorneo (enum gia'
+-- esistente, Story 20.1), non dedotto dalla data (decisione dell'utente al
+-- checkpoint di questa storia). Nullable, nessun default: additivo, nessun
+-- backfill per gli Slot esistenti - restano NULL finche' un Admin non li
+-- modifica esplicitamente (spec-20-30 Boundaries "Always"/"Never"). Usato
+-- dal nuovo filtro del menu di assegnazione (RisultatoPartitaTorneoForm.tsx)
+-- per nascondere uno Slot di una Settimana precedente gia' occupato da
+-- un'altra Partita - uno Slot con settimana NULL non e' mai nascosto,
+-- stesso comportamento di oggi.
+ALTER TABLE "slot_torneo" ADD COLUMN "settimana" "SettimanaTorneo";

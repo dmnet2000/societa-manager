@@ -1146,6 +1146,21 @@ model SlotTorneo {
   etichetta                     String
   data                          String
   ora                           String
+  // Story 20.30 (Epic 20, Torneo Memorial): collegamento reale (non
+  // dedotto dalla data) alla Settimana del torneo a cui questo Slot
+  // appartiene - decisione dell'utente al checkpoint della storia: un
+  // helper puro che confronta le stringhe "data" avrebbe funzionato per
+  // oggi, ma solo un campo esplicito resta corretto se in futuro le due
+  // Settimane smettessero di essere intervalli di date disgiunti. Nullable,
+  // nessun default: additivo, nessun backfill per gli Slot esistenti (che
+  // restano null finche' un Admin non li modifica esplicitamente, spec-20-30
+  // Boundaries "Always") - uno Slot con settimana null non e' mai nascosto
+  // dal filtro del menu di assegnazione (RisultatoPartitaTorneoForm.tsx),
+  // stesso comportamento di oggi. Obbligatoria per ogni NUOVO Slot creato da
+  // questa storia in poi (creaSlotTorneoAction, app/(torneo)/torneo/actions.ts)
+  // - nessun CHECK DB, stessa filosofia di ogni altra validazione "solo in
+  // Server Action" di questa epica.
+  settimana                     SettimanaTorneo?
   palestraId                    String
   palestra                      Palestra         @relation(fields: [palestraId], references: [id])
   // Story 20.18 (Epic 20, Torneo Memorial): FK opzionale verso Campo (Epic 2,
