@@ -477,13 +477,23 @@
   .squadre {
     font-size: 16px;
   }
+
+  /* Review fix (Blind Hunter, Story 20.33 - stesso finding replicato
+     qui dopo essere emerso sul fix gemello di /calendario): .vs eredita
+     font-size da .squadre (sotto), senza questo override sarebbe sceso a
+     16px insieme al nome squadra - sotto la soglia "large text" WCAG che
+     il commento su .vs (piu' sotto) richiede esplicitamente per restare
+     AA a 3.88:1 di contrasto. 20px bold resta sopra i ~18.66px minimi. */
+  .vs {
+    font-size: 20px;
+  }
 }
 
 /* {colors.magenta-chiaro} #FFCBE6 - stesso valore/motivo di .vs in
-   calendario.module.css (qui pero' solo per il colore: font-size: inherit
-   eredita da .squadre, quindi da Story 20.32 in poi ".vs" scende anch'esso
-   a 16px sotto i 900px insieme al nome squadra - stesso meccanismo,
-   nessuna regola propria da mantenere allineata). */
+   calendario.module.css: contrasto 3.88:1, AA solo a soglia "large text" -
+   font-size: inherit eredita normalmente da .squadre, ma l'override sotto
+   i 900px poco sopra (Story 20.33) impedisce a .vs di scendere sotto
+   quella soglia insieme al nome squadra. */
 .vs {
   color: #ffcbe6;
   font-size: inherit;

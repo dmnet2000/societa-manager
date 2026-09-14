@@ -123,10 +123,25 @@
 
 /* {typography.display-card}. Richiesta esplicita dell'utente (2026-09-11):
    spostata di 100px verso destra (stesso meccanismo padding-left gia' in
-   uso per .meta piu' sotto). */
+   uso per .meta piu' sotto).
+   Story 20.33 (richiesta esplicita dell'utente, "stessa cosa per la
+   sezione calendario" dopo il fix equivalente su /torneo): verificato dal
+   vivo su volleymogliano.it/calendario a 375px - senza flex-wrap, i due
+   nomi squadra + "vs" restavano forzati su una riga sola che, con
+   padding-left: 100px a font-size 22px, sfondava il bordo destro dello
+   schermo (contenuto tagliato/invisibile, `overflow-x:hidden` globale in
+   app/globals.css - stesso sintomo "pagina non si ridimensiona" gia'
+   diagnosticato per /torneo, ma qui la causa e' .squadre stesso, non
+   .main: /calendario non centra .main con margin:auto, quindi non soffre
+   del bug .main-su-flex-item risolto li'). flex-wrap qui sotto evita il
+   taglio a qualunque larghezza; la riduzione di font-size E padding-left
+   sotto i 900px (stesso breakpoint unico del sito pubblico) libera spazio
+   sufficiente sui telefoni, mantenendo intatti i 100px espliciti richiesti
+   dall'utente su desktop/tablet. */
 .squadre {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   padding-left: 100px;
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
@@ -135,6 +150,29 @@
   line-height: 1.15;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  /* overflow-wrap: mirror di torneo-pubblico.module.css .squadre - un
+     singolo nome squadra senza spazi resterebbe piu' largo della card
+     anche dopo flex-wrap (che sposta solo interi elementi flex a capo, non
+     spezza il testo dentro uno di essi). */
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 900px) {
+  .squadre {
+    padding-left: var(--space-6);
+    font-size: 16px;
+  }
+
+  /* Review fix (Blind Hunter): .vs eredita font-size da .squadre
+     (font-size: inherit, vedi sotto) - senza questo override sarebbe sceso
+     a 16px insieme al nome squadra, sotto la soglia "large text" WCAG che
+     il commento su .vs impone esplicitamente ("mai piu' piccolo di
+     {typography.display-card}", il contrasto 3.88:1 del magenta chiaro
+     passa AA SOLO a quella soglia). 20px bold resta sopra i ~18.66px
+     minimi per "large text", stesso principio gia' rispettato a 22px. */
+  .vs {
+    font-size: 20px;
+  }
 }
 
 /* {colors.magenta-chiaro} #FFCBE6 - letterale, non var(--color-magenta):
