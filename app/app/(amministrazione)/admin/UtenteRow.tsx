@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import type { Ruolo } from "@prisma/client";
 import {
   aggiornaRuoliUtente,
+  aggiungiAtletaGenitoreAction,
   correggiEmailUtenteAction,
   impostaAttivoUtente,
   reimpostaPasswordFissaUtente,
@@ -27,6 +28,10 @@ type Utente = {
   attivo: boolean;
   ruoli: Ruolo[];
   emailConfermata: boolean;
+  // Story 1.10: Atlete gia' collegate a questo Utente - risolte server-side
+  // in page.tsx (elencaAtletePerIds, service-role), mai un include Prisma
+  // diretto su Atleta (AD-9).
+  atletiCollegati: { id: string; nome: string }[];
 };
 
 export function UtenteRow({ utente }: { utente: Utente }) {
@@ -80,6 +85,11 @@ export function UtenteRow({ utente }: { utente: Utente }) {
     correggiEmailUtenteAction,
     undefined
   );
+
+  // Story 1.10: stesso pattern useActionState di correggiEmailAction sopra -
+  // il form compare SOLO per un Utente con Ruolo GENITORE (vedi JSX sotto).
+  const [aggiungiAtletaState, aggiungiAtletaAction, aggiungiAtletaPending] =
+    useActionState(aggiungiAtletaGenitoreAction, undefined);
 
   function toggleAttivo() {
     setAttivoError(null);
@@ -284,6 +294,66 @@ export function UtenteRow({ utente }: { utente: Utente }) {
               Correggi email
             </button>
           </form>
+        )}
+      </td>
+      <td>
+        {/* Story 1.10: l'aggancio Genitore<->Atleta avviene SOLO in fase di
+            registrazione (Story 1.5), con un unico Codice Fiscale - un
+            Genitore con piu' figlie/i resta agganciato a una sola. Questa
+            cella compare SOLO se il Ruolo GENITORE e' tra i Ruoli di questo
+            Utente (stesso principio gia' seguito dal form "Correggi email"
+            sopra) - il server (aggiungiAtletaGenitoreAction) non si fida
+            comunque di questo rendering condizionale, verifica da se' solo
+            che il chiamante sia Admin (requireRuolo), stesso perimetro di
+            ogni altra azione di questo file. */}
+        {utente.ruoli.includes("GENITORE") ? (
+          <div className={styles.formCompatto}>
+            <span>
+              {utente.atletiCollegati.length > 0
+                ? utente.atletiCollegati.map((a) => a.nome).join(", ")
+                : "Nessuna Atleta collegata"}
+            </span>
+            <form
+              // Review fix (code review): remount forzato (svuota l'input non
+              // controllato Codice Fiscale) quando l'elenco atletiCollegati
+              // cambia dopo un collegamento riuscito - stesso trucco gia'
+              // stabilito nel progetto per lo stesso identico bisogno (vedi
+              // NomiSettimaneTorneoForm.tsx).
+              key={utente.atletiCollegati.map((a) => a.id).join(",")}
+              action={aggiungiAtletaAction}
+              className={styles.formCompatto}
+            >
+              <input type="hidden" name="utenteId" value={utente.id} />
+              <input
+                type="text"
+                name="codiceFiscale"
+                placeholder="Codice Fiscale Atleta"
+                required
+                aria-label={`Codice Fiscale della nuova Atleta da collegare a ${utente.email}`}
+              />
+              {aggiungiAtletaState && "error" in aggiungiAtletaState && (
+                <p role="alert" className={styles.errore}>
+                  {aggiungiAtletaState.error.message}
+                </p>
+              )}
+              {aggiungiAtletaState && "success" in aggiungiAtletaState && (
+                <p role="status" className={styles.successo}>
+                  Atleta collegata.
+                </p>
+              )}
+              <button
+                disabled={aggiungiAtletaPending}
+                type="submit"
+                className={styles.bottoneCompatto}
+              >
+                Collega
+              </button>
+            </form>
+          </div>
+        ) : (
+          // Review fix (code review): placeholder esplicito invece di una
+          // cella del tutto vuota per ogni Utente non-Genitore.
+          <span>—</span>
         )}
       </td>
     </tr>

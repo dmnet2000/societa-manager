@@ -15,6 +15,9 @@ type Utente = {
   attivo: boolean;
   ruoli: Ruolo[];
   emailConfermata: boolean;
+  // Story 1.10: Atlete gia' collegate (mostrato solo per un Utente con Ruolo
+  // GENITORE - vedi UtenteRow).
+  atletiCollegati: { id: string; nome: string }[];
 };
 
 // Story 9.40: nuovo Client Component, mirror esatto della relazione
@@ -62,6 +65,7 @@ export function ElencoUtenti({ utenti }: { utenti: Utente[] }) {
               <th>Stato</th>
               <th>Funzioni</th>
               <th>Correggi email</th>
+              <th>Figli collegati</th>
             </tr>
           </thead>
           <tbody>

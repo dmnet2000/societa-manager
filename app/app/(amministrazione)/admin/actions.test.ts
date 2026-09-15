@@ -8,6 +8,7 @@ const utenteCreateMock = vi.fn();
 const utenteUpdateMock = vi.fn();
 const utenteCountMock = vi.fn();
 const utenteFindUniqueOrThrowMock = vi.fn();
+const genitoreAtletaCreateMock = vi.fn();
 const transactionMock = vi.fn();
 const sincronizzaRuoliMock = vi.fn();
 const revalidatePathMock = vi.fn();
@@ -15,6 +16,7 @@ const requireRuoloMock = vi.fn();
 const getUserMock = vi.fn();
 const headersMock = vi.fn();
 const inviaEmailMock = vi.fn();
+const trovaPerCodiceFiscaleMock = vi.fn();
 
 vi.mock("@/lib/auth-admin/client", () => ({
   createAdminClient: () => ({
@@ -47,9 +49,25 @@ vi.mock("@/lib/prisma", () => ({
       deleteMany: vi.fn(),
       createMany: vi.fn(),
     },
+    genitoreAtleta: {
+      create: genitoreAtletaCreateMock,
+    },
     $transaction: transactionMock,
   },
 }));
+
+// Mirror del mock gia' usato in registrati/actions.test.ts (Story 1.5):
+// isCodiceFiscaleValido resta l'implementazione reale (semplice regex, nessun
+// bisogno di mockarla), solo trovaPerCodiceFiscale e' mockato.
+vi.mock("@/lib/matching-codice-fiscale", async () => {
+  const { isCodiceFiscaleValido } = await vi.importActual<
+    typeof import("@/lib/matching-codice-fiscale/valida-codice-fiscale")
+  >("@/lib/matching-codice-fiscale/valida-codice-fiscale");
+  return {
+    trovaPerCodiceFiscale: trovaPerCodiceFiscaleMock,
+    isCodiceFiscaleValido,
+  };
+});
 
 vi.mock("@/lib/auth-admin/sync-roles", () => ({
   sincronizzaRuoliAppMetadata: sincronizzaRuoliMock,
@@ -77,6 +95,7 @@ const {
   aggiornaRuoliUtente,
   reimpostaPasswordFissaUtente,
   correggiEmailUtenteAction,
+  aggiungiAtletaGenitoreAction,
 } = await import("./actions");
 
 function buildHeaders(entries: Record<string, string>) {
@@ -165,6 +184,21 @@ describe("autorizzazione (comune alle 3 Server Action)", () => {
 
     expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
     expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("aggiungiAtletaGenitoreAction restituisce FORBIDDEN e non tocca Prisma/Supabase se il chiamante non e' Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
   });
 });
 
@@ -1014,5 +1048,210 @@ describe("correggiEmailUtenteAction", () => {
     expect(utenteUpdateMock).toHaveBeenCalledTimes(1);
     // Review fix: stesso motivo del test precedente (ramo generateLink).
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
+  });
+});
+
+describe("aggiungiAtletaGenitoreAction", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    trovaPerCodiceFiscaleMock.mockReset();
+    genitoreAtletaCreateMock.mockReset();
+    revalidatePathMock.mockReset();
+    // Review fix (code review): default per la maggior parte dei test sotto,
+    // che non riguardano il controllo esistenza+ruolo aggiunto in review - un
+    // target GENITORE valido, cosi' i test esistenti (lookup CF, creazione,
+    // duplicato, ecc.) non devono ciascuno ripetere questo mock.
+    utenteFindUniqueOrThrowMock.mockReset();
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      ruoli: [{ ruolo: "GENITORE" }],
+    });
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
+  });
+
+  it("returns VALIDATION and touches nothing when utenteId is missing", async () => {
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Utente non specificato." },
+    });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION (same message as registrazione) for a malformed Codice Fiscale, no lookup", async () => {
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "TROPPO-CORTO" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Codice Fiscale non valido (deve essere di 16 caratteri alfanumerici).",
+      },
+    });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("normalizes codiceFiscale (trim + uppercase) before the lookup", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({ id: "atleta-1" });
+    genitoreAtletaCreateMock.mockResolvedValue({});
+
+    await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "  abcdef12g34h567i  " })
+    );
+
+    expect(trovaPerCodiceFiscaleMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "ABCDEF12G34H567I"
+    );
+  });
+
+  // Review fix (code review, finding 1): verifica esistenza+ruolo
+  // dell'Utente target - mirror del principio gia' applicato dalle altre
+  // Server Action di questo file (aggiornaRuoliUtente,
+  // reimpostaPasswordFissaUtente, correggiEmailUtenteAction).
+  it("returns VALIDATION 'Utente non trovato' and touches nothing else when the target Utente does not exist", async () => {
+    utenteFindUniqueOrThrowMock.mockRejectedValue(new Error("not found"));
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Utente non trovato." },
+    });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION 'nessun Ruolo Genitore' and touches nothing else when the target Utente lacks the GENITORE ruolo (fat-finger/manomissione)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "u1",
+      ruoli: [{ ruolo: "ALLENATORE" }],
+    });
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questo Utente non ha il Ruolo Genitore.",
+      },
+    });
+    expect(trovaPerCodiceFiscaleMock).not.toHaveBeenCalled();
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION (same message as registrazione) when no Atleta matches the Codice Fiscale", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue(null);
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Nessuna Atleta trovata con questo Codice Fiscale. Verifica di aver inserito il codice corretto.",
+      },
+    });
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when the lookup throws", async () => {
+    trovaPerCodiceFiscaleMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile collegare l'Atleta. Riprova." },
+    });
+    expect(genitoreAtletaCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("creates the GenitoreAtleta row and reports success (AC: seconda Atleta collegata)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({ id: "atleta-1" });
+    genitoreAtletaCreateMock.mockResolvedValue({});
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
+      data: { utenteId: "u1", atletaId: "atleta-1" },
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
+  });
+
+  // Review fix (code review, finding 4): riga esplicita della I/O Matrix
+  // della spec ("Stessa Atleta collegata a un ALTRO Genitore -> Consentito"),
+  // non coperta prima - la vera unicita' Prisma e' per coppia
+  // utenteId+atletaId (@@unique), quindi un'Atleta gia' collegata a un
+  // Genitore DIVERSO non fa scattare P2002: un mock che risolve con successo
+  // normale basta a rappresentare questo scenario.
+  it("allows linking an Atleta already linked to a DIFFERENT Genitore (I/O matrix: consentito, no P2002)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({ id: "atleta-gia-altrove" });
+    genitoreAtletaCreateMock.mockResolvedValue({});
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(genitoreAtletaCreateMock).toHaveBeenCalledWith({
+      data: { utenteId: "u1", atletaId: "atleta-gia-altrove" },
+    });
+  });
+
+  it("returns an explicit 'già collegata' error (not generic, not a silent success) on a duplicate (Prisma P2002)", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({ id: "atleta-1" });
+    genitoreAtletaCreateMock.mockRejectedValue({ code: "P2002" });
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questa Atleta è già collegata a questo Genitore.",
+      },
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when the create fails for an unrelated reason", async () => {
+    trovaPerCodiceFiscaleMock.mockResolvedValue({ id: "atleta-1" });
+    genitoreAtletaCreateMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiungiAtletaGenitoreAction(
+      undefined,
+      buildFormData({ utenteId: "u1", codiceFiscale: "ABCDEF12G34H567I" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile collegare l'Atleta. Riprova." },
+    });
   });
 });

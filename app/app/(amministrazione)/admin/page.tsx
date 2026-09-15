@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/auth-admin/client";
+import { elencaAtletePerIds } from "@/lib/db-rls/atleta";
 import { calcolaEmailConfermataPerAuthId } from "@/lib/auth-admin/email-confermata";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -23,9 +24,15 @@ export default async function AdminPage() {
   const [ruoliAiuto, utenti, listaUtentiAuth] = await Promise.all([
     risolviRuoliPerAiutoContestuale(),
     // Utente/UtenteRuolo non sono protetti da RLS (AD-9): gestibili via
-    // Prisma diretto, come in Story 1.1.
+    // Prisma diretto, come in Story 1.1. Story 1.10: genitoriAtlete incluso
+    // qui SOLO con select atletaId (mai un include diretto su Atleta, che e'
+    // protetta da RLS, AD-9) - i nomi vengono risolti separatamente sotto via
+    // elencaAtletePerIds (service-role).
     prisma.utente.findMany({
-      include: { ruoli: true },
+      include: {
+        ruoli: true,
+        genitoriAtlete: { select: { atletaId: true } },
+      },
       orderBy: { email: "asc" },
     }),
     // Story 9.38: una sola chiamata listUsers() per l'intera lista (non
@@ -56,6 +63,31 @@ export default async function AdminPage() {
     listaUtentiAuth.data?.users ?? []
   );
 
+  // Story 1.10: una sola chiamata a elencaAtletePerIds per l'intero elenco
+  // (non una per Utente) - stesso principio gia' seguito per listUsers()
+  // sopra (Story 9.38), evita N letture separate contro "atlete" ad ogni
+  // caricamento di questa pagina. Dipende da `utenti` (serve l'elenco di id),
+  // quindi eseguita dopo il Promise.all, non dentro.
+  const idsAtleteCollegate = [
+    ...new Set(utenti.flatMap((u) => u.genitoriAtlete.map((g) => g.atletaId))),
+  ];
+  // Review fix (code review): a differenza di listUsers() sopra, questa
+  // chiamata non era gestita in modo fail-soft - un errore transitorio
+  // Supabase/rete avrebbe mandato in errore l'intera pagina Admin invece di
+  // degradare (nessuna Atleta collegata mostrata quel giro, mai un crash).
+  let atleteCollegate: Awaited<ReturnType<typeof elencaAtletePerIds>> = [];
+  try {
+    atleteCollegate = await elencaAtletePerIds(
+      createAdminClient(),
+      idsAtleteCollegate
+    );
+  } catch (err) {
+    console.error(
+      "[AdminPage] elencaAtletePerIds fallita - nessuna Atleta collegata mostrata in questo caricamento",
+      err
+    );
+  }
+
   // Story 9.40: shape-ato qui (Server Component) - ElencoUtenti (Client
   // Component) riceve l'array gia' pronto, stesso schema gia' stabilito da
   // conferma-certificati/page.tsx + ListaConfermati.tsx per lo stesso
@@ -71,6 +103,22 @@ export default async function AdminPage() {
     // correzione invece di rischiare di mostrarlo per un Utente in realta'
     // gia' confermato.
     emailConfermata: emailConfermataPerAuthId.get(utente.supabaseAuthId) ?? true,
+    // Story 1.10: Atlete gia' collegate a questo Utente (per dare contesto
+    // prima di aggiungerne un'altra) - UtenteRow mostra questa colonna SOLO
+    // per un Utente con Ruolo GENITORE (stesso principio gia' seguito per il
+    // form "Correggi email" sopra). Un atletaId senza corrispondenza in
+    // atleteCollegate (Atleta cancellata nel frattempo, o lookup fallito
+    // sopra) viene scartato invece di mostrare una riga con nome mancante.
+    // Review fix (code review): ricostruito filtrando l'array
+    // atleteCollegate - GIA' ordinato per nome da elencaAtletePerIds - invece
+    // di iterare utente.genitoriAtlete (ordine di inserimento DB), che
+    // vanificava l'ordinamento alfabetico.
+    atletiCollegati: (() => {
+      const idsPerQuestoUtente = new Set(
+        utente.genitoriAtlete.map((g) => g.atletaId)
+      );
+      return atleteCollegate.filter((a) => idsPerQuestoUtente.has(a.id));
+    })(),
   }));
 
   return (

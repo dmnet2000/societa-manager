@@ -393,6 +393,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Se un Utente ha sbagliato a digitare l'email in fase di registrazione e non ha mai confermato l'account, compare qui il campo \"Correggi email\": corregge l'indirizzo e reinvia subito un nuovo link di conferma. Disponibile solo finché l'Utente non ha mai confermato l'account.",
       "\"Correggi email\" rifiuta sempre un bersaglio con Ruolo Admin (usa un altro account per correggere quello), e rifiuta anche se il nuovo indirizzo è già in uso da un altro Utente.",
       "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin e Site Manager restano soggetti all'attivazione manuale da questa pagina.",
+      "Un Genitore già registrato può risultare collegato a una sola figlia/o (il Codice Fiscale inserito in registrazione ne aggancia solo una): per ogni Utente con Ruolo Genitore trovi qui la colonna \"Figli collegati\", con l'elenco delle Atlete già agganciate e un campo per collegarne un'altra inserendo il suo Codice Fiscale. Un Codice Fiscale già collegato a questo stesso Genitore restituisce un errore esplicito, nessun duplicato; nessuna funzione per rimuovere un aggancio esistente.",
     ],
   },
   {

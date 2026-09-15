@@ -9,7 +9,8 @@ const updateMock = vi.fn<(payload: Record<string, unknown>) => { eq: typeof eqMo
   () => ({ eq: eqMock })
 );
 const orderMock = vi.fn();
-const elencoSelectMock = vi.fn(() => ({ order: orderMock }));
+const inMock = vi.fn(() => ({ order: orderMock }));
+const elencoSelectMock = vi.fn(() => ({ order: orderMock, in: inMock }));
 const fromMock = vi.fn(() => ({
   insert: insertMock,
   update: updateMock,
@@ -18,8 +19,13 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock } as never;
 
-const { creaAtleta, aggiornaAtleta, elencaAtlete, elencaAtletePubbliche } =
-  await import("./atleta");
+const {
+  creaAtleta,
+  aggiornaAtleta,
+  elencaAtlete,
+  elencaAtletePubbliche,
+  elencaAtletePerIds,
+} = await import("./atleta");
 
 const datiEsempio = {
   codiceFiscale: "ABC123",
@@ -181,5 +187,53 @@ describe("elencaAtletePubbliche", () => {
     orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
 
     await expect(elencaAtletePubbliche(supabase)).rejects.toThrow("boom");
+  });
+});
+
+// Story 1.10: elenco {id, nome} per un insieme di id specifico - usata da
+// admin/page.tsx per risolvere le Atlete gia' collegate a un Genitore.
+describe("elencaAtletePerIds", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    elencoSelectMock.mockClear();
+    inMock.mockClear();
+    orderMock.mockReset();
+  });
+
+  it("returns [] without querying the DB when ids is empty", async () => {
+    const result = await elencaAtletePerIds(supabase, []);
+
+    expect(result).toEqual([]);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("selects only id and nome, filtered by the given ids, ordered by nome", async () => {
+    const atlete = [
+      { id: "a1", nome: "Bianchi Laura" },
+      { id: "a2", nome: "Rossi Mario" },
+    ];
+    orderMock.mockResolvedValue({ data: atlete, error: null });
+
+    const result = await elencaAtletePerIds(supabase, ["a1", "a2"]);
+
+    expect(fromMock).toHaveBeenCalledWith("atlete");
+    expect(elencoSelectMock).toHaveBeenCalledWith("id, nome");
+    expect(inMock).toHaveBeenCalledWith("id", ["a1", "a2"]);
+    expect(orderMock).toHaveBeenCalledWith("nome", { ascending: true });
+    expect(result).toEqual(atlete);
+  });
+
+  it("returns an empty array when there are no matching rows", async () => {
+    orderMock.mockResolvedValue({ data: null, error: null });
+
+    const result = await elencaAtletePerIds(supabase, ["a1"]);
+
+    expect(result).toEqual([]);
+  });
+
+  it("throws when the query fails", async () => {
+    orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(elencaAtletePerIds(supabase, ["a1"])).rejects.toThrow("boom");
   });
 });

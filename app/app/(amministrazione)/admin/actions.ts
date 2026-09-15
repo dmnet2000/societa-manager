@@ -10,6 +10,10 @@ import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";
 import { parseRuoli } from "@/lib/ruoli";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { inviaEmail } from "@/lib/email/invia-email";
+import {
+  isCodiceFiscaleValido,
+  trovaPerCodiceFiscale,
+} from "@/lib/matching-codice-fiscale";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -527,6 +531,141 @@ export async function correggiEmailUtenteAction(
       },
     };
   }
+
+  revalidatePath("/app/admin");
+  return { success: true };
+}
+
+// Story 1.10: l'aggancio Genitore<->Atleta (Story 1.5) avviene SOLO in fase
+// di registrazione, con un unico Codice Fiscale - un Genitore con piu'
+// figlie/i resta agganciato a una sola. Questa azione da' all'Admin una via
+// per collegarne un'altra dopo la registrazione, riusando tale e quale la
+// stessa validazione/lookup (isCodiceFiscaleValido/trovaPerCodiceFiscale) e
+// lo stesso prisma.genitoreAtleta.create gia' usati in registrati/actions.ts
+// (Story 1.5) - nessuna migrazione, GenitoreAtleta e' gia' una relazione
+// molti-a-molti (@@unique([utenteId, atletaId])).
+export async function aggiungiAtletaGenitoreAction(
+  _prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const forbidden = await requireRuolo("ADMIN");
+  if (forbidden) return forbidden;
+
+  const utenteId = String(formData.get("utenteId") ?? "");
+  if (!utenteId) {
+    return { error: { code: "VALIDATION", message: "Utente non specificato." } };
+  }
+
+  // Stessa normalizzazione (trim + uppercase) gia' applicata in
+  // registrati/actions.ts (Story 1.5) prima del lookup.
+  const codiceFiscale = String(formData.get("codiceFiscale") ?? "")
+    .trim()
+    .toUpperCase();
+
+  // Stesso identico messaggio di errore della registrazione (Story 1.5) per
+  // coerenza - vedi Boundaries dello spec.
+  if (!isCodiceFiscaleValido(codiceFiscale)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Codice Fiscale non valido (deve essere di 16 caratteri alfanumerici).",
+      },
+    };
+  }
+
+  // Review fix (code review): verifica esistenza+ruolo dell'Utente target
+  // PRIMA di creare il collegamento - stesso principio gia' applicato da
+  // aggiornaRuoliUtente/reimpostaPasswordFissaUtente/correggiEmailUtenteAction
+  // in questo stesso file, saltato per errore nella prima implementazione.
+  // Un GenitoreAtleta creato per un Utente senza Ruolo GENITORE (fat-finger
+  // su riga sbagliata, o richiesta manomessa) concederebbe a quell'account un
+  // accesso RLS in lettura indebito ai dati di presenza di un'Atleta.
+  // Fatto DOPO la validazione (sincrona, nessuna query) del Codice Fiscale ma
+  // PRIMA del lookup trovaPerCodiceFiscale (query Supabase): nessuna query
+  // costosa se il target non e' valido.
+  let target;
+  try {
+    target = await prisma.utente.findUniqueOrThrow({
+      where: { id: utenteId },
+      include: { ruoli: true },
+    });
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "VALIDATION", message: "Utente non trovato." } };
+  }
+
+  if (!target.ruoli.some((r) => r.ruolo === "GENITORE")) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Questo Utente non ha il Ruolo Genitore.",
+      },
+    };
+  }
+
+  // Deviazione documentata da AD-9 (stesso motivo di registrati/actions.ts
+  // Story 1.5): il lookup su "atlete" (protetta da RLS) avviene qui con un
+  // client service-role - createAdminClient() e' gia' importato/usato in
+  // questo stesso file (creaUtente, reimpostaPasswordFissaUtente, ecc.).
+  let atleta;
+  try {
+    atleta = await trovaPerCodiceFiscale(createAdminClient(), codiceFiscale);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile collegare l'Atleta. Riprova." },
+    };
+  }
+
+  // Stesso identico messaggio di errore della registrazione (Story 1.5).
+  if (!atleta) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "Nessuna Atleta trovata con questo Codice Fiscale. Verifica di aver inserito il codice corretto.",
+      },
+    };
+  }
+
+  try {
+    await prisma.genitoreAtleta.create({
+      data: { utenteId, atletaId: atleta.id },
+    });
+  } catch (err) {
+    // AC: un tentativo di ricollegare un'Atleta gia' collegata allo stesso
+    // Genitore viola @@unique([utenteId, atletaId]) (Prisma P2002) - errore
+    // esplicito, mai generico ne' un falso successo silenzioso. Stesso
+    // pattern gia' usato in gruppi/actions.ts (assegnaAllenatoreAGruppo) per
+    // lo stesso identico tipo di violazione, ma li' trattata come idempotente
+    // (successo silenzioso): qui la story chiede esplicitamente il contrario.
+    if ((err as { code?: string }).code === "P2002") {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Questa Atleta è già collegata a questo Genitore.",
+        },
+      };
+    }
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile collegare l'Atleta. Riprova." },
+    };
+  }
+
+  // Review fix (code review, stesso pattern di reimpostaPasswordFissaUtente/
+  // correggiEmailUtenteAction sopra): traccia minima di accountability per
+  // un'azione che cambia la visibilita' dei dati di un'Atleta (via RLS su
+  // "presenze") - chi l'ha eseguita, su quale Utente e quale Atleta, nei log
+  // server (nessuna infrastruttura di audit dedicata esiste in questo
+  // progetto).
+  const supabaseChiamante = await createClient();
+  const {
+    data: { user: chiamante },
+  } = await supabaseChiamante.auth.getUser();
+  console.log(
+    `[aggiungiAtletaGenitoreAction] Atleta atletaId=${atleta.id} collegata da ${chiamante?.email ?? "sconosciuto"} a utenteId=${utenteId}`
+  );
 
   revalidatePath("/app/admin");
   return { success: true };

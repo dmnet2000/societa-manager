@@ -116,6 +116,41 @@ export async function elencaAtletePubbliche(
   return data ?? [];
 }
 
+export type AtletaMinima = {
+  id: string;
+  nome: string;
+};
+
+// Story 1.10: risolve {id, nome} per un elenco di id di Atleta - mirror
+// esatto di elencaAtletePubbliche sopra (stesso shape ristretto, id+nome
+// soltanto), usata da admin/page.tsx per mostrare le Atlete gia' collegate a
+// un Genitore SENZA un include Prisma diretto su Atleta (AD-4/AD-9: Atleta e'
+// protetta da RLS). Nessuna sessione utente disponibile in questo contesto
+// Admin (stesso motivo di elencaAtletePubbliche) - il client passato DEVE
+// essere createAdminClient() (service-role), mai createClient().
+// ids vuoto -> [] senza interrogare il DB (evita un .in("id", []) che
+// PostgREST potrebbe non gestire come atteso).
+export async function elencaAtletePerIds(
+  supabase: SupabaseClient,
+  ids: string[]
+): Promise<AtletaMinima[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("atlete")
+    .select("id, nome")
+    .in("id", ids)
+    .order("nome", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 export async function aggiornaAtleta(
   supabase: SupabaseClient,
   id: string,
