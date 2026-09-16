@@ -28,6 +28,15 @@ type PartitaTabellare = {
   set3Casa: number | null;
   set3Ospite: number | null;
   slotTorneo: SlotPubblico | null;
+  // Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il referto
+  // cartaceo dell'incontro - testo libero facoltativo, null finche' non
+  // valorizzato. Review fix (spec-20-34 finding #1): questa era la "quinta
+  // vista" reale di un incontro sulla pagina pubblica, non enumerata nella
+  // spec originale - colonna SOLO di visualizzazione, volutamente non
+  // aggiunta a ColonnaOrdinamentoIncontri/ordinaIncontriPerColonna
+  // (lib/ordina-incontri-tabella.ts): non richiesto dall'utente, non vale
+  // estendere il tipo unione condiviso per una sola colonna non ordinabile.
+  refertista: string | null;
 };
 
 // Story 20.24 (Epic 20, Torneo Memorial): le 6 intestazioni della tabella,
@@ -143,6 +152,12 @@ export function TabellaIncontriCategoria({
                     </th>
                   );
                 })}
+                {/* Story 20.34: colonna Refertista, SOLO di visualizzazione -
+                    a differenza delle colonne sopra (COLONNE.map), niente
+                    bottone di ordinamento: fuori dal meccanismo condiviso
+                    ColonnaOrdinamentoIncontri/ordinaIncontriPerColonna
+                    (review fix, spec-20-34 finding #1). */}
+                <th scope="col">Refertista</th>
               </tr>
             </thead>
             <tbody>
@@ -156,6 +171,11 @@ export function TabellaIncontriCategoria({
                   <td>
                     {partita.slotTorneo ? formattaSlotTestoBreve(partita.slotTorneo) : "Da definire"}
                   </td>
+                  {/* Story 20.34: "—" per "non impostato" (a differenza di
+                      "Da definire" sopra, per uno Slot) - scelta ragionevole
+                      per un campo di testo libero facoltativo (review fix,
+                      spec-20-34 finding #1). */}
+                  <td>{partita.refertista ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

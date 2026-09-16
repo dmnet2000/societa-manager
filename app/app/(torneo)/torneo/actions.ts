@@ -2076,7 +2076,13 @@ type CampiRisultatoValidati = {
   set1: RisultatoSet;
   set2: RisultatoSet;
   set3?: RisultatoSet;
+  refertista: string | null;
 };
+
+// Story 20.34: mirror di ETICHETTA_SLOT_MAX sopra - stessa disciplina "mai
+// fidarsi del client", un limite massimo esplicito prima ancora di arrivare
+// al database.
+const REFERTISTA_MAX = 20;
 
 // set1/set2 sono sempre obbligatori (un incontro al meglio dei 3 set gioca
 // sempre almeno 2 set); set3 e' una coppia tutto-o-niente (entrambi i campi
@@ -2085,6 +2091,11 @@ type CampiRisultatoValidati = {
 // strutturale "al meglio dei 3 set" (risultatoValido,
 // lib/risultato-partita-torneo.ts), che resta comunque il vero cancello
 // finale chiamato dal caller.
+// Story 20.34: refertista (chi ha compilato il referto cartaceo) validato
+// qui insieme ai set - stesso form/stesso submit (spec-20-34 Boundaries
+// "Always"), mai una Server Action dedicata. Facoltativo: stringa vuota dopo
+// trim -> null, mai una stringa vuota persistita, stesso principio gia'
+// applicato a nomeSettimana1/2 (aggiornaNomiSettimaneAction sopra).
 function validaCampiRisultato(
   formData: FormData
 ): { error: { code: string; message: string } } | { valori: CampiRisultatoValidati } {
@@ -2114,11 +2125,23 @@ function validaCampiRisultato(
     set3 = { casa: set3Casa.valore, ospite: set3Ospite.valore };
   }
 
+  const refertistaGrezzo = String(formData.get("refertista") ?? "").trim();
+  if (refertistaGrezzo.length > REFERTISTA_MAX) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il nome del Refertista non può superare i ${REFERTISTA_MAX} caratteri.`,
+      },
+    };
+  }
+  const refertista = refertistaGrezzo || null;
+
   return {
     valori: {
       set1: { casa: set1Casa.valore, ospite: set1Ospite.valore },
       set2: { casa: set2Casa.valore, ospite: set2Ospite.valore },
       set3,
+      refertista,
     },
   };
 }
@@ -2189,7 +2212,7 @@ export async function salvaRisultatoPartitaTorneoAction(
 
   const validazione = validaCampiRisultato(formData);
   if ("error" in validazione) return validazione;
-  const { set1, set2, set3 } = validazione.valori;
+  const { set1, set2, set3, refertista } = validazione.valori;
 
   if (!risultatoValido(set1, set2, set3)) {
     return {
@@ -2231,6 +2254,7 @@ export async function salvaRisultatoPartitaTorneoAction(
       set2Ospite: set2.ospite,
       set3Casa: set3 ? set3.casa : null,
       set3Ospite: set3 ? set3.ospite : null,
+      refertista,
     });
     if (risultato.count === 0) {
       return {

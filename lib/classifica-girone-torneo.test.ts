@@ -48,6 +48,10 @@ function partita(
     set2Ospite: set2 ? set2[1] : null,
     set3Casa: set3 ? set3[0] : null,
     set3Ospite: set3 ? set3[1] : null,
+    // Story 20.34: refertista aggiunto al tipo PartitaTorneo - null qui,
+    // invariato per questi test scritti prima della Story 20.34
+    // (calcolaClassificaGirone continua a non guardare questo campo).
+    refertista: null,
     createdAt: new Date("2026-08-01T00:00:00Z"),
     updatedAt: new Date("2026-08-01T00:00:00Z"),
   };

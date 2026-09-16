@@ -651,6 +651,7 @@ describe("aggiornaRisultatoPartitaTorneo", () => {
       set2Ospite: 18,
       set3Casa: null,
       set3Ospite: null,
+      refertista: null,
     };
     partitaUpdateManyMock.mockResolvedValue({ count: 1 });
 
@@ -661,6 +662,30 @@ describe("aggiornaRisultatoPartitaTorneo", () => {
       data: dati,
     });
     expect(result).toEqual({ count: 1 });
+  });
+
+  // Story 20.34 (Epic 20, Torneo Memorial): refertista aggiunto ai campi
+  // scrivibili - testo libero facoltativo, passato tale e quale al chiamante
+  // (nessuna trasformazione qui, la validazione/normalizzazione vive nella
+  // Server Action).
+  it("passes a non-null refertista through unchanged", async () => {
+    const dati = {
+      set1Casa: 25,
+      set1Ospite: 20,
+      set2Casa: 25,
+      set2Ospite: 18,
+      set3Casa: null,
+      set3Ospite: null,
+      refertista: "Mario Rossi",
+    };
+    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    await aggiornaRisultatoPartitaTorneo("partita-1", "categoria-1", dati);
+
+    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
+      data: dati,
+    });
   });
 });
 

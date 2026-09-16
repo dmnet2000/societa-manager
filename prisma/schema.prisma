@@ -1095,6 +1095,15 @@ model PartitaTorneo {
   set2Ospite        Int?
   set3Casa          Int?
   set3Ospite        Int?
+  // Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il referto
+  // cartaceo dell'incontro - testo libero facoltativo (nessun collegamento a
+  // un'anagrafica Utente/Allenatore, decisione esplicita dell'utente), stesso
+  // trattamento nullable senza DEFAULT di nomeSettimana1/2
+  // (EdizioneTorneo, migrazione 20260826010000). Additivo: nessun backfill,
+  // ogni PartitaTorneo esistente resta refertista = null finche' un Admin non
+  // lo valorizza esplicitamente salvando il risultato (stesso form/stessa
+  // Server Action, spec-20-34 Boundaries "Always").
+  refertista        String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

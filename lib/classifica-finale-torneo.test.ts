@@ -46,6 +46,10 @@ function partita(
     set2Ospite: risultato.set2Ospite,
     set3Casa: risultato.set3Casa ?? null,
     set3Ospite: risultato.set3Ospite ?? null,
+    // Story 20.34: refertista aggiunto al tipo PartitaTorneo - null qui,
+    // invariato per questi test scritti prima della Story 20.34
+    // (calcolaClassificaFinale continua a non guardare questo campo).
+    refertista: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

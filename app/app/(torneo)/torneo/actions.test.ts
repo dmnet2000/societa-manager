@@ -3083,6 +3083,7 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
       set2Ospite: 18,
       set3Casa: null,
       set3Ospite: null,
+      refertista: null,
     });
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/app/torneo/edizione-1/categoria-1/risultati"
@@ -3105,6 +3106,105 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
       set2Ospite: 25,
       set3Casa: 15,
       set3Ospite: 10,
+      refertista: null,
+    });
+  });
+
+  // Story 20.34 (Epic 20, Torneo Memorial): campo Refertista - stesso
+  // form/stessa Server Action del risultato (spec-20-34 Boundaries
+  // "Always"), mai una Server Action dedicata.
+  describe("refertista (Story 20.34)", () => {
+    it("trims and saves a valid refertista alongside the score (AC)", async () => {
+      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData({ ...campiRisultato2a0, refertista: "  Mario Rossi  " })
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith("partita-1", "categoria-1", {
+        set1Casa: 25,
+        set1Ospite: 20,
+        set2Casa: 25,
+        set2Ospite: 18,
+        set3Casa: null,
+        set3Ospite: null,
+        refertista: "Mario Rossi",
+      });
+    });
+
+    it("stores null, not an empty string, when refertista is left empty (AC)", async () => {
+      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+      await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData({ ...campiRisultato2a0, refertista: "   " })
+      );
+
+      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith(
+        "partita-1",
+        "categoria-1",
+        expect.objectContaining({ refertista: null })
+      );
+    });
+
+    it("rejects a refertista longer than 20 characters with an explicit message (AC)", async () => {
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData({ ...campiRisultato2a0, refertista: "a".repeat(21) })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Il nome del Refertista non può superare i 20 caratteri.",
+        },
+      });
+      expect(aggiornaRisultatoPartitaTorneoMock).not.toHaveBeenCalled();
+    });
+
+    it("accepts a refertista exactly at the 20 character limit", async () => {
+      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData({ ...campiRisultato2a0, refertista: "a".repeat(20) })
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith(
+        "partita-1",
+        "categoria-1",
+        expect.objectContaining({ refertista: "a".repeat(20) })
+      );
+    });
+
+    // spec-20-34 I/O matrix: un incontro con modifica bloccata resta
+    // bloccato anche per il refertista, stesso form/stessa azione - nessun
+    // percorso separato che lo bypassi.
+    it("is blocked by the same erroreModificaBloccata guard as the score", async () => {
+      trovaPartitaTorneoPerIdMock.mockResolvedValue({
+        id: "partita-1",
+        categoriaTorneoId: "categoria-1",
+        fase: "GIRONE",
+        tabellone: null,
+      });
+      contaPartiteTorneoTabelloneMock.mockResolvedValue(1);
+
+      const result = await salvaRisultatoPartitaTorneoAction(
+        undefined,
+        buildFormData({ ...campiRisultato2a0, refertista: "Mario Rossi" })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message:
+            "Non puoi modificare un risultato di girone: il tabellone è già stato generato per questa Categoria.",
+        },
+      });
+      expect(aggiornaRisultatoPartitaTorneoMock).not.toHaveBeenCalled();
     });
   });
 

@@ -80,6 +80,10 @@ type Partita = {
   set2Ospite: number | null;
   set3Casa: number | null;
   set3Ospite: number | null;
+  // Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il referto
+  // cartaceo dell'incontro - testo libero facoltativo, null finche' non
+  // valorizzato (nessun backfill per gli incontri esistenti).
+  refertista: string | null;
 };
 
 // Story 20.3 (Epic 20, Torneo Memorial): mirror dello stile toggle
@@ -123,22 +127,14 @@ export function RisultatoPartitaTorneoForm({
     undefined
   );
 
-  const [ultimoState, setUltimoState] = useState(state);
-  const [erroreVisibile, setErroreVisibile] = useState(false);
-  if (state !== ultimoState) {
-    setUltimoState(state);
-    if (state && "success" in state) {
-      setInModifica(false);
-      setErroreVisibile(false);
-    } else if (state && "error" in state) {
-      setErroreVisibile(true);
-    }
-  }
-
   // Valori di default riusati sia per l'inizializzazione sia per il reset
   // su "Annulla" (review fix, Blind Hunter, Story 20.3): senza reset, un
   // valore digitato e poi annullato restava visibile riaprendo il form
   // sullo stesso incontro (nessun remount, lo stato di React persiste).
+  // Dichiarata (con lo useState che la usa subito sotto) PRIMA del blocco
+  // ultimoState/state piu' in basso, che ora la richiama anche lui al
+  // salvataggio riuscito (review fix, spec-20-34 finding #2) - a differenza
+  // di una function declaration, il const/useState sotto non e' hoisted.
   function valoriIniziali() {
     return {
       set1Casa: partita.set1Casa?.toString() ?? "",
@@ -147,11 +143,35 @@ export function RisultatoPartitaTorneoForm({
       set2Ospite: partita.set2Ospite?.toString() ?? "",
       set3Casa: partita.set3Casa?.toString() ?? "",
       set3Ospite: partita.set3Ospite?.toString() ?? "",
+      refertista: partita.refertista ?? "",
     };
   }
 
-  const [{ set1Casa, set1Ospite, set2Casa, set2Ospite, set3Casa, set3Ospite }, setValori] =
-    useState(valoriIniziali);
+  const [
+    { set1Casa, set1Ospite, set2Casa, set2Ospite, set3Casa, set3Ospite, refertista },
+    setValori,
+  ] = useState(valoriIniziali);
+
+  const [ultimoState, setUltimoState] = useState(state);
+  const [erroreVisibile, setErroreVisibile] = useState(false);
+  if (state !== ultimoState) {
+    setUltimoState(state);
+    if (state && "success" in state) {
+      setInModifica(false);
+      setErroreVisibile(false);
+      // Review fix (spec-20-34 finding #2): senza questo reset, lo stato
+      // locale "refertista" restava con il valore digitato NON trimmato
+      // (es. spazi residui) invece del valore realmente persistito dopo il
+      // trim server-side (validaCampiRisultato, actions.ts) - il componente
+      // non si rimonta al salvataggio, quindi lo stato React sopravvive.
+      // Mirror del reset gia' fatto da "Annulla" sotto; no-op per i campi
+      // punteggio, che non subiscono alcuna trasformazione server-side
+      // equivalente.
+      setValori(valoriIniziali());
+    } else if (state && "error" in state) {
+      setErroreVisibile(true);
+    }
+  }
 
   // Review fix (Blind Hunter, Story 20.3): riusa la stessa regola pura di
   // lib/risultato-partita-torneo.ts (esportata come terzoSetNecessario)
@@ -205,6 +225,14 @@ export function RisultatoPartitaTorneoForm({
           <IconaModifica />
         </button>
       </p>
+
+      {/* Story 20.34: riga di sola lettura, mostrata SOLO quando il
+          Refertista e' valorizzato (mai una riga vuota) - mirror del
+          trattamento gia' riservato allo Slot assegnato sotto
+          (partita.slotTorneo). */}
+      {partita.refertista && (
+        <p className={styles.riepilogo}>Refertista: {partita.refertista}</p>
+      )}
 
       {/* Story 20.9: assegnazione Slot (dove/quando si gioca) - form
           indipendente (proprio useActionState sopra), sempre visibile,
@@ -390,6 +418,25 @@ export function RisultatoPartitaTorneoForm({
                 required={terzoSetNecessario}
                 value={terzoSetNecessario ? set3Ospite : ""}
                 onChange={(e) => setValori((v) => ({ ...v, set3Ospite: e.target.value }))}
+              />
+            </div>
+            {/* Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il
+                referto cartaceo dell'incontro - testo libero facoltativo,
+                stesso form/stesso submit del risultato (spec-20-34 Boundaries
+                "Always"), mai un nuovo form/Server Action dedicato.
+                maxLength=20 lato client mirror di REFERTISTA_MAX
+                (app/app/(torneo)/torneo/actions.ts) - il vero cancello resta
+                server-side, stesso principio gia' in uso per l'etichetta
+                dello Slot (NuovoSlotTorneoForm.tsx). */}
+            <div className={styles.campo}>
+              <label htmlFor={`refertista-${partita.id}`}>Refertista</label>
+              <input
+                id={`refertista-${partita.id}`}
+                name="refertista"
+                type="text"
+                maxLength={20}
+                value={refertista}
+                onChange={(e) => setValori((v) => ({ ...v, refertista: e.target.value }))}
               />
             </div>
           </div>

@@ -450,6 +450,9 @@ export default async function TorneoPubblicoPage() {
                                       <div className={styles.meta}>
                                         {risultatoTesto ?? <em>In programma</em>}
                                       </div>
+                                      {partita.refertista && (
+                                        <p className={styles.meta}>Refertista: {partita.refertista}</p>
+                                      )}
                                       <MetaSlot slotTorneo={partita.slotTorneo} />
                                     </div>
                                   );
@@ -657,6 +660,9 @@ export default async function TorneoPubblicoPage() {
                                     <div className={styles.meta}>
                                       {risultatoTesto ?? <em>In programma</em>}
                                     </div>
+                                    {partita.refertista && (
+                                      <p className={styles.meta}>Refertista: {partita.refertista}</p>
+                                    )}
                                     <MetaSlot slotTorneo={partita.slotTorneo} />
                                   </div>
                                 );
@@ -690,6 +696,11 @@ export default async function TorneoPubblicoPage() {
                                       <div className={styles.meta}>
                                         {risultatoTesto ?? <em>In programma</em>}
                                       </div>
+                                      {finaleVincenti.refertista && (
+                                        <p className={styles.meta}>
+                                          Refertista: {finaleVincenti.refertista}
+                                        </p>
+                                      )}
                                       <MetaSlot slotTorneo={finaleVincenti.slotTorneo} />
                                     </div>
                                   );
@@ -723,6 +734,11 @@ export default async function TorneoPubblicoPage() {
                                       <div className={styles.meta}>
                                         {risultatoTesto ?? <em>In programma</em>}
                                       </div>
+                                      {finalePerdenti.refertista && (
+                                        <p className={styles.meta}>
+                                          Refertista: {finalePerdenti.refertista}
+                                        </p>
+                                      )}
                                       <MetaSlot slotTorneo={finalePerdenti.slotTorneo} />
                                     </div>
                                   );

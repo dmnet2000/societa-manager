@@ -3660,3 +3660,13 @@ so that posso capire l'interesse reale verso il sito senza dover interrogare dir
 1. *Organizzazione della galleria: una sezione per Squadra/evento con sottocartelle Drive distinte, o un flusso unico cronologico? Cambia sia lo schema dati sia la UI pubblica.*
 2. *Metadati per foto: serve una didascalia? una data? un collegamento a Squadra/evento?*
 3. *Dove vive l'upload nel gestionale: una sezione dedicata nuova, o dentro una pagina esistente (es. la stessa di foto squadra)?*
+
+## Epic 24: Gestione moduli di Iscrizione
+
+*(Aperto 2026-09-16, richiesta esplicita dell'utente - SOLO traccia per analisi futura, nessuna analisi/progettazione fatta ora: "Gestione Iscrizioni moduli da recuperare, prevalorizzare stampare firmare e uploadare e inviare via mail alla segreteria. nella sezione iscrizioni poi condividere eventuali altre informazioni, quote, iban ecc." Elenco APERTO come Epic 9/11/17/18/21/23 - nessuna story scritta, nessuna decisione di design chiusa. Testo dell'utente riportato letteralmente per non perdere sfumature prima dell'analisi vera.*
+
+*Comprende, per come descritto dall'utente (da chiarire in dettaglio quando si aprirà l'analisi):*
+- *Recupero/generazione di moduli di iscrizione, prevalorizzati con i dati già a sistema.*
+- *Flusso stampa → firma (cartacea) → upload della scansione/foto firmata.*
+- *Invio del modulo caricato via email alla Segreteria.*
+- *Nella sezione Iscrizioni, condivisione di altre informazioni utili (quote associative, IBAN per il pagamento, ecc.).*

@@ -380,6 +380,13 @@ export async function trovaPartitaTorneoPerId(id: string) {
 // set3Casa/set3Ospite sono null quando l'incontro si e' chiuso 2-0 (nessun
 // terzo set) - il chiamante (Server Action) ha gia' validato la coerenza
 // strutturale con risultatoValido prima di arrivare qui.
+// Story 20.34: refertista aggiunto ai campi scrivibili - testo libero
+// facoltativo (chi ha compilato il referto cartaceo), salvato nello stesso
+// submit del risultato (nessuna Server Action dedicata, spec-20-34
+// Boundaries "Always"). Il chiamante ha gia' validato lunghezza massima/
+// stringa vuota -> null prima di arrivare qui (validaCampiRisultato,
+// app/app/(torneo)/torneo/actions.ts), mirror della stessa disciplina gia'
+// applicata a nomeSettimana1/2.
 export async function aggiornaRisultatoPartitaTorneo(
   id: string,
   categoriaTorneoId: string,
@@ -390,6 +397,7 @@ export async function aggiornaRisultatoPartitaTorneo(
     set2Ospite: number;
     set3Casa: number | null;
     set3Ospite: number | null;
+    refertista: string | null;
   }
 ) {
   return prisma.partitaTorneo.updateMany({
