@@ -15,7 +15,7 @@ vi.mock("@/lib/db-rls/configurazione-social-facebook", () => ({
   aggiornaStatoLetturaFacebook: aggiornaStatoLetturaFacebookMock,
 }));
 
-const { estraiSlugPaginaFacebook, leggiUltimiPostFacebook } = await import(
+const { estraiSlugPaginaFacebook, estraiImmaginiPost, leggiUltimiPostFacebook } = await import(
   "./facebook-graph"
 );
 
@@ -60,6 +60,101 @@ describe("estraiSlugPaginaFacebook", () => {
     expect(
       estraiSlugPaginaFacebook("https://www.facebook.com/pages/Nome/12345")
     ).toBe("pages");
+  });
+});
+
+describe("estraiImmaginiPost", () => {
+  it("estrae la singola foto di un post type 'photo'", () => {
+    const attachment = {
+      type: "photo",
+      media: { image: { src: "https://img.example/foto.jpg" } },
+    };
+    expect(estraiImmaginiPost(attachment, undefined)).toEqual([
+      "https://img.example/foto.jpg",
+    ]);
+  });
+
+  it("estrae tutte le foto di un post type 'album' dalle subattachments", () => {
+    const attachment = {
+      type: "album",
+      subattachments: {
+        data: [
+          { media: { image: { src: "https://img.example/1.jpg" } } },
+          { media: { image: { src: "https://img.example/2.jpg" } } },
+          { media: { image: { src: "https://img.example/3.jpg" } } },
+        ],
+      },
+    };
+    expect(estraiImmaginiPost(attachment, undefined)).toEqual([
+      "https://img.example/1.jpg",
+      "https://img.example/2.jpg",
+      "https://img.example/3.jpg",
+    ]);
+  });
+
+  it("scarta silenziosamente le subattachments senza src valido, tiene le altre", () => {
+    const attachment = {
+      type: "album",
+      subattachments: {
+        data: [
+          { media: { image: { src: "https://img.example/1.jpg" } } },
+          { media: { image: {} } },
+          { media: undefined },
+          { media: { image: { src: "https://img.example/3.jpg" } } },
+        ],
+      },
+    };
+    expect(estraiImmaginiPost(attachment, undefined)).toEqual([
+      "https://img.example/1.jpg",
+      "https://img.example/3.jpg",
+    ]);
+  });
+
+  it("fallback su full_picture quando l'attachment e' assente", () => {
+    expect(estraiImmaginiPost(undefined, "https://img.example/full.jpg")).toEqual([
+      "https://img.example/full.jpg",
+    ]);
+  });
+
+  it("array vuoto quando l'attachment e' assente e full_picture manca (es. post di solo testo)", () => {
+    expect(estraiImmaginiPost(undefined, undefined)).toEqual([]);
+  });
+
+  it("fallback su full_picture per un type non fotografico (es. 'video' o 'share')", () => {
+    const attachment = { type: "video" };
+    expect(estraiImmaginiPost(attachment, "https://img.example/full.jpg")).toEqual([
+      "https://img.example/full.jpg",
+    ]);
+  });
+
+  it("fallback su full_picture quando un post 'album' non ha subattachments con src valido", () => {
+    const attachment = {
+      type: "album",
+      subattachments: { data: [{ media: { image: {} } }] },
+    };
+    expect(estraiImmaginiPost(attachment, "https://img.example/full.jpg")).toEqual([
+      "https://img.example/full.jpg",
+    ]);
+  });
+
+  it("fallback su full_picture quando un post 'photo' non ha media.image.src", () => {
+    const attachment = { type: "photo", media: {} };
+    expect(estraiImmaginiPost(attachment, "https://img.example/full.jpg")).toEqual([
+      "https://img.example/full.jpg",
+    ]);
+  });
+
+  it("fallback su full_picture (invece di lanciare) quando subattachments.data non e' un array", () => {
+    const attachment = {
+      type: "album",
+      subattachments: { data: "non-un-array" as unknown as never },
+    };
+    expect(() =>
+      estraiImmaginiPost(attachment, "https://img.example/full.jpg")
+    ).not.toThrow();
+    expect(estraiImmaginiPost(attachment, "https://img.example/full.jpg")).toEqual([
+      "https://img.example/full.jpg",
+    ]);
   });
 });
 
@@ -136,16 +231,63 @@ describe("leggiUltimiPostFacebook", () => {
       {
         id: "p1",
         messaggio: "Ciao a tutti!",
-        immagineUrl: "https://img.example/1.jpg",
+        immaginiUrl: ["https://img.example/1.jpg"],
         permalink: "https://facebook.com/p1",
         dataPubblicazione: "2026-08-10T10:00:00+0000",
       },
       {
         id: "p3",
         messaggio: "Solo testo, nessuna immagine",
-        immagineUrl: null,
+        immaginiUrl: [],
         permalink: "",
         dataPubblicazione: "",
+      },
+    ]);
+  });
+
+  it("Story 18.32: mappa tutte le foto di un post 'album' in immaginiUrl", async () => {
+    leggiConfigurazioneSocialFacebookMock.mockResolvedValue(configurazioneEsempio);
+    vi.mocked(fetch).mockResolvedValue(
+      rispostaFetchFinta({
+        data: [
+          {
+            id: "p1",
+            message: "Foto della trasferta!",
+            full_picture: "https://img.example/copertina.jpg",
+            permalink_url: "https://facebook.com/p1",
+            created_time: "2026-08-10T10:00:00+0000",
+            attachments: {
+              data: [
+                {
+                  type: "album",
+                  subattachments: {
+                    data: [
+                      { media: { image: { src: "https://img.example/1.jpg" } } },
+                      { media: { image: { src: "https://img.example/2.jpg" } } },
+                      { media: { image: { src: "https://img.example/3.jpg" } } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+    );
+
+    const risultato = await leggiUltimiPostFacebook("https://www.facebook.com/miasocieta");
+
+    expect(risultato).toEqual([
+      {
+        id: "p1",
+        messaggio: "Foto della trasferta!",
+        immaginiUrl: [
+          "https://img.example/1.jpg",
+          "https://img.example/2.jpg",
+          "https://img.example/3.jpg",
+        ],
+        permalink: "https://facebook.com/p1",
+        dataPubblicazione: "2026-08-10T10:00:00+0000",
       },
     ]);
   });

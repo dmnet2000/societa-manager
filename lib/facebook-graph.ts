@@ -36,7 +36,12 @@ export type PostFacebook = {
   // Obbligatorio (non nullable): i post senza testo vengono scartati prima
   // di arrivare qui, vedi leggiUltimiPostFacebook.
   messaggio: string;
-  immagineUrl: string | null;
+  // Story 18.32: prima una sola immagine (full_picture), ora l'elenco
+  // completo delle foto del post (una per un post "photo", tutte le
+  // subattachments per un post "album") - vedi estraiImmaginiPost. Array
+  // vuoto se nessuna foto e' disponibile (mirror del precedente
+  // immagineUrl: null), mai un elemento vuoto/undefined al suo interno.
+  immaginiUrl: string[];
   permalink: string;
   dataPubblicazione: string;
 };
@@ -48,18 +53,71 @@ const VERSIONE_GRAPH_API = "v26.0";
 const LIMITE_POST = 10;
 const TIMEOUT_MS = 8000;
 
+type MediaGraphApi = {
+  image?: { src?: string };
+};
+
+type SubattachmentGraphApi = {
+  media?: MediaGraphApi;
+};
+
+// Story 18.32: rappresenta il primo elemento di attachments.data per un
+// post - Facebook lo popola con type "photo" (una sola foto) o "album"
+// (piu' foto, elencate in subattachments.data). Altri type (es. "video",
+// "share" per i link) non hanno foto utilizzabili qui, gestiti come
+// fallback in estraiImmaginiPost.
+type AttachmentGraphApi = {
+  type?: string;
+  media?: MediaGraphApi;
+  subattachments?: { data?: SubattachmentGraphApi[] };
+};
+
 type PostGraphApi = {
   id: string;
   message?: string;
   full_picture?: string;
   permalink_url?: string;
   created_time?: string;
+  attachments?: { data?: AttachmentGraphApi[] };
 };
 
 type RispostaGraphApi = {
   data?: PostGraphApi[];
   error?: { message: string };
 };
+
+// Story 18.32: funzione pura (nessuna chiamata fetch/rete) che estrae
+// l'elenco delle foto di un post dal suo primo attachment - stesso
+// principio di estraiSlugPaginaFacebook sopra, testabile senza mock.
+// - type "album": tutte le subattachments con un src valido.
+// - type "photo": la singola foto in media.image.src.
+// - qualunque altro caso (nessun attachment, type "video"/"share", oppure
+//   attachments/subattachments malformati senza alcun src valido): fallback
+//   su full_picture, o array vuoto se anche quello manca - mai un post
+//   senza immagine per un errore di parsing (AC #3 di riflesso, via
+//   leggiUltimiPostFacebook che non deve mai fallire per questo).
+export function estraiImmaginiPost(
+  attachment: AttachmentGraphApi | undefined,
+  fullPicture: string | undefined
+): string[] {
+  if (attachment?.type === "album") {
+    // Fix code review: subattachments.data puo' arrivare presente ma non un
+    // array se la Graph API restituisce una forma inattesa - senza questa
+    // guardia, .map() lancerebbe e l'eccezione si propagherebbe fuori dalla
+    // pipeline .filter().map() di leggiUltimiPostFacebook, facendo fallire
+    // (e scartare) TUTTI i post invece del solo post malformato (vincolo
+    // "Always" della spec, frozen).
+    const datiSubattachments = attachment.subattachments?.data;
+    const foto = (Array.isArray(datiSubattachments) ? datiSubattachments : [])
+      .map((sub) => sub.media?.image?.src)
+      .filter((src): src is string => Boolean(src));
+    if (foto.length > 0) return foto;
+  } else if (attachment?.type === "photo") {
+    const src = attachment.media?.image?.src;
+    if (src) return [src];
+  }
+  return fullPicture ? [fullPicture] : [];
+}
 
 // AC #3: questa funzione non lancia MAI (deviazione deliberata dalla
 // convenzione generale del progetto "la query puo' lanciare, il chiamante
@@ -112,7 +170,14 @@ export async function leggiUltimiPostFacebook(
 
   try {
     const url = new URL(`https://graph.facebook.com/${VERSIONE_GRAPH_API}/${slug}/posts`);
-    url.searchParams.set("fields", "message,full_picture,permalink_url,created_time");
+    // Story 18.32: campo attachments esteso - type/media per un post
+    // "photo" singola, subattachments.media per un post "album" (piu'
+    // foto). Nessun permesso/scope aggiuntivo richiesto (gia' coperto dai
+    // permessi minimi di lettura pagina esistenti).
+    url.searchParams.set(
+      "fields",
+      "message,full_picture,permalink_url,created_time,attachments{type,media{image{src}},subattachments{media{image{src}}}}"
+    );
     url.searchParams.set("limit", String(LIMITE_POST));
 
     // Fix code review: il token viaggiava come query string (access_token=...),
@@ -143,7 +208,7 @@ export async function leggiUltimiPostFacebook(
       .map((p) => ({
         id: p.id,
         messaggio: p.message,
-        immagineUrl: p.full_picture ?? null,
+        immaginiUrl: estraiImmaginiPost(p.attachments?.data?.[0], p.full_picture),
         permalink: p.permalink_url ?? "",
         dataPubblicazione: p.created_time ?? "",
       }));
