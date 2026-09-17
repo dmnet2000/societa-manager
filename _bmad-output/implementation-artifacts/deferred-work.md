@@ -1,3 +1,8 @@
+## Deferred from: bmad-build review of spec-20-35-refertista-assegnazione-indipendente (2026-09-17)
+
+- Nessuna conferma (tipo `window.confirm`) prima di svuotare un Refertista già assegnato - asimmetria rispetto al form Slot mirrorato, che chiede conferma prima di sovrascrivere uno Slot già occupato. Non richiesto dalla spec ("Ask First: nessuna"), impatto basso (un nome testuale, non uno Slot con vincoli di calendario).
+- L'`<input>` non controllato con `key={partita.refertista ?? ""}` (stesso meccanismo di rinfresco già usato in `NomiSettimaneTorneoForm.tsx`, esplicitamente indicato dalla spec) si rimonta solo quando il valore persistito cambia realmente: se un altro Admin aggiorna il Refertista mentre questo Admin ha del testo non ancora salvato nello stesso campo, un `revalidatePath` esterno può silenziosamente perdere la modifica non salvata al prossimo remount. Scenario di bassa concorrenza (Blind Hunter + Edge Case Hunter, convergenti), stesso rischio già accettato per il pattern che questa storia mirror-izza.
+
 ## Deferred from: bmad-build review of spec-20-21-prenotazione-slot-prospetto-ipotetico (2026-09-06/07)
 
 - Race TOCTOU nella scrittura finale di `prenotaSlotIpoteticoAction`: due submit concorrenti su Categorie diverse verso lo stesso Slot possono entrambi superare la validazione e il secondo sovrascrive silenziosamente la prenotazione del primo - coerente con il rischio di concorrenza già esplicitamente accettato in Story 20.9 ("pannello amministrativo a bassa concorrenza"), non una novità introdotta da questa storia.

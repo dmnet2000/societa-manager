@@ -29,6 +29,7 @@ import {
   cancellaPartiteTorneo,
   elencaPartiteTorneo,
   aggiornaRisultatoPartitaTorneo,
+  assegnaRefertistaPartitaTorneo,
   trovaPartitaTorneoPerId,
   creaSlotTorneo,
   creaSlotTorneoPerSelezione,
@@ -2076,13 +2077,7 @@ type CampiRisultatoValidati = {
   set1: RisultatoSet;
   set2: RisultatoSet;
   set3?: RisultatoSet;
-  refertista: string | null;
 };
-
-// Story 20.34: mirror di ETICHETTA_SLOT_MAX sopra - stessa disciplina "mai
-// fidarsi del client", un limite massimo esplicito prima ancora di arrivare
-// al database.
-const REFERTISTA_MAX = 20;
 
 // set1/set2 sono sempre obbligatori (un incontro al meglio dei 3 set gioca
 // sempre almeno 2 set); set3 e' una coppia tutto-o-niente (entrambi i campi
@@ -2091,11 +2086,12 @@ const REFERTISTA_MAX = 20;
 // strutturale "al meglio dei 3 set" (risultatoValido,
 // lib/risultato-partita-torneo.ts), che resta comunque il vero cancello
 // finale chiamato dal caller.
-// Story 20.34: refertista (chi ha compilato il referto cartaceo) validato
-// qui insieme ai set - stesso form/stesso submit (spec-20-34 Boundaries
-// "Always"), mai una Server Action dedicata. Facoltativo: stringa vuota dopo
-// trim -> null, mai una stringa vuota persistita, stesso principio gia'
-// applicato a nomeSettimana1/2 (aggiornaNomiSettimaneAction sopra).
+// Story 20.35 (Epic 20, Torneo Memorial): refertista rimosso da qui (revert
+// della Story 20.34) - non e' piu' legato allo stesso form/allo stesso
+// submit del risultato, ha ora una propria Server Action indipendente
+// (assegnaRefertistaPartitaTorneoAction sotto), mirror esatto del pattern
+// gia' esistente per l'assegnazione dello Slot: deve poter essere assegnato
+// anche PRIMA che l'incontro abbia un risultato.
 function validaCampiRisultato(
   formData: FormData
 ): { error: { code: string; message: string } } | { valori: CampiRisultatoValidati } {
@@ -2125,23 +2121,11 @@ function validaCampiRisultato(
     set3 = { casa: set3Casa.valore, ospite: set3Ospite.valore };
   }
 
-  const refertistaGrezzo = String(formData.get("refertista") ?? "").trim();
-  if (refertistaGrezzo.length > REFERTISTA_MAX) {
-    return {
-      error: {
-        code: "VALIDATION",
-        message: `Il nome del Refertista non può superare i ${REFERTISTA_MAX} caratteri.`,
-      },
-    };
-  }
-  const refertista = refertistaGrezzo || null;
-
   return {
     valori: {
       set1: { casa: set1Casa.valore, ospite: set1Ospite.valore },
       set2: { casa: set2Casa.valore, ospite: set2Ospite.valore },
       set3,
-      refertista,
     },
   };
 }
@@ -2212,7 +2196,7 @@ export async function salvaRisultatoPartitaTorneoAction(
 
   const validazione = validaCampiRisultato(formData);
   if ("error" in validazione) return validazione;
-  const { set1, set2, set3, refertista } = validazione.valori;
+  const { set1, set2, set3 } = validazione.valori;
 
   if (!risultatoValido(set1, set2, set3)) {
     return {
@@ -2254,7 +2238,6 @@ export async function salvaRisultatoPartitaTorneoAction(
       set2Ospite: set2.ospite,
       set3Casa: set3 ? set3.casa : null,
       set3Ospite: set3 ? set3.ospite : null,
-      refertista,
     });
     if (risultato.count === 0) {
       return {
@@ -2379,6 +2362,85 @@ export async function assegnaSlotPartitaTorneoAction(
   } catch (err) {
     console.error(err);
     return { error: { code: "INTERNAL", message: "Impossibile assegnare lo Slot. Riprova." } };
+  }
+
+  return { success: true };
+}
+
+// Story 20.35 (Epic 20, Torneo Memorial): assegnazione del Refertista come
+// azione indipendente dal risultato - mirror ESATTO di
+// assegnaSlotPartitaTorneoAction sopra (stesso perimetro
+// requireRuolo(["ADMIN","DIRIGENTE"]), stessa rilettura server-side di
+// trovaCategoriaTorneoPerId/trovaPartitaTorneoPerId prima di scrivere, stessa
+// doppia revalidatePath). Revert della parte di Story 20.34 che legava il
+// Refertista allo stesso form/Server Action del risultato (set1/set2
+// obbligatori la' rendevano impossibile assegnare un Refertista prima che
+// l'incontro avesse un punteggio). A differenza di
+// salvaRisultatoPartitaTorneoAction, NESSUNA chiamata a
+// erroreModificaBloccata qui - il Refertista, come lo Slot, resta
+// assegnabile/modificabile anche dopo che finali/tabellone a valle sono
+// stati generati (spec-20-35 Boundaries "Always").
+//
+// Review fix (Blind Hunter, spec-20-35): REFERTISTA_MAX (mirror di
+// ETICHETTA_SLOT_MAX) spostato qui, unico chiamante rimasto dopo il revert
+// della Story 20.34 - prima viveva accanto a validaCampiRisultato, che non
+// lo usa piu'.
+const REFERTISTA_MAX = 20;
+
+export async function assegnaRefertistaPartitaTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!id || !categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Incontro non specificato." } };
+  }
+
+  // Stessa validazione gia' esistente (trim, REFERTISTA_MAX, stringa vuota ->
+  // null) - solo spostata qui dalla Server Action del risultato, nessun
+  // cambiamento di comportamento (spec-20-35 Code Map).
+  const refertistaGrezzo = String(formData.get("refertista") ?? "").trim();
+  if (refertistaGrezzo.length > REFERTISTA_MAX) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: `Il nome del Refertista non può superare i ${REFERTISTA_MAX} caratteri.`,
+      },
+    };
+  }
+  const refertista = refertistaGrezzo || null;
+
+  try {
+    const categoria = await trovaCategoriaTorneoPerId(categoriaTorneoId);
+    if (!categoria) {
+      return { error: { code: "VALIDATION", message: "Categoria non trovata." } };
+    }
+
+    // Riletta PRIMA di scrivere (mai dal client) - mirror del controllo
+    // equivalente in assegnaSlotPartitaTorneoAction, serve solo a
+    // disambiguare "non trovato" da un mismatch id/categoriaTorneoId prima
+    // dell'updateMany scoped sotto.
+    const partita = await trovaPartitaTorneoPerId(id);
+    if (!partita || partita.categoriaTorneoId !== categoriaTorneoId) {
+      return { error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." } };
+    }
+
+    const risultato = await assegnaRefertistaPartitaTorneo(id, categoriaTorneoId, refertista);
+    if (risultato.count === 0) {
+      return {
+        error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." },
+      };
+    }
+
+    revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/risultati`);
+    revalidatePath(`/app/torneo/${categoria.edizioneTorneoId}/${categoriaTorneoId}/tabellone`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile assegnare il Refertista. Riprova." } };
   }
 
   return { success: true };

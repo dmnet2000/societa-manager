@@ -42,6 +42,7 @@ const trovaCampoPerIdMock = vi.fn();
 const cancellaSlotTorneoMock = vi.fn();
 const aggiornaSlotTorneoMock = vi.fn();
 const assegnaSlotPartitaTorneoMock = vi.fn();
+const assegnaRefertistaPartitaTorneoMock = vi.fn();
 const elencaSlotTorneoLiberiMock = vi.fn();
 const elencaSlotOccupatiEdizioneMock = vi.fn();
 const prenotaSlotTorneoMock = vi.fn();
@@ -102,6 +103,7 @@ vi.mock("@/lib/torneo", () => ({
   cancellaSlotTorneo: cancellaSlotTorneoMock,
   aggiornaSlotTorneo: aggiornaSlotTorneoMock,
   assegnaSlotPartitaTorneo: assegnaSlotPartitaTorneoMock,
+  assegnaRefertistaPartitaTorneo: assegnaRefertistaPartitaTorneoMock,
   elencaSlotTorneoLiberi: elencaSlotTorneoLiberiMock,
   elencaSlotOccupatiEdizione: elencaSlotOccupatiEdizioneMock,
   prenotaSlotTorneo: prenotaSlotTorneoMock,
@@ -133,6 +135,7 @@ const {
   aggiornaSlotTorneoAction,
   cancellaSlotTorneoAction,
   assegnaSlotPartitaTorneoAction,
+  assegnaRefertistaPartitaTorneoAction,
   prenotaSlotIpoteticoAction,
 } = await import("./actions");
 
@@ -254,6 +257,7 @@ beforeEach(() => {
   cancellaSlotTorneoMock.mockReset();
   aggiornaSlotTorneoMock.mockReset();
   assegnaSlotPartitaTorneoMock.mockReset();
+  assegnaRefertistaPartitaTorneoMock.mockReset();
   // Story 20.9: nessuno Slot libero di default - l'auto-assegnazione
   // best-effort (assegnaSlotAutomaticamente) e' quindi un no-op silenzioso a
   // meno che un test specifico non fornisca Slot liberi, stesso stato
@@ -3083,7 +3087,6 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
       set2Ospite: 18,
       set3Casa: null,
       set3Ospite: null,
-      refertista: null,
     });
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/app/torneo/edizione-1/categoria-1/risultati"
@@ -3106,105 +3109,29 @@ describe("salvaRisultatoPartitaTorneoAction", () => {
       set2Ospite: 25,
       set3Casa: 15,
       set3Ospite: 10,
-      refertista: null,
     });
   });
 
-  // Story 20.34 (Epic 20, Torneo Memorial): campo Refertista - stesso
-  // form/stessa Server Action del risultato (spec-20-34 Boundaries
-  // "Always"), mai una Server Action dedicata.
-  describe("refertista (Story 20.34)", () => {
-    it("trims and saves a valid refertista alongside the score (AC)", async () => {
-      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
+  // Story 20.35 (Epic 20, Torneo Memorial): revert della Story 20.34 - il
+  // form del risultato non contiene piu' alcun campo Refertista, un valore
+  // inviato comunque (form manomesso, client stantio) e' semplicemente
+  // ignorato, mai passato al chiamante.
+  it("ignores a refertista field sent alongside the score (revert of Story 20.34)", async () => {
+    aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
 
-      const result = await salvaRisultatoPartitaTorneoAction(
-        undefined,
-        buildFormData({ ...campiRisultato2a0, refertista: "  Mario Rossi  " })
-      );
+    const result = await salvaRisultatoPartitaTorneoAction(
+      undefined,
+      buildFormData({ ...campiRisultato2a0, refertista: "Mario Rossi" })
+    );
 
-      expect(result).toEqual({ success: true });
-      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith("partita-1", "categoria-1", {
-        set1Casa: 25,
-        set1Ospite: 20,
-        set2Casa: 25,
-        set2Ospite: 18,
-        set3Casa: null,
-        set3Ospite: null,
-        refertista: "Mario Rossi",
-      });
-    });
-
-    it("stores null, not an empty string, when refertista is left empty (AC)", async () => {
-      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
-
-      await salvaRisultatoPartitaTorneoAction(
-        undefined,
-        buildFormData({ ...campiRisultato2a0, refertista: "   " })
-      );
-
-      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith(
-        "partita-1",
-        "categoria-1",
-        expect.objectContaining({ refertista: null })
-      );
-    });
-
-    it("rejects a refertista longer than 20 characters with an explicit message (AC)", async () => {
-      const result = await salvaRisultatoPartitaTorneoAction(
-        undefined,
-        buildFormData({ ...campiRisultato2a0, refertista: "a".repeat(21) })
-      );
-
-      expect(result).toEqual({
-        error: {
-          code: "VALIDATION",
-          message: "Il nome del Refertista non può superare i 20 caratteri.",
-        },
-      });
-      expect(aggiornaRisultatoPartitaTorneoMock).not.toHaveBeenCalled();
-    });
-
-    it("accepts a refertista exactly at the 20 character limit", async () => {
-      aggiornaRisultatoPartitaTorneoMock.mockResolvedValue({ count: 1 });
-
-      const result = await salvaRisultatoPartitaTorneoAction(
-        undefined,
-        buildFormData({ ...campiRisultato2a0, refertista: "a".repeat(20) })
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith(
-        "partita-1",
-        "categoria-1",
-        expect.objectContaining({ refertista: "a".repeat(20) })
-      );
-    });
-
-    // spec-20-34 I/O matrix: un incontro con modifica bloccata resta
-    // bloccato anche per il refertista, stesso form/stessa azione - nessun
-    // percorso separato che lo bypassi.
-    it("is blocked by the same erroreModificaBloccata guard as the score", async () => {
-      trovaPartitaTorneoPerIdMock.mockResolvedValue({
-        id: "partita-1",
-        categoriaTorneoId: "categoria-1",
-        fase: "GIRONE",
-        tabellone: null,
-      });
-      contaPartiteTorneoTabelloneMock.mockResolvedValue(1);
-
-      const result = await salvaRisultatoPartitaTorneoAction(
-        undefined,
-        buildFormData({ ...campiRisultato2a0, refertista: "Mario Rossi" })
-      );
-
-      expect(result).toEqual({
-        error: {
-          code: "VALIDATION",
-          message:
-            "Non puoi modificare un risultato di girone: il tabellone è già stato generato per questa Categoria.",
-        },
-      });
-      expect(aggiornaRisultatoPartitaTorneoMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true });
+    expect(aggiornaRisultatoPartitaTorneoMock).toHaveBeenCalledWith("partita-1", "categoria-1", {
+      set1Casa: 25,
+      set1Ospite: 20,
+      set2Casa: 25,
+      set2Ospite: 18,
+      set3Casa: null,
+      set3Ospite: null,
     });
   });
 
@@ -5078,6 +5005,197 @@ describe("assegnaSlotPartitaTorneoAction", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile assegnare lo Slot. Riprova." },
     });
+  });
+});
+
+// Story 20.35 (Epic 20, Torneo Memorial): assegnazione del Refertista come
+// azione indipendente dal risultato - mirror di assegnaSlotPartitaTorneoAction
+// sopra (spec-20-35 Code Map), con in piu' la stessa validazione di
+// lunghezza gia' esistente (REFERTISTA_MAX, spostata qui dal revert della
+// Story 20.34) e SENZA alcuna chiamata a erroreModificaBloccata (a
+// differenza di salvaRisultatoPartitaTorneoAction).
+describe("assegnaRefertistaPartitaTorneoAction", () => {
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Dirigente", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(assegnaRefertistaPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when id/categoriaTorneoId are missing", async () => {
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Incontro non specificato." },
+    });
+    expect(assegnaRefertistaPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  // AC (spec-20-35): un incontro senza alcun risultato inserito puo'
+  // comunque ricevere un Refertista - nessun set1/set2 nel FormData qui,
+  // a differenza di ogni test di salvaRisultatoPartitaTorneoAction sopra.
+  it("saves a refertista on an incontro with no score at all yet (AC)", async () => {
+    assegnaRefertistaPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "  Mario Rossi  " })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaRefertistaPartitaTorneoMock).toHaveBeenCalledWith(
+      "partita-1",
+      "categoria-1",
+      "Mario Rossi"
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/app/torneo/edizione-1/categoria-1/risultati"
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/app/torneo/edizione-1/categoria-1/tabellone"
+    );
+  });
+
+  it("stores null, not an empty string, when refertista is left empty (AC)", async () => {
+    assegnaRefertistaPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "   " })
+    );
+
+    expect(assegnaRefertistaPartitaTorneoMock).toHaveBeenCalledWith(
+      "partita-1",
+      "categoria-1",
+      null
+    );
+  });
+
+  it("rejects a refertista longer than 20 characters with an explicit message (AC)", async () => {
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "a".repeat(21) })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il nome del Refertista non può superare i 20 caratteri.",
+      },
+    });
+    expect(assegnaRefertistaPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a refertista exactly at the 20 character limit", async () => {
+    assegnaRefertistaPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "a".repeat(20) })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(assegnaRefertistaPartitaTorneoMock).toHaveBeenCalledWith(
+      "partita-1",
+      "categoria-1",
+      "a".repeat(20)
+    );
+  });
+
+  it("returns a validation error, not a generic INTERNAL, when the Categoria no longer exists", async () => {
+    trovaCategoriaTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Categoria non trovata." },
+    });
+    expect(assegnaRefertistaPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'not found' when the Partita doesn't exist / doesn't match the Categoria", async () => {
+    trovaPartitaTorneoPerIdMock.mockResolvedValue(null);
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." },
+    });
+    expect(assegnaRefertistaPartitaTorneoMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error, not a silent no-op, when the update matches no row (count 0)", async () => {
+    assegnaRefertistaPartitaTorneoMock.mockResolvedValue({ count: 0 });
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Incontro non trovato in questa Categoria." },
+    });
+  });
+
+  it("returns a friendly error, no crash, when the assignment fails", async () => {
+    assegnaRefertistaPartitaTorneoMock.mockRejectedValue(new Error("db down"));
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile assegnare il Refertista. Riprova." },
+    });
+  });
+
+  // spec-20-35 I/O matrix: a differenza del risultato, il Refertista resta
+  // modificabile anche con modifica del risultato bloccata (finali gia'
+  // generate a valle) - nessuna chiamata a contaPartiteTorneoTabellone/
+  // elencaPartiteTorneo qui, a differenza di salvaRisultatoPartitaTorneoAction.
+  it("is never blocked by erroreModificaBloccata, unlike the score (AC)", async () => {
+    trovaPartitaTorneoPerIdMock.mockResolvedValue({
+      id: "partita-1",
+      categoriaTorneoId: "categoria-1",
+      fase: "GIRONE",
+      tabellone: null,
+    });
+    // Se questa azione chiamasse erroreModificaBloccata come il risultato,
+    // un conteggio > 0 qui bloccherebbe il salvataggio - non lo fa.
+    contaPartiteTorneoTabelloneMock.mockResolvedValue(1);
+    assegnaRefertistaPartitaTorneoMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaRefertistaPartitaTorneoAction(
+      undefined,
+      buildFormData({ id: "partita-1", categoriaTorneoId: "categoria-1", refertista: "Mario Rossi" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(contaPartiteTorneoTabelloneMock).not.toHaveBeenCalled();
+    expect(assegnaRefertistaPartitaTorneoMock).toHaveBeenCalledWith(
+      "partita-1",
+      "categoria-1",
+      "Mario Rossi"
+    );
   });
 });
 

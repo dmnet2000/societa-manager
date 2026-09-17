@@ -125,6 +125,7 @@ const {
   cancellaSlotTorneo,
   aggiornaSlotTorneo,
   assegnaSlotPartitaTorneo,
+  assegnaRefertistaPartitaTorneo,
   elencaSlotTorneoLiberi,
   prenotaSlotTorneo,
   rimuoviPrenotazioneSlotTorneo,
@@ -651,7 +652,6 @@ describe("aggiornaRisultatoPartitaTorneo", () => {
       set2Ospite: 18,
       set3Casa: null,
       set3Ospite: null,
-      refertista: null,
     };
     partitaUpdateManyMock.mockResolvedValue({ count: 1 });
 
@@ -662,30 +662,6 @@ describe("aggiornaRisultatoPartitaTorneo", () => {
       data: dati,
     });
     expect(result).toEqual({ count: 1 });
-  });
-
-  // Story 20.34 (Epic 20, Torneo Memorial): refertista aggiunto ai campi
-  // scrivibili - testo libero facoltativo, passato tale e quale al chiamante
-  // (nessuna trasformazione qui, la validazione/normalizzazione vive nella
-  // Server Action).
-  it("passes a non-null refertista through unchanged", async () => {
-    const dati = {
-      set1Casa: 25,
-      set1Ospite: 20,
-      set2Casa: 25,
-      set2Ospite: 18,
-      set3Casa: null,
-      set3Ospite: null,
-      refertista: "Mario Rossi",
-    };
-    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
-
-    await aggiornaRisultatoPartitaTorneo("partita-1", "categoria-1", dati);
-
-    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
-      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
-      data: dati,
-    });
   });
 });
 
@@ -1250,6 +1226,35 @@ describe("assegnaSlotPartitaTorneo", () => {
     expect(partitaUpdateManyMock).toHaveBeenCalledWith({
       where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
       data: { slotTorneoId: null },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+});
+
+// Story 20.35 (Epic 20, Torneo Memorial): mirror esatto di
+// assegnaSlotPartitaTorneo sopra - stesso updateMany scoped su
+// id+categoriaTorneoId, qui per il Refertista invece dello Slot.
+describe("assegnaRefertistaPartitaTorneo", () => {
+  it("updates only the Partita matching BOTH id and categoriaTorneoId with the given refertista", async () => {
+    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaRefertistaPartitaTorneo("partita-1", "categoria-1", "Mario Rossi");
+
+    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
+      data: { refertista: "Mario Rossi" },
+    });
+    expect(result).toEqual({ count: 1 });
+  });
+
+  it("accepts a null refertista to remove an existing assignment", async () => {
+    partitaUpdateManyMock.mockResolvedValue({ count: 1 });
+
+    const result = await assegnaRefertistaPartitaTorneo("partita-1", "categoria-1", null);
+
+    expect(partitaUpdateManyMock).toHaveBeenCalledWith({
+      where: { id: "partita-1", categoriaTorneoId: "categoria-1" },
+      data: { refertista: null },
     });
     expect(result).toEqual({ count: 1 });
   });

@@ -380,13 +380,14 @@ export async function trovaPartitaTorneoPerId(id: string) {
 // set3Casa/set3Ospite sono null quando l'incontro si e' chiuso 2-0 (nessun
 // terzo set) - il chiamante (Server Action) ha gia' validato la coerenza
 // strutturale con risultatoValido prima di arrivare qui.
-// Story 20.34: refertista aggiunto ai campi scrivibili - testo libero
-// facoltativo (chi ha compilato il referto cartaceo), salvato nello stesso
-// submit del risultato (nessuna Server Action dedicata, spec-20-34
-// Boundaries "Always"). Il chiamante ha gia' validato lunghezza massima/
-// stringa vuota -> null prima di arrivare qui (validaCampiRisultato,
-// app/app/(torneo)/torneo/actions.ts), mirror della stessa disciplina gia'
-// applicata a nomeSettimana1/2.
+// Story 20.35 (Epic 20, Torneo Memorial): refertista rimosso dai campi
+// scrivibili qui (revert della Story 20.34) - non e' piu' legato allo
+// stesso submit del risultato, ha ora una propria Server Action indipendente
+// (assegnaRefertistaPartitaTorneoAction) e una propria funzione dedicata
+// sotto (assegnaRefertistaPartitaTorneo), mirror esatto di
+// assegnaSlotPartitaTorneo: il Refertista deve poter essere assegnato anche
+// PRIMA che l'incontro abbia un risultato, cosa impossibile finche' viveva
+// qui (set1/set2 obbligatori sia lato client sia lato server).
 export async function aggiornaRisultatoPartitaTorneo(
   id: string,
   categoriaTorneoId: string,
@@ -397,12 +398,31 @@ export async function aggiornaRisultatoPartitaTorneo(
     set2Ospite: number;
     set3Casa: number | null;
     set3Ospite: number | null;
-    refertista: string | null;
   }
 ) {
   return prisma.partitaTorneo.updateMany({
     where: { id, categoriaTorneoId },
     data: dati,
+  });
+}
+
+// Story 20.35 (Epic 20, Torneo Memorial): assegnazione del Refertista
+// indipendente dal risultato - mirror esatto di assegnaSlotPartitaTorneo
+// sopra (stesso updateMany scoped su id+categoriaTorneoId), cosi' come lo
+// Slot il Refertista e' assegnabile/modificabile sempre, indipendentemente
+// dallo stato del risultato (mai bloccato da erroreModificaBloccata, a
+// differenza di aggiornaRisultatoPartitaTorneo sopra - quel controllo vive
+// solo nella Server Action del risultato). refertista puo' essere null per
+// rimuovere un'assegnazione esistente, non solo per assegnarne una nuova
+// (stesso principio di slotTorneoId in assegnaSlotPartitaTorneo).
+export async function assegnaRefertistaPartitaTorneo(
+  id: string,
+  categoriaTorneoId: string,
+  refertista: string | null
+) {
+  return prisma.partitaTorneo.updateMany({
+    where: { id, categoriaTorneoId },
+    data: { refertista },
   });
 }
 

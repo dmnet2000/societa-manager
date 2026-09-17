@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useActionState, useMemo } from "react";
-import { salvaRisultatoPartitaTorneoAction, assegnaSlotPartitaTorneoAction } from "../../../actions";
+import {
+  salvaRisultatoPartitaTorneoAction,
+  assegnaSlotPartitaTorneoAction,
+  assegnaRefertistaPartitaTorneoAction,
+} from "../../../actions";
 import {
   terzoSetNecessario as calcolaTerzoSetNecessario,
   formattaRisultatoPartitaTorneo,
@@ -82,7 +86,10 @@ type Partita = {
   set3Ospite: number | null;
   // Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il referto
   // cartaceo dell'incontro - testo libero facoltativo, null finche' non
-  // valorizzato (nessun backfill per gli incontri esistenti).
+  // valorizzato (nessun backfill per gli incontri esistenti). Story 20.35:
+  // non piu' parte del form/dello stato del risultato sotto - assegnazione
+  // indipendente, proprio form/propria Server Action (mirror dello Slot),
+  // mai bloccata dallo stato del risultato.
   refertista: string | null;
 };
 
@@ -126,6 +133,14 @@ export function RisultatoPartitaTorneoForm({
     assegnaSlotPartitaTorneoAction,
     undefined
   );
+  // Story 20.35 (Epic 20, Torneo Memorial): useActionState INDIPENDENTE per
+  // il form "Refertista", stesso principio del form "Slot" sopra - mirror
+  // esatto (spec-20-35 Boundaries "Always"), mai legato all'esito del form
+  // risultato.
+  const [refertistaState, refertistaFormAction, refertistaPending] = useActionState(
+    assegnaRefertistaPartitaTorneoAction,
+    undefined
+  );
 
   // Valori di default riusati sia per l'inizializzazione sia per il reset
   // su "Annulla" (review fix, Blind Hunter, Story 20.3): senza reset, un
@@ -133,8 +148,10 @@ export function RisultatoPartitaTorneoForm({
   // sullo stesso incontro (nessun remount, lo stato di React persiste).
   // Dichiarata (con lo useState che la usa subito sotto) PRIMA del blocco
   // ultimoState/state piu' in basso, che ora la richiama anche lui al
-  // salvataggio riuscito (review fix, spec-20-34 finding #2) - a differenza
-  // di una function declaration, il const/useState sotto non e' hoisted.
+  // salvataggio riuscito. Story 20.35: refertista rimosso da qui (revert
+  // della Story 20.34) - non fa piu' parte dello stato di questo form, ha
+  // ora il proprio form indipendente sotto (defaultValue non controllato,
+  // mirror di NomiSettimaneTorneoForm.tsx).
   function valoriIniziali() {
     return {
       set1Casa: partita.set1Casa?.toString() ?? "",
@@ -143,12 +160,11 @@ export function RisultatoPartitaTorneoForm({
       set2Ospite: partita.set2Ospite?.toString() ?? "",
       set3Casa: partita.set3Casa?.toString() ?? "",
       set3Ospite: partita.set3Ospite?.toString() ?? "",
-      refertista: partita.refertista ?? "",
     };
   }
 
   const [
-    { set1Casa, set1Ospite, set2Casa, set2Ospite, set3Casa, set3Ospite, refertista },
+    { set1Casa, set1Ospite, set2Casa, set2Ospite, set3Casa, set3Ospite },
     setValori,
   ] = useState(valoriIniziali);
 
@@ -159,14 +175,10 @@ export function RisultatoPartitaTorneoForm({
     if (state && "success" in state) {
       setInModifica(false);
       setErroreVisibile(false);
-      // Review fix (spec-20-34 finding #2): senza questo reset, lo stato
-      // locale "refertista" restava con il valore digitato NON trimmato
-      // (es. spazi residui) invece del valore realmente persistito dopo il
-      // trim server-side (validaCampiRisultato, actions.ts) - il componente
-      // non si rimonta al salvataggio, quindi lo stato React sopravvive.
-      // Mirror del reset gia' fatto da "Annulla" sotto; no-op per i campi
-      // punteggio, che non subiscono alcuna trasformazione server-side
-      // equivalente.
+      // Mirror del reset gia' fatto da "Annulla" sotto - un valore digitato
+      // e poi salvato non deve restare visibile la prossima volta che il
+      // form viene riaperto sullo stesso incontro (nessun remount, lo stato
+      // React sopravvive al salvataggio).
       setValori(valoriIniziali());
     } else if (state && "error" in state) {
       setErroreVisibile(true);
@@ -226,12 +238,45 @@ export function RisultatoPartitaTorneoForm({
         </button>
       </p>
 
-      {/* Story 20.34: riga di sola lettura, mostrata SOLO quando il
-          Refertista e' valorizzato (mai una riga vuota) - mirror del
-          trattamento gia' riservato allo Slot assegnato sotto
-          (partita.slotTorneo). */}
-      {partita.refertista && (
-        <p className={styles.riepilogo}>Refertista: {partita.refertista}</p>
+      {/* Story 20.35 (Epic 20, Torneo Memorial): assegnazione del Refertista
+          - form indipendente (proprio useActionState sopra), sempre
+          visibile, nessun toggle "in modifica" - mirror esatto del form
+          Slot sotto e di NomiSettimaneTorneoForm.tsx: un <input> con
+          defaultValue dal valore corrente + bottone "Salva", key sul valore
+          corrente per rinfrescare il campo dopo un salvataggio riuscito.
+          Mai bloccato da erroreModificaBloccata (a differenza del form
+          risultato sotto): resta assegnabile/modificabile anche prima che
+          l'incontro abbia un risultato, o dopo che finali/tabellone a valle
+          sono stati generati (revert della Story 20.34, che lo legava al
+          form/alla Server Action del risultato). */}
+      <form
+        action={refertistaFormAction}
+        className={`${styles.formCompatto} ${styles.formInline}`}
+      >
+        <input type="hidden" name="id" value={partita.id} />
+        <input type="hidden" name="categoriaTorneoId" value={partita.categoriaTorneoId} />
+        <label htmlFor={`refertista-${partita.id}`}>Refertista</label>
+        <input
+          key={partita.refertista ?? ""}
+          id={`refertista-${partita.id}`}
+          name="refertista"
+          type="text"
+          maxLength={20}
+          defaultValue={partita.refertista ?? ""}
+        />
+        <button disabled={refertistaPending} type="submit" className={styles.bottoneCompatto}>
+          Salva
+        </button>
+      </form>
+      {refertistaState && "error" in refertistaState && (
+        <p role="alert" className={styles.errore}>
+          {refertistaState.error.message}
+        </p>
+      )}
+      {refertistaState && "success" in refertistaState && (
+        <p role="status" className={styles.successo}>
+          Refertista aggiornato.
+        </p>
       )}
 
       {/* Story 20.9: assegnazione Slot (dove/quando si gioca) - form
@@ -418,25 +463,6 @@ export function RisultatoPartitaTorneoForm({
                 required={terzoSetNecessario}
                 value={terzoSetNecessario ? set3Ospite : ""}
                 onChange={(e) => setValori((v) => ({ ...v, set3Ospite: e.target.value }))}
-              />
-            </div>
-            {/* Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il
-                referto cartaceo dell'incontro - testo libero facoltativo,
-                stesso form/stesso submit del risultato (spec-20-34 Boundaries
-                "Always"), mai un nuovo form/Server Action dedicato.
-                maxLength=20 lato client mirror di REFERTISTA_MAX
-                (app/app/(torneo)/torneo/actions.ts) - il vero cancello resta
-                server-side, stesso principio gia' in uso per l'etichetta
-                dello Slot (NuovoSlotTorneoForm.tsx). */}
-            <div className={styles.campo}>
-              <label htmlFor={`refertista-${partita.id}`}>Refertista</label>
-              <input
-                id={`refertista-${partita.id}`}
-                name="refertista"
-                type="text"
-                maxLength={20}
-                value={refertista}
-                onChange={(e) => setValori((v) => ({ ...v, refertista: e.target.value }))}
               />
             </div>
           </div>
