@@ -438,14 +438,14 @@
   overflow: hidden;
 }
 
-/* Browser web (sopra il breakpoint 900px di .listaPartite): la card e'
-   spostata di 50px a destra, altrimenti il testo non si legge bene.
-   margin-left (non transform) - nella griglia riduce la larghezza della
-   card di 50px invece di farla uscire dalla propria colonna. Mobile
-   invariato. */
+/* Browser web (sopra il breakpoint 900px di .listaPartite): padding sinistro
+   di 50px - il taglio diagonale del clip-path (4% della larghezza, oltre
+   20px su una card larga) altrimenti mangia il testo in basso a sinistra.
+   La card resta allineata alla griglia, si sposta solo il contenuto.
+   Mobile invariato (card stretta, il taglio e' di pochi px). */
 @media (min-width: 901px) {
   .schedaPartita {
-    margin-left: 50px;
+    padding-left: 50px;
   }
 }
 
