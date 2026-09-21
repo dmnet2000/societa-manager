@@ -6,9 +6,7 @@ import { categorizzaStatoCertificato } from "@/app/app/(amministrazione)/vista-d
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
-import { ConfermaCertificatoRow } from "./ConfermaCertificatoRow";
-import { ListaConfermati } from "./ListaConfermati";
-import styles from "./conferma-certificati.module.css";
+import { CertificatiElenco } from "./CertificatiElenco";
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
 // pagina) - stesso motivo di /presenze, /certificato-medico.
@@ -78,110 +76,83 @@ export default async function ConfermaCertificatiPage() {
         contenuto={contenutoPerRotta("/app/conferma-certificati", ruoli)}
       />
 
-      <section className={styles.sezione}>
-        <h2>Da confermare ({daConfermare.length})</h2>
-        {daConfermare.length === 0 ? (
-          <p className={styles.messaggioVuoto}>Nessun Certificato in attesa di conferma.</p>
-        ) : (
-          <ul className={styles.lista}>
-            {daConfermare.map(({ atleta, certificato }) => (
-              <ConfermaCertificatoRow
-                key={atleta.id}
-                atleta={atleta}
-                filePath={(certificato?.filePath as string | undefined) ?? null}
-                // Review fix: precompila con i dati gia' a sistema (es. un
-                // Certificato gia' CONFERMATO in passato, tornato IN_ATTESA
-                // per un ri-caricamento, AC #3) - senza questo, confermare
-                // senza ridigitare i campi opzionali li azzererebbe
-                // silenziosamente (confermaCertificato scrive sempre i
-                // valori del form, mai un merge per-campo).
-                dataInizioValidita={
-                  (certificato?.dataInizioValidita as string | undefined)?.slice(
-                    0,
-                    10
-                  ) ?? ""
-                }
-                dataFineValidita={
-                  (certificato?.dataFineValidita as string | undefined)?.slice(
-                    0,
-                    10
-                  ) ?? ""
-                }
-                mesiValidita={certificato?.mesiValidita as number | null | undefined}
-                modulo={certificato?.modulo as string | null | undefined}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className={styles.sezione}>
-        <h2>Confermati ({confermati.length})</h2>
-        {confermati.length === 0 ? (
-          <p className={styles.messaggioVuoto}>Nessun Certificato ancora confermato.</p>
-        ) : (
-          <ListaConfermati
-            puoModificare={puoModificareCertificatiConfermati}
-            righe={confermati.map(({ atleta, certificato }) => {
-              const dataFineValidita =
-                (certificato?.dataFineValidita as string | undefined) ?? null;
-              const stato = categorizzaStatoCertificato(
-                dataFineValidita,
-                (certificato?.stato as StatoCertificato | null) ?? null,
-                oggi
-              );
-              if (stato === "SENZA_CERTIFICATO") {
-                // Review fix (Story 9.23): non raggiungibile tramite il
-                // percorso di scrittura attuale (confermaCertificato impone
-                // dataFineValidita obbligatoria), ma dataFineValidita resta
-                // nullable a livello di schema - un log distintivo segnala
-                // l'anomalia invece di renderizzare silenziosamente senza
-                // badge, stesso pattern gia' usato in vista-dirigente/page.tsx.
-                console.warn(
-                  `Story 9.23: Certificato CONFERMATO senza dataFineValidita valida per Atleta ${atleta.id}.`
-                );
-              }
-              // Review fix (Story 9.25): formattata qui, non nel Client
-              // Component - un Server Component non idrata mai (nessun
-              // rischio di mismatch), ma ListaConfermati si', e la stessa
-              // chiamata new Date(...).toLocaleDateString() rieseguita in
-              // hydration userebbe il fuso orario del browser invece di
-              // quello del server, con un possibile disallineamento intorno
-              // alla mezzanotte locale (stesso principio gia' corretto con
-              // timeZone: "UTC" in raggruppa-per-settimana.ts, Story 10.3).
-              const dataFineValiditaFormattata = dataFineValidita
-                ? new Date(dataFineValidita).toLocaleDateString("it-IT", {
-                    timeZone: "UTC",
-                  })
-                : null;
-              // Story 9.27 (Task 3): elencaCertificati seleziona gia' tutte
-              // queste colonne (lib/db-rls/certificato-medico.ts riga 54) -
-              // prima scartate qui, ora necessarie per il form di modifica
-              // di CertificatoConfermatoRow. Stesso slicing/casting gia'
-              // usato sopra per daConfermare.
-              return {
-                atletaId: atleta.id,
-                nome: atleta.nome,
-                dataFineValiditaFormattata,
-                stato,
-                dataInizioValidita:
-                  (certificato?.dataInizioValidita as string | undefined)?.slice(
-                    0,
-                    10
-                  ) ?? "",
-                dataFineValidita:
-                  (certificato?.dataFineValidita as string | undefined)?.slice(
-                    0,
-                    10
-                  ) ?? "",
-                mesiValidita: certificato?.mesiValidita as number | null | undefined,
-                modulo: certificato?.modulo as string | null | undefined,
-                filePath: (certificato?.filePath as string | undefined) ?? null,
-              };
-            })}
-          />
-        )}
-      </section>
+      <CertificatiElenco
+        puoModificare={puoModificareCertificatiConfermati}
+        daConfermare={daConfermare.map(({ atleta, certificato }) => ({
+          atleta,
+          filePath: (certificato?.filePath as string | undefined) ?? null,
+          // Review fix: precompila con i dati gia' a sistema (es. un
+          // Certificato gia' CONFERMATO in passato, tornato IN_ATTESA
+          // per un ri-caricamento, AC #3) - senza questo, confermare
+          // senza ridigitare i campi opzionali li azzererebbe
+          // silenziosamente (confermaCertificato scrive sempre i
+          // valori del form, mai un merge per-campo).
+          dataInizioValidita:
+            (certificato?.dataInizioValidita as string | undefined)?.slice(0, 10) ?? "",
+          dataFineValidita:
+            (certificato?.dataFineValidita as string | undefined)?.slice(0, 10) ?? "",
+          mesiValidita: certificato?.mesiValidita as number | null | undefined,
+          modulo: certificato?.modulo as string | null | undefined,
+        }))}
+        confermati={confermati.map(({ atleta, certificato }) => {
+          const dataFineValidita =
+            (certificato?.dataFineValidita as string | undefined) ?? null;
+          const stato = categorizzaStatoCertificato(
+            dataFineValidita,
+            (certificato?.stato as StatoCertificato | null) ?? null,
+            oggi
+          );
+          if (stato === "SENZA_CERTIFICATO") {
+            // Review fix (Story 9.23): non raggiungibile tramite il
+            // percorso di scrittura attuale (confermaCertificato impone
+            // dataFineValidita obbligatoria), ma dataFineValidita resta
+            // nullable a livello di schema - un log distintivo segnala
+            // l'anomalia invece di renderizzare silenziosamente senza
+            // badge, stesso pattern gia' usato in vista-dirigente/page.tsx.
+            console.warn(
+              `Story 9.23: Certificato CONFERMATO senza dataFineValidita valida per Atleta ${atleta.id}.`
+            );
+          }
+          // Review fix (Story 9.25): formattata qui, non nel Client
+          // Component - un Server Component non idrata mai (nessun
+          // rischio di mismatch), ma ListaConfermati si', e la stessa
+          // chiamata new Date(...).toLocaleDateString() rieseguita in
+          // hydration userebbe il fuso orario del browser invece di
+          // quello del server, con un possibile disallineamento intorno
+          // alla mezzanotte locale (stesso principio gia' corretto con
+          // timeZone: "UTC" in raggruppa-per-settimana.ts, Story 10.3).
+          const dataFineValiditaFormattata = dataFineValidita
+            ? new Date(dataFineValidita).toLocaleDateString("it-IT", {
+                timeZone: "UTC",
+              })
+            : null;
+          // Story 9.27 (Task 3): elencaCertificati seleziona gia' tutte
+          // queste colonne (lib/db-rls/certificato-medico.ts riga 54) -
+          // prima scartate qui, ora necessarie per il form di modifica
+          // di CertificatoConfermatoRow. Stesso slicing/casting gia'
+          // usato sopra per daConfermare.
+          return {
+            atletaId: atleta.id,
+            nome: atleta.nome,
+            codiceFiscale: atleta.codiceFiscale,
+            dataFineValiditaFormattata,
+            stato,
+            dataInizioValidita:
+              (certificato?.dataInizioValidita as string | undefined)?.slice(
+                0,
+                10
+              ) ?? "",
+            dataFineValidita:
+              (certificato?.dataFineValidita as string | undefined)?.slice(
+                0,
+                10
+              ) ?? "",
+            mesiValidita: certificato?.mesiValidita as number | null | undefined,
+            modulo: certificato?.modulo as string | null | undefined,
+            filePath: (certificato?.filePath as string | undefined) ?? null,
+          };
+        })}
+      />
     </main>
   );
 }

@@ -14,6 +14,7 @@ export function IscrizioneRow({
   iscrizioneId,
   puoConfermare,
   gruppi,
+  nascosta = false,
 }: {
   atleta: AtletaElenco;
   iscrizioneId: string | null;
@@ -21,6 +22,9 @@ export function IscrizioneRow({
   // Story 1.9: nomi dei Gruppi assegnati per la stagione corrente (sola
   // visualizzazione, l'assegnazione resta gestita da /app/gruppi).
   gruppi: string[];
+  // Riga esclusa dalla ricerca corrente (IscrizioniElenco): nascosta, non
+  // smontata, per non perdere lo stato locale dopo una conferma/esclusione.
+  nascosta?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [stato, setStato] = useState<Stato>(
@@ -67,7 +71,7 @@ export function IscrizioneRow({
   const iscrizioneIdCorrente = stato.iscritta ? stato.iscrizioneId : null;
 
   return (
-    <tr>
+    <tr hidden={nascosta}>
       <td>{atleta.nome}</td>
       <td>{atleta.codiceFiscale}</td>
       <td>{gruppi.join(", ") || "–"}</td>

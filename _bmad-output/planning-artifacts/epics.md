@@ -1655,6 +1655,45 @@ so that dopo essere uscito dall'area riservata mi ritrovi sul sito vetrina della
 3. **And** nessuna regressione sul resto del comportamento di logoff già esistente: cookie di sessione invalidati, `revalidatePath("/app", "layout")` invariato (Story 9.7 — la barra di navigazione dell'area riservata non deve restare visibile), un tentativo successivo di raggiungere una pagina protetta (URL diretto o "indietro" del browser) resta rediretto a `/accedi` dal Proxy come per qualunque Utente non autenticato
 4. **And** la home pubblica mostra il link "Accedi" (Story 18.1 AC #7) — un Utente che ha fatto logoff per errore può rientrare in un click, nessuna funzionalità persa rispetto ad atterrare direttamente su `/accedi`
 
+### Story 9.43: Rimozione delle Atlete non più in società o passate ad altra società
+
+*(Aggiunta post-apertura epica — 2026-09-21, richiesta esplicita dell'utente: "possibilità di rimuovere atlete non più in società o passate in altra società — solo stories, non sviluppo". **Solo la story in questo giro, nessuna implementazione.** Verificato nel codice: (a) non esiste oggi alcuna azione di cancellazione o archiviazione di un'Atleta — nessun `delete` su `atlete` e nessun campo di stato sul model `Atleta` (`prisma/schema.prisma`); (b) l'unica "uscita" esistente è `escludiIscrizione` (`app/app/(iscrizioni)/conferma-iscrizioni/actions.ts`, Story 1.8), che mette `attiva = false` sull'**Iscrizione della sola stagione corrente**: l'Atleta resta in `elencaAtlete` (`lib/db-rls/atleta.ts`) e ricompare in `/app/conferma-iscrizioni`, `/app/conferma-certificati`, `/app/gruppi`, `/app/presenze`, `/app/vista-dirigente`, nel cron `promemoria-certificati` e nella pagina pubblica `/squadre`; (c) quasi tutte le relazioni dell'Atleta sono `onDelete: Cascade` (Iscrizione, Tesseramento, CertificatoMedico, GruppoAtleta, Presenza, Notifica, MisurazioneAtleta, GenitoreAtleta) — una **cancellazione fisica** porterebbe via con sé storico presenze, misurazioni e certificati.)*
+
+As a Segreteria (e Admin/Dirigente),
+I want segnare un'Atleta come "non più in società" o "passata ad altra società",
+so that smette di comparire negli elenchi operativi (iscrizioni, certificati, gruppi, presenze, promemoria, sito pubblico) senza perdere il suo storico e senza doverla escludere a mano ogni nuova stagione.
+
+**Differenza rispetto a "Escludi" (Story 1.8):** "Escludi" vale per **una sola stagione** (Iscrizione non attiva, l'Atleta resta nell'anagrafica attiva e può essere riconfermata). Questa story è una **uscita definitiva ma reversibile**: vale per tutte le stagioni finché qualcuno non la ripristina.
+
+**Approccio raccomandato — archiviazione, non cancellazione:** l'Atleta non viene mai cancellata dal database. Il model `Atleta` riceve uno stato di rimozione (es. `rimossaIl` + `motivoRimozione` con valori `NON_PIU_IN_SOCIETA` / `TRASFERITA`, più una nota facoltativa, es. nome della nuova società). Motivo: (1) storico presenze/misurazioni/certificati conservato (cascade evitato); (2) reversibile in caso di errore o di ritorno in società; (3) il `codiceFiscale` (`@unique`) resta occupato, quindi un re-import federale non crea duplicati.
+
+**Acceptance Criteria:**
+
+1. **Given** un'Atleta in `/app/conferma-iscrizioni` **When** la Segreteria (o Admin/Dirigente) sceglie "Rimuovi dalla società" **Then** compare una conferma esplicita con la scelta obbligatoria del motivo ("Non più in società" / "Passata ad altra società"), una nota facoltativa e il nome dell'Atleta ben visibile; solo dopo la conferma l'Atleta viene marcata come rimossa (nessuna rimozione con un solo click)
+2. **And** al momento della rimozione l'eventuale Iscrizione della stagione corrente viene disattivata (`attiva = false`, stesso meccanismo di "Escludi") — nessuna Atleta rimossa risulta "iscritta"
+3. **Given** un'Atleta rimossa **When** si aprono le pagine operative (`/app/conferma-iscrizioni`, `/app/conferma-certificati`, `/app/gruppi` e le assegnazioni a un Gruppo, `/app/presenze`, `/app/vista-dirigente`, `/app/conferma-tesseramenti`) **Then** non compare più negli elenchi, non può essere assegnata a un Gruppo e non riceve più promemoria/notifiche (cron `promemoria-certificati` incluso)
+4. **And** la pagina pubblica `/squadre` non mostra più l'Atleta rimossa
+5. **And** lo storico non viene toccato: Presenze, Misurazioni, Certificati, Iscrizioni e Tesseramenti passati restano nel database; lo storico presenze (`/app/storico-presenze`) continua a mostrare le presenze già registrate di quell'Atleta (nessuna riscrittura del passato, vedi anche la memoria di progetto su Presenza legata allo Slot)
+6. **And** il rollover di stagione (Story 1.8, riporto Under 13) e l'import federale **non riportano né riattivano** un'Atleta rimossa; se il file di import contiene il suo codice fiscale, l'import la riconosce come "già presente, rimossa" e la segnala nel riepilogo **senza** creare un duplicato né ripristinarla in silenzio
+7. **Given** la Segreteria (o Admin/Dirigente) **When** apre l'elenco "Atlete rimosse" (sezione a scomparsa in `/app/conferma-iscrizioni`, con motivo, data e nota) **Then** può **ripristinare** un'Atleta con conferma esplicita: torna negli elenchi operativi (non iscritta, da riconfermare per la stagione) e mantiene tutto lo storico
+8. **And** la ricerca per cognome/nome/codice fiscale di `/app/conferma-iscrizioni` funziona anche sull'elenco delle Atlete rimosse
+9. **And** Atleta e Genitore agganciati (`GenitoreAtleta`) non vedono più l'Atleta rimossa nelle pagine personali (es. `/app/certificato-medico`, `/app/dati-fisici`) — dettaglio del messaggio da chiudere (vedi Decisioni aperte); nessun Utente perde l'accesso all'account per effetto di questa story
+10. **And** ogni Ruolo diverso da Segreteria/Admin/Dirigente (Allenatore, Atleta, Genitore, ecc.) non può rimuovere né ripristinare: rifiutato lato server (`requireRuolo`), non solo nascosto in UI
+11. **And** la guida in-app di `/app/conferma-iscrizioni` viene aggiornata (regola permanente del progetto) spiegando la differenza tra "Escludi" (solo stagione corrente) e "Rimuovi dalla società" (definitiva, ripristinabile)
+
+**Contesto tecnico (da verificare in sviluppo, non ancora implementato):**
+- Punto unico di lettura: `elencaAtlete`/`elencaAtletePubbliche`/`elencaAtletePerIds` (`lib/db-rls/atleta.ts`) escludono le rimosse **per default**, con una variante esplicita per l'elenco "rimosse" — meglio di N filtri sparsi nelle pagine (~10 chiamanti).
+- **Trappola nota:** l'import federale (`app/app/(onboarding-import)/import-atlete/actions.ts` riga 133) e il matching per codice fiscale (`lib/matching-codice-fiscale/trova-per-codice-fiscale.ts`) usano lo stesso elenco per riconoscere chi esiste già — se venissero alimentati solo dall'elenco "attive", l'import tenterebbe di creare di nuovo un'Atleta rimossa e fallirebbe sul vincolo `@unique` di `codiceFiscale`. Devono vedere **anche** le rimosse.
+- Nuova colonna su `atlete` = migrazione Prisma additiva (nessun backfill, tutte le Atlete esistenti restano attive). Nessuna tabella nuova, quindi RLS/`REVOKE` invariati, ma le policy esistenti su `atlete` vanno riverificate perché la Segreteria possa aggiornare la nuova colonna.
+- Azione riservata a Segreteria/Admin/Dirigente: stesso `requireRuolo` di `escludiIscrizione`.
+
+**Decisioni aperte (da chiudere con l'utente prima dello sviluppo):**
+1. **Chi può rimuovere:** raccomandato Segreteria + Admin + Dirigente (come "Escludi", Story 1.8). Alternativa: solo Segreteria/Admin.
+2. **Gruppi della stagione corrente:** l'Atleta rimossa esce anche dall'elenco del Gruppo in corso (raccomandato: sì per le assegnazioni future, ma le Presenze già registrate restano visibili nello storico) o resta nel Gruppo fino a fine stagione?
+3. **Genitore/Atleta con account collegato:** cosa vedono dopo la rimozione — pagina personale senza l'Atleta, o un messaggio esplicito ("non più tesserata con la società")? Va anche deciso se il Genitore va avvisato.
+4. **Trasferimento ad altra società:** basta una nota libera (nome della nuova società) o serve un campo strutturato? Raccomandato: nota libera facoltativa.
+5. **Cancellazione definitiva (privacy/GDPR):** fuori da questa story — un'eventuale richiesta di cancellazione definitiva dei dati personali (es. di una minore) è una story separata, con conseguenze da valutare sullo storico (cascade).
+
 ## Epic 10: Gestione Partite e Campionati
 
 *(Aggiunto in corso d'opera — 2026-07-25, richiesta estesa dell'utente. Analisi completata e rotta in storie il 2026-07-28 all'avvio dello sviluppo, come esplicitamente richiesto dall'utente al momento dell'aggiunta ("fai l'analisi e genera le storie non appena inizi con lo sviluppo"). Le domande aperte identificate durante la cattura iniziale dei requisiti sono state risolte con l'utente prima di scrivere le storie sotto — vedi "Decisioni prese" in fondo a questa sezione.)*

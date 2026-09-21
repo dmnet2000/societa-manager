@@ -6,8 +6,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
-import { IscrizioneRow } from "./IscrizioneRow";
-import styles from "./conferma-iscrizioni.module.css";
+import { IscrizioniElenco } from "./IscrizioniElenco";
 
 // Dati mutabili in tempo reale (conferme via Server Action sulla stessa
 // pagina) - stesso motivo di /admin, Story 1.2.
@@ -89,29 +88,14 @@ export default async function ConfermaIscrizioniPage() {
         titolo="Conferma Iscrizioni"
         contenuto={contenutoPerRotta("/app/conferma-iscrizioni", ruoli)}
       />
-      <div className={styles.scrollWrapper}>
-        <table className={styles.tabella}>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Codice Fiscale</th>
-              <th>Gruppo</th>
-              <th>Stato Iscrizione</th>
-            </tr>
-          </thead>
-          <tbody>
-            {atlete.map((atleta) => (
-              <IscrizioneRow
-                key={atleta.id}
-                atleta={atleta}
-                iscrizioneId={iscrizioneIdPerAtleta.get(atleta.id) ?? null}
-                puoConfermare={puoConfermare}
-                gruppi={gruppiPerAtleta.get(atleta.id) ?? []}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <IscrizioniElenco
+        puoConfermare={puoConfermare}
+        righe={atlete.map((atleta) => ({
+          atleta,
+          iscrizioneId: iscrizioneIdPerAtleta.get(atleta.id) ?? null,
+          gruppi: gruppiPerAtleta.get(atleta.id) ?? [],
+        }))}
+      />
     </main>
   );
 }

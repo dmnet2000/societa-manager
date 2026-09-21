@@ -20,6 +20,7 @@ export function ConfermaCertificatoRow({
   dataFineValidita = "",
   mesiValidita,
   modulo,
+  nascosta = false,
 }: {
   atleta: Atleta;
   filePath: string | null;
@@ -27,6 +28,9 @@ export function ConfermaCertificatoRow({
   dataFineValidita?: string;
   mesiValidita?: number | null;
   modulo?: string | null;
+  // Riga esclusa dalla ricerca corrente (CertificatiElenco): nascosta, non
+  // smontata, per non perdere errore/dati del form appena digitati.
+  nascosta?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     confermaCertificato,
@@ -34,7 +38,7 @@ export function ConfermaCertificatoRow({
   );
 
   return (
-    <li className={styles.card}>
+    <li className={styles.card} hidden={nascosta}>
       <strong className={styles.nomeAtleta}>{atleta.nome}</strong>
 
       {filePath && (

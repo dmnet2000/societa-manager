@@ -70,6 +70,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     corpo: [
       "Qui vedi lo stato di iscrizione di ogni Atleta per la stagione corrente.",
+      "Per trovare un'Atleta usa il campo \"Cerca\" sopra l'elenco: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). Se scrivi più parole, l'Atleta deve contenerle tutte.",
       "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
       "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
       "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",
@@ -81,6 +82,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     corpo: [
       "Qui confermi i Certificati Medici caricati dalle famiglie o dalle Atlete, inserendo le date di validità.",
+      "Per trovare un'Atleta usa il campo \"Cerca\" sopra le sezioni: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). La ricerca filtra sia \"Da confermare\" sia \"Confermati\"; se scrivi più parole, l'Atleta deve contenerle tutte.",
       "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
       "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
     ],

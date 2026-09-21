@@ -1,3 +1,4 @@
+# last_updated: 2026-09-21 (Story 9.43 aggiunta su richiesta esplicita dell'utente: "possibilita' di rimuovere atlete non piu' in societa' o passate in altra societa'" - solo la story, NESSUNA IMPLEMENTAZIONE. Oggi non esiste alcuna archiviazione/cancellazione di un'Atleta (l'unica uscita e' "Escludi" Iscrizione, Story 1.8, valida per la sola stagione corrente); approccio raccomandato archiviazione reversibile con motivo (non piu' in societa' / trasferita), 5 decisioni aperte nella story. Vedi epics.md#Story 9.43. 9-43-rimozione-atlete-non-piu-in-societa aggiunta in backlog.)
 # last_updated: 2026-09-04 (Story 10.9: implementazione completata e review Blind Hunter (bmad-build one-shot) - raggruppaPartitePerGruppo (lib/, nuova funzione pura + test), TabellaPartiteGruppo.tsx (nuovo componente client, mirror di TabellaIncontriCategoria.tsx/Story 20.19), page.tsx esteso con la nuova sezione condizionale. 5 patch applicati (ordinamento per Gruppo.ordine invece di alfabetico, scope="col" sulle intestazioni, commento "mirror esatto" corretto, classe .settimana riusata sostituita da .sezionePerGruppo dedicata, guardia morta rimossa), 1 defer (aria-controls ereditato da TabellaIncontriCategoria), resto dei finding respinto (precedenti gia' stabiliti nel progetto). Vedi spec-10-9-raggruppamento-partite-per-gruppo-a-scomparsa.md. Verifica: 1939/1939 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
 # last_updated: 2026-09-03 (Story 10.9 aggiunta su richiesta esplicita dell'utente: "sezione Partite, sarebbe da creare un raggruppamento anche delle partite per squadra magari in forma tabellare con pulsante a scomparsa" - /app/partite raggruppa oggi solo per settimana, mescolando le Partite di piu' Gruppi; nuova sezione aggiuntiva con bottone a scomparsa per Gruppo (mirror di TabellaIncontriCategoria.tsx, Story 20.19), visibile solo quando le Partite visibili coprono piu' di un Gruppo. Vedi epics.md#Story 10.9. NESSUNA IMPLEMENTAZIONE ANCORA. 10-9-raggruppamento-partite-per-gruppo-a-scomparsa aggiunta in backlog.)
 # last_updated: 2026-09-03 (Story 18.27: implementazione completata e review Blind Hunter (bmad-build one-shot) - .listaGruppi (app/squadre/squadre.module.css) passa da griglia a 3 colonne a 1 sola colonna a qualunque larghezza, media query mobile ridondante rimossa. 2 patch applicati (dicitura "esattamente 3 volte" imprecisa corretta in "almeno/ben oltre il triplo", coerente con l'AC #1; intestazione del file estesa alla nuova story), resto dei finding respinto come conseguenza intrinseca gia' scoperta e accettata nell'AC #3 (nessuna modifica al layout interno della scheda) o come precedente gia' stabilito. Vedi spec-18-27-scheda-gruppo-larghezza-tripla.md. Verifica: 1933/1933 test Vitest, tsc/lint puliti, build riuscita, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente.)
@@ -733,6 +734,15 @@ development_status:
   # all'utente (richiesta permanente, non fare git commit/push in
   # autonomia).
   9-42-logoff-torna-alla-home-pubblica: review
+
+  # Story 9.43 aggiunta 2026-09-21 su richiesta esplicita dell'utente
+  # ("possibilita' di rimuovere atlete non piu' in societa' o passate in
+  # altra societa' - solo stories, non sviluppo"). Solo la story in questo
+  # giro, NESSUNA IMPLEMENTAZIONE. Approccio raccomandato: archiviazione
+  # reversibile, mai cancellazione fisica (relazioni dell'Atleta quasi tutte
+  # onDelete Cascade). 5 decisioni aperte elencate nella story, da chiudere
+  # con l'utente prima dello sviluppo. Vedi epics.md#Story 9.43.
+  9-43-rimozione-atlete-non-piu-in-societa: backlog
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.

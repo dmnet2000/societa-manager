@@ -203,3 +203,11 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Le righe escluse dalla ricerca (attributo hidden) restano nell'albero per
+   non perdere il loro stato: senza queste regole il display di .card /
+   .rigaConfermata prevarrebbe sul display:none dello user agent. */
+.card[hidden],
+.rigaConfermata[hidden] {
+  display: none;
+}

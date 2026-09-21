@@ -36,6 +36,9 @@ type Props = {
   modulo: string | null | undefined;
   filePath: string | null;
   puoModificare: boolean;
+  // Riga esclusa dalla ricerca corrente (CertificatiElenco): nascosta, non
+  // smontata, per non perdere lo stato del form di modifica aperto.
+  nascosta?: boolean;
 };
 
 // Story 9.27 (AC #1/#2): estrae il singolo <li> oggi inline in
@@ -58,6 +61,7 @@ export function CertificatoConfermatoRow({
   modulo,
   filePath,
   puoModificare,
+  nascosta = false,
 }: Props) {
   const [inModifica, setInModifica] = useState(false);
   const [modificaState, modificaAction, modificaPending] = useActionState(
@@ -91,7 +95,7 @@ export function CertificatoConfermatoRow({
 
   return (
     <>
-      <li className={styles.rigaConfermata}>
+      <li className={styles.rigaConfermata} hidden={nascosta}>
         <span className={styles.nomeConData}>
           {nome}
           {dataFineValiditaFormattata
@@ -117,7 +121,7 @@ export function CertificatoConfermatoRow({
         )}
       </li>
       {puoModificare && inModifica && (
-        <li className={styles.card}>
+        <li className={styles.card} hidden={nascosta}>
           {filePath && (
             <form action={ottieniUrlCertificatoConferma.bind(null, filePath)}>
               <button type="submit" className={styles.bottoneVisualizza}>

@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import type { StatoCertificatoAggregato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { ordinaPerPrioritaStato } from "@/lib/ordina-certificati-per-stato";
+import { corrispondeRicercaAtleta } from "@/lib/ricerca-atlete";
 import { CertificatoConfermatoRow } from "./CertificatoConfermatoRow";
 import styles from "./conferma-certificati.module.css";
 
-type RigaConfermata = {
+export type RigaConfermata = {
   atletaId: string;
   nome: string;
+  // Solo per la ricerca (CertificatiElenco) - non raggiunge la riga.
+  codiceFiscale: string;
   // Review fix (Story 9.25): stringa gia' formattata lato server (page.tsx),
   // non una data grezza - formattarla qui (Client Component, quindi
   // rieseguito anche in hydration) userebbe il fuso orario del browser
@@ -35,9 +38,13 @@ type RigaConfermata = {
 export function ListaConfermati({
   righe,
   puoModificare,
+  ricerca,
 }: {
   righe: RigaConfermata[];
   puoModificare: boolean;
+  // Ricerca corrente (stato in CertificatiElenco): le righe non
+  // corrispondenti sono nascoste, mai rimosse dall'albero.
+  ricerca: string;
 }) {
   const [ordinatoPerStato, setOrdinatoPerStato] = useState(false);
 
@@ -62,8 +69,17 @@ export function ListaConfermati({
         {righeVisualizzate.map((riga) => (
           <CertificatoConfermatoRow
             key={riga.atletaId}
-            {...riga}
+            atletaId={riga.atletaId}
+            nome={riga.nome}
+            dataFineValiditaFormattata={riga.dataFineValiditaFormattata}
+            stato={riga.stato}
+            dataInizioValidita={riga.dataInizioValidita}
+            dataFineValidita={riga.dataFineValidita}
+            mesiValidita={riga.mesiValidita}
+            modulo={riga.modulo}
+            filePath={riga.filePath}
             puoModificare={puoModificare}
+            nascosta={!corrispondeRicercaAtleta(riga, ricerca)}
           />
         ))}
       </ul>
