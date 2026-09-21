@@ -1113,7 +1113,15 @@ model PartitaTorneo {
   // atomico, accettato ma non sufficiente da solo) - un doppio invio
   // concorrente ora fallisce con un vincolo unico invece di raddoppiare
   // silenziosamente i punti di una Squadra in classifica.
-  @@unique([categoriaTorneoId, squadraCasaId, squadraOspiteId])
+  // Bug finali (2026-09-20): "fase" fa parte del vincolo - una finale puo'
+  // legittimamente rigiocare la stessa coppia (stesso orientamento
+  // casa/ospite) gia' incontratasi nel girone (es. 1°A vs 2°A), che con il
+  // vincolo a 3 colonne faceva fallire silenziosamente la generazione delle
+  // finali dopo il salvataggio della seconda semifinale (P2002). "fase" non
+  // e' nullable (default GIRONE), a differenza di "tabellone" - il vincolo
+  // resta quindi valido (Postgres tratta i NULL come distinti negli indici
+  // unici) e la protezione contro il doppio calendario di girone e' intatta.
+  @@unique([categoriaTorneoId, fase, squadraCasaId, squadraOspiteId], map: "partite_torneo_categoria_fase_casa_ospite_key")
   // Story 20.11: rete di sicurezza a livello DB contro due generazioni
   // concorrenti che assegnerebbero altrimenti lo stesso numero (stesso
   // principio del vincolo unico sopra, review fix Story 20.3) - una
