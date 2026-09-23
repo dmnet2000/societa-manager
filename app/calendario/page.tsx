@@ -35,6 +35,12 @@ export default async function CalendarioPage() {
   // public-page) e senza scoping per Ruolo - qui sempre tutti i Gruppi.
   // Stesso identico select gia' in uso per il teaser "Partite della
   // settimana" in app/page.tsx (AC #2: stessi campi di Story 18.3).
+  // Richiesta utente (2026-09-24): l'etichetta sulla card mostra il nome del
+  // Campionato, non del Gruppo - un Gruppo puo' partecipare a piu'
+  // Campionati (Story 10.1 AC #5), il nome del Campionato identifica meglio
+  // la singola partita per chi guarda il sito pubblico. Campionato e'
+  // obbligatorio su ogni Partita (FK non nullable), nessun caso null da
+  // gestire.
   const partite = annoCorrente
     ? await prisma.partita
         .findMany({
@@ -48,7 +54,7 @@ export default async function CalendarioPage() {
             squadraOspite: true,
             impianto: true,
             indirizzoImpianto: true,
-            gruppo: { select: { nome: true } },
+            campionato: { select: { nome: true } },
           },
         })
         .catch((err) => {
@@ -99,7 +105,7 @@ export default async function CalendarioPage() {
                     });
                     return (
                       <div className={styles.matchCard} key={partita.id}>
-                        <div className={styles.categoria}>{partita.gruppo.nome}</div>
+                        <div className={styles.categoria}>{partita.campionato.nome}</div>
                         <div className={styles.squadre}>
                           <span>{partita.squadraCasa}</span>
                           <span className={styles.vs}>vs</span>

@@ -158,7 +158,10 @@ export default async function HomePubblicaPage() {
           squadraOspite: true,
           impianto: true,
           indirizzoImpianto: true,
-          gruppo: { select: { nome: true } },
+          // Richiesta utente (2026-09-24): etichetta sulla card = nome del
+          // Campionato, non del Gruppo - stessa modifica di /calendario,
+          // stesso motivo (un Gruppo puo' avere piu' Campionati).
+          campionato: { select: { nome: true } },
         },
       })
       .catch((err) => {
@@ -355,7 +358,7 @@ export default async function HomePubblicaPage() {
                         </>
                       )}
                     </div>
-                    <span className={styles.gruppoPartita}>{partita.gruppo.nome}</span>
+                    <span className={styles.gruppoPartita}>{partita.campionato.nome}</span>
                   </div>
                 );
               })}
