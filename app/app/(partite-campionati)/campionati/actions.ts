@@ -99,6 +99,17 @@ function linkFipavValido(valore: string): boolean {
   }
 }
 
+// Richiesta utente (2026-09-24): stesso formato prodotto da
+// <input type="color"> ("#rrggbb", sempre minuscolo, sempre 6 cifre) - un
+// controllo esplicito qui perche' il campo e' comunque raggiungibile
+// chiamando la Server Action direttamente (stesso principio di
+// linkFipavValido sopra), non solo tramite l'input HTML.
+const FORMATO_COLORE = /^#[0-9a-f]{6}$/;
+
+function coloreValido(valore: string): boolean {
+  return FORMATO_COLORE.test(valore);
+}
+
 // Story 10.8 (AC: #1, #2, #3, #4): stile Server Action di update ispirato ad
 // aggiornaPalestra (app/(orari-palestre)/palestre/actions.ts) - con una
 // differenza reale, non solo di stile: a differenza di aggiornaPalestra/
@@ -127,6 +138,11 @@ export async function aggiornaCampionato(
   // salvaEmailSegreteriaAction.
   const linkFipavGrezzo = String(formData.get("linkFipav") ?? "").trim();
   const linkFipav = linkFipavGrezzo || null;
+  // Stesso principio di linkFipav: stringa vuota (nessun colore scelto nel
+  // <input type="color">, o campo lasciato vuoto) rimuove il colore, non un
+  // valore letterale vuoto.
+  const coloreGrezzo = String(formData.get("colore") ?? "").trim();
+  const colore = coloreGrezzo || null;
 
   if (!campionatoId) {
     return { error: { code: "VALIDATION", message: "Campionato non specificato." } };
@@ -141,6 +157,14 @@ export async function aggiornaCampionato(
       error: {
         code: "VALIDATION",
         message: "Il link al portale FIPAV non è valido (deve iniziare con http:// o https://).",
+      },
+    };
+  }
+  if (colore && !coloreValido(colore)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Il colore non è valido (formato atteso: #rrggbb).",
       },
     };
   }
@@ -183,7 +207,7 @@ export async function aggiornaCampionato(
   try {
     await prisma.campionato.update({
       where: { id: campionatoId },
-      data: { nome, linkFipav },
+      data: { nome, linkFipav, colore },
     });
   } catch (err) {
     console.error(err);

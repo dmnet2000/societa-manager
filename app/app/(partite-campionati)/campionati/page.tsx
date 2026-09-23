@@ -93,6 +93,7 @@ export default async function CampionatiPage() {
                           campionatoId={campionato.id}
                           nome={campionato.nome}
                           linkFipav={campionato.linkFipav}
+                          colore={campionato.colore}
                         />
                         <ImportaGareForm
                           gruppoId={gruppo.id}

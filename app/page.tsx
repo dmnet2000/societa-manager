@@ -161,7 +161,7 @@ export default async function HomePubblicaPage() {
           // Richiesta utente (2026-09-24): etichetta sulla card = nome del
           // Campionato, non del Gruppo - stessa modifica di /calendario,
           // stesso motivo (un Gruppo puo' avere piu' Campionati).
-          campionato: { select: { nome: true } },
+          campionato: { select: { nome: true, colore: true } },
         },
       })
       .catch((err) => {
@@ -358,7 +358,16 @@ export default async function HomePubblicaPage() {
                         </>
                       )}
                     </div>
-                    <span className={styles.gruppoPartita}>{partita.campionato.nome}</span>
+                    <span className={styles.gruppoPartita}>
+                      {partita.campionato.colore && (
+                        <span
+                          className={styles.pallinoCampionato}
+                          style={{ backgroundColor: partita.campionato.colore }}
+                          aria-hidden="true"
+                        />
+                      )}
+                      {partita.campionato.nome}
+                    </span>
                   </div>
                 );
               })}

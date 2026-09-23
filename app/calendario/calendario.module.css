@@ -113,12 +113,29 @@
    letterale, non var(--color-primary): l'azzurro pieno scenderebbe a
    1.90:1 su questo sfondo piu' chiaro, sotto soglia AA. */
 .categoria {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #eaf4fb;
+}
+
+/* Richiesta utente (2026-09-24): pallino col colore scelto per il
+   Campionato - mai come colore del testo/sfondo della card (rompe il
+   contrasto gia' verificato sopra), solo un accento decorativo. Bordo
+   chiaro sempre presente: un colore scelto scuro o simile allo sfondo
+   #2e6f99 di .matchCard resterebbe comunque visibile. */
+.pallinoCampionato {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
 }
 
 /* {typography.display-card}. Richiesta esplicita dell'utente (2026-09-11):

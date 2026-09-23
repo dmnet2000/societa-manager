@@ -16,25 +16,48 @@ export function ModificaCampionatoForm({
   campionatoId,
   nome,
   linkFipav,
+  colore,
 }: {
   campionatoId: string;
   nome: string;
   linkFipav: string | null;
+  // Richiesta utente (2026-09-24): colore opzionale per distinguere i
+  // Campionati sul sito pubblico - stesso trattamento nullable di linkFipav.
+  colore: string | null;
 }) {
   const [state, formAction, pending] = useActionState(aggiornaCampionato, undefined);
   const [inModifica, setInModifica] = useState(false);
+  // <input type="color"> non ha un valore "vuoto" nativo (mostra sempre un
+  // colore concreto) - senza questo interruttore, aprire "Modifica" e
+  // salvare senza toccare il colore imposterebbe silenziosamente il colore
+  // di default mai scelto dall'utente. Deciso qui, non nel colore stesso.
+  const [usaColore, setUsaColore] = useState(colore !== null);
 
   const [ultimoState, setUltimoState] = useState(state);
   if (state !== ultimoState) {
     setUltimoState(state);
     if (state && "success" in state) {
       setInModifica(false);
+      // Riallinea l'interruttore al nuovo `colore` (prop aggiornata dopo
+      // revalidatePath) - senza questo, una riapertura di "Modifica" dopo
+      // aver rimosso il colore mostrerebbe ancora la spunta attiva.
+      setUsaColore(colore !== null);
     }
   }
 
   if (!inModifica) {
     return (
       <div className={styles.rigaCampionato}>
+        {colore && (
+          // Puramente decorativo (il nome accanto identifica gia' il
+          // Campionato per uno screen reader) - stessa scelta gia' fatta per
+          // ogni altro pallino/indicatore di sola decorazione del progetto.
+          <span
+            className={styles.pallinoColore}
+            style={{ backgroundColor: colore }}
+            aria-hidden="true"
+          />
+        )}
         <span>{nome}</span>
         {linkFipav && (
           <a
@@ -79,6 +102,25 @@ export function ModificaCampionatoForm({
         type="url"
         defaultValue={linkFipav ?? ""}
       />
+      <label className={styles.checkboxColore}>
+        <input
+          type="checkbox"
+          checked={usaColore}
+          onChange={(evento) => setUsaColore(evento.target.checked)}
+        />
+        Colore personalizzato (per distinguerlo sul sito pubblico)
+      </label>
+      {usaColore && (
+        <>
+          <label htmlFor={`modifica-campionato-colore-${campionatoId}`}>Colore</label>
+          <input
+            id={`modifica-campionato-colore-${campionatoId}`}
+            name="colore"
+            type="color"
+            defaultValue={colore ?? "#2e6f99"}
+          />
+        </>
+      )}
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>
           {state.error.message}

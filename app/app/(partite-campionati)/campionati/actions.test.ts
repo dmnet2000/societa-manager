@@ -591,7 +591,11 @@ describe("aggiornaCampionato", () => {
 
     expect(campionatoUpdateMock).toHaveBeenCalledWith({
       where: { id: "campionato-1" },
-      data: { nome: "Girone A", linkFipav: "https://www.federvolley.it/girone-a" },
+      data: {
+        nome: "Girone A",
+        linkFipav: "https://www.federvolley.it/girone-a",
+        colore: null,
+      },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/campionati");
     expect(result).toEqual({ success: true });
@@ -605,7 +609,7 @@ describe("aggiornaCampionato", () => {
 
     expect(campionatoUpdateMock).toHaveBeenCalledWith({
       where: { id: "campionato-1" },
-      data: { nome: "Girone A", linkFipav: null },
+      data: { nome: "Girone A", linkFipav: null, colore: null },
     });
     expect(result).toEqual({ success: true });
   });
@@ -621,9 +625,59 @@ describe("aggiornaCampionato", () => {
     expect(allenatoreFindFirstMock).not.toHaveBeenCalled();
     expect(campionatoUpdateMock).toHaveBeenCalledWith({
       where: { id: "campionato-1" },
-      data: { nome: "Girone A", linkFipav: null },
+      data: { nome: "Girone A", linkFipav: null, colore: null },
     });
     expect(result).toEqual({ success: true });
+  });
+
+  it("saves a well-formed colore value (richiesta utente 2026-09-24)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", colore: "#2e6f99" })
+    );
+
+    expect(campionatoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { nome: "Girone A", linkFipav: null, colore: "#2e6f99" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("saves colore as null when left empty (clears an existing color)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", colore: "  " })
+    );
+
+    expect(campionatoUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { nome: "Girone A", linkFipav: null, colore: null },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns a validation error when colore is not a well-formed #rrggbb hex value", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", colore: "blue" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il colore non è valido (formato atteso: #rrggbb)." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a colore with uppercase hex digits (only lowercase #rrggbb, mirrors <input type=\"color\">'s own output)", async () => {
+    const result = await aggiornaCampionato(
+      undefined,
+      buildFormData({ campionatoId: "campionato-1", nome: "Girone A", colore: "#2E6F99" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il colore non è valido (formato atteso: #rrggbb)." },
+    });
+    expect(campionatoUpdateMock).not.toHaveBeenCalled();
   });
 
   it("allows Admin/Dirigente to update a Campionato of a Gruppo from a past season (AC #4, same as cancellaCampionato)", async () => {

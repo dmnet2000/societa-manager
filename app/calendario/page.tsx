@@ -54,7 +54,7 @@ export default async function CalendarioPage() {
             squadraOspite: true,
             impianto: true,
             indirizzoImpianto: true,
-            campionato: { select: { nome: true } },
+            campionato: { select: { nome: true, colore: true } },
           },
         })
         .catch((err) => {
@@ -105,7 +105,16 @@ export default async function CalendarioPage() {
                     });
                     return (
                       <div className={styles.matchCard} key={partita.id}>
-                        <div className={styles.categoria}>{partita.campionato.nome}</div>
+                        <div className={styles.categoria}>
+                          {partita.campionato.colore && (
+                            <span
+                              className={styles.pallinoCampionato}
+                              style={{ backgroundColor: partita.campionato.colore }}
+                              aria-hidden="true"
+                            />
+                          )}
+                          {partita.campionato.nome}
+                        </div>
                         <div className={styles.squadre}>
                           <span>{partita.squadraCasa}</span>
                           <span className={styles.vs}>vs</span>

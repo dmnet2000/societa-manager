@@ -542,6 +542,14 @@ model Campionato {
   // validazione di dominio specifica (leghe regionali/territoriali hanno
   // domini propri).
   linkFipav        String?
+  // Richiesta utente (2026-09-24): colore opzionale (esadecimale "#rrggbb",
+  // stesso formato prodotto da <input type="color">) per distinguere
+  // visivamente i Campionati sul sito pubblico (/calendario, teaser home) -
+  // usato come accento sulla card, mai come sfondo pieno dietro il testo
+  // (nessun controllo di contrasto possibile su un colore scelto
+  // liberamente dall'utente, stesso principio gia' seguito per ogni altro
+  // colore di questo progetto, sempre verificato AA in fase di design).
+  colore           String?
   annoAgonisticoId String
   annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
   gruppoId         String

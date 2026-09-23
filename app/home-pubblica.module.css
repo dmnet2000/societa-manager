@@ -515,12 +515,29 @@
    chip (rimosso rispetto alla versione precedente): match-card non
    prevede uno sfondo pieno per l'etichetta categoria/girone. */
 .gruppoPartita {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #eaf4fb;
+}
+
+/* Richiesta utente (2026-09-24): pallino col colore scelto per il
+   Campionato - mirror esatto di .pallinoCampionato in
+   calendario.module.css, stesso motivo (mai come colore di testo/sfondo,
+   solo un accento; bordo chiaro sempre presente per restare visibile su
+   qualunque colore scelto). */
+.pallinoCampionato {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
 }
 
 /* {colors.testo-chiaro-partite} #EAF4FB, non var(--color-primary): stesso
