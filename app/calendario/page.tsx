@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import styles from "./calendario.module.css";
@@ -103,18 +104,17 @@ export default async function CalendarioPage() {
                     const linkNaviga = costruisciLinkNaviga({
                       indirizzo: partita.indirizzoImpianto,
                     });
+                    const colore = partita.campionato.colore;
+                    const classiCard = colore && testoScuroSuSfondo(colore)
+                      ? `${styles.matchCard} ${styles.testoScuro}`
+                      : styles.matchCard;
                     return (
-                      <div className={styles.matchCard} key={partita.id}>
-                        <div className={styles.categoria}>
-                          {partita.campionato.colore && (
-                            <span
-                              className={styles.pallinoCampionato}
-                              style={{ backgroundColor: partita.campionato.colore }}
-                              aria-hidden="true"
-                            />
-                          )}
-                          {partita.campionato.nome}
-                        </div>
+                      <div
+                        className={classiCard}
+                        style={colore ? { backgroundColor: colore } : undefined}
+                        key={partita.id}
+                      >
+                        <div className={styles.categoria}>{partita.campionato.nome}</div>
                         <div className={styles.squadre}>
                           <span>{partita.squadraCasa}</span>
                           <span className={styles.vs}>vs</span>

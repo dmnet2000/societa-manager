@@ -13,6 +13,7 @@ import {
   raggruppaPerSettimana,
 } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
 import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
@@ -332,8 +333,16 @@ export default async function HomePubblicaPage() {
                 const linkNaviga = costruisciLinkNaviga({
                   indirizzo: partita.indirizzoImpianto,
                 });
+                const colore = partita.campionato.colore;
+                const classiScheda = colore && testoScuroSuSfondo(colore)
+                  ? `${styles.schedaPartita} ${styles.testoScuro}`
+                  : styles.schedaPartita;
                 return (
-                  <div className={styles.schedaPartita} key={partita.id}>
+                  <div
+                    className={classiScheda}
+                    style={colore ? { backgroundColor: colore } : undefined}
+                    key={partita.id}
+                  >
                     <div className={styles.dataPartita}>
                       <span>{formattaData(partita.data)}</span>
                       <span>{partita.ora}</span>
@@ -358,16 +367,7 @@ export default async function HomePubblicaPage() {
                         </>
                       )}
                     </div>
-                    <span className={styles.gruppoPartita}>
-                      {partita.campionato.colore && (
-                        <span
-                          className={styles.pallinoCampionato}
-                          style={{ backgroundColor: partita.campionato.colore }}
-                          aria-hidden="true"
-                        />
-                      )}
-                      {partita.campionato.nome}
-                    </span>
+                    <span className={styles.gruppoPartita}>{partita.campionato.nome}</span>
                   </div>
                 );
               })}
