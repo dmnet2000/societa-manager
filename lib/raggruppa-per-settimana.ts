@@ -81,7 +81,12 @@ function formattaEtichetta(inizio: Date, fine: Date): string {
 // "9:00" ordinato come stringa finirebbe dopo "20:30" nello stesso giorno.
 // Un formato non riconosciuto va in fondo (Number.MAX_SAFE_INTEGER) invece
 // di rompere l'ordinamento delle righe valide.
-function oraInMinuti(ora: string): number {
+// Esportata (Story 9.44, review fix Blind Hunter): riusata anche da
+// app/app/page.tsx per riordinare in memoria un elenco già filtrato per
+// settimana - lo stesso identico problema (orderBy Prisma su "ora" è
+// lessicografico sull'SQL sottostante) si presenterebbe lì senza questo
+// riuso, invece di una seconda implementazione locale.
+export function oraInMinuti(ora: string): number {
   const match = ora.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) {
     return Number.MAX_SAFE_INTEGER;

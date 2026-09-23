@@ -22,3 +22,78 @@
   color: var(--color-text-secondary);
   margin-top: var(--space-1);
 }
+
+/* Story 9.44 - "Partite della settimana" del proprio Gruppo, in evidenza.
+   Stile sobrio/riquadro coerente con .card sopra, non il "match-card" a
+   sfondo colorato del sito pubblico (mai usato in quest'area).
+   Review fix (Blind Hunter): composes: card (tecnica già in uso nel
+   progetto, es. gruppi.module.css/torneo.module.css) invece di ripetere le
+   stesse 4 dichiarazioni, margin-top incluso (spaziatura sotto <h1>,
+   corretta anche qui). */
+.inEvidenza {
+  composes: card;
+}
+
+.inEvidenza h2 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.listaInEvidenza {
+  list-style: none;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rigaInEvidenza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rigaInEvidenza:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.gruppoInEvidenza {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+/* Mirror esatto di .linkNaviga in partite.module.css - stesso link, stessa
+   pagina interna, stesso trattamento visivo. */
+.linkNaviga {
+  color: var(--color-button-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkNaviga:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.linkVediTutte {
+  display: inline-block;
+  margin-top: var(--space-3);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-button-bg);
+}
+
+.linkVediTutte:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

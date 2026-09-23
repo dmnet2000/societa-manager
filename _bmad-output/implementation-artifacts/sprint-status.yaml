@@ -1,3 +1,7 @@
+# last_updated: 2026-09-24 (Story 9.44 aggiunta su richiesta esplicita dell'utente: partite della settimana del proprio Gruppo in evidenza sulla home interna /app per Atleta/Allenatore - solo analisi, NESSUNA IMPLEMENTAZIONE. Verificato nel codice: nessun ostacolo tecnico, incrocio di due pattern gia' esistenti (calcolo settimana corrente + scoping "solo il proprio Gruppo", entrambi gia' scritti altrove). 5 decisioni aperte. Vedi epics.md#Story 9.44. 9-44-partite-settimana-in-evidenza-home aggiunta in backlog. NOTA: la story e' stata inserita per errore in fondo all'Epic 10 con lo script di inserimento riusato dalla story precedente (ancora sbagliata) - corretto subito, ora e' correttamente sotto l'Epic 9 dopo la 9.43, nessun contenuto perso.)
+# last_updated: 2026-09-24 (Story 10.12 aggiunta su richiesta esplicita dell'utente: se la sincronizzazione FIPAV (Story 10.11) sia sempre manuale o esista un cron automatico - solo story, NESSUNA IMPLEMENTAZIONE, "solo la story, nessuno sviluppo per ora". Confermato dal codice: oggi sempre manuale. sincronizzaGareFipav non e' richiamabile da un cron cosi' com'e' (requireRuolo/sessione in testa) - servirebbe estrarre la logica in una funzione condivisa, mirror del pattern gia' esistente in app/api/cron/promemoria-certificati (Story 4.6). Segnalato: docs/deploy-produzione.md (2026-07-25, mai aggiornato da allora) ha la Fase 6 (Cron Trigger del primo cron) marcata incompleta - non verificato se sia mai stata completata in produzione. 5 decisioni aperte. Vedi epics.md#Story 10.12. 10-12-sincronizzazione-fipav-cron aggiunta in backlog.)
+# last_updated: 2026-09-24 (Story 9.44: implementazione completata e review Blind Hunter (bmad-build one-shot) - nuova sezione "Partite di questa settimana" per prima in /app (home interna), riuso di due pattern gia' esistenti (settimana corrente del teaser pubblico, scoping "solo il proprio Gruppo" di /app/partite), visibilita' guidata dal dato non dal Ruolo, Genitore incluso via lo stesso autoAggancio gia' in uso altrove. 5 patch applicati (bug reale: ordinamento "ora" lessicografico via orderBy Prisma, corretto riordinando in memoria con oraInMinuti ora esportata da lib/raggruppa-per-settimana.ts; .catch mancante su due query intermedie, portava giu' l'intera home su un errore transitorio; query indipendenti eseguite in parallelo con Promise.all; aria-labelledby mancante sulla nuova sezione, stesso pattern gia' in uso nel teaser pubblico; <a> sostituito con next/link, violava una regola ESLint), 3 defer con motivazione (formattaData triplicata tra tre file, nessuna indicazione visiva di quale lato sia la propria squadra - richiederebbe una decisione di prodotto sul modello dati, nessun limite di righe per un Allenatore/Genitore con molti Gruppi/figlie). Vedi Suggested Review Order in spec-9-44-partite-settimana-in-evidenza-home.md. Verifica finale: 140/140 file, 2200/2200 test Vitest, tsc/eslint puliti. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done' (one-shot). Commit lasciato all'utente (richiesta permanente, non fare git commit/push in autonomia).)
+# last_updated: 2026-09-24 (Story 18.32 aggiunta su richiesta esplicita dell'utente: vista mensile "stile Google Calendar" per /calendario con checkbox per selezionare i Campionati da mostrare (ognuno col proprio Campionato.colore) - solo analisi, NESSUNA IMPLEMENTAZIONE, richiesta esplicita dell'utente "intanto nessuno sviluppo". Verificato nel codice: nessuna griglia mensile esiste nel progetto, lib/mese-calendario.ts produce solo un elenco piatto di giorni per una tabella (non una griglia settimanale), nessuna libreria di calendario a griglia tra le dipendenze. 6 decisioni aperte. Vedi epics.md#Story 18.32. 18-32-calendario-vista-mensile-google-style aggiunta in backlog. Fuori da questa story: nella stessa sessione, aggiunto anche Campionato.colore (campo esadecimale opzionale) applicato come sfondo intero delle card di /calendario e del teaser home, con calcolo automatico di un testo scuro/chiaro leggibile in base alla luminanza del colore scelto (lib/colore-testo-leggibile.ts) - sviluppo reale, non solo analisi, gia' completato e verificato (tsc/eslint/vitest puliti).)
 # last_updated: 2026-09-23 (Story 10.11: implementazione completata e review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) su diff isolato dal baseline_commit. Durante l'audit dei task/matrice I/O (prima ancora della review formale) trovato e corretto un bug reale sul selettore delle icone di stato/info: nell'HTML reale del portale entrambe condividono la stessa classe CSS "tips ris-img" (distinte solo dall'attributo alt) - il selettore originale "img.tips.info_16" non avrebbe mai trovato l'icona info, lasciando Impianto/IndirizzoImpianto sempre null in produzione; verificato con una richiesta reale al portale (non solo con una fixture). Review: 7 patch applicati (User-Agent sulla fetch, fail-soft per riga anche su eccezioni inattese nel parser, icona info senza <b> non perde piu' la prima riga d'indirizzo, asserzione del test P2002 rafforzata + nuovo caso modificataManualmente=true sul ramo concorrente - convergenza di 2 reviewer indipendenti, nuovo test per lo stato gara su due righe, formattazione schema Prisma). 8 finding deferred con motivazione (incluso il fetch verso un host non validato - mitigato dal flag Cloudflare global_fetch_strictly_public gia' abilitato + precedente identico gia' in produzione in risolviLinkMaps), alcuni respinti con prova diretta (classi CSS gia' esistenti, charset UTF-8 confermato dal portale reale, guida in-app gia' presente e corretta). 1 decisione di prodotto NON risolta in autonomia, segnalata esplicitamente all'utente: se aggiornaPartita deve marcare modificataManualmente=true anche su un reinvio senza modifiche reali, e se serve un modo per sbloccare una Partita. Vedi Spec Change Log/Suggested Review Order in spec-10-11-sincronizzazione-partite-campionato-fipav.md. Verifica finale: 139/139 file, 2189/2189 test Vitest, tsc/eslint puliti, prisma validate ok. Manuale dal vivo non eseguibile (dev locale rotto) - demandata all'utente post-deploy. Status: in-progress -> review (sprint-status), spec 'done'. Commit lasciato all'utente (richiesta permanente, non fare git commit/push in autonomia).)
 # last_updated: 2026-09-23 (Story 10.11: spec ready-for-dev approvata dall'utente (dopo conferma che Campionato.linkFipav e' gia' per Campionato/squadra, nessuna modifica di modello necessaria) e sviluppo avviato via bmad-build - spec-10-11-sincronizzazione-partite-campionato-fipav.md, baseline_commit a3b654afd8ea3961cdbd6b26f7f216e384299319, status in-progress. 10-11 backlog -> in-progress.)
 # last_updated: 2026-09-23 (Story 10.11 aggiunta: l'utente ha scelto la fonte HTML di fipavtreuno.net (decisione 2 della Story 10.10). Scritti gli Acceptance Criteria di una vera story di sviluppo - bottone manuale "Sincronizza da FIPAV" su un Campionato con linkFipav, upsert idempotente per gruppoId+campionatoId+garaNumero (riuso di importaGare, Story 10.2), nuovo campo Partita.modificataManualmente per non sovrascrivere una correzione gia' fatta con aggiornaPartita (Story 10.4). Segnalato come rischio noto e non ancora verificato: il formato di Risultato/Parziali per una gara gia' disputata (nessun esempio reale disponibile, stagione appena iniziata) - primo compito di sviluppo. NESSUNA IMPLEMENTAZIONE ANCORA. Vedi epics.md#Story 10.11. 10-11-sincronizzazione-partite-campionato-fipav aggiunta in backlog.)
@@ -749,6 +753,17 @@ development_status:
   # con l'utente prima dello sviluppo. Vedi epics.md#Story 9.43.
   9-43-rimozione-atlete-non-piu-in-societa: backlog
 
+  # Story 9.44 aggiunta 2026-09-24 su richiesta esplicita dell'utente:
+  # partite della settimana del proprio Gruppo in evidenza sulla home
+  # interna (/app) per Atleta/Allenatore. Solo story in questo giro,
+  # NESSUNA IMPLEMENTAZIONE. Verificato nel codice: nessun ostacolo tecnico,
+  # incrocio di due pattern gia' esistenti (calcolo settimana corrente gia'
+  # scritto per il teaser pubblico in app/page.tsx, scoping "solo il
+  # proprio Gruppo" gia' scritto in /app/partite/page.tsx). 5 decisioni
+  # aperte, inclusa se includere anche il Genitore (non nominato dalla
+  # richiesta letterale). Vedi epics.md#Story 9.44.
+  9-44-partite-settimana-in-evidenza-home: review
+
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
   # Analisi completata e rotta in 5 storie il 2026-07-28 all'avvio dello
@@ -846,6 +861,20 @@ development_status:
   # sovrascrivere una correzione gia' fatta da aggiornaPartita, Story 10.4).
   # NESSUNA IMPLEMENTAZIONE ANCORA. Vedi epics.md#Story 10.11.
   10-11-sincronizzazione-partite-campionato-fipav: review
+
+  # Story 10.12 aggiunta 2026-09-24, seguito della 10.11: l'utente ha chiesto
+  # se la sincronizzazione FIPAV sia sempre manuale o esista un cron - solo
+  # story in questo giro, richiesta esplicita "solo la story, nessuno
+  # sviluppo per ora". NESSUNA IMPLEMENTAZIONE. Confermato: oggi sempre
+  # manuale, nessun cron esiste. Verificato nel codice: sincronizzaGareFipav
+  # non e' richiamabile da un cron cosi' com'e' (requireRuolo/sessione in
+  # testa), serve estrarre la logica in una funzione condivisa; mirror del
+  # pattern gia' esistente in app/api/cron/promemoria-certificati (Story
+  # 4.6). Segnalato: docs/deploy-produzione.md (2026-07-25, mai aggiornato)
+  # ha la Fase 6 (Cron Trigger di quel primo cron) marcata incompleta - da
+  # verificare con l'utente se e' mai stata completata. 5 decisioni aperte.
+  # Vedi epics.md#Story 10.12.
+  10-12-sincronizzazione-fipav-cron: backlog
 
   # Epic 11 (Bug di Produzione) inserito il 2026-07-27 su richiesta dell'utente:
   # elenco APERTO di difetti reali osservati in produzione (log di errore,
@@ -1480,6 +1509,20 @@ development_status:
   # review a 3 livelli (blast radius minimo). tsc/lint/2080 test puliti.
   # Vedi spec-18-31-calendario-card-larghezza-testo.md.
   18-31-calendario-card-larghezza-testo: review
+
+  # Story 18.32 aggiunta 2026-09-24 su richiesta esplicita dell'utente:
+  # vista mensile "stile Google Calendar" per /calendario, con checkbox per
+  # selezionare quali Campionati mostrare (ognuno col proprio colore,
+  # Campionato.colore appena introdotto). Solo analisi in questo giro,
+  # richiesta esplicita dell'utente "intanto nessuno sviluppo".
+  # NESSUNA IMPLEMENTAZIONE. Verificato nel codice: nessuna griglia mensile
+  # esiste nel progetto - lib/mese-calendario.ts produce solo un elenco
+  # piatto di giorni (usato da /app/storico-presenze per una tabella a
+  # colonne, non una griglia settimanale), nessuna libreria di calendario a
+  # griglia tra le dipendenze. 6 decisioni aperte, incluse cosa conta come
+  # "un calendario" da spuntare e dove vive la vista. Vedi epics.md#Story
+  # 18.32.
+  18-32-calendario-vista-mensile-google-style: backlog
 
   # Story 20.28 aggiunta su richiesta esplicita dell'utente 2026-09-12: "nella
   # sezione sito statico non vedo gli slot assegnati sui tabelloni delle
