@@ -562,24 +562,32 @@ model Campionato {
 // AnnoAgonistico di Campionato/Gruppo, che usa RESTRICT): una Partita non ha
 // senso senza il suo Campionato/Gruppo.
 model Partita {
-  id                String     @id @default(uuid())
-  campionatoId      String
-  campionato        Campionato @relation(fields: [campionatoId], references: [id], onDelete: Cascade)
-  gruppoId          String
-  gruppo            Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
-  garaNumero        String
-  giornata          String?
-  data              String
-  ora               String
-  squadraCasa       String
-  squadraOspite     String
-  risultato         String?
-  parziali          String?
-  statoDescrizione  String?
-  impianto          String?
-  indirizzoImpianto String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id                    String     @id @default(uuid())
+  campionatoId          String
+  campionato            Campionato @relation(fields: [campionatoId], references: [id], onDelete: Cascade)
+  gruppoId              String
+  gruppo                Gruppo     @relation(fields: [gruppoId], references: [id], onDelete: Cascade)
+  garaNumero            String
+  giornata              String?
+  data                  String
+  ora                   String
+  squadraCasa           String
+  squadraOspite         String
+  risultato             String?
+  parziali              String?
+  statoDescrizione      String?
+  impianto              String?
+  indirizzoImpianto     String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  // Story 10.11: true da quando aggiornaPartita ha salvato una correzione
+  // manuale di data/ora/impianto/indirizzoImpianto (Story 10.4) - da quel
+  // momento sincronizzaGareFipav non riscrive piu' quei 4 campi per questa
+  // Partita (li lascia invariati), pur continuando ad aggiornare
+  // risultato/parziali/statoDescrizione/giornata. DEFAULT false: ogni
+  // Partita esistente al deploy di questa migrazione resta sincronizzabile
+  // su tutti i campi come oggi, nessun backfill necessario.
+  modificataManualmente Boolean    @default(false)
 
   // Review fix (Story 10.2): la chiave include campionatoId, non solo
   // gruppoId+garaNumero - un Gruppo puo' essere collegato a piu' Campionati

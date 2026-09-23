@@ -6,6 +6,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoCampionatoForm } from "./NuovoCampionatoForm";
 import { ImportaGareForm } from "./ImportaGareForm";
+import { SincronizzaFipavForm } from "./SincronizzaFipavForm";
 import { EliminaCampionatoForm } from "./EliminaCampionatoForm";
 import { ModificaCampionatoForm } from "./ModificaCampionatoForm";
 import styles from "./campionati.module.css";
@@ -97,6 +98,12 @@ export default async function CampionatiPage() {
                           gruppoId={gruppo.id}
                           campionatoId={campionato.id}
                         />
+                        {campionato.linkFipav && (
+                          <SincronizzaFipavForm
+                            gruppoId={gruppo.id}
+                            campionatoId={campionato.id}
+                          />
+                        )}
                         <EliminaCampionatoForm
                           campionatoId={campionato.id}
                           nome={campionato.nome}

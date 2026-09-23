@@ -353,9 +353,22 @@ describe("aggiornaPartita", () => {
         ora: "18:30",
         impianto: "Palestra Comunale",
         indirizzoImpianto: "Via Roma 1",
+        modificataManualmente: true,
       },
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/partite");
+    expect(result).toEqual({ success: true });
+  });
+
+  // Story 10.11: da questo salvataggio in poi sincronizzaGareFipav non
+  // riscrive piu' data/ora/impianto/indirizzoImpianto per questa Partita.
+  it("sets modificataManualmente:true on every successful save (Story 10.11)", async () => {
+    const result = await aggiornaPartita(undefined, buildFormData(campiValidi));
+
+    expect(partitaUpdateMock).toHaveBeenCalledWith({
+      where: { id: "partita-1" },
+      data: expect.objectContaining({ modificataManualmente: true }),
+    });
     expect(result).toEqual({ success: true });
   });
 
@@ -382,6 +395,7 @@ describe("aggiornaPartita", () => {
         ora: "18:30",
         impianto: null,
         indirizzoImpianto: null,
+        modificataManualmente: true,
       },
     });
     expect(result).toEqual({ success: true });

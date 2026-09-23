@@ -372,6 +372,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui colleghi ogni Gruppo ai Campionati a cui partecipa, con un link al calendario FIPAV per l'import automatico delle partite.",
       "Un Allenatore vede e gestisce solo i Campionati dei propri Gruppi; Admin e Dirigente vedono tutti i Gruppi della stagione.",
       "Le partite importate da qui compaiono poi nella pagina Partite.",
+      "Se il Campionato ha un link al portale FIPAV, il bottone \"Sincronizza da FIPAV\" scarica calendario e risultati direttamente da lì: crea le partite nuove e aggiorna quelle esistenti. Se una partita è stata corretta a mano nella pagina Partite (data/ora/impianto), la sincronizzazione non sovrascrive più quei campi per quella partita, ma aggiorna comunque risultato e parziali.",
     ],
   },
   {

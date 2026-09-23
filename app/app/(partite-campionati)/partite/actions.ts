@@ -113,7 +113,10 @@ export async function aggiornaPartita(
   try {
     await prisma.partita.update({
       where: { id: partitaId },
-      data: { data, ora, impianto, indirizzoImpianto },
+      // Story 10.11: modificataManualmente:true da qui in avanti - segnala
+      // a sincronizzaGareFipav (campionati/sincronizza-fipav-actions.ts) di
+      // non riscrivere piu' questi 4 campi per questa Partita.
+      data: { data, ora, impianto, indirizzoImpianto, modificataManualmente: true },
     });
   } catch (err) {
     // Review fix (code review Story 10.4): stessa race TOCTOU gestita in
