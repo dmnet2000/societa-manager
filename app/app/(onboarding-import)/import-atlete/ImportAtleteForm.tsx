@@ -40,6 +40,10 @@ export function ImportAtleteForm() {
           <p>Atlete create: {state.create}</p>
           <p>Atlete aggiornate: {state.aggiornate}</p>
           <p>Atlete riportate (Under 13): {state.riportate}</p>
+          {/* Story 9.43 (AC #6): un codice fiscale del file che corrisponde
+              a un'Atleta rimossa - segnalata, mai aggiornata ne' duplicata
+              ne' ripristinata in silenzio. */}
+          <p>Atlete rimosse riconosciute (non aggiornate): {state.rimosseRiconosciute}</p>
           <p>Righe scartate: {state.scartate.length}</p>
           {state.scartate.length > 0 && (
             <ul className={styles.scartate}>

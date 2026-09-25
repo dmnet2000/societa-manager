@@ -145,14 +145,34 @@ export default async function DatiFisiciPage({
     );
   }
 
+  // Story 9.43 (AC #9): includiRimosse true - condiviso dalle due sezioni
+  // sotto, una sola query invece di due. Chiamata solo quando serve
+  // davvero (atletaIds non vuoto, o un Allenatore) - preserva
+  // l'ottimizzazione gia' esistente (nessuna query per un Utente senza
+  // alcun aggancio).
+  const atlete =
+    atletaIds.length > 0 || allenatore
+      ? await elencaAtlete(supabase, { includiRimosse: true })
+      : [];
+  const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
+
   let sezioneAtleta: ReactNode = null;
   if (atletaIds.length > 0) {
     // AC #4: mostra il PRIMO atletaId risolto, mai un merge - stesso
     // principio di storico-presenze/page.tsx.
+    const atletaCorrente = atletaPerId.get(atletaIds[0]);
     sezioneAtleta = (
       <section className={styles.sezione}>
         <h2>Le mie misurazioni</h2>
-        <SezioneMisurazioni supabase={supabase} atletaId={atletaIds[0]} />
+        {atletaCorrente?.rimossaIl ? (
+          // Story 9.43 (AC #9): messaggio esplicito, non una pagina muta -
+          // nessuna email, nessuna perdita di accesso account.
+          <p className={styles.messaggioVuoto}>
+            Questa Atleta non è più tesserata con la società.
+          </p>
+        ) : (
+          <SezioneMisurazioni supabase={supabase} atletaId={atletaIds[0]} />
+        )}
       </section>
     );
   }
@@ -163,25 +183,23 @@ export default async function DatiFisiciPage({
     // risolviAnnoAgonisticoCorrente in una pagina GET - Dev Notes Story 1.6).
     const annoCorrente = await trovaAnnoAgonisticoCorrente();
 
-    const [gruppoAtleteRows, atlete] = annoCorrente
-      ? await Promise.all([
-          prisma.gruppoAtleta.findMany({
-            where: {
-              annoAgonisticoId: annoCorrente.id,
-              gruppo: { allenatori: { some: { allenatoreId: allenatore.id } } },
-            },
-            select: { atletaId: true },
-          }),
-          // Atleta e' protetta da RLS (AD-4) - letta SOLO tramite
-          // elencaAtlete(supabase), mai con un include Prisma.
-          elencaAtlete(supabase),
-        ])
-      : [[], []];
+    const gruppoAtleteRows = annoCorrente
+      ? await prisma.gruppoAtleta.findMany({
+          where: {
+            annoAgonisticoId: annoCorrente.id,
+            gruppo: { allenatori: { some: { allenatoreId: allenatore.id } } },
+          },
+          select: { atletaId: true },
+        })
+      : [];
 
-    const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
+    // Story 9.43: a differenza della sezione "Le mie misurazioni" sopra,
+    // qui il selettore dell'Allenatore resta scoped alle sole Atlete
+    // ancora attive (.filter su rimossaIl) - stesso principio gia' in uso
+    // in certificato-medico/page.tsx, mai una rimossa tra le opzioni.
     const proprieAtlete = [...new Set(gruppoAtleteRows.map((r) => r.atletaId))]
       .map((id) => atletaPerId.get(id))
-      .filter((a): a is (typeof atlete)[number] => a !== undefined)
+      .filter((a): a is (typeof atlete)[number] => a !== undefined && !a.rimossaIl)
       .sort((a, b) => a.nome.localeCompare(b.nome));
 
     let sezioneSelezionata: ReactNode = null;

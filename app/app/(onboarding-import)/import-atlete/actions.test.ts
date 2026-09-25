@@ -169,6 +169,7 @@ describe("importaAtlete", () => {
       create: 1,
       aggiornate: 1,
       riportate: 0,
+      rimosseRiconosciute: 0,
       scartate: [{ numeroRiga: 9, motivo: "Codice Fiscale mancante o vuoto" }],
     });
     expect(creaAtletaMock).toHaveBeenCalledTimes(1);
@@ -176,6 +177,69 @@ describe("importaAtlete", () => {
       codiceFiscale: "GIA-PRESENTE",
     }));
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/import-atlete");
+  });
+
+  // Story 9.43 (AC #6, "trappola nota"): un codice fiscale del file che
+  // corrisponde a un'Atleta rimossa - mai aggiornata, mai duplicata, mai
+  // ripristinata in silenzio, solo segnalata nel riepilogo.
+  it("recognizes a row matching a removed Atleta, skips update/create/certificato, counts it separately (AC #6)", async () => {
+    const rigaConCertificato = {
+      ...rigaValida,
+      certificato: {
+        dataInizioValidita: new Date("2026-06-01"),
+        dataFineValidita: new Date("2027-06-01"),
+        mesiValidita: 12,
+        modulo: "A",
+      },
+    };
+    analizzaExportFederaleMock.mockResolvedValue({
+      righe: [rigaConCertificato],
+      scartate: [],
+    });
+    trovaPerCodiceFiscaleMock.mockResolvedValue({
+      id: "atleta-rimossa-1",
+      rimossaIl: "2026-09-20T00:00:00.000Z",
+      motivoRimozione: "TRASFERITA",
+    });
+
+    const result = await importaAtlete(
+      undefined,
+      buildFormData(new File(["x"], "export.xlsx"))
+    );
+
+    expect(result).toEqual({
+      success: true,
+      create: 0,
+      aggiornate: 0,
+      riportate: 0,
+      rimosseRiconosciute: 1,
+      scartate: [],
+    });
+    expect(creaAtletaMock).not.toHaveBeenCalled();
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+    expect(unisciCertificatoMock).not.toHaveBeenCalled();
+  });
+
+  it("does not treat an existing Atleta with rimossaIl null as removed (still updates normally)", async () => {
+    analizzaExportFederaleMock.mockResolvedValue({
+      righe: [rigaValida],
+      scartate: [],
+    });
+    trovaPerCodiceFiscaleMock.mockResolvedValue({
+      id: "atleta-attiva",
+      rimossaIl: null,
+    });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    const result = await importaAtlete(
+      undefined,
+      buildFormData(new File(["x"], "export.xlsx"))
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({ aggiornate: 1, rimosseRiconosciute: 0 })
+    );
+    expect(aggiornaAtletaMock).toHaveBeenCalled();
   });
 
   it("returns a friendly error, no crash, when a create/update fails partway through", async () => {
@@ -274,6 +338,38 @@ describe("importaAtlete", () => {
     categoria: "Under 13",
   };
 
+  // Story 9.43 (AC #6): il rollover legge elencaAtlete(supabase) SENZA
+  // includiRimosse - in produzione questo esclude gia' le rimosse per
+  // default (lib/db-rls/atleta.ts, testato in atleta.test.ts). Qui si
+  // verifica il lato di QUESTO file: se elencaAtlete non restituisce
+  // un'Atleta (perche' rimossa, esattamente come accadrebbe in produzione),
+  // il ciclo di riporto non la incontra affatto - nessuna riattivazione.
+  it("does not carry over an Under 13 Atleta that elencaAtlete no longer returns because she was removed (AC #6)", async () => {
+    analizzaExportFederaleMock.mockResolvedValue({
+      righe: [rigaValida],
+      scartate: [],
+    });
+    trovaPerCodiceFiscaleMock.mockResolvedValue(null);
+    creaAtletaMock.mockResolvedValue("nuova-atleta-id");
+    trovaAnnoAgonisticoPrecedenteMock.mockResolvedValue({ id: "anno-precedente" });
+    // Era iscritta l'anno scorso...
+    elencaIscrizioniPerAnnoMock.mockResolvedValue([{ id: "isc-1", atletaId: "atleta-u13-1" }]);
+    // ...ma e' stata rimossa nel frattempo: elencaAtlete (col nuovo default
+    // di produzione) non la restituisce piu' - simulato qui restituendo un
+    // elenco che non la contiene affatto.
+    elencaAtleteMock.mockResolvedValue([]);
+
+    const result = await importaAtlete(
+      undefined,
+      buildFormData(new File(["x"], "export.xlsx"))
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({ success: true, riportate: 0 })
+    );
+    expect(inserisciIscrizioneMock).not.toHaveBeenCalled();
+  });
+
   it("carries over an Under 13 Atleta absent from the export but enrolled last season (AC #1)", async () => {
     analizzaExportFederaleMock.mockResolvedValue({
       righe: [rigaValida],
@@ -295,6 +391,7 @@ describe("importaAtlete", () => {
       create: 1,
       aggiornate: 0,
       riportate: 1,
+      rimosseRiconosciute: 0,
       scartate: [],
     });
     expect(trovaAnnoAgonisticoPrecedenteMock).toHaveBeenCalledWith({

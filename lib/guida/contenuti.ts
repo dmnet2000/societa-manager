@@ -62,6 +62,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Da qui importi l'archivio delle Atlete a partire da un file Excel esportato dal portale federale.",
       "L'import crea le Atlete non ancora presenti, aggiorna quelle già esistenti e riporta automaticamente le Under 13 alla stagione corrente.",
       "Al termine vedi un riepilogo con quante righe sono state create, aggiornate o scartate (con il motivo dello scarto per ciascuna).",
+      "Un'Atleta rimossa dalla società (da /app/conferma-iscrizioni) non viene mai aggiornata da un nuovo import, anche se il suo codice fiscale compare ancora nel file federale - il riepilogo la conta a parte in \"Atlete rimosse riconosciute\". Per tornare a importarla, ripristinala prima dalla sezione \"Atlete rimosse\" di /app/conferma-iscrizioni.",
     ],
   },
   {
@@ -74,6 +75,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
       "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
       "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",
+      "\"Escludi\" e \"Rimuovi dalla società\" non sono la stessa cosa: \"Escludi\" toglie l'iscrizione solo per la stagione corrente, l'Atleta resta nell'anagrafica e puoi riconfermarla in seguito. \"Rimuovi dalla società\" (Segreteria, Admin o Dirigente) è definitiva - l'Atleta sparisce da tutti gli elenchi operativi e dal sito pubblico finché non la ripristini dalla sezione \"Atlete rimosse\" in fondo a questa pagina, mantenendo comunque tutto lo storico (presenze, certificati, tesseramenti).",
     ],
   },
   {
@@ -265,6 +267,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Da qui carichi il Certificato Medico agonistico dell'Atleta collegata al tuo account (figlia, se sei Genitore, o te stessa).",
       "Se sei Genitore con più figlie, seleziona prima l'Atleta con il menu in alto.",
       "Lo stato mostrato (in regola, in scadenza, scaduto, in attesa di conferma) si aggiorna solo dopo che la Segreteria ha confermato il Certificato caricato.",
+      "Se l'Atleta non è più tesserata con la società (rimossa dalla Segreteria), questa pagina mostra un messaggio esplicito al posto del modulo di caricamento - nessuna email viene inviata in questo caso.",
     ],
   },
   {
@@ -342,6 +345,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui registri e consulti le misurazioni fisiche (peso, altezza, test atletici) di un'Atleta, con un grafico dell'andamento nel tempo.",
       "Come Atleta vedi solo le tue misurazioni; come Allenatore selezioni prima l'Atleta tra quelle dei tuoi Gruppi.",
       "Per i parametri con più tentativi nello stesso giorno (es. test di elevazione), il grafico mostra solo il valore migliore per data.",
+      "Se non sei più tesserata con la società (rimossa dalla Segreteria), questa pagina mostra un messaggio esplicito al posto delle tue misurazioni.",
     ],
   },
   {

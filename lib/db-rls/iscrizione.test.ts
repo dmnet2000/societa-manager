@@ -25,8 +25,12 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock } as never;
 
-const { elencaIscrizioniPerAnno, inserisciIscrizione, disattivaIscrizione } =
-  await import("./iscrizione");
+const {
+  elencaIscrizioniPerAnno,
+  inserisciIscrizione,
+  disattivaIscrizione,
+  disattivaIscrizioneAttivaPerAtleta,
+} = await import("./iscrizione");
 
 describe("elencaIscrizioniPerAnno", () => {
   beforeEach(() => {
@@ -175,5 +179,61 @@ describe("disattivaIscrizione", () => {
     await expect(disattivaIscrizione(supabase, "isc-1")).rejects.toThrow(
       /nessuna riga/i
     );
+  });
+});
+
+// Story 9.43 (review fix, AC #2): sostituisce l'iscrizioneId passato dal
+// client in rimuoviAtleta - qui la catena non termina con .select() (nessun
+// controllo "riga effettivamente modificata": zero righe e' un esito
+// legittimo, non un errore), quindi usa una propria catena mock dedicata
+// invece di quella condivisa update().eq()...eq().select() sopra.
+describe("disattivaIscrizioneAttivaPerAtleta", () => {
+  const eqAttivaFiltroMock = vi.fn();
+  const eqAnnoFiltroMock = vi.fn(() => ({ eq: eqAttivaFiltroMock }));
+  const eqAtletaFiltroMock = vi.fn(() => ({ eq: eqAnnoFiltroMock }));
+  const updateFiltroMock = vi.fn(() => ({ eq: eqAtletaFiltroMock }));
+  const fromFiltroMock = vi.fn(() => ({ update: updateFiltroMock }));
+  const supabaseFiltro = { from: fromFiltroMock } as never;
+
+  beforeEach(() => {
+    fromFiltroMock.mockClear();
+    updateFiltroMock.mockClear();
+    eqAtletaFiltroMock.mockClear();
+    eqAnnoFiltroMock.mockClear();
+    eqAttivaFiltroMock.mockReset();
+  });
+
+  it("deactivates the Atleta's active Iscrizione for the given Anno Agonistico", async () => {
+    eqAttivaFiltroMock.mockResolvedValue({ error: null });
+
+    await disattivaIscrizioneAttivaPerAtleta(
+      supabaseFiltro,
+      "atleta-1",
+      "anno-1"
+    );
+
+    expect(fromFiltroMock).toHaveBeenCalledWith("iscrizioni");
+    expect(updateFiltroMock).toHaveBeenCalledWith({ attiva: false });
+    expect(eqAtletaFiltroMock).toHaveBeenCalledWith("atletaId", "atleta-1");
+    expect(eqAnnoFiltroMock).toHaveBeenCalledWith("annoAgonisticoId", "anno-1");
+    expect(eqAttivaFiltroMock).toHaveBeenCalledWith("attiva", true);
+  });
+
+  it("is a silent no-op when the Atleta had no active Iscrizione for that Anno (idempotent by design, not an error)", async () => {
+    eqAttivaFiltroMock.mockResolvedValue({ error: null });
+
+    await expect(
+      disattivaIscrizioneAttivaPerAtleta(supabaseFiltro, "atleta-1", "anno-1")
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws when the update fails", async () => {
+    eqAttivaFiltroMock.mockResolvedValue({
+      error: { message: "update failed" },
+    });
+
+    await expect(
+      disattivaIscrizioneAttivaPerAtleta(supabaseFiltro, "atleta-1", "anno-1")
+    ).rejects.toThrow("update failed");
   });
 });

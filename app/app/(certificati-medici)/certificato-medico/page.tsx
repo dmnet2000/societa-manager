@@ -74,12 +74,22 @@ export default async function CertificatoMedicoPage({
 
   // Atleta e' protetta da RLS (AD-4) - letta SOLO tramite elencaAtlete(supabase),
   // mai con un include Prisma su GenitoreAtleta.atleta (Dev Notes Story 2.4).
-  const atlete = await elencaAtlete(supabase);
+  // Story 9.43: includiRimosse true - questa e' una delle 3 pagine che deve
+  // distinguere "non collegata a nessuna Atleta" (sopra) da "collegata a
+  // un'Atleta rimossa" (AC #9, messaggio esplicito sotto), non silenziarle
+  // allo stesso modo.
+  const atlete = await elencaAtlete(supabase, { includiRimosse: true });
   const atletaPerId = new Map(atlete.map((a) => [a.id, a]));
-  const proprieAtlete = atletaIds
+  const atleteCollegate = atletaIds
     .map((id) => atletaPerId.get(id))
-    .filter((a): a is (typeof atlete)[number] => a !== undefined)
+    .filter((a): a is (typeof atlete)[number] => a !== undefined);
+  const proprieAtlete = atleteCollegate
+    .filter((a) => !a.rimossaIl)
     .sort((a, b) => a.nome.localeCompare(b.nome));
+  // AC #9: almeno un collegamento esiste, ma nessuno porta a un'Atleta
+  // ancora attiva - distinto dal caso "nessun collegamento" sopra.
+  const soloAtleteRimosse =
+    atleteCollegate.length > 0 && proprieAtlete.length === 0;
 
   // AC #3: con una sola Atleta risolta (self, o Genitore con una sola
   // figlia) nessun selettore e' necessario - risoluzione automatica. Con
@@ -193,6 +203,15 @@ export default async function CertificatoMedicoPage({
     sezioneGestione = (
       <p className={styles.testoStato}>
         Seleziona un&apos;Atleta per gestire il suo Certificato.
+      </p>
+    );
+  } else if (soloAtleteRimosse) {
+    // Story 9.43 (AC #9): messaggio esplicito, non una pagina muta -
+    // nessuna email, nessuna perdita di accesso account (il Genitore/Atleta
+    // resta loggato, vede solo questo messaggio al posto della gestione).
+    sezioneGestione = (
+      <p className={styles.testoStato}>
+        Questa Atleta non è più tesserata con la società.
       </p>
     );
   }

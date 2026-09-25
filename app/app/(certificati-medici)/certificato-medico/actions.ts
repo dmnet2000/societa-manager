@@ -166,32 +166,47 @@ export async function caricaCertificato(
     try {
       const destinatario = await leggiEmailSegreteria();
       if (destinatario) {
-        const atlete = await elencaAtlete(supabase);
+        // Story 9.43 (review fix): elencaAtlete(supabase) senza opzioni
+        // esclude di default le Atlete rimosse (lib/db-rls/atleta.ts) - un
+        // caricamento partito da un form rimasto aperto prima della
+        // rimozione ricadeva quindi sempre sul ramo "non risolvibile" sotto
+        // (fallback "un'Atleta", nessuna indicazione del motivo), stessa
+        // classe di bug gia' corretta nel cron promemoria-certificati
+        // (route.ts). includiRimosse: true qui per poter distinguere
+        // esplicitamente "rimossa" (salta, sotto) da "davvero non trovata"
+        // (fallback preesistente, invariato).
+        const atlete = await elencaAtlete(supabase, { includiRimosse: true });
         const atleta = atlete.find((a) => a.id === atletaId);
-        if (!atleta) {
-          // Review fix: caso limite difensivo (mai osservato in pratica) -
-          // l'email parte comunque (fallback "un'Atleta" sotto) ma un log
-          // distintivo rende questo percorso diverso dal successo pieno,
-          // altrimenti indistinguibili in produzione.
+        if (atleta?.rimossaIl) {
           console.warn(
-            `Story 4.3: Atleta ${atletaId} non risolvibile nell'elenco al momento dell'invio email alla Segreteria.`
+            `Story 9.43: Certificato caricato per l'Atleta rimossa ${atletaId} - email alla Segreteria saltata.`
           );
-        }
-        const fileScaricato = await scaricaFileCertificato(supabase, filePath);
-        const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
+        } else {
+          if (!atleta) {
+            // Review fix: caso limite difensivo (mai osservato in pratica) -
+            // l'email parte comunque (fallback "un'Atleta" sotto) ma un log
+            // distintivo rende questo percorso diverso dal successo pieno,
+            // altrimenti indistinguibili in produzione.
+            console.warn(
+              `Story 4.3: Atleta ${atletaId} non risolvibile nell'elenco al momento dell'invio email alla Segreteria.`
+            );
+          }
+          const fileScaricato = await scaricaFileCertificato(supabase, filePath);
+          const contenuto = Buffer.from(await fileScaricato.arrayBuffer());
 
-        await inviaEmail({
-          destinatario,
-          oggetto: "Nuovo Certificato Medico caricato",
-          testo: `È stato caricato un nuovo Certificato Medico per ${atleta?.nome ?? "un'Atleta"}.`,
-          allegati: [
-            {
-              nomeFile: file.name,
-              contenuto,
-              tipoMime: file.type,
-            },
-          ],
-        });
+          await inviaEmail({
+            destinatario,
+            oggetto: "Nuovo Certificato Medico caricato",
+            testo: `È stato caricato un nuovo Certificato Medico per ${atleta?.nome ?? "un'Atleta"}.`,
+            allegati: [
+              {
+                nomeFile: file.name,
+                contenuto,
+                tipoMime: file.type,
+              },
+            ],
+          });
+        }
       }
     } catch (err) {
       console.error(err);

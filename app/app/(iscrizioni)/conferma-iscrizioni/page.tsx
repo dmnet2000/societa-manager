@@ -26,12 +26,18 @@ export default async function ConfermaIscrizioniPage() {
   const puoConfermare = ruoli.includes("SEGRETERIA");
 
   const [atlete, annoCorrente] = await Promise.all([
-    elencaAtlete(supabase),
+    // Story 9.43: includiRimosse true - questa pagina e' uno dei 3
+    // consumatori che deve vedere anche le Atlete rimosse (sezione a
+    // scomparsa "Atlete rimosse", AC #7), split attive/rimosse sotto.
+    elencaAtlete(supabase, { includiRimosse: true }),
     // Sola lettura (AC #1): se l'Anno Agonistico non esiste ancora, nessuna
     // Atleta risulta iscritta - viene creato solo alla prima conferma
     // (Server Action, vedi Dev Notes).
     trovaAnnoAgonisticoCorrente(),
   ]);
+
+  const atleteAttive = atlete.filter((atleta) => !atleta.rimossaIl);
+  const atleteRimosse = atlete.filter((atleta) => atleta.rimossaIl);
 
   const iscrizioni = annoCorrente
     ? await elencaIscrizioniPerAnno(supabase, annoCorrente.id)
@@ -90,11 +96,12 @@ export default async function ConfermaIscrizioniPage() {
       />
       <IscrizioniElenco
         puoConfermare={puoConfermare}
-        righe={atlete.map((atleta) => ({
+        righe={atleteAttive.map((atleta) => ({
           atleta,
           iscrizioneId: iscrizioneIdPerAtleta.get(atleta.id) ?? null,
           gruppi: gruppiPerAtleta.get(atleta.id) ?? [],
         }))}
+        righeRimosse={atleteRimosse}
       />
     </main>
   );

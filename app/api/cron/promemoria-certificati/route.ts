@@ -93,6 +93,19 @@ export async function GET(request: NextRequest) {
     // invio rifiutato, ecc.) non deve mai interrompere le altre - stesso
     // principio non bloccante di caricaCertificato (Story 4.3).
     try {
+      // Story 9.43 (AC #3): un'Atleta rimossa non e' mai tra i risultati di
+      // elencaAtlete(supabaseAdmin) sopra (nuovo default, esclude le
+      // rimosse) - senza questo controllo esplicito, l'email partiva
+      // comunque con il testo generico "un'Atleta" (fallback gia' presente
+      // sotto), invece di essere saltata come richiesto dall'AC. Stesso
+      // trattamento "salta, non e' un errore" gia' in uso per "nessun
+      // destinatario risolvibile" sotto.
+      const atleta = atlete.find((a) => a.id === certificato.atletaId);
+      if (!atleta) {
+        saltati += 1;
+        continue;
+      }
+
       const emailCollegate = await elencaEmailCollegateAdAtleta(
         certificato.atletaId,
         annoAgonistico?.id ?? null
@@ -114,13 +127,12 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const atleta = atlete.find((a) => a.id === certificato.atletaId);
       const dataScadenza = String(certificato.dataFineValidita).slice(0, 10);
 
       await inviaEmail({
         destinatario: destinatari,
         oggetto: "Promemoria scadenza Certificato Medico",
-        testo: `Il Certificato Medico di ${atleta?.nome ?? "un'Atleta"} scade tra ${giorni} giorni (il ${dataScadenza}). Rinnovalo per tempo.`,
+        testo: `Il Certificato Medico di ${atleta.nome} scade tra ${giorni} giorni (il ${dataScadenza}). Rinnovalo per tempo.`,
       });
       inviati += 1;
     } catch (err) {

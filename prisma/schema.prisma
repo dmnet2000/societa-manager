@@ -87,13 +87,22 @@ enum Sesso {
   F
 }
 
+// Story 9.43: valori chiusi per il motivo di rimozione di un'Atleta
+// dall'anagrafica attiva - "trasferimento ad altra società" resta una nota
+// libera facoltativa (Atleta.notaRimozione), non un campo strutturato
+// (decisione chiusa con l'utente il 2026-09-24, vedi epics.md).
+enum MotivoRimozioneAtleta {
+  NON_PIU_IN_SOCIETA
+  TRASFERITA
+}
+
 // Protetta da RLS (AD-4/AD-9): letta/scritta a runtime tramite client
 // Supabase autenticato (lib/db-rls/), mai con una query Prisma diretta - a
 // differenza di Utente/UtenteRuolo. Onboarding-Import e' l'unico proprietario
 // dei campi identitari (AD-10) - nessun altro modulo scrive su queste colonne.
 model Atleta {
-  id                    String              @id @default(uuid())
-  codiceFiscale         String              @unique
+  id                    String                 @id @default(uuid())
+  codiceFiscale         String                 @unique
   nome                  String
   sesso                 Sesso
   dataNascita           DateTime
@@ -112,8 +121,19 @@ model Atleta {
   // (import federale, Story 1.2, non li fornisce).
   email                 String?
   cellulare             String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  // Story 9.43: archiviazione reversibile - "uscita definitiva" dalla
+  // società (non-cancellazione fisica, mai un DELETE: vedi i vincoli
+  // onDelete Cascade sotto, che porterebbero via lo storico). Tutti e tre
+  // nullable, migrazione additiva senza backfill: un'Atleta esistente resta
+  // implicitamente attiva (rimossaIl null) finche' nessuno la rimuove
+  // esplicitamente. elencaAtlete/elencaAtletePubbliche/elencaAtletePerIds
+  // (lib/db-rls/atleta.ts) escludono le righe con rimossaIl valorizzato per
+  // default - unico punto di lettura, vedi Design Notes spec-9-43.
+  rimossaIl             DateTime?
+  motivoRimozione       MotivoRimozioneAtleta?
+  notaRimozione         String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
   genitori              GenitoreAtleta[]
   iscrizioni            Iscrizione[]
   tesseramenti          Tesseramento[]
@@ -133,6 +153,14 @@ model Atleta {
   // trascurabile alla scala di un'anagrafica di club sportivo. Vedi anche il
   // commento della migrazione (20260901000000_add_index_atlete_nome).
   @@index([nome])
+  // Story 9.43 (review fix): rimossaIl e' ora il filtro di default di
+  // elencaAtlete/elencaAtletePubbliche/elencaAtletePerIds (.is("rimossaIl",
+  // null)), applicato a quasi ogni lettura della tabella - stesso principio
+  // dell'indice su "nome" sopra, stavolta sulla nuova colonna piu' esposta
+  // da questa story. Aggiunto nella stessa migrazione che introduce la
+  // colonna (20260924010000_add_rimozione_atleta), non ancora applicata in
+  // produzione a questo punto della story.
+  @@index([rimossaIl])
   @@map("atlete")
 }
 

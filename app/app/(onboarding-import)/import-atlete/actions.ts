@@ -22,6 +22,11 @@ export type ImportaAtleteState =
       create: number;
       aggiornate: number;
       riportate: number;
+      // Story 9.43 (AC #6): "trappola nota" - un codice fiscale del file che
+      // corrisponde a un'Atleta rimossa. Contata a parte, mai in
+      // "aggiornate" (non viene toccata) ne' in "create" (non viene
+      // duplicata) - il riepilogo deve poterla distinguere dagli altri esiti.
+      rimosseRiconosciute: number;
       scartate: RigaScartata[];
     }
   | undefined;
@@ -73,6 +78,7 @@ export async function importaAtlete(
   let create = 0;
   let aggiornate = 0;
   let riportate = 0;
+  let rimosseRiconosciute = 0;
   const codiciFiscaliImportati = new Set(
     risultato.righe.map((riga) => riga.codiceFiscale)
   );
@@ -88,6 +94,19 @@ export async function importaAtlete(
         supabase,
         riga.codiceFiscale
       );
+
+      // Story 9.43 (AC #6, "trappola nota"): un'Atleta rimossa NON va mai
+      // aggiornata (i suoi dati/il certificato restano quelli di quando e'
+      // stata rimossa, non quelli dell'ultimo export) ne' ricreata (violerebbe
+      // il vincolo @unique su codiceFiscale) ne' ripristinata in silenzio -
+      // solo segnalata nel riepilogo. trovaPerCodiceFiscale la trova
+      // comunque (select("*"), nessun filtro di stato in quella funzione
+      // condivisa) - il controllo va fatto qui, sul risultato.
+      if (esistente && esistente.rimossaIl) {
+        rimosseRiconosciute++;
+        continue;
+      }
+
       let atletaId: string;
       if (esistente) {
         await aggiornaAtleta(supabase, esistente.id, datiAtleta);
@@ -130,6 +149,12 @@ export async function importaAtlete(
       const atletaIdIscrittiPrecedente = new Set(
         iscrizioniPrecedenti.map((iscrizione) => iscrizione.atletaId)
       );
+      // Story 9.43 (AC #6): verificato che questo riporto NON riattiva
+      // un'Atleta rimossa senza bisogno di un controllo esplicito qui -
+      // elencaAtlete(supabase) col nuovo default esclude gia' le rimosse
+      // (Design Notes spec-9-43), quindi "atlete" sotto non le contiene mai:
+      // il ciclo non le incontra proprio, non serve filtrarle una seconda
+      // volta.
       const atlete = await elencaAtlete(supabase);
       for (const atleta of atlete) {
         const candidata =
@@ -164,5 +189,12 @@ export async function importaAtlete(
   }
 
   revalidatePath("/app/import-atlete");
-  return { success: true, create, aggiornate, riportate, scartate: risultato.scartate };
+  return {
+    success: true,
+    create,
+    aggiornate,
+    riportate,
+    rimosseRiconosciute,
+    scartate: risultato.scartate,
+  };
 }

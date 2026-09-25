@@ -97,3 +97,33 @@ export async function disattivaIscrizione(
     );
   }
 }
+
+// Story 9.43 (review fix): rimuoviAtleta (conferma-iscrizioni/actions.ts)
+// NON usa piu' un iscrizioneId passato dal client come hidden field - due
+// problemi indipendenti trovati in review: (1) dopo una confermaIscrizione
+// senza reload della pagina, lo stato locale di IscrizioneRow.tsx tiene
+// iscrizioneId: null finche' non si ricarica (limite noto, commentato li'),
+// quindi il campo nascosto restava vuoto e una Iscrizione appena creata non
+// veniva mai disattivata; (2) un iscrizioneId forgiato lato client avrebbe
+// potuto puntare all'Iscrizione di un'Atleta diversa da atletaId. Qui si
+// risolve invece l'Iscrizione attiva direttamente per atletaId+Anno
+// Agonistico, lato server. A differenza di disattivaIscrizione sopra,
+// zero righe aggiornate NON e' un errore: l'Atleta poteva legittimamente
+// non essere iscritta per la stagione corrente (idempotente, come
+// inserisciIscrizione sopra).
+export async function disattivaIscrizioneAttivaPerAtleta(
+  supabase: SupabaseClient,
+  atletaId: string,
+  annoAgonisticoId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("iscrizioni")
+    .update({ attiva: false })
+    .eq("atletaId", atletaId)
+    .eq("annoAgonisticoId", annoAgonisticoId)
+    .eq("attiva", true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}

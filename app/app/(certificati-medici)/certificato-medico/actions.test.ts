@@ -603,6 +603,35 @@ describe("caricaCertificato (Server Action)", () => {
     );
   });
 
+  // Story 9.43 (review fix): mirror del caso gia' corretto nel cron
+  // promemoria-certificati (route.test.ts) - un caricamento partito da un
+  // form rimasto aperto prima della rimozione dell'Atleta non deve inviare
+  // un'email fuorviante alla Segreteria (fallback "un'Atleta" senza nome).
+  it("non invia l'email quando l'Atleta risolta e' stata rimossa dalla società (Story 9.43)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    elencaAtleteMock.mockResolvedValue([
+      {
+        id: "atleta-1",
+        nome: "Verifica Atleta",
+        codiceFiscale: "CF",
+        categoria: null,
+        rimossaIl: "2026-09-20T00:00:00.000Z",
+      },
+    ]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(elencaAtleteMock).toHaveBeenCalledWith(supabaseFinto, {
+      includiRimosse: true,
+    });
+    expect(scaricaFileCertificatoMock).not.toHaveBeenCalled();
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
   it("invia l'email alla Segreteria anche su un ri-caricamento (Story 4.3 AC #1, esplicitamente 'sia primo caricamento sia ri-caricamento')", async () => {
     trovaCertificatoPerAtletaMock.mockResolvedValue({
       id: "c1",

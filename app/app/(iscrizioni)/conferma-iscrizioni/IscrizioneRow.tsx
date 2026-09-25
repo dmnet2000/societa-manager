@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { confermaIscrizione, escludiIscrizione } from "./actions";
 import type { AtletaElenco } from "@/lib/db-rls/atleta";
+import { RimuoviAtletaForm } from "./RimuoviAtletaForm";
 import styles from "./conferma-iscrizioni.module.css";
 
 type Stato =
@@ -112,6 +113,13 @@ export function IscrizioneRow({
             {error}
           </p>
         )}
+        {/* Story 9.43 (AC #1/#10): "Rimuovi dalla società" - azione separata
+            dallo stato di iscrizione (rimuovibile indipendentemente
+            dall'essere iscritta o meno), renderizzata incondizionatamente
+            come già fatto sopra per "Escludi" - stesso principio di questo
+            file, il perimetro di Ruolo è applicato server-side
+            (rimuoviAtleta), non nascosto qui. */}
+        <RimuoviAtletaForm atletaId={atleta.id} nome={atleta.nome} />
       </td>
     </tr>
   );

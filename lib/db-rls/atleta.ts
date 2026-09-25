@@ -62,11 +62,44 @@ export async function creaAtleta(
   return id;
 }
 
+// Story 9.43 (review fix): unica fonte di verita' dei due motivi validi -
+// prima duplicata come union inline sia in AtletaElenco/DatiRimozioneAtleta
+// qui sia come array di value/label in RimuoviAtletaForm.tsx e come
+// MOTIVI_RIMOZIONE_VALIDI in conferma-iscrizioni/actions.ts, con tre punti
+// da tenere manualmente allineati a mano per un futuro terzo motivo.
+export type MotivoRimozioneAtleta = "NON_PIU_IN_SOCIETA" | "TRASFERITA";
+
+export const MOTIVI_RIMOZIONE_ATLETA: readonly MotivoRimozioneAtleta[] = [
+  "NON_PIU_IN_SOCIETA",
+  "TRASFERITA",
+];
+
 export type AtletaElenco = {
   id: string;
   nome: string;
   codiceFiscale: string;
   categoria: string | null;
+  // Story 9.43: sempre selezionati (anche quando includiRimosse e' false,
+  // nel qual caso valgono sempre null per una riga restituita) - un'unica
+  // query resta la sola fonte di verita' del filtro (Design Notes
+  // spec-9-43): una select() variabile per opzione avrebbe richiesto due
+  // shape diversi di AtletaElenco a seconda del parametro, piu' fragile.
+  rimossaIl: string | null;
+  // Story 9.43 (review fix): tipizzato con l'union sopra, non piu' un
+  // generico string - un valore imprevisto in colonna resterebbe comunque
+  // leggibile a runtime (fallback di etichettaMotivo in IscrizioniElenco.tsx),
+  // ma qui il compilatore segnala subito un consumo non aggiornato.
+  motivoRimozione: MotivoRimozioneAtleta | null;
+  notaRimozione: string | null;
+};
+
+export type OpzioniElencoAtlete = {
+  // Story 9.43: default false -> esclude le Atlete rimosse
+  // (.is("rimossaIl", null)). true -> nessun filtro, tutte incluse - usata
+  // esplicitamente dai soli 3 consumatori che devono vederle
+  // (conferma-iscrizioni, certificato-medico, dati-fisici). Tutti gli altri
+  // ~18 chiamanti esistenti ereditano l'esclusione senza alcuna modifica.
+  includiRimosse?: boolean;
 };
 
 // Story 1.6: sola lettura, riusata dalla pagina di conferma iscrizioni per
@@ -74,12 +107,20 @@ export type AtletaElenco = {
 // scrittura sui campi identitari - non tocca AD-10). `categoria` inclusa da
 // Story 1.8 per riconoscere le Under 13 candidate al riporto stagionale.
 export async function elencaAtlete(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  opzioni?: OpzioniElencoAtlete
 ): Promise<AtletaElenco[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("atlete")
-    .select("id, nome, codiceFiscale, categoria")
-    .order("nome", { ascending: true });
+    .select(
+      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione"
+    );
+
+  if (!opzioni?.includiRimosse) {
+    query = query.is("rimossaIl", null);
+  }
+
+  const { data, error } = await query.order("nome", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -102,12 +143,19 @@ export type AtletaPubblica = {
 // (sessione anonima), che qui fallirebbe silenziosamente (righe vuote, non
 // un errore) esattamente come su qualunque altra lettura RLS senza sessione.
 export async function elencaAtletePubbliche(
-  supabaseAdmin: SupabaseClient
+  supabaseAdmin: SupabaseClient,
+  opzioni?: OpzioniElencoAtlete
 ): Promise<AtletaPubblica[]> {
-  const { data, error } = await supabaseAdmin
-    .from("atlete")
-    .select("id, nome")
-    .order("nome", { ascending: true });
+  let query = supabaseAdmin.from("atlete").select("id, nome");
+
+  // Story 9.43: default false -> esclude le rimosse, stesso principio di
+  // elencaAtlete sopra - /squadre (pubblica) eredita l'esclusione senza
+  // alcuna modifica al file chiamante (nessun parametro passato).
+  if (!opzioni?.includiRimosse) {
+    query = query.is("rimossaIl", null);
+  }
+
+  const { data, error } = await query.order("nome", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -132,17 +180,21 @@ export type AtletaMinima = {
 // PostgREST potrebbe non gestire come atteso).
 export async function elencaAtletePerIds(
   supabase: SupabaseClient,
-  ids: string[]
+  ids: string[],
+  opzioni?: OpzioniElencoAtlete
 ): Promise<AtletaMinima[]> {
   if (ids.length === 0) {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("atlete")
-    .select("id, nome")
-    .in("id", ids)
-    .order("nome", { ascending: true });
+  let query = supabase.from("atlete").select("id, nome").in("id", ids);
+
+  // Story 9.43: stesso default di elencaAtlete/elencaAtletePubbliche sopra.
+  if (!opzioni?.includiRimosse) {
+    query = query.is("rimossaIl", null);
+  }
+
+  const { data, error } = await query.order("nome", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -165,6 +217,82 @@ export async function aggiornaAtleta(
     .from("atlete")
     .update({
       ...serializza(dati),
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Nessuna riga aggiornata per l'Atleta ${id} (non trovata o non autorizzata).`
+    );
+  }
+}
+
+export type DatiRimozioneAtleta = {
+  motivoRimozione: MotivoRimozioneAtleta;
+  notaRimozione: string | null;
+};
+
+// Story 9.43: archiviazione reversibile - MAI un DELETE (onDelete Cascade su
+// Iscrizione/Tesseramento/CertificatoMedico/GruppoAtleta/Presenza/Notifica/
+// MisurazioneAtleta/GenitoreAtleta porterebbe via lo storico). Nome
+// deliberatamente diverso dalla Server Action omonima rimuoviAtleta
+// (conferma-iscrizioni/actions.ts, che chiama questa funzione) - stesso
+// principio gia' in uso per escludiIscrizione/disattivaIscrizione. Non
+// riusa aggiornaAtleta/DatiAtletaIdentitari sopra: quei campi sono di
+// proprieta' esclusiva di Onboarding-Import/Gruppi-Allenatori (AD-10),
+// mentre questi tre campi sono di competenza di conferma-iscrizioni.
+export async function segnaAtletaRimossa(
+  supabase: SupabaseClient,
+  id: string,
+  dati: DatiRimozioneAtleta
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("atlete")
+    .update({
+      rimossaIl: new Date().toISOString(),
+      motivoRimozione: dati.motivoRimozione,
+      notaRimozione: dati.notaRimozione,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id)
+    // Story 9.43 (review fix): idempotenza - senza questo filtro, una
+    // rimozione ripetuta (tab rimasta aperta, due Admin in contemporanea)
+    // sovrascriveva silenziosamente motivo/nota/data della rimozione
+    // originale con quelli del secondo tentativo. Con il filtro, il secondo
+    // tentativo aggiorna zero righe: nessun dato perso, vedi sotto.
+    .is("rimossaIl", null)
+    .select();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Nessuna riga aggiornata per l'Atleta ${id} (non trovata, non autorizzata, o già rimossa).`
+    );
+  }
+}
+
+// Story 9.43 (AC #7): azzera i 3 campi - nessun ripristino automatico
+// dell'Iscrizione (l'Atleta torna "non iscritta", da riconfermare), stesso
+// principio "riga effettivamente modificata" di segnaAtletaRimossa sopra.
+export async function annullaRimozioneAtleta(
+  supabase: SupabaseClient,
+  id: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("atlete")
+    .update({
+      rimossaIl: null,
+      motivoRimozione: null,
+      notaRimozione: null,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id)
