@@ -18,6 +18,12 @@ import type {
 // FIPAV/Lega (Design Notes spec-10-11).
 const SELETTORE_TABELLA = "table.tbl.tbl-risultati";
 
+// Story 18.33: selettore verificato dal vivo (2026-09-27, Design Notes
+// spec-18-33) - seconda tabella sulla STESSA pagina di table.tbl.tbl-
+// risultati sopra, gia' "alla giornata" piu' recente di default (nessun
+// parametro GG in query string). Nessuna seconda richiesta HTTP.
+const SELETTORE_TABELLA_CLASSIFICA = "table.tbl.tbl-classifica";
+
 // Formato "gg/mm/aa hh:mm" del portale (anno a due cifre, a differenza del
 // "gg/mm/aaaa" dell'export Excel - parseDataItaliana non e' riusabile qui).
 // Le partite sincronizzate sono sempre di stagioni correnti/future: anno a
@@ -218,4 +224,116 @@ export function analizzaHtmlGareFipav(html: string): RisultatoParsingGare {
   });
 
   return { righe, scartate };
+}
+
+// Story 18.33: colonne Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.
+// verificate dal vivo (Design Notes spec-18-33), stesso ordine posizionale
+// della tabella table.tbl.tbl-classifica. Tutti i campi restano stringhe
+// grezze (nessuna conversione a number) - stesso principio gia' scelto per
+// risultato/parziali in RigaGaraImportata sopra: questa sezione pubblica non
+// fa mai calcoli sui valori, solo li mostra cosi' come li restituisce il
+// portale.
+export type RigaClassificaFipav = {
+  posizione: string;
+  squadra: string;
+  punti: string | null;
+  partiteGiocate: string | null;
+  partiteVinte: string | null;
+  partitePerse: string | null;
+  setFatti: string | null;
+  setSubiti: string | null;
+  quozienteSet: string | null;
+  puntiFatti: string | null;
+  puntiSubiti: string | null;
+  quozientePunti: string | null;
+  penalizzazione: string | null;
+};
+
+function analizzaRigaClassifica(row: HTMLElement): { riga: RigaClassificaFipav } | { motivo: string } {
+  const celle = row.querySelectorAll("td");
+  if (celle.length < 3) {
+    return { motivo: "Riga con celle insufficienti (formato pagina inatteso)" };
+  }
+
+  const posizione = testo(celle[0].text);
+  if (!posizione) {
+    return { motivo: "Posizione mancante o vuota" };
+  }
+
+  const squadra = testo(celle[1].text);
+  if (!squadra) {
+    return { motivo: "Nome squadra mancante o vuoto" };
+  }
+
+  // Colonne posizionali oltre le prime due (obbligatorie sopra) - a
+  // differenza di analizzaRiga (gare), qui una colonna mancante non
+  // invalida l'intera riga: una classifica con meno colonne di quelle
+  // osservate dal vivo (es. senza Penal.) resta comunque utile con
+  // Pos./Squadra/Punti (minimo richiesto, AC #3 spec-18-33).
+  const cella = (indice: number): string | null => (celle[indice] ? testo(celle[indice].text) : null);
+
+  return {
+    riga: {
+      posizione,
+      squadra,
+      punti: cella(2),
+      partiteGiocate: cella(3),
+      partiteVinte: cella(4),
+      partitePerse: cella(5),
+      setFatti: cella(6),
+      setSubiti: cella(7),
+      quozienteSet: cella(8),
+      puntiFatti: cella(9),
+      puntiSubiti: cella(10),
+      quozientePunti: cella(11),
+      penalizzazione: cella(12),
+    },
+  };
+}
+
+// Sibling di analizzaHtmlGareFipav sopra - stesso identico principio: throw
+// solo se la tabella stessa manca (formato pagina cambiato), fail-soft
+// per-riga altrimenti. A differenza di analizzaHtmlGareFipav, qui il
+// ritorno e' un array semplice (non {righe, scartate}) - una riga scartata
+// viene solo loggata (Code Map spec-18-33): questa sezione pubblica non ha
+// un riepilogo/UI dedicata alle righe scartate come la sincronizzazione
+// manuale (Story 10.11), mostra solo la classifica cosi' com'e' letta.
+export function analizzaHtmlClassificaFipav(html: string): RigaClassificaFipav[] {
+  const radice = parse(html);
+  const tabella = radice.querySelector(SELETTORE_TABELLA_CLASSIFICA);
+  if (!tabella) {
+    throw new Error(
+      "Tabella della classifica non trovata nella pagina del portale FIPAV. Il formato della pagina potrebbe essere cambiato."
+    );
+  }
+
+  // Fix di verifica dal vivo (2026-09-27, non "tbody tr" come in
+  // analizzaHtmlGareFipav sopra): a differenza di table.tbl.tbl-risultati,
+  // table.tbl.tbl-classifica sul portale reale NON ha un elemento <tbody> -
+  // "tbody tr" restituirebbe sempre zero righe, silenziosamente (la tabella
+  // stessa viene trovata, quindi non scatterebbe nemmeno il throw sopra).
+  // "tr" (qualunque profondita' dentro la tabella) prende anche la riga di
+  // intestazione dentro <thead>, ma quella ha celle <th>, non <td>: il
+  // controllo "celle.length < 3" di analizzaRigaClassifica sotto la scarta
+  // naturalmente (loggata, mai un elemento vuoto in righe).
+  const righeHtml = tabella.querySelectorAll("tr");
+  const righe: RigaClassificaFipav[] = [];
+
+  righeHtml.forEach((row, indice) => {
+    const numeroRiga = indice + 1;
+    try {
+      const esito = analizzaRigaClassifica(row);
+      if ("motivo" in esito) {
+        console.error(
+          `analizzaHtmlClassificaFipav: riga ${numeroRiga} scartata (${esito.motivo})`
+        );
+        return;
+      }
+      righe.push(esito.riga);
+    } catch (err) {
+      console.error(`analizzaHtmlClassificaFipav: riga ${numeroRiga} non interpretabile`, err);
+    }
+  });
+
+  return righe;
 }

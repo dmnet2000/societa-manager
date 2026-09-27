@@ -378,6 +378,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Le partite importate da qui compaiono poi nella pagina Partite.",
       "Se il Campionato ha un link al portale FIPAV, il bottone \"Sincronizza da FIPAV\" scarica calendario e risultati direttamente da lì: crea le partite nuove e aggiorna quelle esistenti. Se una partita è stata corretta a mano nella pagina Partite (data/ora/impianto), la sincronizzazione non sovrascrive più quei campi per quella partita, ma aggiorna comunque risultato e parziali.",
       "Da \"Modifica\" puoi anche assegnare un colore personalizzato al Campionato: serve solo a distinguerlo visivamente sul sito pubblico (calendario e partite della settimana in home), è del tutto facoltativo.",
+      "Se il Campionato ha un link al portale FIPAV, la home pubblica del sito mostra anche i risultati della settimana scorsa e la classifica aggiornata di quel Campionato, letti in tempo reale dal portale a ogni visita: nessuna azione da fare qui, è automatico e indipendente dal bottone \"Sincronizza da FIPAV\" sopra (quello aggiorna solo i dati interni della pagina Partite).",
     ],
   },
   {

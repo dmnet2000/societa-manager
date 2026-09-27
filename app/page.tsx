@@ -17,6 +17,11 @@ import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
 import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
+import { leggiLiveFipav } from "@/lib/sincronizza-gare-fipav/leggi-live-fipav";
+import {
+  classifichePerCampionatoDaLetture,
+  risultatiSettimanaScorsaDaLetture,
+} from "@/lib/sincronizza-gare-fipav/vista-home-live";
 import {
   NOME_COOKIE_CONSENSO,
   haAccettatoCookieNonEssenziali,
@@ -104,6 +109,19 @@ export default async function HomePubblicaPage() {
   const lunediIso = formattaDataIso(lunediCorrente);
   const domenicaIso = formattaDataIso(domenicaCorrente);
 
+  // Story 18.33 (Boundaries spec-18-33): confini lunedi'-domenica della
+  // settimana PRECEDENTE - stessa aritmetica di lunediCorrente/
+  // domenicaCorrente sopra, spostata indietro di 7 giorni. Il portale FIPAV
+  // non supporta un filtro data nella URL: il filtro va applicato qui, in
+  // memoria, sulle righe risultato del fetch live (vedi risultatiSettimanaScorsa
+  // sotto).
+  const lunediPrecedente = new Date(lunediCorrente.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const domenicaPrecedente = new Date(
+    lunediPrecedente.getTime() + 6 * 24 * 60 * 60 * 1000
+  );
+  const lunediPrecedenteIso = formattaDataIso(lunediPrecedente);
+  const domenicaPrecedenteIso = formattaDataIso(domenicaPrecedente);
+
   const [
     nomeSettore,
     conteggioBannerSponsorFisso,
@@ -112,6 +130,7 @@ export default async function HomePubblicaPage() {
     fotoPerGruppo,
     urlPaginaFacebook,
     fotoHero,
+    campionatiConLinkFipav,
   ] = await Promise.all([
     // Review fix (code review Story 18.19, Blind Hunter + Edge Case Hunter,
     // indipendentemente): rimuovendo il titolo <h1> visibile (secondo giro)
@@ -204,6 +223,33 @@ export default async function HomePubblicaPage() {
       console.error(err);
       return { esiste: false, aggiornatoIl: null };
     }),
+    // Story 18.33 (AC #1/#3/#4): scoped alla sola stagione corrente, stesso
+    // filtro/motivo di gruppiStagione sopra - un Campionato senza linkFipav
+    // (filtro "not: null" nella query, non solo un filtro successivo in
+    // memoria) non genera alcun fetch ne' alcun blocco (AC #4, mirror del
+    // pulsante di sincronizzazione manuale, Story 10.11 AC #2). "select"
+    // esplicito, stesso principio delle query sopra.
+    annoCorrente
+      ? prisma.campionato
+          .findMany({
+            where: { annoAgonisticoId: annoCorrente.id, linkFipav: { not: null } },
+            // Review fix (Blind Hunter): senza orderBy l'ordine delle card
+            // classifica/risultati dipende dall'ordine non garantito del
+            // DB - stesso ordinamento gia' usato per gruppiStagione sopra.
+            orderBy: { nome: "asc" },
+            select: {
+              id: true,
+              nome: true,
+              colore: true,
+              linkFipav: true,
+              gruppo: { select: { nome: true } },
+            },
+          })
+          .catch((err) => {
+            console.error(err);
+            return [];
+          })
+      : Promise.resolve([]),
   ]);
 
   // Story 18.13 (AC #3/#5): non puo' stare nel Promise.all sopra - dipende
@@ -217,6 +263,29 @@ export default async function HomePubblicaPage() {
     urlPaginaFacebook && consentitoSocial
       ? await leggiUltimiPostFacebook(urlPaginaFacebook)
       : [];
+
+  // Story 18.33 (Code Map): non puo' stare nel Promise.all sopra - dipende
+  // dal risultato di campionatiConLinkFipav che quello stesso Promise.all
+  // risolve, stesso principio di postFacebook sopra. Un fetch live in
+  // parallelo per Campionato (mai in sequenza: un portale lento non deve
+  // sommare la propria latenza a quella degli altri Campionati). Ogni
+  // fetch e' gia' fail-soft internamente (leggiLiveFipav non lancia mai,
+  // vedi lib/sincronizza-gare-fipav/leggi-live-fipav.ts) - il .catch(() =>
+  // null) qui e' una seconda rete di sicurezza esplicita (Code Map
+  // spec-18-33), un Campionato il cui fetch fallisce non deve mai far
+  // fallire Promise.all per gli altri.
+  const letturePerCampionato = await Promise.all(
+    campionatiConLinkFipav.map(async (campionato) => {
+      if (!campionato.linkFipav) {
+        return { campionato, lettura: null };
+      }
+      const lettura = await leggiLiveFipav(campionato.linkFipav).catch((err) => {
+        console.error(err);
+        return null;
+      });
+      return { campionato, lettura };
+    })
+  );
 
   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
 
@@ -242,6 +311,23 @@ export default async function HomePubblicaPage() {
     .filter((g) => fotoPerGruppo.has(g.id))
     .map((g) => ({ ...g, aggiornatoIl: fotoPerGruppo.get(g.id) ?? null }));
   const mostraFotoSquadra = gruppiConFoto.length > 0;
+
+  // Story 18.33 (AC #1/#2, review fix): logica di filtro/formazione
+  // estratta in lib/sincronizza-gare-fipav/vista-home-live.ts (testabile a
+  // se', a differenza del resto di questo Server Component) - un Campionato
+  // il cui fetch e' fallito (lettura === null, AC #5) o senza gare nella
+  // settimana precedente non contribuisce alcuna riga, silenziosamente.
+  const risultatiSettimanaScorsa = risultatiSettimanaScorsaDaLetture(
+    letturePerCampionato,
+    lunediPrecedenteIso,
+    domenicaPrecedenteIso
+  );
+  const mostraRisultatiSettimanaScorsa = risultatiSettimanaScorsa.length > 0;
+
+  // Story 18.33 (AC #3, review fix): stessa estrazione di cui sopra - una
+  // card per Campionato con lettura riuscita e classifica non vuota.
+  const classifichePerCampionato = classifichePerCampionatoDaLetture(letturePerCampionato);
+  const mostraClassifiche = classifichePerCampionato.length > 0;
 
   return (
     <>
@@ -309,6 +395,127 @@ export default async function HomePubblicaPage() {
             {postFacebook.length > 0 && <HeroPostFacebook post={postFacebook} />}
           </div>
         </div>
+
+        {/* Story 18.33 (AC #1/#2/#5): sezione "Risultati della settimana
+            scorsa", PRIMA di "Partite della settimana" sotto (invariata) -
+            fetch live al portale FIPAV al momento della visita (mai da
+            Partita/DB), stesso principio di omissione silenziosa di
+            mostraPartite/mostraFotoSquadra sotto: nessuna gara nella
+            settimana precedente per nessun Campionato (o nessun Campionato
+            con linkFipav) -> nessuna sezione, nessun messaggio. */}
+        {mostraRisultatiSettimanaScorsa && (
+          <section
+            className={styles.sezioneRisultati}
+            aria-labelledby="titolo-risultati-settimana"
+          >
+            <h2 id="titolo-risultati-settimana" className={styles.titoloSezione}>
+              Risultati della settimana scorsa
+            </h2>
+            {/* Card riusate INVARIATE da "Partite della settimana" sotto
+                (styles.schedaPartita/dataPartita/squadrePartita/vs/
+                gruppoPartita/testoScuro) - solo styles.risultatoGara e'
+                nuova, al posto di luogo/link-naviga (vedi Design Notes
+                home-pubblica.module.css). */}
+            <div className={styles.listaRisultati}>
+              {risultatiSettimanaScorsa.map((riga) => {
+                const colore = riga.campionatoColore;
+                const classiScheda = colore && testoScuroSuSfondo(colore)
+                  ? `${styles.schedaPartita} ${styles.testoScuro}`
+                  : styles.schedaPartita;
+                return (
+                  <div
+                    className={classiScheda}
+                    style={colore ? { backgroundColor: colore } : undefined}
+                    key={riga.chiave}
+                  >
+                    <div className={styles.dataPartita}>
+                      <span>{formattaData(riga.data)}</span>
+                      <span>{riga.ora}</span>
+                    </div>
+                    <div className={styles.squadrePartita}>
+                      {riga.squadraCasa} <span className={styles.vs}>vs</span> {riga.squadraOspite}
+                    </div>
+                    <div className={styles.risultatoGara}>
+                      {/* Review fix (Blind Hunter): senza statoDescrizione,
+                          una gara rinviata/sospesa e una il cui risultato
+                          non e' ancora stato pubblicato mostravano lo stesso
+                          identico testo generico - qui si preferisce il
+                          motivo esplicito del portale quando disponibile. */}
+                      {riga.risultato ?? riga.statoDescrizione ?? "Risultato non disponibile"}
+                    </div>
+                    <span className={styles.gruppoPartita}>{riga.campionatoNome}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Story 18.33 (AC #3/#4/#5): una sezione classifica per Campionato
+            con linkFipav, letta "all'ultima giornata" dalla stessa pagina
+            del fetch sopra - PRIMA di "Partite della settimana" sotto,
+            DOPO i risultati appena sopra (ordine dell'Intent). */}
+        {mostraClassifiche && (
+          <section className={styles.sezioneClassifiche} aria-labelledby="titolo-classifiche">
+            <h2 id="titolo-classifiche" className={styles.titoloSezione}>
+              Classifica
+            </h2>
+            <div className={styles.listaClassifiche}>
+              {classifichePerCampionato.map((classifica) => (
+                <div
+                  className={styles.schedaClassifica}
+                  style={
+                    classifica.campionatoColore
+                      ? { borderTopColor: classifica.campionatoColore }
+                      : undefined
+                  }
+                  key={classifica.campionatoId}
+                >
+                  <h3 className={styles.titoloClassifica}>
+                    {classifica.campionatoNome} — {classifica.gruppoNome}
+                  </h3>
+                  <table className={styles.tabellaClassifica}>
+                    {/* Review fix (Blind Hunter): un utente di screen reader
+                        che naviga direttamente nella tabella (senza passare
+                        dall'h3 sopra) perdeva il contesto di quale
+                        Campionato/Gruppo stesse leggendo. */}
+                    <caption className={styles.srOnly}>
+                      Classifica {classifica.campionatoNome} — {classifica.gruppoNome}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Pos.</th>
+                        <th scope="col">Squadra</th>
+                        <th scope="col">Punti</th>
+                        <th scope="col" title="Partite Giocate">
+                          PG
+                        </th>
+                        <th scope="col" title="Partite Vinte">
+                          V
+                        </th>
+                        <th scope="col" title="Partite Perse">
+                          P
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classifica.righe.map((riga, indice) => (
+                        <tr key={`${classifica.campionatoId}-${riga.posizione}-${indice}`}>
+                          <td>{riga.posizione}</td>
+                          <td>{riga.squadra}</td>
+                          <td>{riga.punti ?? "—"}</td>
+                          <td>{riga.partiteGiocate ?? "—"}</td>
+                          <td>{riga.partiteVinte ?? "—"}</td>
+                          <td>{riga.partitePerse ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Story 18.3 (AC #2): nessuna sezione se nessun Gruppo ha partite
             nella settimana corrente - stesso principio gia' applicato in

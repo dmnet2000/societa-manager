@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { analizzaHtmlGareFipav } = await import("./parser");
+const { analizzaHtmlGareFipav, analizzaHtmlClassificaFipav } = await import("./parser");
 
 // Frammenti ispirati all'HTML reale della pagina risultati del portale
 // FIPAV/Lega verificato in sessione (spec-10-11, Design Notes): tabella
@@ -216,5 +216,140 @@ describe("analizzaHtmlGareFipav", () => {
 
     expect(risultato.righe).toEqual([]);
     expect(risultato.scartate).toEqual([]);
+  });
+});
+
+// Frammenti ispirati alla seconda tabella verificata dal vivo sulla stessa
+// pagina (Design Notes spec-18-33): table.tbl.tbl-classifica, colonne
+// posizionali Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.
+function tabellaClassifica(righeHtml: string): string {
+  return `<html><body><table class="tbl tbl-classifica"><tbody>${righeHtml}</tbody></table></body></html>`;
+}
+
+const RIGA_CLASSIFICA_COMPLETA = `
+  <tr>
+    <td>1</td>
+    <td><img src="/img/logo.png" alt=""/> VOLLEY MOGLIANO</td>
+    <td>24</td>
+    <td>10</td>
+    <td>8</td>
+    <td>2</td>
+    <td>26</td>
+    <td>10</td>
+    <td>2.60</td>
+    <td>650</td>
+    <td>520</td>
+    <td>1.25</td>
+    <td>0</td>
+  </tr>
+`;
+
+const RIGA_CLASSIFICA_MINIMA = `
+  <tr>
+    <td>2</td>
+    <td>ASD ROSSA</td>
+    <td>21</td>
+  </tr>
+`;
+
+const RIGA_CLASSIFICA_CELLE_INSUFFICIENTI = `
+  <tr>
+    <td>3</td>
+  </tr>
+`;
+
+describe("analizzaHtmlClassificaFipav", () => {
+  it("parsa una riga completa con tutte le colonne (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.)", () => {
+    const righe = analizzaHtmlClassificaFipav(tabellaClassifica(RIGA_CLASSIFICA_COMPLETA));
+
+    expect(righe).toEqual([
+      {
+        posizione: "1",
+        squadra: "VOLLEY MOGLIANO",
+        punti: "24",
+        partiteGiocate: "10",
+        partiteVinte: "8",
+        partitePerse: "2",
+        setFatti: "26",
+        setSubiti: "10",
+        quozienteSet: "2.60",
+        puntiFatti: "650",
+        puntiSubiti: "520",
+        quozientePunti: "1.25",
+        penalizzazione: "0",
+      },
+    ]);
+  });
+
+  it("parsa una riga con solo Pos./Squadra/Punti, le altre colonne restano null (minimo richiesto, AC #3)", () => {
+    const righe = analizzaHtmlClassificaFipav(tabellaClassifica(RIGA_CLASSIFICA_MINIMA));
+
+    expect(righe).toEqual([
+      {
+        posizione: "2",
+        squadra: "ASD ROSSA",
+        punti: "21",
+        partiteGiocate: null,
+        partiteVinte: null,
+        partitePerse: null,
+        setFatti: null,
+        setSubiti: null,
+        quozienteSet: null,
+        puntiFatti: null,
+        puntiSubiti: null,
+        quozientePunti: null,
+        penalizzazione: null,
+      },
+    ]);
+  });
+
+  it("scarta silenziosamente (solo log) una riga con celle insufficienti, senza bloccare le altre", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const righe = analizzaHtmlClassificaFipav(
+      tabellaClassifica(RIGA_CLASSIFICA_CELLE_INSUFFICIENTI + RIGA_CLASSIFICA_COMPLETA)
+    );
+
+    expect(righe).toHaveLength(1);
+    expect(righe[0].squadra).toBe("VOLLEY MOGLIANO");
+    expect(errorSpy).toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+
+  it("lancia un errore esplicito quando la tabella tbl-classifica non e' presente", () => {
+    expect(() =>
+      analizzaHtmlClassificaFipav("<html><body><p>Pagina cambiata</p></body></html>")
+    ).toThrow(/Tabella della classifica non trovata/);
+  });
+
+  it("non lancia un errore quando la tabella esiste ma non ha righe", () => {
+    const righe = analizzaHtmlClassificaFipav(tabellaClassifica(""));
+
+    expect(righe).toEqual([]);
+  });
+
+  // Review fix (verifica dal vivo 2026-09-27, fetch reale su fipavtreuno.net):
+  // a differenza di tabellaClassifica() sopra (fixture sintetica con
+  // <tbody>), la pagina REALE del portale non avvolge le righe di
+  // table.tbl.tbl-classifica in un <tbody> - ha invece un <thead> con una
+  // riga di intestazione (celle <th>, non <td>) seguito dalle righe dati
+  // come figli diretti della tabella. Un selettore "tbody tr" (come usato
+  // inizialmente, bug corretto qui) avrebbe sempre trovato zero righe contro
+  // questa forma reale, senza mai lanciare un errore (la tabella stessa
+  // viene trovata) - la classifica sarebbe silenziosamente sempre vuota in
+  // produzione. Questo test blocca la regressione.
+  it("parsa le righe quando la tabella non ha un <tbody> e ha un <thead> con celle <th> (forma reale del portale)", () => {
+    const html = `<html><body><table class="tbl tbl-classifica">
+      <thead><tr><th>Pos.</th><th>Squadra</th><th>Punti</th></tr></thead>
+      ${RIGA_CLASSIFICA_COMPLETA}
+      ${RIGA_CLASSIFICA_MINIMA}
+    </table></body></html>`;
+
+    const righe = analizzaHtmlClassificaFipav(html);
+
+    expect(righe).toHaveLength(2);
+    expect(righe[0].squadra).toBe("VOLLEY MOGLIANO");
+    expect(righe[1].squadra).toBe("ASD ROSSA");
   });
 });
