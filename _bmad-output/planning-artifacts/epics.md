@@ -3140,6 +3140,25 @@ so that possa conoscere l'andamento reale delle squadre senza dover aspettare ch
 5. **And** se il fetch verso il portale FIPAV fallisce, va in timeout, o l'HTML non corrisponde più al formato atteso (nessuna tabella `tbl-risultati`/`tbl-classifica` trovata) per un dato Campionato, quel singolo blocco viene omesso silenziosamente (nessun errore visibile, nessuna pagina rotta) — un Campionato non deve mai bloccare gli altri né il resto della home
 6. **And** nessuna scrittura sul database in questo percorso pubblico — la sincronizzazione manuale esistente (Story 10.11, `/app/campionati`) resta invariata e indipendente, i dati mostrati qui possono differire da quelli salvati su `Partita` (fonti diverse, entrambe legittime)
 
+### Story 18.34: Sezione classifiche spostata su una pagina pubblica dedicata "Classifiche"
+
+*(Aggiunta 2026-09-28, richiesta esplicita dell'utente: "vorrei che le classifiche siano spostate su un nuovo menu 'Classifiche'". Story-only in un primo giro, poi l'utente ha chiesto esplicitamente "procedi" senza rispondere alle 5 decisioni singolarmente — chiuse qui con la scelta di default più diretta/conservativa, segnalate come tali, non come conferme puntuali dell'utente.)*
+
+As a Visitatore senza account,
+I want trovare le classifiche dei Campionati in una pagina pubblica dedicata, raggiungibile dal menu, invece che solo in fondo alla home,
+so that possa consultarle direttamente senza dover scorrere la home ogni volta, e la home stessa resti più snella.
+
+**Cosa esiste già di riusabile (verificato nel codice):** la Story 18.33 ha già costruito tutta l'infrastruttura necessaria — `lib/sincronizza-gare-fipav/vista-home-live.ts` (`classifichePerCampionatoDaLetture`), il fetch live con cache (`lib/sincronizza-gare-fipav/leggi-live-fipav.ts`), il parser (`lib/sincronizza-gare-fipav/parser.ts`, `analizzaHtmlClassificaFipav`) e la query dei Campionati con `linkFipav` (già in `app/page.tsx`) — tutti riusabili invariati da una nuova pagina, non da riscrivere. La sezione classifica vive oggi in `app/page.tsx` (JSX a partire dalla riga con `styles.sezioneClassifiche`), la sezione "Risultati della settimana scorsa" (separata, stessa story) qualche riga sopra.
+
+**Il menu pubblico è già interamente dinamico e gestibile senza codice** (Story 19.6/19.7/19.8, `VoceMenuPubblico`/`app/NavPubblica.tsx`/`/app/menu-pubblico`): un Admin o Site Manager può aggiungere/riordinare voci da un pannello di gestione, senza redeploy. Il precedente più vicino è la voce "Torneo" (migrazione `20260825010000_add_torneo_voce_menu_pubblico`): quando `/torneo` ha guadagnato una sua pagina pubblica dedicata, la story corrispondente ha aggiunto anche una migrazione che inserisce la nuova voce di menu con un ordine iniziale sensato (le voci successive spostate avanti di una posizione) — stesso schema applicabile qui per "Classifiche".
+
+**Decisioni aperte (da chiudere con l'utente prima di scrivere gli AC di sviluppo):**
+1. **"Spostate" — la sezione classifica sparisce del tutto dalla home, o resta un teaser/link verso la nuova pagina?** La richiesta usa la parola "spostate" (non "aggiunte"), che suggerisce la rimozione dalla home — da confermare esplicitamente, e se un piccolo richiamo/link resta comunque visibile in home o no.
+2. **La sezione "Risultati della settimana scorsa" (stessa story 18.33, ma logicamente distinta dalla classifica) resta in home, o si sposta anch'essa?** La richiesta dell'utente nomina solo "le classifiche" — assumibile che i risultati restino, ma da confermare, non da assumere silenziosamente.
+3. **Contenuto della nuova pagina: stessa card compatta di oggi (Pos./Squadra/Punti/PG/V/P) o l'occasione per mostrare tutte le 13 colonne già lette dal parser** (SF/SS/QS/PF/PS/QP/Penal., oggi lette ma scartate nella card home per compattezza, Story 18.33 Design Notes) — una pagina dedicata ha più spazio di una sezione di home.
+4. **URL e etichetta della nuova pagina/voce di menu** — proposta naturale `/classifiche` + etichetta "Classifiche", posizionata dopo "Calendario" (stesso principio di posizionamento tematico già usato per "Torneo") — da confermare, non imposta.
+5. **Una pagina unica con tutti i Campionati, o una pagina per Campionato/Girone selezionabile?** Oggi la home mostra una card per Campionato tutte insieme (stesso layout `sezioneClassifiche` esistente) — resta la scelta più semplice/diretta da riusare, ma con più Campionati potrebbe valere la pena un selettore, da confermare con l'utente.
+
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 
 *(Aggiunto in corso d'opera — 2026-08-14, richiesta esplicita dell'utente: nuovo Ruolo "Site Manager" dedicato alla gestione della parte di sito statico/pubblico (Epic 18) — aggiunta/modifica di sezioni e menu, aggiunta/modifica di foto, aggiunta/modifica di contenuti. Solo l'epica scritta ora su richiesta esplicita — nessuna story ancora creata, nessuna analisi di apertura completata, nessuna decisione presa oltre al requisito grezzo sotto. Elenco APERTO come Epic 9/11/17/18, non tutto risolto qui.)*
