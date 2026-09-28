@@ -1,28 +1,33 @@
 name: Sincronizzazione automatica FIPAV
 
-# Story 10.12: "battito" fisso ogni ora - la cadenza REALE della
-# sincronizzazione (quante ore devono passare prima che esegua davvero) e'
-# decisa da app/api/cron/sincronizza-fipav (ConfigurazioneApplicazione.frequenzaSincronizzazioneFipavOre,
-# editabile da un Admin su /app/impostazioni, nessun redeploy necessario per
-# cambiarla). Un cambio di cadenza non richiede mai di modificare questo file.
+# Story 10.12 (review fix, 2026-09-28): battito ogni 10 minuti (prima ogni
+# ora) - app/api/cron/sincronizza-fipav elabora UN SOLO Campionato per
+# invocazione (il meno recentemente sincronizzato in rotazione), mai tutti
+# insieme: un bug di produzione con l'elaborazione multi-Campionato per
+# chiamata (prima sequenziale, poi in parallelo) rischiava sia un timeout
+# lato workflow sia di bombardare il portale FIPAV con piu' richieste
+# ravvicinate. Con piu' Campionati, la rotazione completa richiede piu'
+# battiti (es. 5 Campionati = 50 minuti per il giro completo) - la cadenza
+# REALE di ri-sincronizzazione di un singolo Campionato resta decisa da
+# ConfigurazioneApplicazione.frequenzaSincronizzazioneFipavOre (editabile
+# da /app/impostazioni, nessun redeploy necessario per cambiarla).
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "*/10 * * * *"
   # Permette di lanciare il workflow a mano da GitHub Actions (verifica
-  # manuale, senza aspettare il prossimo battito orario).
+  # manuale, senza aspettare il prossimo battito).
   workflow_dispatch:
 
 jobs:
   sincronizza-fipav:
     runs-on: ubuntu-latest
-    # Review fix (Blind Hunter, propagato dal workflow gemello
-    # promemoria-certificati.yml): il job non tocca mai la API di GitHub
+    # Review fix (Blind Hunter): il job non tocca mai la API di GitHub
     # (solo una curl verso un servizio esterno) - GITHUB_TOKEN non serve.
     permissions: {}
     # Review fix (Blind Hunter): senza un timeout esplicito sul job, un
-    # endpoint bloccato (es. il Worker in stallo su un fetch al portale
-    # FIPAV) terrebbe il job appeso fino al limite di default di GitHub (6
-    # ore), consumando inutilmente minuti Actions.
+    # endpoint bloccato terrebbe il job appeso fino al limite di default di
+    # GitHub (6 ore), consumando inutilmente minuti Actions. Un solo
+    # Campionato per invocazione (vedi sopra) rende 5 minuti abbondanti.
     timeout-minutes: 5
     steps:
       - name: Chiama l'endpoint di sincronizzazione FIPAV

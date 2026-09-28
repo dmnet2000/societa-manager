@@ -128,7 +128,7 @@ Endpoint: `app/api/cron/promemoria-certificati` (Story 4.6), protetto da `CRON_S
 
 ## Fase 6bis — GitHub Actions schedulato per la sincronizzazione automatica FIPAV (Story 10.12) `[ ]`
 
-Endpoint: `app/api/cron/sincronizza-fipav` (Story 10.12), protetto dallo stesso `CRON_SECRET` di Fase 5/6 (riusato, non un nuovo segreto). Workflow: `.github/workflows/sincronizza-fipav.yml`, già presente nel repository — gira ogni ora come "battito" fisso; la cadenza REALE della sincronizzazione è configurabile da un Admin su `/app/impostazioni` (nessun redeploy necessario per cambiarla).
+Endpoint: `app/api/cron/sincronizza-fipav` (Story 10.12), protetto dallo stesso `CRON_SECRET` di Fase 5/6 (riusato, non un nuovo segreto). Workflow: `.github/workflows/sincronizza-fipav.yml`, già presente nel repository — gira **ogni 10 minuti** come "battito" fisso, ma **elabora un solo Campionato per invocazione** (il meno recentemente sincronizzato, in rotazione) — mai tutti insieme: un tentativo reale in produzione ha rivelato che sincronizzare più Campionati nella stessa chiamata rischiava sia un timeout lato workflow sia di bombardare il portale FIPAV con più richieste ravvicinate. Con più Campionati, la rotazione completa richiede più battiti (es. 5 Campionati ≈ 50 minuti per il giro completo). La cadenza REALE di ri-sincronizzazione di un singolo Campionato resta configurabile da un Admin su `/app/impostazioni` (nessun redeploy necessario per cambiarla).
 
 1. Nel repository GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
 2. Nome: `CRON_SECRET` — valore: lo stesso segreto già in `.env.production`/Fase 5 (Cloudflare) e in `.github/workflows/sincronizza-fipav.yml` come riferimento (`secrets.CRON_SECRET`).

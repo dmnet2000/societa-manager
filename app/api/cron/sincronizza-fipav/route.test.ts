@@ -1,21 +1,21 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-// Story 10.12: mirror diretto di
-// app/api/cron/promemoria-certificati/route.test.ts (Story 4.6) - stesso
-// scope minimo (autorizzazione + comportamento nuovo di questa storia), non
-// il dettaglio fetch/parsing/upsert (coperto da
-// lib/sincronizza-gare-fipav/sincronizza.test.ts).
+// Story 10.12 (review fix, 2026-09-28): riscritto dopo il bug di produzione
+// - il cron elabora UN SOLO Campionato per invocazione (rotazione sul meno
+// recentemente sincronizzato), non piu' tutti insieme. Mirror di
+// app/api/cron/promemoria-certificati/route.test.ts per lo scope minimo
+// (autorizzazione + comportamento di questa storia), non il dettaglio
+// fetch/parsing/upsert (coperto da lib/sincronizza-gare-fipav/sincronizza.test.ts).
 
 const findManyMock = vi.fn();
+const updateMock = vi.fn();
 const sincronizzaCampionatoFipavMock = vi.fn();
 const leggiFrequenzaMock = vi.fn();
-const leggiUltimaEsecuzioneMock = vi.fn();
-const segnaEseguitaMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    campionato: { findMany: findManyMock },
+    campionato: { findMany: findManyMock, update: updateMock },
   },
 }));
 
@@ -25,8 +25,6 @@ vi.mock("@/lib/sincronizza-gare-fipav/sincronizza", () => ({
 
 vi.mock("@/lib/configurazione-applicazione", () => ({
   leggiFrequenzaSincronizzazioneFipavOre: leggiFrequenzaMock,
-  leggiUltimaSincronizzazioneFipavAutomaticaIl: leggiUltimaEsecuzioneMock,
-  segnaSincronizzazioneFipavAutomaticaEseguita: segnaEseguitaMock,
 }));
 
 const { GET } = await import("./route");
@@ -37,31 +35,40 @@ function buildRequest(authorization?: string) {
   });
 }
 
-const CAMPIONATO = {
-  id: "campionato-1",
-  gruppoId: "gruppo-1",
-  linkFipav: "https://risultati.fipav.it/campionato/1",
+function campionato(overrides: Partial<{
+  id: string;
+  gruppoId: string;
+  linkFipav: string;
+  ultimaSincronizzazioneFipavIl: Date | null;
+}> = {}) {
+  return {
+    id: "campionato-1",
+    gruppoId: "gruppo-1",
+    linkFipav: "https://risultati.fipav.it/campionato/1",
+    ultimaSincronizzazioneFipavIl: null,
+    ...overrides,
+  };
+}
+
+const RISULTATO_RIUSCITO = {
+  success: true as const,
+  create: 1,
+  aggiornate: 2,
+  bloccate: 0,
+  scartate: [],
 };
 
 describe("GET /api/cron/sincronizza-fipav", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", "il-segreto-giusto");
     findManyMock.mockReset();
-    findManyMock.mockResolvedValue([CAMPIONATO]);
+    findManyMock.mockResolvedValue([campionato()]);
+    updateMock.mockReset();
+    updateMock.mockResolvedValue(undefined);
     sincronizzaCampionatoFipavMock.mockReset();
-    sincronizzaCampionatoFipavMock.mockResolvedValue({
-      success: true,
-      create: 1,
-      aggiornate: 2,
-      bloccate: 0,
-      scartate: [],
-    });
+    sincronizzaCampionatoFipavMock.mockResolvedValue(RISULTATO_RIUSCITO);
     leggiFrequenzaMock.mockReset();
     leggiFrequenzaMock.mockResolvedValue(null);
-    leggiUltimaEsecuzioneMock.mockReset();
-    leggiUltimaEsecuzioneMock.mockResolvedValue(null);
-    segnaEseguitaMock.mockReset();
-    segnaEseguitaMock.mockResolvedValue(undefined);
   });
 
   it("returns 401 and touches nothing without the correct CRON_SECRET", async () => {
@@ -81,11 +88,7 @@ describe("GET /api/cron/sincronizza-fipav", () => {
     expect(findManyMock).not.toHaveBeenCalled();
   });
 
-  // Review fix (Verification Gap Reviewer): i due rami LETTURA_FALLITA non
-  // erano mai esercitati, pur avendo ciascuno un try/catch dedicato nel
-  // codice - stesso gap gia' presente in promemoria-certificati/route.ts
-  // (Story 4.6), qui colmato invece di essere solo ereditato.
-  it("returns 500 LETTURA_FALLITA, no sync attempted, when reading the frequency/last-run configuration fails", async () => {
+  it("returns 500 LETTURA_FALLITA, no sync attempted, when reading the frequency configuration fails", async () => {
     leggiFrequenzaMock.mockRejectedValue(new Error("db down"));
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
@@ -93,7 +96,7 @@ describe("GET /api/cron/sincronizza-fipav", () => {
 
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: "LETTURA_FALLITA" });
-    expect(findManyMock).not.toHaveBeenCalled();
+    expect(sincronizzaCampionatoFipavMock).not.toHaveBeenCalled();
   });
 
   it("returns 500 LETTURA_FALLITA, no sync attempted, when enumerating Campionati fails", async () => {
@@ -107,42 +110,45 @@ describe("GET /api/cron/sincronizza-fipav", () => {
     expect(sincronizzaCampionatoFipavMock).not.toHaveBeenCalled();
   });
 
-  it("skips execution and makes no external request when the configured frequency has not elapsed yet", async () => {
-    leggiFrequenzaMock.mockResolvedValue(24);
-    leggiUltimaEsecuzioneMock.mockResolvedValue(new Date(Date.now() - 1 * 60 * 60 * 1000)); // 1h fa
+  it("skips execution with an explicit reason when no Campionato has a linkFipav configured", async () => {
+    findManyMock.mockResolvedValue([]);
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();
 
     expect(body.eseguito).toBe(false);
     expect(typeof body.motivo).toBe("string");
-    expect(findManyMock).not.toHaveBeenCalled();
     expect(sincronizzaCampionatoFipavMock).not.toHaveBeenCalled();
-    expect(segnaEseguitaMock).not.toHaveBeenCalled();
   });
 
-  it("executes when the configured frequency has elapsed, syncing every Campionato with linkFipav and updating the timestamp", async () => {
-    leggiFrequenzaMock.mockResolvedValue(8);
-    leggiUltimaEsecuzioneMock.mockResolvedValue(new Date(Date.now() - 9 * 60 * 60 * 1000)); // 9h fa
+  it("skips execution when every Campionato was synced within the configured frequency window", async () => {
+    leggiFrequenzaMock.mockResolvedValue(24);
+    findManyMock.mockResolvedValue([
+      campionato({ ultimaSincronizzazioneFipavIl: new Date(Date.now() - 1 * 60 * 60 * 1000) }), // 1h fa
+    ]);
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();
 
-    expect(findManyMock).toHaveBeenCalledWith({
-      where: { linkFipav: { not: null } },
-      select: { id: true, gruppoId: true, linkFipav: true },
-    });
+    expect(body.eseguito).toBe(false);
+    expect(typeof body.motivo).toBe("string");
+    expect(sincronizzaCampionatoFipavMock).not.toHaveBeenCalled();
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it("syncs a never-synced Campionato (ultimaSincronizzazioneFipavIl null) using the 24h fallback when no frequency is configured", async () => {
+    const response = await GET(buildRequest("Bearer il-segreto-giusto"));
+    const body = await response.json();
+
     expect(sincronizzaCampionatoFipavMock).toHaveBeenCalledWith({
       gruppoId: "gruppo-1",
       campionatoId: "campionato-1",
       linkFipav: "https://risultati.fipav.it/campionato/1",
     });
-    expect(segnaEseguitaMock).toHaveBeenCalledTimes(1);
     expect(body).toEqual({
       eseguito: true,
-      campionatiTotali: 1,
-      sincronizzati: 1,
-      falliti: 0,
+      campionatoId: "campionato-1",
+      esito: "riuscito",
       creati: 1,
       aggiornati: 2,
       bloccati: 0,
@@ -150,126 +156,100 @@ describe("GET /api/cron/sincronizza-fipav", () => {
     });
   });
 
-  it("executes when never run before (ultimaEsecuzione null), no fallback frequency configured (24h default)", async () => {
+  it("updates only the synced Campionato's own timestamp, never a global one", async () => {
+    await GET(buildRequest("Bearer il-segreto-giusto"));
+
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: "campionato-1" },
+      data: { ultimaSincronizzazioneFipavIl: expect.any(Date) },
+    });
+  });
+
+  // Review fix (bug di produzione): il cuore della rotazione - tra piu'
+  // Campionati "dovuti", sceglie sempre il meno recentemente sincronizzato
+  // (mai sincronizzato = per primo), mai piu' di uno per chiamata.
+  it("picks the least-recently-synced due Campionato when several are due, and syncs only that one", async () => {
+    leggiFrequenzaMock.mockResolvedValue(1); // tutti "dovuti" nel test
+    findManyMock.mockResolvedValue([
+      campionato({
+        id: "campionato-recente",
+        ultimaSincronizzazioneFipavIl: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5h fa
+      }),
+      campionato({
+        id: "campionato-mai-sincronizzato",
+        ultimaSincronizzazioneFipavIl: null,
+      }),
+      campionato({
+        id: "campionato-vecchio",
+        ultimaSincronizzazioneFipavIl: new Date(Date.now() - 10 * 60 * 60 * 1000), // 10h fa
+      }),
+    ]);
+
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();
 
+    // "mai sincronizzato" viene prima di qualunque data reale (per design,
+    // ilPiuVecchioPrimo).
+    expect(body.campionatoId).toBe("campionato-mai-sincronizzato");
     expect(sincronizzaCampionatoFipavMock).toHaveBeenCalledTimes(1);
-    expect(body.eseguito).toBe(true);
-    expect(segnaEseguitaMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns an empty-but-successful summary when no Campionato has a linkFipav configured", async () => {
-    findManyMock.mockResolvedValue([]);
-
-    const response = await GET(buildRequest("Bearer il-segreto-giusto"));
-    const body = await response.json();
-
-    expect(sincronizzaCampionatoFipavMock).not.toHaveBeenCalled();
-    expect(body).toEqual({
-      eseguito: true,
-      campionatiTotali: 0,
-      sincronizzati: 0,
-      falliti: 0,
-      creati: 0,
-      aggiornati: 0,
-      bloccati: 0,
-      scartati: 0,
-    });
-    expect(segnaEseguitaMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not let one failing Campionato block the others (fail-soft per Campionato)", async () => {
+  it("only considers Campionati whose sync window has actually elapsed when choosing who's next", async () => {
+    leggiFrequenzaMock.mockResolvedValue(24);
     findManyMock.mockResolvedValue([
-      CAMPIONATO,
-      { id: "campionato-2", gruppoId: "gruppo-2", linkFipav: "https://risultati.fipav.it/2" },
+      campionato({
+        id: "campionato-non-dovuto",
+        ultimaSincronizzazioneFipavIl: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1h fa, non dovuto
+      }),
+      campionato({
+        id: "campionato-dovuto",
+        ultimaSincronizzazioneFipavIl: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25h fa, dovuto
+      }),
     ]);
-    sincronizzaCampionatoFipavMock
-      .mockResolvedValueOnce({
-        error: { code: "INTERNAL", message: "Impossibile raggiungere il portale FIPAV." },
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        create: 0,
-        aggiornate: 1,
-        bloccate: 0,
-        scartate: [],
-      });
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();
 
-    expect(sincronizzaCampionatoFipavMock).toHaveBeenCalledTimes(2);
-    expect(body).toEqual({
-      eseguito: true,
-      campionatiTotali: 2,
-      sincronizzati: 1,
-      falliti: 1,
-      creati: 0,
-      aggiornati: 1,
-      bloccati: 0,
-      scartati: 0,
-    });
-    expect(segnaEseguitaMock).toHaveBeenCalledTimes(1);
+    expect(body.campionatoId).toBe("campionato-dovuto");
   });
 
-  it("counts an unexpected thrown error from sincronizzaCampionatoFipav as falliti too, without stopping the loop", async () => {
-    findManyMock.mockResolvedValue([
-      CAMPIONATO,
-      { id: "campionato-2", gruppoId: "gruppo-2", linkFipav: "https://risultati.fipav.it/2" },
-    ]);
-    sincronizzaCampionatoFipavMock
-      .mockRejectedValueOnce(new Error("crash inatteso"))
-      .mockResolvedValueOnce({
-        success: true,
-        create: 1,
-        aggiornate: 0,
-        bloccate: 0,
-        scartate: [],
-      });
-
-    const response = await GET(buildRequest("Bearer il-segreto-giusto"));
-    const body = await response.json();
-
-    expect(body).toEqual({
-      eseguito: true,
-      campionatiTotali: 2,
-      sincronizzati: 1,
-      falliti: 1,
-      creati: 1,
-      aggiornati: 0,
-      bloccati: 0,
-      scartati: 0,
-    });
-  });
-
-  // Review fix (Edge Case Hunter): risultato.scartate veniva calcolato ma
-  // mai sommato nel riepilogo - un'esecuzione automatica non presidiata con
-  // righe scartate lo segnalava solo nei log server, mai nella risposta.
-  it("aggregates scartate rows from every Campionato into a single scartati count", async () => {
+  // Review fix: il timestamp NON avanza su un fallimento - il Campionato
+  // resta il "piu' vecchio" e viene ritentato al battito successivo (10
+  // minuti dopo), non bloccato per l'intera finestra di frequenza.
+  it("does not advance the timestamp when the sync returns an error, so the next tick retries it", async () => {
     sincronizzaCampionatoFipavMock.mockResolvedValue({
-      success: true,
-      create: 0,
-      aggiornate: 0,
-      bloccate: 0,
-      scartate: [
-        { numeroRiga: 1, motivo: "Numero gara mancante" },
-        { numeroRiga: 3, motivo: "Data non riconosciuta" },
-      ],
+      error: { code: "INTERNAL", message: "Impossibile raggiungere il portale FIPAV." },
     });
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();
 
-    expect(body.scartati).toBe(2);
+    expect(body).toEqual({
+      eseguito: true,
+      campionatoId: "campionato-1",
+      esito: "fallito",
+      errore: "Impossibile raggiungere il portale FIPAV.",
+    });
+    expect(updateMock).not.toHaveBeenCalled();
   });
 
-  // Review fix (Edge Case Hunter): senza try/catch attorno a questa
-  // scrittura, un fallimento del DB dopo una sincronizzazione riuscita
-  // lanciava un'eccezione non gestita invece di restituire il riepilogo (o
-  // almeno un errore esplicito).
-  it("returns a 500 explicit error, not an unhandled exception, when persisting the timestamp fails", async () => {
-    segnaEseguitaMock.mockRejectedValue(new Error("db down"));
+  it("does not advance the timestamp when the sync throws unexpectedly", async () => {
+    sincronizzaCampionatoFipavMock.mockRejectedValue(new Error("crash inatteso"));
+
+    const response = await GET(buildRequest("Bearer il-segreto-giusto"));
+    const body = await response.json();
+
+    expect(body).toEqual({
+      eseguito: true,
+      campionatoId: "campionato-1",
+      esito: "fallito",
+    });
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a 500 explicit error, not an unhandled exception, when persisting the Campionato's timestamp fails", async () => {
+    updateMock.mockRejectedValue(new Error("db down"));
 
     const response = await GET(buildRequest("Bearer il-segreto-giusto"));
     const body = await response.json();

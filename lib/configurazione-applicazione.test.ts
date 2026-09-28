@@ -31,8 +31,6 @@ const {
   nomeSettoreAbbreviato,
   leggiFrequenzaSincronizzazioneFipavOre,
   salvaFrequenzaSincronizzazioneFipavOre,
-  leggiUltimaSincronizzazioneFipavAutomaticaIl,
-  segnaSincronizzazioneFipavAutomaticaEseguita,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -616,57 +614,8 @@ describe("salvaFrequenzaSincronizzazioneFipavOre", () => {
   });
 });
 
-describe("leggiUltimaSincronizzazioneFipavAutomaticaIl", () => {
-  beforeEach(() => {
-    findUniqueMock.mockReset();
-  });
-
-  it("returns the stored ultimaSincronizzazioneFipavAutomaticaIl", async () => {
-    const quando = new Date("2026-09-27T10:00:00.000Z");
-    findUniqueMock.mockResolvedValue({ ultimaSincronizzazioneFipavAutomaticaIl: quando });
-
-    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
-
-    expect(findUniqueMock).toHaveBeenCalledWith({
-      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-      select: { ultimaSincronizzazioneFipavAutomaticaIl: true },
-    });
-    expect(result).toBe(quando);
-  });
-
-  it("returns null when no row exists yet (mai salvato/mai eseguito)", async () => {
-    findUniqueMock.mockResolvedValue(null);
-
-    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
-
-    expect(result).toBeNull();
-  });
-
-  it("returns null when the stored value is null", async () => {
-    findUniqueMock.mockResolvedValue({ ultimaSincronizzazioneFipavAutomaticaIl: null });
-
-    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
-
-    expect(result).toBeNull();
-  });
-});
-
-// A differenza delle coppie leggiX/salvaX sopra, questa scrittura non
-// accetta null - solo la data dell'esecuzione appena avvenuta.
-describe("segnaSincronizzazioneFipavAutomaticaEseguita", () => {
-  beforeEach(() => {
-    upsertMock.mockReset();
-  });
-
-  it("upserts only ultimaSincronizzazioneFipavAutomaticaIl on the fixed id, atomic", async () => {
-    const quando = new Date("2026-09-27T10:00:00.000Z");
-
-    await segnaSincronizzazioneFipavAutomaticaEseguita(quando);
-
-    expect(upsertMock).toHaveBeenCalledWith({
-      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ultimaSincronizzazioneFipavAutomaticaIl: quando },
-      update: { ultimaSincronizzazioneFipavAutomaticaIl: quando },
-    });
-  });
-});
+// Story 10.12 (review fix, 2026-09-28): leggiUltimaSincronizzazioneFipavAutomaticaIl/
+// segnaSincronizzazioneFipavAutomaticaEseguita rimosse insieme ai loro test
+// - il tracciamento e' ora per-Campionato (Campionato.ultimaSincronizzazioneFipavIl),
+// letto/scritto direttamente in app/api/cron/sincronizza-fipav/route.ts
+// (vedi route.test.ts), non piu' un wrapper qui.

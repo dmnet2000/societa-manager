@@ -7,7 +7,6 @@ import {
   leggiUrlSitoPolisportiva,
   leggiUrlPaginaInstagram,
   leggiFrequenzaSincronizzazioneFipavOre,
-  leggiUltimaSincronizzazioneFipavAutomaticaIl,
 } from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -78,7 +77,6 @@ export default async function ImpostazioniPage() {
     urlSitoPolisportiva,
     urlPaginaInstagram,
     frequenzaSincronizzazioneFipavOre,
-    ultimaSincronizzazioneFipavAutomaticaIl,
   ] = await Promise.all([
     leggiEmailSegreteria().catch((err) => {
       console.error(err);
@@ -122,10 +120,6 @@ export default async function ImpostazioniPage() {
     }),
     // Story 10.12: stesso pattern fail-soft delle altre letture sopra.
     leggiFrequenzaSincronizzazioneFipavOre().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-    leggiUltimaSincronizzazioneFipavAutomaticaIl().catch((err) => {
       console.error(err);
       return null;
     }),
@@ -261,16 +255,17 @@ export default async function ImpostazioniPage() {
             mancante (a differenza di Email Segreteria/Pagina Facebook sopra)
             - un valore non impostato qui non blocca nulla, l'endpoint cron
             (app/api/cron/sincronizza-fipav) usa semplicemente il fallback di
-            24 ore, comunicato direttamente nel placeholder del campo sotto. */}
+            24 ore, comunicato direttamente nel placeholder del campo sotto.
+            Review fix (2026-09-28, bug di produzione): non c'e' piu' un
+            singolo timestamp globale "ultima esecuzione" da mostrare qui -
+            il cron elabora un Campionato alla volta in rotazione (per non
+            bombardare il portale FIPAV con piu' richieste ravvicinate), lo
+            stato di ciascuno vive su Campionato.ultimaSincronizzazioneFipavIl,
+            non esposto in questa pagina riassuntiva. */}
         <p className={styles.messaggioVuoto}>
-          {ultimaSincronizzazioneFipavAutomaticaIl
-            ? // Review fix (Blind Hunter): timeZone esplicito - questa pagina
-              // e' renderizzata server-side su Cloudflare Workers (UTC), un
-              // toLocaleString("it-IT") senza fuso mostrerebbe l'orario UTC
-              // (sfalsato di 1-2h) etichettato come se fosse gia' quello
-              // italiano.
-              `Ultima sincronizzazione automatica eseguita il ${new Date(ultimaSincronizzazioneFipavAutomaticaIl).toLocaleString("it-IT", { timeZone: "Europe/Rome" })}.`
-            : "Nessuna sincronizzazione automatica eseguita finora."}
+          La sincronizzazione automatica elabora un Campionato alla volta (in
+          rotazione, dal meno recente), non tutti insieme, per non
+          sovraccaricare il portale FIPAV.
         </p>
         <FrequenzaSincronizzazioneFipavForm
           frequenzaAttualeOre={frequenzaSincronizzazioneFipavOre}

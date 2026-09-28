@@ -209,27 +209,14 @@ export async function salvaFrequenzaSincronizzazioneFipavOre(ore: number | null)
   });
 }
 
-// Story 10.12: timestamp dell'ultima esecuzione REALE (non skip) della
-// sincronizzazione automatica - a differenza delle coppie leggiX/salvaX
-// sopra, la scrittura non e' un salvaX generico esposto a un form (nessun
-// Admin la imposta a mano): segnaSincronizzazioneFipavAutomaticaEseguita
-// aggiorna solo questo campo, chiamata esclusivamente dall'endpoint cron
-// dopo un'esecuzione davvero avvenuta (mai dal bottone manuale, Story
-// 10.11 - le due tracce restano separate per design).
-export async function leggiUltimaSincronizzazioneFipavAutomaticaIl(): Promise<Date | null> {
-  const configurazione = await prisma.configurazioneApplicazione.findUnique({
-    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-    select: { ultimaSincronizzazioneFipavAutomaticaIl: true },
-  });
-  return configurazione?.ultimaSincronizzazioneFipavAutomaticaIl ?? null;
-}
-
-export async function segnaSincronizzazioneFipavAutomaticaEseguita(
-  quando: Date
-): Promise<void> {
-  await prisma.configurazioneApplicazione.upsert({
-    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ultimaSincronizzazioneFipavAutomaticaIl: quando },
-    update: { ultimaSincronizzazioneFipavAutomaticaIl: quando },
-  });
-}
+// Story 10.12 (review fix, 2026-09-28): leggiUltimaSincronizzazioneFipavAutomaticaIl/
+// segnaSincronizzazioneFipavAutomaticaEseguita rimosse - il tracciamento
+// dell'ultima esecuzione riuscita non e' piu' un unico timestamp globale
+// qui, ma un campo per-Campionato (Campionato.ultimaSincronizzazioneFipavIl,
+// prisma/schema.prisma) - il cron ora elabora un Campionato alla volta in
+// rotazione, non tutti insieme, per non sovraccaricare il portale FIPAV
+// con piu' richieste ravvicinate (bug di produzione osservato dopo il
+// primo tentativo reale). Lettura/scrittura di quel campo vivono
+// direttamente in app/api/cron/sincronizza-fipav/route.ts (stesso
+// principio gia' in uso li' per prisma.campionato.findMany - Campionato e'
+// una tabella strutturale, no-RLS, AD-9 - nessun bisogno di un wrapper qui).
