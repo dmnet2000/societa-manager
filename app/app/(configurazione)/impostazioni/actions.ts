@@ -9,6 +9,7 @@ import {
   salvaContattiPubblici,
   salvaUrlSitoPolisportiva,
   salvaUrlPaginaInstagram,
+  salvaFrequenzaSincronizzazioneFipavOre,
 } from "@/lib/configurazione-applicazione";
 import {
   leggiConfigurazioneSocialFacebook,
@@ -73,6 +74,67 @@ export async function salvaEmailSegreteriaAction(
       error: {
         code: "INTERNAL",
         message: "Impossibile salvare l'Email Segreteria. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/app/impostazioni");
+  return { success: true };
+}
+
+export type FrequenzaSincronizzazioneFipavActionState =
+  | { error: { code: string; message: string } }
+  | { success: true }
+  | undefined;
+
+const FREQUENZA_SINCRONIZZAZIONE_FIPAV_MINIMA_ORE = 1;
+// 30 giorni - limite plausibile, evita un valore assurdo digitato per
+// errore; nessun AC richiede un tetto specifico, questo e' solo un
+// guardrail (mirror del principio "scarta solo valori chiaramente non
+// plausibili" gia' usato da FORMATO_TELEFONO sotto).
+const FREQUENZA_SINCRONIZZAZIONE_FIPAV_MASSIMA_ORE = 720;
+
+// Story 10.12 (AC #1/#2): mirror esatto di salvaEmailSegreteriaAction sopra
+// - ADMIN-only (decisione 2, spec-10-12), stesso perimetro (ConfigurazioneApplicazione,
+// no-RLS, requireRuolo come unico cancello). Valore vuoto = torna al
+// fallback di 24 ore usato dall'endpoint cron (app/api/cron/sincronizza-fipav),
+// stesso principio "vuoto rimuove la configurazione" delle altre action di
+// questo file.
+export async function salvaFrequenzaSincronizzazioneFipavOreAction(
+  _prevState: FrequenzaSincronizzazioneFipavActionState,
+  formData: FormData
+): Promise<FrequenzaSincronizzazioneFipavActionState> {
+  const forbidden = await requireRuolo("ADMIN");
+  if (forbidden) return forbidden;
+
+  const valoreGrezzo = String(formData.get("frequenzaSincronizzazioneFipavOre") ?? "").trim();
+
+  let ore: number | null = null;
+  if (valoreGrezzo) {
+    const numero = Number(valoreGrezzo);
+    if (
+      !Number.isInteger(numero) ||
+      numero < FREQUENZA_SINCRONIZZAZIONE_FIPAV_MINIMA_ORE ||
+      numero > FREQUENZA_SINCRONIZZAZIONE_FIPAV_MASSIMA_ORE
+    ) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: `La cadenza deve essere un numero intero di ore tra ${FREQUENZA_SINCRONIZZAZIONE_FIPAV_MINIMA_ORE} e ${FREQUENZA_SINCRONIZZAZIONE_FIPAV_MASSIMA_ORE}.`,
+        },
+      };
+    }
+    ore = numero;
+  }
+
+  try {
+    await salvaFrequenzaSincronizzazioneFipavOre(ore);
+  } catch (err) {
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare la cadenza di sincronizzazione FIPAV. Riprova.",
       },
     };
   }

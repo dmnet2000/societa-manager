@@ -429,25 +429,25 @@ model ConfigurazioneSocialFacebook {
 // sessione. Sempre via Prisma diretto (lib/configurazione-applicazione.ts),
 // stesso trattamento di Palestra/Gruppo/AnnoAgonistico.
 model ConfigurazioneApplicazione {
-  id                  String   @id @default(uuid())
-  nomeSettore         String?
+  id                                      String    @id @default(uuid())
+  nomeSettore                             String?
   // Story 9.31: destinatario unico dell'email di notifica upload Certificato
   // Medico (Story 4.3) - sostituisce la derivazione precedente da ogni
   // Utente con Ruolo Segreteria (lib/utenti/email-per-ruolo.ts, ancora
   // usata dal promemoria scadenza verso Dirigente, Story 4.6, invariato).
-  emailSegreteria     String?
+  emailSegreteria                         String?
   // Story 18.5: URL della Pagina Facebook pubblica, usato per il Page
   // Plugin ufficiale (embed "ultimi post" in home pubblica). Solo Facebook
   // in questa storia - Instagram non ha un equivalente ufficiale gratuito
   // per un feed multi-post senza token API (decisione presa con l'utente).
-  urlPaginaFacebook   String?
+  urlPaginaFacebook                       String?
   // Story 18.11: contatti pubblici per la pagina "/contatti" - ciascuno
   // indipendentemente opzionale, editabili da Admin/Dirigente su
   // /app/impostazioni. Distinti da emailSegreteria (dato interno, mai
   // esposto pubblicamente) - questo campo esiste apposta per esserlo.
-  indirizzoSede       String?
-  telefonoPubblico    String?
-  emailPubblica       String?
+  indirizzoSede                           String?
+  telefonoPubblico                        String?
+  emailPubblica                           String?
   // Story 18.20: URL del sito della Polisportiva (l'associazione madre
   // multi-settore) - link esterno mostrato sotto al suo logo (bucket
   // Storage "logo-polisportiva") sia nell'header sia nel footer pubblici.
@@ -456,15 +456,27 @@ model ConfigurazioneApplicazione {
   // niente icone multi-piattaforma per QUESTA entità) - non correlato ai
   // social del Settore sotto (urlPaginaFacebook/urlPaginaInstagram), entità
   // distinta.
-  urlSitoPolisportiva String?
+  urlSitoPolisportiva                     String?
   // Story 18.29: URL della Pagina Instagram pubblica - mirror esatto di
   // urlPaginaFacebook, ma solo un link semplice (icona cliccabile), MAI un
   // feed embed: Instagram non ha un equivalente ufficiale gratuito del
   // Facebook Page Plugin senza Token API (decisione gia' presa con l'utente
   // in Story 18.5, non riaperta qui).
-  urlPaginaInstagram  String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  urlPaginaInstagram                      String?
+  // Story 10.12: cadenza reale (in ore) della sincronizzazione automatica
+  // FIPAV, editabile da Admin su /app/impostazioni senza redeploy - il
+  // workflow GitHub Actions gira ogni ora come "battito" fisso, ma
+  // l'endpoint app/api/cron/sincronizza-fipav esegue davvero solo se sono
+  // passate almeno queste ore dall'ultima esecuzione riuscita. Fallback 24
+  // ore quando null (mai impostato).
+  frequenzaSincronizzazioneFipavOre       Int?
+  // Story 10.12: timestamp dell'ultima esecuzione REALE (non skip) della
+  // sincronizzazione automatica - aggiornato solo da quell'endpoint, mai dal
+  // bottone manuale "Sincronizza da FIPAV" (Story 10.11, traccia separata
+  // per design).
+  ultimaSincronizzazioneFipavAutomaticaIl DateTime?
+  createdAt                               DateTime  @default(now())
+  updatedAt                               DateTime  @updatedAt
 
   @@map("configurazione_applicazione")
 }

@@ -296,6 +296,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui imposti anche il Token Facebook: serve al carosello \"Ultimi post\" della home pubblica per leggere i post reali della Pagina. Lascialo vuoto per non modificare il token già salvato. Un avviso ti segnala se manca o se l'ultima lettura dei post è fallita (es. token scaduto, da rigenerare periodicamente). A differenza dell'URL della Pagina sopra, il Token resta riservato ad Admin e Dirigente - se sei Site Manager e l'avviso ti segnala un possibile disallineamento, contatta uno di loro.",
       "Qui carichi anche la foto di sfondo dell'hero della home pubblica (PNG o JPG, max 2MB, editabile anche da Site Manager): viene mostrata solo quando non ci sono post Facebook da mostrare - se sono presenti, il carosello dei post ha sempre la priorità. Senza nessuna delle due, resta visibile il placeholder grafico.",
       "Qui carichi anche il logo della Polisportiva (PNG o JPG, max 2MB) e l'URL del suo sito: il logo compare sia nell'header sia nel footer di ogni pagina pubblica. Se anche l'URL è impostato, il logo è cliccabile e apre il sito in una nuova scheda; senza URL il logo compare comunque, ma non è cliccabile.",
+      "Qui imposti anche la cadenza (in ore) della sincronizzazione automatica FIPAV, riservata all'Admin: un workflow schedulato prova ogni ora, ma esegue davvero solo dopo che sono passate almeno queste ore dall'ultima esecuzione riuscita. Lascia il campo vuoto per usare il fallback di 24 ore. Questa cadenza è indipendente dal bottone \"Sincronizza da FIPAV\" della pagina Campionati, che resta sempre disponibile e immediato.",
     ],
   },
   {
@@ -379,6 +380,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Se il Campionato ha un link al portale FIPAV, il bottone \"Sincronizza da FIPAV\" scarica calendario e risultati direttamente da lì: crea le partite nuove e aggiorna quelle esistenti. Se una partita è stata corretta a mano nella pagina Partite (data/ora/impianto), la sincronizzazione non sovrascrive più quei campi per quella partita, ma aggiorna comunque risultato e parziali.",
       "Da \"Modifica\" puoi anche assegnare un colore personalizzato al Campionato: serve solo a distinguerlo visivamente sul sito pubblico (calendario e partite della settimana in home), è del tutto facoltativo.",
       "Se il Campionato ha un link al portale FIPAV, la home pubblica del sito mostra anche i risultati della settimana scorsa e la classifica aggiornata di quel Campionato, letti in tempo reale dal portale a ogni visita: nessuna azione da fare qui, è automatico e indipendente dal bottone \"Sincronizza da FIPAV\" sopra (quello aggiorna solo i dati interni della pagina Partite).",
+      "Oltre al bottone manuale, ogni Campionato con un link al portale FIPAV viene sincronizzato anche automaticamente in background, con la stessa logica (crea le partite nuove, aggiorna quelle esistenti, non sovrascrive una partita corretta a mano). La cadenza è configurabile da un Admin su Impostazioni; il bottone \"Sincronizza da FIPAV\" resta comunque sempre disponibile per un aggiornamento immediato, indipendente da quella cadenza.",
     ],
   },
   {

@@ -15,6 +15,7 @@ const caricaFotoHeroMock = vi.fn();
 const caricaLogoPolisportivaMock = vi.fn();
 const salvaUrlSitoPolisportivaMock = vi.fn();
 const salvaUrlPaginaInstagramMock = vi.fn();
+const salvaFrequenzaSincronizzazioneFipavOreMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -27,6 +28,7 @@ vi.mock("@/lib/configurazione-applicazione", () => ({
   salvaContattiPubblici: salvaContattiPubbliciMock,
   salvaUrlSitoPolisportiva: salvaUrlSitoPolisportivaMock,
   salvaUrlPaginaInstagram: salvaUrlPaginaInstagramMock,
+  salvaFrequenzaSincronizzazioneFipavOre: salvaFrequenzaSincronizzazioneFipavOreMock,
 }));
 
 const supabaseClientFinto = { client: "finto" };
@@ -60,6 +62,7 @@ const {
   caricaLogoPolisportivaAction,
   salvaUrlSitoPolisportivaAction,
   salvaUrlPaginaInstagramAction,
+  salvaFrequenzaSincronizzazioneFipavOreAction,
 } = await import("./actions");
 
 const MAGIC_BYTES: Record<string, number[]> = {
@@ -138,8 +141,16 @@ beforeEach(() => {
   salvaUrlSitoPolisportivaMock.mockResolvedValue(undefined);
   salvaUrlPaginaInstagramMock.mockReset();
   salvaUrlPaginaInstagramMock.mockResolvedValue(undefined);
+  salvaFrequenzaSincronizzazioneFipavOreMock.mockReset();
+  salvaFrequenzaSincronizzazioneFipavOreMock.mockResolvedValue(undefined);
   revalidatePathMock.mockReset();
 });
+
+function buildFormDataFrequenzaSincronizzazioneFipav(valore: string) {
+  const formData = new FormData();
+  formData.append("frequenzaSincronizzazioneFipavOre", valore);
+  return formData;
+}
 
 function buildFormDataSitoPolisportiva(valore: string) {
   const formData = new FormData();
@@ -1143,6 +1154,137 @@ describe("salvaUrlPaginaInstagramAction (Server Action)", () => {
 
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile salvare la Pagina Instagram. Riprova." },
+    });
+  });
+});
+
+// Story 10.12 (AC #1/#2): mirror esatto di salvaEmailSegreteriaAction (ADMIN-only).
+describe("salvaFrequenzaSincronizzazioneFipavOreAction (Server Action)", () => {
+  it("returns FORBIDDEN se il chiamante non e' Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("8")
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).not.toHaveBeenCalled();
+  });
+
+  it("salva il valore fornito (numero intero) e revalida /impostazioni (AC #1)", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("8")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).toHaveBeenCalledWith(8);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/impostazioni");
+  });
+
+  it("salva null quando il campo e' lasciato vuoto (torna al fallback di 24 ore, AC #2)", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("   ")
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).toHaveBeenCalledWith(null);
+  });
+
+  it("returns VALIDATION per un valore non intero", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("8.5")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La cadenza deve essere un numero intero di ore tra 1 e 720.",
+      },
+    });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un valore non numerico", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("abc")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La cadenza deve essere un numero intero di ore tra 1 e 720.",
+      },
+    });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un valore minore di 1", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("0")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La cadenza deve essere un numero intero di ore tra 1 e 720.",
+      },
+    });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION per un valore superiore a 720", async () => {
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("721")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La cadenza deve essere un numero intero di ore tra 1 e 720.",
+      },
+    });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts i confini esatti 1 e 720", async () => {
+    const risultatoMinimo = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("1")
+    );
+    expect(risultatoMinimo).toEqual({ success: true });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).toHaveBeenCalledWith(1);
+
+    const risultatoMassimo = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("720")
+    );
+    expect(risultatoMassimo).toEqual({ success: true });
+    expect(salvaFrequenzaSincronizzazioneFipavOreMock).toHaveBeenCalledWith(720);
+  });
+
+  it("returns INTERNAL fail-closed quando salvaFrequenzaSincronizzazioneFipavOre lancia", async () => {
+    salvaFrequenzaSincronizzazioneFipavOreMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaFrequenzaSincronizzazioneFipavOreAction(
+      undefined,
+      buildFormDataFrequenzaSincronizzazioneFipav("8")
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile salvare la cadenza di sincronizzazione FIPAV. Riprova.",
+      },
     });
   });
 });

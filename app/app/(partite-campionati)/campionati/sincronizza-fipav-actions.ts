@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { prisma } from "@/lib/prisma";
 import { risolviAutorizzazioneGruppo } from "@/app/app/(partite-campionati)/autorizzazione";
-import { analizzaHtmlGareFipav } from "@/lib/sincronizza-gare-fipav/parser";
-import type { RigaGaraImportata, RigaScartata } from "@/lib/importa-gare/parser";
+import { sincronizzaCampionatoFipav } from "@/lib/sincronizza-gare-fipav/sincronizza";
+import type { RigaScartata } from "@/lib/importa-gare/parser";
 
 export type SincronizzaFipavState =
   | { error: { code: string; message: string } }
@@ -23,6 +23,13 @@ export type SincronizzaFipavState =
 // update/create, stesso trattamento P2002 concorrente) - solo la sorgente
 // (fetch HTML del portale FIPAV invece di un file Excel caricato) e la
 // scrittura selettiva legata a modificataManualmente cambiano.
+// Story 10.12: chiamante sottile di sincronizzaCampionatoFipav
+// (lib/sincronizza-gare-fipav/sincronizza.ts) - questa Server Action resta
+// responsabile solo di autorizzazione (requireRuolo/risolviAutorizzazioneGruppo,
+// basati sulla sessione utente) + lookup Campionato + revalidatePath; il
+// fetch/parsing/upsert vero e proprio vive nella funzione condivisa, riusata
+// anche dal nuovo endpoint cron (app/api/cron/sincronizza-fipav), che non ha
+// alcuna sessione utente da autorizzare in questo modo.
 export async function sincronizzaGareFipav(
   _prevState: SincronizzaFipavState,
   formData: FormData
@@ -67,148 +74,17 @@ export async function sincronizzaGareFipav(
     };
   }
 
-  let html: string;
-  try {
-    // Mirror di risolviLinkMaps (app/(orari-palestre)/palestre/actions.ts) -
-    // timeout piu' alto (10s, non 5s) perche' qui la risposta e' una pagina
-    // HTML intera, non un semplice redirect-check.
-    // Review fix (Blind Hunter + Edge Case Hunter): senza uno User-Agent
-    // plausibile alcuni portali di federazioni filtrano la richiesta - non
-    // riproducibile nei test (fetch mockato), ma un rischio concreto contro
-    // il sito reale.
-    const risposta = await fetch(campionato.linkFipav, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SocietaManagerBot/1.0)" },
-    });
-    if (!risposta.ok) {
-      return {
-        error: {
-          code: "INTERNAL",
-          message: `Il portale FIPAV ha risposto con un errore (${risposta.status}). Riprova più tardi.`,
-        },
-      };
-    }
-    html = await risposta.text();
-  } catch (err) {
-    console.error(err);
-    return {
-      error: {
-        code: "INTERNAL",
-        message: "Impossibile raggiungere il portale FIPAV. Riprova più tardi.",
-      },
-    };
-  }
-
-  let risultato;
-  try {
-    risultato = analizzaHtmlGareFipav(html);
-  } catch (err) {
-    console.error(err);
-    return {
-      error: {
-        code: "INTERNAL",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Impossibile interpretare la pagina del portale FIPAV.",
-      },
-    };
-  }
-
-  // Campi sempre scritti dall'upsert, indipendentemente da
-  // modificataManualmente - nessun form li rende modificabili altrove
-  // (Boundaries spec-10-11).
-  function campiSempreScritti(riga: RigaGaraImportata) {
-    return {
-      campionatoId,
-      giornata: riga.giornata,
-      squadraCasa: riga.squadraCasa,
-      squadraOspite: riga.squadraOspite,
-      risultato: riga.risultato,
-      parziali: riga.parziali,
-      statoDescrizione: riga.statoDescrizione,
-    };
-  }
-
-  // data/ora/impianto/indirizzoImpianto: scritti solo se la Partita
-  // esistente non e' stata corretta a mano (Story 10.4).
-  function campiBloccabili(riga: RigaGaraImportata) {
-    return {
-      data: riga.data,
-      ora: riga.ora,
-      impianto: riga.impianto,
-      indirizzoImpianto: riga.indirizzoImpianto,
-    };
-  }
-
-  let create = 0;
-  let aggiornate = 0;
-  let bloccate = 0;
-
-  try {
-    for (const riga of risultato.righe) {
-      const chiave = {
-        gruppoId_campionatoId_garaNumero: {
-          gruppoId,
-          campionatoId,
-          garaNumero: riga.garaNumero,
-        },
-      };
-      const esistente = await prisma.partita.findUnique({ where: chiave });
-      if (esistente) {
-        if (esistente.modificataManualmente) {
-          bloccate++;
-        }
-        await prisma.partita.update({
-          where: { id: esistente.id },
-          data: {
-            ...campiSempreScritti(riga),
-            ...(esistente.modificataManualmente ? {} : campiBloccabili(riga)),
-          },
-        });
-        aggiornate++;
-      } else {
-        try {
-          await prisma.partita.create({
-            data: { ...riga, gruppoId, campionatoId },
-          });
-          create++;
-        } catch (creaErr) {
-          // Review fix di importaGare, riusato identico: race TOCTOU tra il
-          // findUnique sopra e questo create - P2002 trattato come un
-          // aggiornamento idempotente invece di abortire l'intera sync.
-          if ((creaErr as { code?: string }).code !== "P2002") {
-            throw creaErr;
-          }
-          const concorrente = await prisma.partita.findUniqueOrThrow({ where: chiave });
-          if (concorrente.modificataManualmente) {
-            bloccate++;
-          }
-          await prisma.partita.update({
-            where: { id: concorrente.id },
-            data: {
-              ...campiSempreScritti(riga),
-              ...(concorrente.modificataManualmente ? {} : campiBloccabili(riga)),
-            },
-          });
-          aggiornate++;
-        }
-      }
-    }
-  } catch (err) {
-    console.error(err);
-    return {
-      error: {
-        code: "INTERNAL",
-        message:
-          "Sincronizzazione interrotta: alcune Partite potrebbero non essere state salvate. Riprova.",
-      },
-    };
+  const risultato = await sincronizzaCampionatoFipav({
+    gruppoId,
+    campionatoId,
+    linkFipav: campionato.linkFipav,
+  });
+  if ("error" in risultato) {
+    return risultato;
   }
 
   revalidatePath("/app/campionati");
   // In piu' rispetto a importaGare: /app/partite mostra gli stessi dati.
   revalidatePath("/app/partite");
-  return { success: true, create, aggiornate, bloccate, scartate: risultato.scartate };
+  return risultato;
 }

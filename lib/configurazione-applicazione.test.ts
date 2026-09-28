@@ -29,6 +29,10 @@ const {
   leggiUrlPaginaInstagram,
   salvaUrlPaginaInstagram,
   nomeSettoreAbbreviato,
+  leggiFrequenzaSincronizzazioneFipavOre,
+  salvaFrequenzaSincronizzazioneFipavOre,
+  leggiUltimaSincronizzazioneFipavAutomaticaIl,
+  segnaSincronizzazioneFipavAutomaticaEseguita,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -547,6 +551,122 @@ describe("salvaUrlPaginaInstagram", () => {
       where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaInstagram: null },
       update: { urlPaginaInstagram: null },
+    });
+  });
+});
+
+// Story 10.12: mirror esatto dei describe sopra per leggiEmailSegreteria/salvaEmailSegreteria.
+describe("leggiFrequenzaSincronizzazioneFipavOre", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored frequenzaSincronizzazioneFipavOre", async () => {
+    findUniqueMock.mockResolvedValue({ frequenzaSincronizzazioneFipavOre: 8 });
+
+    const result = await leggiFrequenzaSincronizzazioneFipavOre();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { frequenzaSincronizzazioneFipavOre: true },
+    });
+    expect(result).toBe(8);
+  });
+
+  it("returns null when no row exists yet (mai salvato)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiFrequenzaSincronizzazioneFipavOre();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ frequenzaSincronizzazioneFipavOre: null });
+
+    const result = await leggiFrequenzaSincronizzazioneFipavOre();
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("salvaFrequenzaSincronizzazioneFipavOre", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
+    await salvaFrequenzaSincronizzazioneFipavOre(8);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: 8 },
+      update: { frequenzaSincronizzazioneFipavOre: 8 },
+    });
+  });
+
+  it("allows clearing the value back to null", async () => {
+    await salvaFrequenzaSincronizzazioneFipavOre(null);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: null },
+      update: { frequenzaSincronizzazioneFipavOre: null },
+    });
+  });
+});
+
+describe("leggiUltimaSincronizzazioneFipavAutomaticaIl", () => {
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+  });
+
+  it("returns the stored ultimaSincronizzazioneFipavAutomaticaIl", async () => {
+    const quando = new Date("2026-09-27T10:00:00.000Z");
+    findUniqueMock.mockResolvedValue({ ultimaSincronizzazioneFipavAutomaticaIl: quando });
+
+    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
+
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      select: { ultimaSincronizzazioneFipavAutomaticaIl: true },
+    });
+    expect(result).toBe(quando);
+  });
+
+  it("returns null when no row exists yet (mai salvato/mai eseguito)", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the stored value is null", async () => {
+    findUniqueMock.mockResolvedValue({ ultimaSincronizzazioneFipavAutomaticaIl: null });
+
+    const result = await leggiUltimaSincronizzazioneFipavAutomaticaIl();
+
+    expect(result).toBeNull();
+  });
+});
+
+// A differenza delle coppie leggiX/salvaX sopra, questa scrittura non
+// accetta null - solo la data dell'esecuzione appena avvenuta.
+describe("segnaSincronizzazioneFipavAutomaticaEseguita", () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+  });
+
+  it("upserts only ultimaSincronizzazioneFipavAutomaticaIl on the fixed id, atomic", async () => {
+    const quando = new Date("2026-09-27T10:00:00.000Z");
+
+    await segnaSincronizzazioneFipavAutomaticaEseguita(quando);
+
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ultimaSincronizzazioneFipavAutomaticaIl: quando },
+      update: { ultimaSincronizzazioneFipavAutomaticaIl: quando },
     });
   });
 });

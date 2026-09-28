@@ -19,6 +19,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 ## Boundaries & Constraints
 
 **Always:**
+
 - Nessun nuovo campo su `Campionato` — riuso di `linkFipav` esistente per entrambe le tabelle.
 - Percorso interamente read-only: MAI una scrittura su `Partita`/DB da qui — resta indipendente dalla sincronizzazione manuale esistente (`sincronizzaGareFipav`, Story 10.11), che non viene toccata.
 - Fail-soft per singolo Campionato: un fetch fallito, in timeout, con risposta non-ok, o con HTML privo di `table.tbl.tbl-risultati`/`table.tbl.tbl-classifica` (formato portale cambiato) fa omettere silenziosamente quel blocco — mai un errore visibile, mai un Campionato che blocca gli altri o il resto della home.
@@ -35,7 +36,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Campionato con `linkFipav`, pagina raggiungibile, gare disputate la settimana scorsa | Fetch riuscito | Sezione "Risultati della settimana scorsa" mostra quelle gare (squadre, risultato) per quel Campionato | N/A |
 | Campionato con `linkFipav`, nessuna gara nella settimana precedente | Fetch riuscito, righe fuori range data | Nessun blocco risultati per quel Campionato (silenzioso) | N/A |
 | Campionato con `linkFipav`, pagina raggiungibile | Fetch riuscito | Sezione classifica per quel Campionato con la tabella "all'ultima giornata" (almeno Pos./Squadra/Punti) | N/A |
@@ -59,6 +60,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 ## Tasks & Acceptance
 
 **Execution:**
+
 - [x] `lib/sincronizza-gare-fipav/parser.ts` -- `analizzaHtmlClassificaFipav` + tipo `RigaClassificaFipav` + test unitari (HTML reale/parziale/tabella mancante)
 - [x] Nuovo file lettura live FIPAV (read-only, fail-soft, cache breve) -- `lib/sincronizza-gare-fipav/leggi-live-fipav.ts` + test (fetch mockato: successo, timeout, risposta non-ok, HTML senza le tabelle attese)
 - [x] `app/page.tsx` -- query Campionati con `linkFipav` della stagione corrente + fetch live in parallelo per Campionato + nuove sezioni JSX prima di "Partite della settimana"
@@ -67,6 +69,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 - [x] Review fix: `analizzaHtmlClassificaFipav` usava `tabella.querySelectorAll("tbody tr")` (mirror di `analizzaHtmlGareFipav`) -- verificato con un fetch live reale contro il portale che `table.tbl.tbl-classifica` NON ha un `<tbody>` (a differenza di `table.tbl.tbl-risultati`, che ce l'ha): il selettore trovava sempre zero righe, silenziosamente, in produzione. Corretto in `tabella.querySelectorAll("tr")` (le righe di intestazione in `<thead>`, con celle `<th>`, vengono scartate naturalmente dal controllo esistente `celle.length < 3`). Nuovo test di regressione con la forma reale (nessun `<tbody>`, `<thead>` con `<th>`).
 
 **Acceptance Criteria:**
+
 - Vedi Story 18.33 completa in `_bmad-output/planning-artifacts/epics.md` (Epic 18) — 6 AC con le 5 decisioni chiuse il 2026-09-27, riportate qui per intero come parte del contratto di questa spec.
 
 ## Design Notes
@@ -77,7 +80,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 
 ## Suggested Review Order
 
-**Fetch live + cache (il cuore della storia)**
+### Fetch live + cache (il cuore della storia)
 
 - Entry point: fetch read-only fail-soft, mai un throw, mirror della config di `sincronizzaGareFipav`.
   [`leggi-live-fipav.ts:111`](../../lib/sincronizza-gare-fipav/leggi-live-fipav.ts#L111)
@@ -85,7 +88,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 - Bug corretto in review: `dynamic = "force-dynamic"` (pre-esistente) annullava `next.revalidate` sul fetch — `unstable_cache` (Data Cache di Next.js, indipendente dal segmento) è ora il vero livello di cache.
   [`leggi-live-fipav.ts:115`](../../lib/sincronizza-gare-fipav/leggi-live-fipav.ts#L115)
 
-**Parsing HTML del portale FIPAV**
+### Parsing HTML del portale FIPAV
 
 - Bug corretto in review, verificato con un fetch reale contro il portale: `table.tbl.tbl-classifica` non ha `<tbody>` (a differenza di `tbl-risultati`) — il selettore `"tbody tr"` avrebbe sempre restituito zero righe.
   [`parser.ts:319`](../../lib/sincronizza-gare-fipav/parser.ts#L319)
@@ -93,7 +96,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 - Nuovo parser classifica, colonne posizionali verificate dal vivo (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.).
   [`parser.ts:301`](../../lib/sincronizza-gare-fipav/parser.ts#L301)
 
-**Formazione dati per la home (estratta per restare testabile)**
+### Formazione dati per la home (estratta per restare testabile)
 
 - Filtro settimana precedente + ordinamento, con chiave React deduplicata (review fix) e `statoDescrizione` propagato (review fix).
   [`vista-home-live.ts:49`](../../lib/sincronizza-gare-fipav/vista-home-live.ts#L49)
@@ -101,7 +104,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 - Una card per Campionato, solo se la lettura è riuscita con classifica non vuota.
   [`vista-home-live.ts:96`](../../lib/sincronizza-gare-fipav/vista-home-live.ts#L96)
 
-**Home pubblica (`app/page.tsx`)**
+### Home pubblica (`app/page.tsx`)
 
 - Query Campionati con `linkFipav` della stagione corrente, con `orderBy` (review fix, ordine altrimenti non deterministico).
   [`page.tsx:133`](../../app/page.tsx#L133)
@@ -115,7 +118,7 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 - Nuova sezione classifica, una card per Campionato con `<caption>` invisibile (review fix, contesto per screen reader).
   [`page.tsx:459`](../../app/page.tsx#L459)
 
-**Peripherali**
+### Peripherali
 
 - Nuove classi CSS per le due sezioni, mirror dello stile card già esistente.
   [`home-pubblica.module.css:628`](../../app/home-pubblica.module.css#L628)
@@ -129,11 +132,13 @@ baseline_commit: 'd9d2187fa8bc94b5f087c184f778e612ad3b81a3'
 ## Verification
 
 **Commands:**
+
 - `npx tsc --noEmit` -- expected: nessun errore
 - `npx vitest run` -- expected: tutti i test passano, inclusi quelli nuovi
 - `npx eslint <file toccati>` -- expected: nessun errore
 
 **Manual checks (dopo il deploy, dev locale non disponibile su questa macchina):**
+
 - Impostare `linkFipav` su un Campionato reale, verificare che la home mostri risultati/classifica coerenti con quanto visibile sul portale
 - Verificare che un `linkFipav` non valido/irraggiungibile non rompa la home (sezione omessa, resto della pagina intatto)
 - Verificare che "Partite della settimana" (Story 18.3) resti invariata subito dopo le nuove sezioni

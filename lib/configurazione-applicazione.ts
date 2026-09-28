@@ -187,3 +187,49 @@ export async function salvaUrlPaginaInstagram(url: string | null): Promise<void>
     update: { urlPaginaInstagram: url },
   });
 }
+
+// Story 10.12: mirror esatto di leggiEmailSegreteria/salvaEmailSegreteria
+// sopra - cadenza (in ore) della sincronizzazione automatica FIPAV, letta
+// dall'endpoint app/api/cron/sincronizza-fipav (fallback 24 ore applicato
+// li', non qui - questa funzione restituisce il valore grezzo, null incluso)
+// e salvata da /app/impostazioni (Admin-only).
+export async function leggiFrequenzaSincronizzazioneFipavOre(): Promise<number | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { frequenzaSincronizzazioneFipavOre: true },
+  });
+  return configurazione?.frequenzaSincronizzazioneFipavOre ?? null;
+}
+
+export async function salvaFrequenzaSincronizzazioneFipavOre(ore: number | null): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: ore },
+    update: { frequenzaSincronizzazioneFipavOre: ore },
+  });
+}
+
+// Story 10.12: timestamp dell'ultima esecuzione REALE (non skip) della
+// sincronizzazione automatica - a differenza delle coppie leggiX/salvaX
+// sopra, la scrittura non e' un salvaX generico esposto a un form (nessun
+// Admin la imposta a mano): segnaSincronizzazioneFipavAutomaticaEseguita
+// aggiorna solo questo campo, chiamata esclusivamente dall'endpoint cron
+// dopo un'esecuzione davvero avvenuta (mai dal bottone manuale, Story
+// 10.11 - le due tracce restano separate per design).
+export async function leggiUltimaSincronizzazioneFipavAutomaticaIl(): Promise<Date | null> {
+  const configurazione = await prisma.configurazioneApplicazione.findUnique({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    select: { ultimaSincronizzazioneFipavAutomaticaIl: true },
+  });
+  return configurazione?.ultimaSincronizzazioneFipavAutomaticaIl ?? null;
+}
+
+export async function segnaSincronizzazioneFipavAutomaticaEseguita(
+  quando: Date
+): Promise<void> {
+  await prisma.configurazioneApplicazione.upsert({
+    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
+    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, ultimaSincronizzazioneFipavAutomaticaIl: quando },
+    update: { ultimaSincronizzazioneFipavAutomaticaIl: quando },
+  });
+}
