@@ -1,11 +1,17 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import {
   analizzaHtmlClassificaFipav,
   analizzaHtmlGareFipav,
   type RigaClassificaFipav,
 } from "@/lib/sincronizza-gare-fipav/parser";
 import type { RigaGaraImportata } from "@/lib/importa-gare/parser";
+// Story 18.34: import di solo tipo - vista-home-live.ts importa a sua volta
+// LetturaLiveFipav da questo stesso file. "import type" e' erasable a
+// compile-time (nessun modulo caricato a runtime), quindi non introduce una
+// vera dipendenza circolare tra i due file.
+import type { LetturaPerCampionato } from "@/lib/sincronizza-gare-fipav/vista-home-live";
 
 // Story 18.33: lettura live (sola lettura, mai una scrittura su DB) del
 // portale FIPAV per la home pubblica - UN solo fetch per Campionato copre
@@ -115,4 +121,45 @@ export function leggiLiveFipav(
   return unstable_cache(eseguiFetchEParsing, [linkFipav], {
     revalidate: revalidateSecondi,
   })(linkFipav);
+}
+
+// Story 18.34 (Code Map): estratta da app/page.tsx (query
+// campionatiConLinkFipav + fetch live in parallelo per Campionato, Story
+// 18.33) per essere riusabile identica sia dalla home sia da
+// app/classifiche/page.tsx - mai due implementazioni parallele della stessa
+// query+fetch (Boundaries spec-18-34). Stesso identico comportamento di
+// prima: query scoped alla sola stagione richiesta con linkFipav non nullo
+// (un Campionato senza linkFipav non genera alcun fetch ne' alcun blocco,
+// AC #4 spec-18-33/#4 spec-18-34), fetch in parallelo (mai in sequenza) con
+// doppia rete di sicurezza fail-soft (leggiLiveFipav non lancia mai da
+// solo, il .catch(() => null) qui e' una seconda rete esplicita) - un
+// Campionato il cui fetch fallisce non deve mai far fallire Promise.all per
+// gli altri (AC #5 spec-18-33/#5 spec-18-34).
+export async function leggiCampionatiConLetturaFipav(
+  annoAgonisticoId: string
+): Promise<LetturaPerCampionato[]> {
+  const campionatiConLinkFipav = await prisma.campionato.findMany({
+    where: { annoAgonisticoId, linkFipav: { not: null } },
+    orderBy: { nome: "asc" },
+    select: {
+      id: true,
+      nome: true,
+      colore: true,
+      linkFipav: true,
+      gruppo: { select: { nome: true } },
+    },
+  });
+
+  return Promise.all(
+    campionatiConLinkFipav.map(async (campionato) => {
+      if (!campionato.linkFipav) {
+        return { campionato, lettura: null };
+      }
+      const lettura = await leggiLiveFipav(campionato.linkFipav).catch((err) => {
+        console.error(err);
+        return null;
+      });
+      return { campionato, lettura };
+    })
+  );
 }

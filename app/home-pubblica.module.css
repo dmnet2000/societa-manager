@@ -660,11 +660,15 @@
    Accento colore del Campionato su un bordo superiore (style inline in
    page.tsx, stesso dato di .schedaPartita) invece di uno sfondo pieno -
    una tabella di molte righe resta piu' leggibile su sfondo chiaro che su
-   uno sfondo scuro pieno con testo bianco. */
-.sezioneClassifiche {
-  padding: var(--space-8) var(--space-6);
-}
-
+   uno sfondo scuro pieno con testo bianco.
+   Story 18.34 (review fix, Blind Hunter + Edge Case Hunter): la sezione
+   JSX che usava .sezioneClassifiche e' stata rimossa da app/page.tsx (la
+   classifica si e' spostata sulla nuova pagina /classifiche) - la classe
+   stessa era rimasta come CSS morto, rimossa qui. Le classi sotto
+   (.listaClassifiche e le altre della card) restano invece vive, ma da
+   questa storia in poi hanno un solo consumer: app/classifiche/page.tsx
+   (import diretto cross-file da questo modulo, invece di duplicare ~60
+   righe di CSS - vedi commento li'), non piu' app/page.tsx. */
 .listaClassifiche {
   display: flex;
   flex-direction: column;

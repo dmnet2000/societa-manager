@@ -109,6 +109,15 @@ describe("getRouteDecision", () => {
   // "/sponsor" a PUBLIC_ROUTES direttamente in questa story (nessuna voce di
   // menu punta ancora li', spec-16-5 Never - ma un URL diretto deve
   // comunque funzionare per un Visitatore anonimo).
+  // Story 18.34: nuova pagina pubblica dedicata /classifiche (classifica
+  // spostata fuori dalla home) - review fix (Blind Hunter): PUBLIC_ROUTES
+  // era stata dimenticata anche qui al primo giro, stesso identico bug
+  // gia' corretto sopra per Story 18.7/20.6/16.5.
+  it("allows unauthenticated access to '/classifiche' (nuova pagina pubblica dedicata - Story 18.34)", async () => {
+    expect(await getRouteDecision("/classifiche", false, [])).toEqual({ action: "allow" });
+    expect(isPublicRoute("/classifiche")).toBe(true);
+  });
+
   it("allows unauthenticated access to '/sponsor' (nuova pagina pubblica dedicata - Story 16.5)", async () => {
     expect(await getRouteDecision("/sponsor", false, [])).toEqual({ action: "allow" });
     expect(isPublicRoute("/sponsor")).toBe(true);

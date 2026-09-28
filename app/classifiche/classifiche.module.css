@@ -1,0 +1,38 @@
+/* Story 18.34: modulo dedicato al contenuto di /classifiche, convenzione del
+   progetto "un CSS module per pagina" (mirror di app/calendario/calendario.module.css,
+   stesso registro "Poster Sportivo", DESIGN.md/EXPERIENCE.md
+   ux-designs/ux-societa-manager-2026-08-13). Le classi specifiche della
+   card classifica (.schedaClassifica/.tabellaClassifica/.titoloClassifica/
+   .listaClassifiche) restano riusate direttamente da ../home-pubblica.module.css
+   (Code Map spec-18-34) - solo il layout di pagina vive qui, non una
+   duplicazione delle ~60 righe di CSS gia' esistenti. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+/* {typography.display-section} - 40px/900 desktop, ridotto sotto i 900px
+   (breakpoint unico di EXPERIENCE.md -> Responsive & Piattaforma), stesso
+   trattamento del titolo di /calendario. */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-6);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}

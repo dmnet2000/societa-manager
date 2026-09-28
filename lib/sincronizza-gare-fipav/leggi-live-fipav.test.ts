@@ -6,10 +6,21 @@ const analizzaHtmlGareFipavMock = vi.fn();
 const analizzaHtmlClassificaFipavMock = vi.fn();
 const fetchMock = vi.fn();
 const unstableCacheMock = vi.fn();
+const findManyMock = vi.fn();
 
 vi.mock("@/lib/sincronizza-gare-fipav/parser", () => ({
   analizzaHtmlGareFipav: analizzaHtmlGareFipavMock,
   analizzaHtmlClassificaFipav: analizzaHtmlClassificaFipavMock,
+}));
+
+// Story 18.34: leggiCampionatiConLetturaFipav (nuova funzione condivisa,
+// estratta da app/page.tsx) usa prisma.campionato.findMany - stesso pattern
+// di mock gia' in uso altrove nel progetto per query Prisma dentro un test
+// (es. app/api/cron/sincronizza-fipav/route.test.ts).
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    campionato: { findMany: findManyMock },
+  },
 }));
 
 // Review fix (Verification Gap Reviewer): la home pubblica ha
@@ -32,7 +43,8 @@ vi.mock("next/cache", () => ({
 
 vi.stubGlobal("fetch", fetchMock);
 
-const { leggiLiveFipav, REVALIDATE_SECONDI_DEFAULT } = await import("./leggi-live-fipav");
+const { leggiLiveFipav, leggiCampionatiConLetturaFipav, REVALIDATE_SECONDI_DEFAULT } =
+  await import("./leggi-live-fipav");
 
 function buildResponse(ok: boolean, status: number, html: string) {
   return { ok, status, text: async () => html };
@@ -68,19 +80,25 @@ const RIGA_CLASSIFICA = {
   penalizzazione: "0",
 };
 
-describe("leggiLiveFipav", () => {
-  beforeEach(() => {
-    // mockClear (non mockReset): preserva il pass-through impostato sopra,
-    // azzera solo il conteggio/argomenti delle chiamate tra un test e l'altro.
-    unstableCacheMock.mockClear();
-    fetchMock.mockReset();
-    fetchMock.mockResolvedValue(buildResponse(true, 200, "<html></html>"));
-    analizzaHtmlGareFipavMock.mockReset();
-    analizzaHtmlGareFipavMock.mockReturnValue({ righe: [RIGA_GARA], scartate: [] });
-    analizzaHtmlClassificaFipavMock.mockReset();
-    analizzaHtmlClassificaFipavMock.mockReturnValue([RIGA_CLASSIFICA]);
-  });
+// Story 18.34: beforeEach a livello di modulo (non piu' annidato nel solo
+// describe("leggiLiveFipav")) - condiviso anche da
+// describe("leggiCampionatiConLetturaFipav") sotto, stessi default
+// fetch/parsing per entrambe le funzioni (che condividono la stessa
+// implementazione di fetch/parsing sotto, Design Notes spec-18-34).
+beforeEach(() => {
+  // mockClear (non mockReset): preserva il pass-through impostato sopra,
+  // azzera solo il conteggio/argomenti delle chiamate tra un test e l'altro.
+  unstableCacheMock.mockClear();
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue(buildResponse(true, 200, "<html></html>"));
+  analizzaHtmlGareFipavMock.mockReset();
+  analizzaHtmlGareFipavMock.mockReturnValue({ righe: [RIGA_GARA], scartate: [] });
+  analizzaHtmlClassificaFipavMock.mockReset();
+  analizzaHtmlClassificaFipavMock.mockReturnValue([RIGA_CLASSIFICA]);
+  findManyMock.mockReset();
+});
 
+describe("leggiLiveFipav", () => {
   it("fetches with the same config as sincronizzaGareFipav (redirect/timeout/User-Agent)", async () => {
     await leggiLiveFipav("https://risultati.fipav.it/campionato/1");
 
@@ -164,5 +182,93 @@ describe("leggiLiveFipav", () => {
     const risultato = await leggiLiveFipav("https://risultati.fipav.it/campionato/1");
 
     expect(risultato).toBeNull();
+  });
+});
+
+function campionato(overrides: Partial<{
+  id: string;
+  nome: string;
+  colore: string | null;
+  linkFipav: string | null;
+  gruppo: { nome: string };
+}> = {}) {
+  return {
+    id: "campionato-1",
+    nome: "Serie C Girone A",
+    colore: "#2E6F99",
+    linkFipav: "https://risultati.fipav.it/campionato/1",
+    gruppo: { nome: "Prima Squadra" },
+    ...overrides,
+  };
+}
+
+// Story 18.34: unica implementazione della query+fetch, condivisa da
+// app/page.tsx e app/classifiche/page.tsx - testata qui una sola volta,
+// entrambi i chiamanti ne ereditano lo stesso comportamento verificato
+// (nessuna seconda copia della logica da testare separatamente).
+describe("leggiCampionatiConLetturaFipav", () => {
+  it("queries Campionato scoped to the season, with linkFipav not null, ordered by nome", async () => {
+    findManyMock.mockResolvedValue([]);
+
+    await leggiCampionatiConLetturaFipav("anno-1");
+
+    expect(findManyMock).toHaveBeenCalledWith({
+      where: { annoAgonisticoId: "anno-1", linkFipav: { not: null } },
+      orderBy: { nome: "asc" },
+      select: {
+        id: true,
+        nome: true,
+        colore: true,
+        linkFipav: true,
+        gruppo: { select: { nome: true } },
+      },
+    });
+  });
+
+  it("returns a lettura per Campionato found, fetched in parallel", async () => {
+    findManyMock.mockResolvedValue([
+      campionato({ id: "a", linkFipav: "https://risultati.fipav.it/a" }),
+      campionato({ id: "b", nome: "Under 16", linkFipav: "https://risultati.fipav.it/b" }),
+    ]);
+
+    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
+
+    expect(risultato).toHaveLength(2);
+    expect(risultato[0].campionato.id).toBe("a");
+    expect(risultato[0].lettura).toEqual({
+      risultati: [RIGA_GARA],
+      classifica: [RIGA_CLASSIFICA],
+    });
+    expect(risultato[1].campionato.id).toBe("b");
+  });
+
+  it("omits no Campionato from the array when one fetch fails - lettura is null for that one, others unaffected (fail-soft per Campionato)", async () => {
+    findManyMock.mockResolvedValue([
+      campionato({ id: "a", linkFipav: "https://risultati.fipav.it/a" }),
+      campionato({ id: "b", linkFipav: "https://risultati.fipav.it/b" }),
+    ]);
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === "https://risultati.fipav.it/a") {
+        throw new Error("network error");
+      }
+      return buildResponse(true, 200, "<html></html>");
+    });
+
+    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
+
+    expect(risultato).toHaveLength(2);
+    expect(risultato.find((r) => r.campionato.id === "a")?.lettura).toBeNull();
+    expect(risultato.find((r) => r.campionato.id === "b")?.lettura).toEqual({
+      risultati: [RIGA_GARA],
+      classifica: [RIGA_CLASSIFICA],
+    });
+  });
+
+  it("returns an empty array when no Campionato has linkFipav set (matrice I/O riga 4)", async () => {
+    findManyMock.mockResolvedValue([]);
+
+    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
+
+    expect(risultato).toEqual([]);
   });
 });

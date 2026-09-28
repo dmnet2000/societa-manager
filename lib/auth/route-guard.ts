@@ -73,6 +73,13 @@ export const PUBLIC_ROUTES = [
   // navigazione aggiunta in codice, scelta editoriale di Admin/Site Manager
   // via /app/menu-pubblico) - un URL diretto deve comunque funzionare.
   "/sponsor",
+  // Story 18.34 (review fix, Blind Hunter): stesso identico bug gia'
+  // corretto per /squadre,/calendario,/staff,/contatti (Story 18.7),
+  // /torneo (Story 20.6) e /sponsor (Story 16.5) sopra - senza questa voce
+  // un Visitatore anonimo che clicca "Classifiche" nel menu pubblico
+  // (voce inserita dalla migrazione 20260928010000_add_classifiche_voce_menu_pubblico)
+  // veniva reindirizzato a /accedi invece di vedere la pagina pubblica.
+  "/classifiche",
 ];
 
 // Mappa prefisso-rotta -> Ruoli ammessi. Aggiungere qui le rotte introdotte

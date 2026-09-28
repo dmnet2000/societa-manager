@@ -3152,12 +3152,21 @@ so that possa consultarle direttamente senza dover scorrere la home ogni volta, 
 
 **Il menu pubblico è già interamente dinamico e gestibile senza codice** (Story 19.6/19.7/19.8, `VoceMenuPubblico`/`app/NavPubblica.tsx`/`/app/menu-pubblico`): un Admin o Site Manager può aggiungere/riordinare voci da un pannello di gestione, senza redeploy. Il precedente più vicino è la voce "Torneo" (migrazione `20260825010000_add_torneo_voce_menu_pubblico`): quando `/torneo` ha guadagnato una sua pagina pubblica dedicata, la story corrispondente ha aggiunto anche una migrazione che inserisce la nuova voce di menu con un ordine iniziale sensato (le voci successive spostate avanti di una posizione) — stesso schema applicabile qui per "Classifiche".
 
-**Decisioni aperte (da chiudere con l'utente prima di scrivere gli AC di sviluppo):**
-1. **"Spostate" — la sezione classifica sparisce del tutto dalla home, o resta un teaser/link verso la nuova pagina?** La richiesta usa la parola "spostate" (non "aggiunte"), che suggerisce la rimozione dalla home — da confermare esplicitamente, e se un piccolo richiamo/link resta comunque visibile in home o no.
-2. **La sezione "Risultati della settimana scorsa" (stessa story 18.33, ma logicamente distinta dalla classifica) resta in home, o si sposta anch'essa?** La richiesta dell'utente nomina solo "le classifiche" — assumibile che i risultati restino, ma da confermare, non da assumere silenziosamente.
-3. **Contenuto della nuova pagina: stessa card compatta di oggi (Pos./Squadra/Punti/PG/V/P) o l'occasione per mostrare tutte le 13 colonne già lette dal parser** (SF/SS/QS/PF/PS/QP/Penal., oggi lette ma scartate nella card home per compattezza, Story 18.33 Design Notes) — una pagina dedicata ha più spazio di una sezione di home.
-4. **URL e etichetta della nuova pagina/voce di menu** — proposta naturale `/classifiche` + etichetta "Classifiche", posizionata dopo "Calendario" (stesso principio di posizionamento tematico già usato per "Torneo") — da confermare, non imposta.
-5. **Una pagina unica con tutti i Campionati, o una pagina per Campionato/Girone selezionabile?** Oggi la home mostra una card per Campionato tutte insieme (stesso layout `sezioneClassifiche` esistente) — resta la scelta più semplice/diretta da riusare, ma con più Campionati potrebbe valere la pena un selettore, da confermare con l'utente.
+**Decisioni (chiuse con la scelta di default, 2026-09-28 — l'utente ha detto "procedi" senza rispondere singolarmente):**
+1. ~~"Spostate" — sparisce dalla home o resta un teaser/link?~~ — **default: sparisce del tutto**, nessun teaser/link residuo in home — lettura più letterale di "spostate" (non "aggiunte"), coerente col "so that" della story ("la home stessa resti più snella").
+2. ~~"Risultati della settimana scorsa" resta in home o si sposta anch'essa?~~ — **default: resta in home, invariata** — la richiesta nomina solo "le classifiche", nessuna menzione dei risultati.
+3. ~~Contenuto della nuova pagina: 6 colonne compatte o tutte le 13?~~ — **default: tutte le 13 colonne** già lette dal parser (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.) — una pagina dedicata non ha il vincolo di compattezza di una sezione di home, è l'occasione naturale per mostrarle tutte.
+4. ~~URL e etichetta~~ — **default: `/classifiche`, etichetta "Classifiche"**, voce di menu posizionata dopo "Calendario" (stesso principio di "Torneo").
+5. ~~Pagina unica o selettore per Campionato/Girone?~~ — **default: pagina unica**, una card per Campionato con `linkFipav` (stesso layout `sezioneClassifiche` di oggi, solo su una pagina propria) — nessun selettore, stesso principio "mostra tutto, mai un filtro in più del richiesto" già seguito altrove nel progetto.
+
+**Acceptance Criteria:**
+
+1. **Given** un Visitatore senza sessione **When** visita `/classifiche` **Then** vede una card per ciascun Campionato con `linkFipav` impostato, con la classifica "all'ultima giornata" e tutte le 13 colonne lette dal parser (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.)
+2. **And** la sezione classifica sparisce dalla home pubblica (Story 18.33) — nessun teaser/link residuo, la sezione "Risultati della settimana scorsa" (Story 18.33) resta invariata al suo posto
+3. **Given** il menu pubblico dinamico (Story 19.6/19.7/19.8) **When** l'app viene deployata con questa storia **Then** una nuova voce "Classifiche" (`/classifiche`) compare già di default, posizionata dopo "Calendario" — mirror della migrazione di seed già usata per "Torneo" (`20260825010000`), nessuna azione manuale richiesta a un Admin/Site Manager
+4. **And** un Campionato senza `linkFipav` impostato non mostra alcuna card (nessun messaggio "non disponibile", stesso principio già stabilito in Story 18.33 AC #4)
+5. **And** se il fetch verso il portale FIPAV fallisce per un Campionato, quella card viene omessa silenziosamente (nessun errore visibile, nessuna pagina rotta) — stesso principio fail-soft di Story 18.33 AC #5, applicato qui per Campionato
+6. **Given** nessun Campionato ha `linkFipav` impostato **When** `/classifiche` viene visitata **Then** la pagina mostra un messaggio esplicito ("Nessuna classifica disponibile al momento") invece di un'area vuota senza spiegazione — a differenza della sezione home (dove l'assenza è silenziosa perché la pagina ha comunque altro contenuto), qui la pagina esiste apposta per questo contenuto
 
 ## Epic 19: Ruolo Site Manager per la gestione del sito pubblico
 

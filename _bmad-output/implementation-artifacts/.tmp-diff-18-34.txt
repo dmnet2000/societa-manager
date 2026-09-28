@@ -1,0 +1,659 @@
+===== git diff (file tracciati modificati) =====
+diff --git a/app/page.tsx b/app/page.tsx
+index 66a94d1..9b16596 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -17,11 +17,8 @@ import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
+ import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
+ import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
+ import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
+-import { leggiLiveFipav } from "@/lib/sincronizza-gare-fipav/leggi-live-fipav";
+-import {
+-  classifichePerCampionatoDaLetture,
+-  risultatiSettimanaScorsaDaLetture,
+-} from "@/lib/sincronizza-gare-fipav/vista-home-live";
++import { leggiCampionatiConLetturaFipav } from "@/lib/sincronizza-gare-fipav/leggi-live-fipav";
++import { risultatiSettimanaScorsaDaLetture } from "@/lib/sincronizza-gare-fipav/vista-home-live";
+ import {
+   NOME_COOKIE_CONSENSO,
+   haAccettatoCookieNonEssenziali,
+@@ -130,7 +127,7 @@ export default async function HomePubblicaPage() {
+     fotoPerGruppo,
+     urlPaginaFacebook,
+     fotoHero,
+-    campionatiConLinkFipav,
++    letturePerCampionato,
+   ] = await Promise.all([
+     // Review fix (code review Story 18.19, Blind Hunter + Edge Case Hunter,
+     // indipendentemente): rimuovendo il titolo <h1> visibile (secondo giro)
+@@ -223,32 +220,24 @@ export default async function HomePubblicaPage() {
+       console.error(err);
+       return { esiste: false, aggiornatoIl: null };
+     }),
+-    // Story 18.33 (AC #1/#3/#4): scoped alla sola stagione corrente, stesso
++    // Story 18.33 (AC #1/#5)/Story 18.34 (Code Map): query + fetch live in
++    // parallelo per Campionato estratti in leggiCampionatiConLetturaFipav
++    // (lib/sincronizza-gare-fipav/leggi-live-fipav.ts) - riusata identica da
++    // app/classifiche/page.tsx, mai due implementazioni parallele della
++    // stessa query+fetch. Scoped alla sola stagione corrente, stesso
+     // filtro/motivo di gruppiStagione sopra - un Campionato senza linkFipav
+     // (filtro "not: null" nella query, non solo un filtro successivo in
+     // memoria) non genera alcun fetch ne' alcun blocco (AC #4, mirror del
+-    // pulsante di sincronizzazione manuale, Story 10.11 AC #2). "select"
+-    // esplicito, stesso principio delle query sopra.
++    // pulsante di sincronizzazione manuale, Story 10.11 AC #2). .catch()
++    // qui preserva il comportamento fail-soft gia' in uso per la query
++    // stessa (prima inline in questa pagina, ora dentro la funzione
++    // condivisa - solo il fetch per-Campionato e' fail-soft internamente
++    // alla funzione, non un eventuale errore della query Prisma).
+     annoCorrente
+-      ? prisma.campionato
+-          .findMany({
+-            where: { annoAgonisticoId: annoCorrente.id, linkFipav: { not: null } },
+-            // Review fix (Blind Hunter): senza orderBy l'ordine delle card
+-            // classifica/risultati dipende dall'ordine non garantito del
+-            // DB - stesso ordinamento gia' usato per gruppiStagione sopra.
+-            orderBy: { nome: "asc" },
+-            select: {
+-              id: true,
+-              nome: true,
+-              colore: true,
+-              linkFipav: true,
+-              gruppo: { select: { nome: true } },
+-            },
+-          })
+-          .catch((err) => {
+-            console.error(err);
+-            return [];
+-          })
++      ? leggiCampionatiConLetturaFipav(annoCorrente.id).catch((err) => {
++          console.error(err);
++          return [];
++        })
+       : Promise.resolve([]),
+   ]);
+ 
+@@ -264,29 +253,6 @@ export default async function HomePubblicaPage() {
+       ? await leggiUltimiPostFacebook(urlPaginaFacebook)
+       : [];
+ 
+-  // Story 18.33 (Code Map): non puo' stare nel Promise.all sopra - dipende
+-  // dal risultato di campionatiConLinkFipav che quello stesso Promise.all
+-  // risolve, stesso principio di postFacebook sopra. Un fetch live in
+-  // parallelo per Campionato (mai in sequenza: un portale lento non deve
+-  // sommare la propria latenza a quella degli altri Campionati). Ogni
+-  // fetch e' gia' fail-soft internamente (leggiLiveFipav non lancia mai,
+-  // vedi lib/sincronizza-gare-fipav/leggi-live-fipav.ts) - il .catch(() =>
+-  // null) qui e' una seconda rete di sicurezza esplicita (Code Map
+-  // spec-18-33), un Campionato il cui fetch fallisce non deve mai far
+-  // fallire Promise.all per gli altri.
+-  const letturePerCampionato = await Promise.all(
+-    campionatiConLinkFipav.map(async (campionato) => {
+-      if (!campionato.linkFipav) {
+-        return { campionato, lettura: null };
+-      }
+-      const lettura = await leggiLiveFipav(campionato.linkFipav).catch((err) => {
+-        console.error(err);
+-        return null;
+-      });
+-      return { campionato, lettura };
+-    })
+-  );
+-
+   const nomeVisualizzato = nomeSettore ?? "Settore Volley";
+ 
+   // Story 16.5: sostituisce banner.length > 0 (rimosso insieme alla sezione
+@@ -324,11 +290,6 @@ export default async function HomePubblicaPage() {
+   );
+   const mostraRisultatiSettimanaScorsa = risultatiSettimanaScorsa.length > 0;
+ 
+-  // Story 18.33 (AC #3, review fix): stessa estrazione di cui sopra - una
+-  // card per Campionato con lettura riuscita e classifica non vuota.
+-  const classifichePerCampionato = classifichePerCampionatoDaLetture(letturePerCampionato);
+-  const mostraClassifiche = classifichePerCampionato.length > 0;
+-
+   return (
+     <>
+       {/* Story 18.8: estratto in HeaderPubblico.tsx (secondo consumer
+@@ -451,71 +412,11 @@ export default async function HomePubblicaPage() {
+           </section>
+         )}
+ 
+-        {/* Story 18.33 (AC #3/#4/#5): una sezione classifica per Campionato
+-            con linkFipav, letta "all'ultima giornata" dalla stessa pagina
+-            del fetch sopra - PRIMA di "Partite della settimana" sotto,
+-            DOPO i risultati appena sopra (ordine dell'Intent). */}
+-        {mostraClassifiche && (
+-          <section className={styles.sezioneClassifiche} aria-labelledby="titolo-classifiche">
+-            <h2 id="titolo-classifiche" className={styles.titoloSezione}>
+-              Classifica
+-            </h2>
+-            <div className={styles.listaClassifiche}>
+-              {classifichePerCampionato.map((classifica) => (
+-                <div
+-                  className={styles.schedaClassifica}
+-                  style={
+-                    classifica.campionatoColore
+-                      ? { borderTopColor: classifica.campionatoColore }
+-                      : undefined
+-                  }
+-                  key={classifica.campionatoId}
+-                >
+-                  <h3 className={styles.titoloClassifica}>
+-                    {classifica.campionatoNome} — {classifica.gruppoNome}
+-                  </h3>
+-                  <table className={styles.tabellaClassifica}>
+-                    {/* Review fix (Blind Hunter): un utente di screen reader
+-                        che naviga direttamente nella tabella (senza passare
+-                        dall'h3 sopra) perdeva il contesto di quale
+-                        Campionato/Gruppo stesse leggendo. */}
+-                    <caption className={styles.srOnly}>
+-                      Classifica {classifica.campionatoNome} — {classifica.gruppoNome}
+-                    </caption>
+-                    <thead>
+-                      <tr>
+-                        <th scope="col">Pos.</th>
+-                        <th scope="col">Squadra</th>
+-                        <th scope="col">Punti</th>
+-                        <th scope="col" title="Partite Giocate">
+-                          PG
+-                        </th>
+-                        <th scope="col" title="Partite Vinte">
+-                          V
+-                        </th>
+-                        <th scope="col" title="Partite Perse">
+-                          P
+-                        </th>
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {classifica.righe.map((riga, indice) => (
+-                        <tr key={`${classifica.campionatoId}-${riga.posizione}-${indice}`}>
+-                          <td>{riga.posizione}</td>
+-                          <td>{riga.squadra}</td>
+-                          <td>{riga.punti ?? "—"}</td>
+-                          <td>{riga.partiteGiocate ?? "—"}</td>
+-                          <td>{riga.partiteVinte ?? "—"}</td>
+-                          <td>{riga.partitePerse ?? "—"}</td>
+-                        </tr>
+-                      ))}
+-                    </tbody>
+-                  </table>
+-                </div>
+-              ))}
+-            </div>
+-          </section>
+-        )}
++        {/* Story 18.34: sezione "Classifica" rimossa da qui per intero -
++            ora su una pagina pubblica dedicata, /classifiche
++            (app/classifiche/page.tsx), raggiungibile dal menu pubblico.
++            "Risultati della settimana scorsa" appena sopra resta invariata,
++            stesso posto, stesso comportamento. */}
+ 
+         {/* Story 18.3 (AC #2): nessuna sezione se nessun Gruppo ha partite
+             nella settimana corrente - stesso principio gia' applicato in
+diff --git a/lib/sincronizza-gare-fipav/leggi-live-fipav.test.ts b/lib/sincronizza-gare-fipav/leggi-live-fipav.test.ts
+index 64cf908..ac161e7 100644
+--- a/lib/sincronizza-gare-fipav/leggi-live-fipav.test.ts
++++ b/lib/sincronizza-gare-fipav/leggi-live-fipav.test.ts
+@@ -6,12 +6,23 @@ const analizzaHtmlGareFipavMock = vi.fn();
+ const analizzaHtmlClassificaFipavMock = vi.fn();
+ const fetchMock = vi.fn();
+ const unstableCacheMock = vi.fn();
++const findManyMock = vi.fn();
+ 
+ vi.mock("@/lib/sincronizza-gare-fipav/parser", () => ({
+   analizzaHtmlGareFipav: analizzaHtmlGareFipavMock,
+   analizzaHtmlClassificaFipav: analizzaHtmlClassificaFipavMock,
+ }));
+ 
++// Story 18.34: leggiCampionatiConLetturaFipav (nuova funzione condivisa,
++// estratta da app/page.tsx) usa prisma.campionato.findMany - stesso pattern
++// di mock gia' in uso altrove nel progetto per query Prisma dentro un test
++// (es. app/api/cron/sincronizza-fipav/route.test.ts).
++vi.mock("@/lib/prisma", () => ({
++  prisma: {
++    campionato: { findMany: findManyMock },
++  },
++}));
++
+ // Review fix (Verification Gap Reviewer): la home pubblica ha
+ // `dynamic = "force-dynamic"`, che rende inefficace l'opzione
+ // next.revalidate di un fetch - la cache breve e' ora delegata a
+@@ -32,7 +43,8 @@ vi.mock("next/cache", () => ({
+ 
+ vi.stubGlobal("fetch", fetchMock);
+ 
+-const { leggiLiveFipav, REVALIDATE_SECONDI_DEFAULT } = await import("./leggi-live-fipav");
++const { leggiLiveFipav, leggiCampionatiConLetturaFipav, REVALIDATE_SECONDI_DEFAULT } =
++  await import("./leggi-live-fipav");
+ 
+ function buildResponse(ok: boolean, status: number, html: string) {
+   return { ok, status, text: async () => html };
+@@ -68,19 +80,25 @@ const RIGA_CLASSIFICA = {
+   penalizzazione: "0",
+ };
+ 
+-describe("leggiLiveFipav", () => {
+-  beforeEach(() => {
+-    // mockClear (non mockReset): preserva il pass-through impostato sopra,
+-    // azzera solo il conteggio/argomenti delle chiamate tra un test e l'altro.
+-    unstableCacheMock.mockClear();
+-    fetchMock.mockReset();
+-    fetchMock.mockResolvedValue(buildResponse(true, 200, "<html></html>"));
+-    analizzaHtmlGareFipavMock.mockReset();
+-    analizzaHtmlGareFipavMock.mockReturnValue({ righe: [RIGA_GARA], scartate: [] });
+-    analizzaHtmlClassificaFipavMock.mockReset();
+-    analizzaHtmlClassificaFipavMock.mockReturnValue([RIGA_CLASSIFICA]);
+-  });
++// Story 18.34: beforeEach a livello di modulo (non piu' annidato nel solo
++// describe("leggiLiveFipav")) - condiviso anche da
++// describe("leggiCampionatiConLetturaFipav") sotto, stessi default
++// fetch/parsing per entrambe le funzioni (che condividono la stessa
++// implementazione di fetch/parsing sotto, Design Notes spec-18-34).
++beforeEach(() => {
++  // mockClear (non mockReset): preserva il pass-through impostato sopra,
++  // azzera solo il conteggio/argomenti delle chiamate tra un test e l'altro.
++  unstableCacheMock.mockClear();
++  fetchMock.mockReset();
++  fetchMock.mockResolvedValue(buildResponse(true, 200, "<html></html>"));
++  analizzaHtmlGareFipavMock.mockReset();
++  analizzaHtmlGareFipavMock.mockReturnValue({ righe: [RIGA_GARA], scartate: [] });
++  analizzaHtmlClassificaFipavMock.mockReset();
++  analizzaHtmlClassificaFipavMock.mockReturnValue([RIGA_CLASSIFICA]);
++  findManyMock.mockReset();
++});
+ 
++describe("leggiLiveFipav", () => {
+   it("fetches with the same config as sincronizzaGareFipav (redirect/timeout/User-Agent)", async () => {
+     await leggiLiveFipav("https://risultati.fipav.it/campionato/1");
+ 
+@@ -166,3 +184,91 @@ describe("leggiLiveFipav", () => {
+     expect(risultato).toBeNull();
+   });
+ });
++
++function campionato(overrides: Partial<{
++  id: string;
++  nome: string;
++  colore: string | null;
++  linkFipav: string | null;
++  gruppo: { nome: string };
++}> = {}) {
++  return {
++    id: "campionato-1",
++    nome: "Serie C Girone A",
++    colore: "#2E6F99",
++    linkFipav: "https://risultati.fipav.it/campionato/1",
++    gruppo: { nome: "Prima Squadra" },
++    ...overrides,
++  };
++}
++
++// Story 18.34: unica implementazione della query+fetch, condivisa da
++// app/page.tsx e app/classifiche/page.tsx - testata qui una sola volta,
++// entrambi i chiamanti ne ereditano lo stesso comportamento verificato
++// (nessuna seconda copia della logica da testare separatamente).
++describe("leggiCampionatiConLetturaFipav", () => {
++  it("queries Campionato scoped to the season, with linkFipav not null, ordered by nome", async () => {
++    findManyMock.mockResolvedValue([]);
++
++    await leggiCampionatiConLetturaFipav("anno-1");
++
++    expect(findManyMock).toHaveBeenCalledWith({
++      where: { annoAgonisticoId: "anno-1", linkFipav: { not: null } },
++      orderBy: { nome: "asc" },
++      select: {
++        id: true,
++        nome: true,
++        colore: true,
++        linkFipav: true,
++        gruppo: { select: { nome: true } },
++      },
++    });
++  });
++
++  it("returns a lettura per Campionato found, fetched in parallel", async () => {
++    findManyMock.mockResolvedValue([
++      campionato({ id: "a", linkFipav: "https://risultati.fipav.it/a" }),
++      campionato({ id: "b", nome: "Under 16", linkFipav: "https://risultati.fipav.it/b" }),
++    ]);
++
++    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
++
++    expect(risultato).toHaveLength(2);
++    expect(risultato[0].campionato.id).toBe("a");
++    expect(risultato[0].lettura).toEqual({
++      risultati: [RIGA_GARA],
++      classifica: [RIGA_CLASSIFICA],
++    });
++    expect(risultato[1].campionato.id).toBe("b");
++  });
++
++  it("omits no Campionato from the array when one fetch fails - lettura is null for that one, others unaffected (fail-soft per Campionato)", async () => {
++    findManyMock.mockResolvedValue([
++      campionato({ id: "a", linkFipav: "https://risultati.fipav.it/a" }),
++      campionato({ id: "b", linkFipav: "https://risultati.fipav.it/b" }),
++    ]);
++    fetchMock.mockImplementation(async (url: string) => {
++      if (url === "https://risultati.fipav.it/a") {
++        throw new Error("network error");
++      }
++      return buildResponse(true, 200, "<html></html>");
++    });
++
++    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
++
++    expect(risultato).toHaveLength(2);
++    expect(risultato.find((r) => r.campionato.id === "a")?.lettura).toBeNull();
++    expect(risultato.find((r) => r.campionato.id === "b")?.lettura).toEqual({
++      risultati: [RIGA_GARA],
++      classifica: [RIGA_CLASSIFICA],
++    });
++  });
++
++  it("returns an empty array when no Campionato has linkFipav set (matrice I/O riga 4)", async () => {
++    findManyMock.mockResolvedValue([]);
++
++    const risultato = await leggiCampionatiConLetturaFipav("anno-1");
++
++    expect(risultato).toEqual([]);
++  });
++});
+diff --git a/lib/sincronizza-gare-fipav/leggi-live-fipav.ts b/lib/sincronizza-gare-fipav/leggi-live-fipav.ts
+index a519c61..d0ec915 100644
+--- a/lib/sincronizza-gare-fipav/leggi-live-fipav.ts
++++ b/lib/sincronizza-gare-fipav/leggi-live-fipav.ts
+@@ -1,11 +1,17 @@
+ import "server-only";
+ import { unstable_cache } from "next/cache";
++import { prisma } from "@/lib/prisma";
+ import {
+   analizzaHtmlClassificaFipav,
+   analizzaHtmlGareFipav,
+   type RigaClassificaFipav,
+ } from "@/lib/sincronizza-gare-fipav/parser";
+ import type { RigaGaraImportata } from "@/lib/importa-gare/parser";
++// Story 18.34: import di solo tipo - vista-home-live.ts importa a sua volta
++// LetturaLiveFipav da questo stesso file. "import type" e' erasable a
++// compile-time (nessun modulo caricato a runtime), quindi non introduce una
++// vera dipendenza circolare tra i due file.
++import type { LetturaPerCampionato } from "@/lib/sincronizza-gare-fipav/vista-home-live";
+ 
+ // Story 18.33: lettura live (sola lettura, mai una scrittura su DB) del
+ // portale FIPAV per la home pubblica - UN solo fetch per Campionato copre
+@@ -116,3 +122,44 @@ export function leggiLiveFipav(
+     revalidate: revalidateSecondi,
+   })(linkFipav);
+ }
++
++// Story 18.34 (Code Map): estratta da app/page.tsx (query
++// campionatiConLinkFipav + fetch live in parallelo per Campionato, Story
++// 18.33) per essere riusabile identica sia dalla home sia da
++// app/classifiche/page.tsx - mai due implementazioni parallele della stessa
++// query+fetch (Boundaries spec-18-34). Stesso identico comportamento di
++// prima: query scoped alla sola stagione richiesta con linkFipav non nullo
++// (un Campionato senza linkFipav non genera alcun fetch ne' alcun blocco,
++// AC #4 spec-18-33/#4 spec-18-34), fetch in parallelo (mai in sequenza) con
++// doppia rete di sicurezza fail-soft (leggiLiveFipav non lancia mai da
++// solo, il .catch(() => null) qui e' una seconda rete esplicita) - un
++// Campionato il cui fetch fallisce non deve mai far fallire Promise.all per
++// gli altri (AC #5 spec-18-33/#5 spec-18-34).
++export async function leggiCampionatiConLetturaFipav(
++  annoAgonisticoId: string
++): Promise<LetturaPerCampionato[]> {
++  const campionatiConLinkFipav = await prisma.campionato.findMany({
++    where: { annoAgonisticoId, linkFipav: { not: null } },
++    orderBy: { nome: "asc" },
++    select: {
++      id: true,
++      nome: true,
++      colore: true,
++      linkFipav: true,
++      gruppo: { select: { nome: true } },
++    },
++  });
++
++  return Promise.all(
++    campionatiConLinkFipav.map(async (campionato) => {
++      if (!campionato.linkFipav) {
++        return { campionato, lettura: null };
++      }
++      const lettura = await leggiLiveFipav(campionato.linkFipav).catch((err) => {
++        console.error(err);
++        return null;
++      });
++      return { campionato, lettura };
++    })
++  );
++}
+
+===== file nuovi non tracciati (contenuto integrale) =====
+----- NUOVO FILE: app/classifiche/page.tsx -----
+import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { leggiCampionatiConLetturaFipav } from "@/lib/sincronizza-gare-fipav/leggi-live-fipav";
+import { classifichePerCampionatoDaLetture } from "@/lib/sincronizza-gare-fipav/vista-home-live";
+import { HeaderPubblico } from "../HeaderPubblico";
+import { FooterPubblico } from "../FooterPubblico";
+import homeStyles from "../home-pubblica.module.css";
+import styles from "./classifiche.module.css";
+
+// Story 18.34: quarta pagina pubblica reale (dopo Home, Squadre,
+// Calendario), mirror strutturale di app/calendario/page.tsx. Dati letti
+// live dal portale FIPAV a ogni visita (mai da un modello locale) tramite
+// leggiCampionatiConLetturaFipav (Story 18.33/18.34, cache breve
+// unstable_cache interna) - possono quindi cambiare in qualunque momento,
+// stesso motivo di dynamic = "force-dynamic" gia' in uso su "/" e
+// "/calendario".
+export const dynamic = "force-dynamic";
+
+export default async function ClassifichePage() {
+  // Nessuna sessione qui (pagina pubblica). Sola lettura
+  // (trovaAnnoAgonisticoCorrente, mai risolviAnnoAgonisticoCorrente in una
+  // pagina GET), .catch() fail-soft fin dalla prima stesura - stesso
+  // principio di /calendario: un errore DB transiente degrada al messaggio
+  // esplicito sotto invece di far crashare l'intera pagina.
+  const annoCorrente = await trovaAnnoAgonisticoCorrente().catch((err) => {
+    console.error(err);
+    return null;
+  });
+
+  // Story 18.34 (Code Map): stessa funzione condivisa riusata invariata da
+  // app/page.tsx (Story 18.33) - query Campionati con linkFipav + fetch
+  // live in parallelo, mai una seconda implementazione della stessa query.
+  // Un Campionato senza linkFipav non genera alcun fetch ne' alcun blocco
+  // (AC #4); un fetch fallito per un Campionato non fa fallire gli altri
+  // (.catch() qui, seconda rete di sicurezza esplicita, stesso principio di
+  // app/page.tsx - AC #5).
+  const letturePerCampionato = annoCorrente
+    ? await leggiCampionatiConLetturaFipav(annoCorrente.id).catch((err) => {
+        console.error(err);
+        return [];
+      })
+    : [];
+
+  // Story 18.34 (AC #1): stessa estrazione pura e testata di
+  // lib/sincronizza-gare-fipav/vista-home-live.ts (Story 18.33) - una card
+  // per Campionato con lettura riuscita e classifica non vuota, riusata
+  // invariata (nessuna seconda copia della logica di filtro).
+  const classifichePerCampionato = classifichePerCampionatoDaLetture(letturePerCampionato);
+  const mostraClassifiche = classifichePerCampionato.length > 0;
+
+  return (
+    <>
+      <HeaderPubblico />
+      <main className={styles.main}>
+        <h1 className={styles.titolo}>Classifiche</h1>
+        {/* AC #6 (spec-18-34): messaggio esplicito invece di un'area vuota
+            quando nessun Campionato ha linkFipav impostato o tutti i fetch
+            sono falliti - a differenza della home (dove l'assenza e'
+            silenziosa perche' la pagina ha comunque altro contenuto), questa
+            pagina esiste apposta per le classifiche, mirror del principio
+            gia' in /calendario (AC #3 di quella storia). */}
+        {!mostraClassifiche ? (
+          <p className={styles.messaggioVuoto}>Nessuna classifica disponibile al momento.</p>
+        ) : (
+          <div className={homeStyles.listaClassifiche}>
+            {/* Story 18.34 (AC #1): TUTTE le 13 colonne lette dal parser
+                (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.) - a
+                differenza della card home (Story 18.33, solo 6 colonne per
+                compattezza), questa pagina dedicata non ha quel vincolo. */}
+            {classifichePerCampionato.map((classifica) => (
+              <div
+                className={homeStyles.schedaClassifica}
+                style={
+                  classifica.campionatoColore
+                    ? { borderTopColor: classifica.campionatoColore }
+                    : undefined
+                }
+                key={classifica.campionatoId}
+              >
+                <h2 className={homeStyles.titoloClassifica}>
+                  {classifica.campionatoNome} — {classifica.gruppoNome}
+                </h2>
+                <table className={homeStyles.tabellaClassifica}>
+                  {/* Mirror del review fix gia' applicato alla card home
+                      (Blind Hunter, Story 18.33): un utente di screen reader
+                      che naviga direttamente nella tabella non deve perdere
+                      il contesto di quale Campionato/Gruppo stia leggendo. */}
+                  <caption className={homeStyles.srOnly}>
+                    Classifica {classifica.campionatoNome} — {classifica.gruppoNome}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Pos.</th>
+                      <th scope="col">Squadra</th>
+                      <th scope="col">Punti</th>
+                      <th scope="col" title="Partite Giocate">
+                        PG
+                      </th>
+                      <th scope="col" title="Partite Vinte">
+                        PV
+                      </th>
+                      <th scope="col" title="Partite Perse">
+                        PP
+                      </th>
+                      <th scope="col" title="Set Fatti">
+                        SF
+                      </th>
+                      <th scope="col" title="Set Subiti">
+                        SS
+                      </th>
+                      <th scope="col" title="Quoziente Set">
+                        QS
+                      </th>
+                      <th scope="col" title="Punti Fatti">
+                        PF
+                      </th>
+                      <th scope="col" title="Punti Subiti">
+                        PS
+                      </th>
+                      <th scope="col" title="Quoziente Punti">
+                        QP
+                      </th>
+                      <th scope="col" title="Penalizzazione">
+                        Penal.
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classifica.righe.map((riga, indice) => (
+                      <tr key={`${classifica.campionatoId}-${riga.posizione}-${indice}`}>
+                        <td>{riga.posizione}</td>
+                        <td>{riga.squadra}</td>
+                        <td>{riga.punti ?? "—"}</td>
+                        <td>{riga.partiteGiocate ?? "—"}</td>
+                        <td>{riga.partiteVinte ?? "—"}</td>
+                        <td>{riga.partitePerse ?? "—"}</td>
+                        <td>{riga.setFatti ?? "—"}</td>
+                        <td>{riga.setSubiti ?? "—"}</td>
+                        <td>{riga.quozienteSet ?? "—"}</td>
+                        <td>{riga.puntiFatti ?? "—"}</td>
+                        <td>{riga.puntiSubiti ?? "—"}</td>
+                        <td>{riga.quozientePunti ?? "—"}</td>
+                        <td>{riga.penalizzazione ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+      <FooterPubblico />
+    </>
+  );
+}
+
+----- NUOVO FILE: app/classifiche/classifiche.module.css -----
+/* Story 18.34: modulo dedicato al contenuto di /classifiche, convenzione del
+   progetto "un CSS module per pagina" (mirror di app/calendario/calendario.module.css,
+   stesso registro "Poster Sportivo", DESIGN.md/EXPERIENCE.md
+   ux-designs/ux-societa-manager-2026-08-13). Le classi specifiche della
+   card classifica (.schedaClassifica/.tabellaClassifica/.titoloClassifica/
+   .listaClassifiche) restano riusate direttamente da ../home-pubblica.module.css
+   (Code Map spec-18-34) - solo il layout di pagina vive qui, non una
+   duplicazione delle ~60 righe di CSS gia' esistenti. */
+
+.main {
+  padding: var(--space-8) var(--space-6);
+}
+
+/* {typography.display-section} - 40px/900 desktop, ridotto sotto i 900px
+   (breakpoint unico di EXPERIENCE.md -> Responsive & Piattaforma), stesso
+   trattamento del titolo di /calendario. */
+.titolo {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-6);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 900px) {
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+}
+
+----- NUOVO FILE: prisma/migrations/20260928010000_add_classifiche_voce_menu_pubblico/migration.sql -----
+-- Story 18.34 (Epic 18): la sezione classifica si sposta dalla home su una
+-- nuova pagina pubblica dedicata, /classifiche - mirror concettuale di
+-- 20260825010000_add_torneo_voce_menu_pubblico (che ha aggiunto la voce
+-- "Torneo" allo stesso modo), ma con l'ordine risolto via lookup SQL
+-- sull'ordine ATTUALE della voce "Calendario" invece di un valore fisso -
+-- piu' robusto: funziona correttamente anche se un Admin/Site Manager ha
+-- gia' riordinato le voci da /app/menu-pubblico prima di questo deploy.
+--
+-- Le voci con ordine successivo a "Calendario" vengono spostate avanti di
+-- una posizione per fare spazio - UPDATE eseguito PRIMA dell'INSERT cosi'
+-- che la nuova voce "Classifiche" occupi esattamente il posto lasciato
+-- libero subito dopo "Calendario", mai un ordine duplicato. L'UPDATE non
+-- tocca la riga di "Calendario" stessa (filtro "ordine >", non ">="),
+-- quindi il suo ordine resta invariato tra le due istruzioni sotto - la
+-- sottoquery nell'INSERT puo' quindi rileggerlo in sicurezza.
+UPDATE "voci_menu_pubblico"
+SET "ordine" = "ordine" + 1
+WHERE "ordine" > (SELECT "ordine" FROM "voci_menu_pubblico" WHERE "url" = '/calendario' LIMIT 1);
+
+INSERT INTO "voci_menu_pubblico" ("id", "etichetta", "url", "ordine", "visibile", "createdAt", "updatedAt")
+VALUES (
+  gen_random_uuid()::text,
+  'Classifiche',
+  '/classifiche',
+  (SELECT "ordine" FROM "voci_menu_pubblico" WHERE "url" = '/calendario' LIMIT 1) + 1,
+  true,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+);
+
