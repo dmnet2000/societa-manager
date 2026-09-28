@@ -11,7 +11,8 @@
     "test": "vitest run",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && wrangler dev",
-    "cf:deploy": "opennextjs-cloudflare build && wrangler deploy"
+    "cf:deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "cron-worker:deploy": "wrangler deploy --config cron-worker/wrangler.jsonc"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^6.19.3",

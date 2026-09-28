@@ -1,0 +1,16 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	"name": "societa-manager-cron",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-24",
+	// Due schedule diversi nello stesso Worker - src/index.ts guarda
+	// event.cron per sapere quale dei due si e' attivato e chiama
+	// l'endpoint giusto. Un cambio di cadenza qui richiede un
+	// `wrangler deploy` (vedi docs/deploy-produzione.md Fase 6bis) - a
+	// differenza della cadenza REALE di sincronizzazione FIPAV per singolo
+	// Campionato, che resta configurabile da /app/impostazioni senza
+	// alcun deploy.
+	"triggers": {
+		"crons": ["*/10 * * * *", "0 6 * * *"]
+	}
+}

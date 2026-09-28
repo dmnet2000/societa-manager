@@ -101,51 +101,28 @@ CRON_SECRET
 
 `DATABASE_URL` **deve** includere `&sslmode=require` (vedi nota in Fase 1) — senza, le query Prisma a runtime falliscono in modo silenzioso (nessun messaggio d'errore utile nei log Cloudflare) e il login resta bloccato su "Servizio momentaneamente non disponibile".
 
-## Fase 6 — ⚠️ Cloudflare Cron Trigger nativo: NON funzionante con questo build, non solo "da configurare" `[ ]`
+## Fase 6 — ⚠️ Cron Trigger nativo del Worker principale: NON possibile, serve un secondo Worker dedicato `[ ]`
 
-**Scoperta durante lo sviluppo della Story 10.12 (2026-09-27):** questa fase era rimasta `[ ]` non perché mai completata, ma perché **strutturalmente non può funzionare** con l'adapter `@opennextjs/cloudflare` usato da questo progetto. Verificato leggendo il file Worker realmente generato (`node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js`, diventa `.open-next/worker.js` in produzione): esporta **solo** un handler `fetch`, mai `scheduled` — e non esiste alcun punto di estensione ufficiale in `defineCloudflareConfig()` (`@opennextjs/cloudflare` v1.20.2) per aggiungerne uno. Un Cron Trigger nativo di Cloudflare invoca proprio quell'evento `scheduled()` sul Worker: se non esiste, il trigger non ha nulla da chiamare, indipendentemente da quanto accuratamente venga configurato lato dashboard o in `wrangler.jsonc`.
+**Scoperta durante lo sviluppo della Story 10.12 (2026-09-27):** il Worker principale non può avere un Cron Trigger nativo Cloudflare. Verificato leggendo il file Worker realmente generato (`node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js`, diventa `.open-next/worker.js` in produzione): esporta **solo** un handler `fetch`, mai `scheduled` — e non esiste alcun punto di estensione ufficiale in `defineCloudflareConfig()` (`@opennextjs/cloudflare` v1.20.2) per aggiungerne uno. Un Cron Trigger nativo invoca proprio quell'evento `scheduled()` sul Worker: se non esiste, il trigger non ha nulla da chiamare, indipendentemente da quanto accuratamente venga configurato lato dashboard o in `wrangler.jsonc`.
 
-Le istruzioni sotto (dashboard **Settings → Triggers → Cron Triggers**, o `triggers.crons` in `wrangler.jsonc`) restano storicamente corrette per un Worker "puro" scritto a mano, ma **non si applicano a questo progetto** finché il Worker continua a essere generato da OpenNext in questa forma. Non seguirle: non produrrebbero un cron funzionante, solo un trigger configurato che non fa nulla.
+**Soluzione adottata (2026-09-28): un secondo Worker, piccolo e scritto a mano, in `cron-worker/`** — non generato da OpenNext, quindi può avere un vero Cron Trigger nativo. Vedi Fase 6bis per il deploy. (Prima di questa soluzione, in una versione intermedia, i due cron erano invocati da workflow GitHub Actions schedulati — abbandonati per restare interamente dentro l'infrastruttura Cloudflare, vedi Spec Change Log di `spec-10-12-sincronizzazione-fipav-cron.md`.)
 
-**La sincronizzazione automatica FIPAV (Story 10.12) usa invece un meccanismo diverso — vedi Fase 6bis sotto.** Lo stesso meccanismo è stato replicato anche per il promemoria certificati — vedi Fase 6ter.
+## Fase 6bis — Deploy del Worker `cron-worker` (sincronizzazione FIPAV + promemoria Certificati Medici) `[ ]`
 
-<details>
-<summary>Istruzioni originali (non applicabili a questo build — lasciate come riferimento storico)</summary>
+`cron-worker/` è un Worker Cloudflare **separato e minimo** (proprio `wrangler.jsonc`, nessuna dipendenza da Next.js/OpenNext) con due Cron Trigger nativi:
+- `*/10 * * * *` (ogni 10 minuti) → chiama `app/api/cron/sincronizza-fipav` — elabora **un solo Campionato per invocazione** (il meno recentemente sincronizzato, in rotazione), mai tutti insieme: un tentativo con più Campionati nella stessa chiamata aveva sia rischiato un timeout sia bombardato il portale FIPAV con più richieste ravvicinate. Con più Campionati, la rotazione completa richiede più battiti (es. 5 Campionati ≈ 50 minuti). La cadenza REALE di ri-sincronizzazione di un singolo Campionato resta configurabile da un Admin su `/app/impostazioni`, senza alcun redeploy.
+- `0 6 * * *` (una volta al giorno, 6:00 UTC = 7:00 CET/8:00 CEST) → chiama `app/api/cron/promemoria-certificati` — l'endpoint confronta i giorni alla scadenza per data di calendario, non per timestamp: una seconda esecuzione nello stesso giorno rimanderebbe lo stesso promemoria a Dirigenti e famiglie collegate.
 
-Endpoint: `app/api/cron/promemoria-certificati` (Story 4.6), protetto da `CRON_SECRET` (già in `.env.production`/Fase 5).
+**Setup (una tantum):**
 
-1. Nel progetto Worker: **Settings → Triggers → Cron Triggers → Add**.
-2. Espressione cron a scelta (es. una volta al giorno).
-3. In alternativa, aggiungere direttamente in `wrangler.jsonc`:
-   ```jsonc
-   "triggers": {
-     "crons": ["0 6 * * *"] // ogni giorno alle 6:00 UTC, esempio
-   }
-   ```
-4. Il Worker dovrà gestire l'evento `scheduled` per chiamare l'endpoint con l'header/secret atteso — verificare l'implementazione in `app/api/cron/promemoria-certificati/route.ts` per il meccanismo esatto di autenticazione atteso (`CRON_SECRET`).
+1. Dalla cartella `cron-worker/`, o dalla radice del progetto: `npx wrangler secret put CRON_SECRET --config cron-worker/wrangler.jsonc` — incolla lo stesso segreto già in `.env.production`/Fase 5 (Cloudflare Worker principale).
+2. `npx wrangler secret put CRON_ENDPOINT_URL --config cron-worker/wrangler.jsonc` — l'URL pubblico dell'app in produzione, es. `https://societa-manager.dmnet2000.workers.dev` (senza slash finale, o con — `cron-worker/src/index.ts` lo rimuove comunque).
+3. Deploy: `npm run cron-worker:deploy` (equivalente a `wrangler deploy --config cron-worker/wrangler.jsonc`) — crea/aggiorna il Worker `societa-manager-cron` e registra i due Cron Trigger su Cloudflare automaticamente (nessun passaggio manuale da dashboard).
+4. Un cambio di schedule/logica richiede un nuovo `npm run cron-worker:deploy` — a differenza della cadenza per-Campionato (punto sopra), qui non c'è un pannello Admin.
 
-</details>
+⚠️ **Stesso schema di incidente silenzioso della Fase 3ter**: l'endpoint `promemoria-certificati` risponde sempre `200` anche quando nessuna email parte davvero — SMTP non configurato (`/app/smtp`), nessun Utente con Ruolo Dirigente, o nessun Certificato che cade esattamente a 30/7 giorni dalla scadenza nel giorno dell'esecuzione producono tutti un riepilogo silenzioso (`inviati: 0`), mai un errore visibile. Controllare i log del Worker (`npx wrangler tail --config cron-worker/wrangler.jsonc`, o la dashboard Cloudflare) per il corpo della risposta (`processati`/`inviati`/`falliti`), non solo che l'invocazione sia andata a buon fine.
 
-## Fase 6bis — GitHub Actions schedulato per la sincronizzazione automatica FIPAV (Story 10.12) `[ ]`
-
-Endpoint: `app/api/cron/sincronizza-fipav` (Story 10.12), protetto dallo stesso `CRON_SECRET` di Fase 5/6 (riusato, non un nuovo segreto). Workflow: `.github/workflows/sincronizza-fipav.yml`, già presente nel repository — gira **ogni 10 minuti** come "battito" fisso, ma **elabora un solo Campionato per invocazione** (il meno recentemente sincronizzato, in rotazione) — mai tutti insieme: un tentativo reale in produzione ha rivelato che sincronizzare più Campionati nella stessa chiamata rischiava sia un timeout lato workflow sia di bombardare il portale FIPAV con più richieste ravvicinate. Con più Campionati, la rotazione completa richiede più battiti (es. 5 Campionati ≈ 50 minuti per il giro completo). La cadenza REALE di ri-sincronizzazione di un singolo Campionato resta configurabile da un Admin su `/app/impostazioni` (nessun redeploy necessario per cambiarla).
-
-1. Nel repository GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
-2. Nome: `CRON_SECRET` — valore: lo stesso segreto già in `.env.production`/Fase 5 (Cloudflare) e in `.github/workflows/sincronizza-fipav.yml` come riferimento (`secrets.CRON_SECRET`).
-3. Nome: `CRON_ENDPOINT_URL` — valore: l'URL pubblico dell'app in produzione (es. `https://societa-manager.dmnet2000.workers.dev`), usato dal workflow per costruire l'URL completo dell'endpoint.
-4. Il workflow si attiva automaticamente secondo lo schedule già definito nel file — nessuna azione aggiuntiva richiesta dopo aver impostato i due secret sopra.
-
-⚠️ **GitHub disattiva automaticamente un workflow schedulato (`on: schedule`) dopo 60 giorni senza alcuna attività nel repository** (nessun commit/push/PR, indipendentemente dal fatto che il workflow stesso continui a girare). Se il repository resta a lungo senza modifiche, ricontrollare **Actions → Sincronizzazione automatica FIPAV** e riattivarlo manualmente se risulta disabilitato (un push qualsiasi lo riattiva automaticamente).
-
-## Fase 6ter — GitHub Actions schedulato per il promemoria scadenza Certificati Medici (Story 4.6) `[ ]`
-
-Endpoint: `app/api/cron/promemoria-certificati` (Story 4.6), stesso `CRON_SECRET`/`CRON_ENDPOINT_URL` già impostati per la Fase 6bis — **nessun nuovo secret da configurare**. Workflow: `.github/workflows/promemoria-certificati.yml`, già presente nel repository — **una sola volta al giorno** (`0 6 * * *`, 6:00 UTC = 7:00 CET/8:00 CEST), a differenza del battito orario di Fase 6bis: l'endpoint confronta i giorni alla scadenza per data di calendario, non per timestamp — una seconda esecuzione nello stesso giorno rimanderebbe lo stesso promemoria a Dirigenti e famiglie collegate.
-
-Se i due secret di Fase 6bis sono già stati impostati, questo workflow si attiva automaticamente senza altre azioni — vale lo stesso avviso sulla disattivazione dopo 60 giorni di inattività del repository (**Actions → Promemoria scadenza Certificati Medici**).
-
-⚠️ **Stesso schema di incidente silenzioso della Fase 3ter**: l'endpoint risponde sempre `200` anche quando nessuna email parte davvero — SMTP non configurato (`/app/smtp`), nessun Utente con Ruolo Dirigente, o nessun Certificato che cade esattamente a 30/7 giorni dalla scadenza nel giorno dell'esecuzione producono tutti un riepilogo silenzioso (`inviati: 0`), mai un errore visibile. Verificare il corpo della risposta (`processati`/`inviati`/`falliti`), non solo che il workflow sia andato a buon fine.
-
-**Per testare davvero l'invio** (un giorno qualunque quasi certamente non ha un Certificato esattamente a 30 o 7 giorni dalla scadenza): impostare temporaneamente `dataFineValidita` di un Certificato di prova a oggi+30 o oggi+7, lanciare il workflow a mano (`workflow_dispatch`), verificare `inviati: 1` nel corpo della risposta, poi ripristinare la data originale.
+**Per testare davvero l'invio del promemoria** (un giorno qualunque quasi certamente non ha un Certificato esattamente a 30 o 7 giorni dalla scadenza): impostare temporaneamente `dataFineValidita` di un Certificato di prova a oggi+30 o oggi+7, poi far scattare manualmente il Cron Trigger da dashboard Cloudflare (**Worker `societa-manager-cron` → Triggers → Cron Triggers → Trigger now**, sull'espressione `0 6 * * *`), verificare `inviati: 1` nei log, poi ripristinare la data originale.
 
 ## Fase 7 — Deploy di verifica ed esposizione pubblica `[ ]`
 
@@ -155,8 +132,8 @@ Il build/deploy tecnico va a buon fine (verificato dopo l'upgrade a Workers Paid
 - [ ] Login funziona (Supabase Auth, redirect corretti da `middleware.ts`)
 - [ ] Connessione DB funziona (una pagina che legge dati via Prisma)
 - [ ] Upload Storage funziona (es. certificato medico o logo)
-- [ ] Workflow GitHub Actions di Fase 6bis si attiva e l'endpoint `sincronizza-fipav` risponde correttamente (il Cron Trigger nativo di Fase 6 non è applicabile a questo build, vedi nota lì)
-- [ ] Workflow GitHub Actions di Fase 6ter si attiva e l'endpoint `promemoria-certificati` risponde `200` **con un corpo JSON coerente** (`inviati`/`falliti`, non solo l'assenza di errore HTTP — vedi l'avviso in Fase 6ter)
+- [ ] Worker `cron-worker` deployato (Fase 6bis) e i suoi due Cron Trigger risultano attivi su Cloudflare (dashboard del Worker `societa-manager-cron` → Triggers)
+- [ ] Un "Trigger now" manuale su ciascuno dei due Cron Trigger risponde con un corpo coerente nei log (`sincronizza-fipav`: `eseguito`/`campionatoId`/`esito`; `promemoria-certificati`: `processati`/`inviati`/`falliti` — non solo l'assenza di errore, vedi l'avviso in Fase 6bis)
 
 **Esposizione pubblica dell'app**, due strade:
 
