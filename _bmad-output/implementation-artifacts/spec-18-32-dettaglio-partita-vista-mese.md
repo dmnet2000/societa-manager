@@ -2,7 +2,7 @@
 title: 'Seguito Story 18.32: dettaglio della Partita in popup dalla vista Mese di /calendario'
 type: 'feature'
 created: '2026-09-30'
-status: 'in-review'
+status: 'done'
 baseline_commit: '5b79529f25893d75f1ea0d276e7d8c7e751a0796'
 review_loop_iteration: 0
 context: []
@@ -78,3 +78,43 @@ Ordine righe: Campionato (intestazione colorata), squadre (titolo), data + ora, 
 
 **Manual checks (dev locale rotto su questa macchina, verificare al deploy):**
 - `/calendario` vista Mese a 375px e desktop: popup leggibile, chiusura con Esc/×/sfondo, Naviga apre le mappe, nessuno scroll orizzontale.
+
+## Suggested Review Order
+
+**Popup e ciclo di vita del dialog**
+
+- Componente del popup: intestazione colorata, righe presenti, Naviga.
+  [`CalendarioVista.tsx:361`](../../app/calendario/CalendarioVista.tsx#L361)
+
+- Chiusura su sfondo solo se pressione e clic sono fuori dal contenuto.
+  [`CalendarioVista.tsx:430`](../../app/calendario/CalendarioVista.tsx#L430)
+
+- Apertura/chiusura con ripiego per browser senza `showModal`.
+  [`CalendarioVista.tsx:344`](../../app/calendario/CalendarioVista.tsx#L344)
+
+- Ritorno del focus alla striscia, o al titolo del mese se non c'è più.
+  [`CalendarioVista.tsx:201`](../../app/calendario/CalendarioVista.tsx#L201)
+
+- Striscia come pulsante, colore del Campionato sul pulsante.
+  [`CalendarioVista.tsx:304`](../../app/calendario/CalendarioVista.tsx#L304)
+
+**Dati e formattazione**
+
+- Proiezione server→client unica e testata, campi del dettaglio obbligatori.
+  [`griglia-mensile.ts:275`](../../lib/griglia-mensile.ts#L275)
+  [`page.tsx:88`](../../app/calendario/page.tsx#L88)
+
+- Righe del dettaglio in ordine fisso, campi vuoti omessi.
+  [`griglia-mensile.ts:310`](../../lib/griglia-mensile.ts#L310)
+  [`griglia-mensile.ts:238`](../../lib/griglia-mensile.ts#L238)
+
+**Stili, test e guida**
+
+- Dialog con scroll interno sul corpo, non sul dialog.
+  [`calendario.module.css:529`](../../app/calendario/calendario.module.css#L529)
+
+- Test: apertura, Esc reale, sfondo, colori, fallback, focus.
+  [`CalendarioVista.test.tsx:1`](../../app/calendario/CalendarioVista.test.tsx#L1)
+
+- Guida in-app aggiornata.
+  [`contenuti.ts:392`](../../lib/guida/contenuti.ts#L392)

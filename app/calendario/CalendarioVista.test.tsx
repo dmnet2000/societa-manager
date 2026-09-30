@@ -4,10 +4,21 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { CalendarioVista, type PartitaMese } from "./CalendarioVista";
 import { CHIAVE_STORAGE_NASCOSTI } from "@/lib/griglia-mensile";
+import styles from "./calendario.module.css";
 
 // Story 18.32 (review): test del componente client della vista mensile,
 // render con react-dom/client + act (nessuna @testing-library nel progetto).
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+// Campi del popup a null di default (obbligatori nel tipo).
+const SENZA_DETTAGLI = {
+  impianto: null,
+  indirizzoImpianto: null,
+  giornata: null,
+  statoDescrizione: null,
+  risultato: null,
+  parziali: null,
+};
 
 // 2 Campionati su 2 mesi (ottobre e novembre 2026).
 const PARTITE: PartitaMese[] = [
@@ -31,6 +42,7 @@ const PARTITE: PartitaMese[] = [
     ora: "18:00",
     squadraCasa: "Mogliano U16",
     squadraOspite: "Preganziol U16",
+    ...SENZA_DETTAGLI,
     campionato: { id: "u16", nome: "Under 16", colore: null },
   },
   {
@@ -39,17 +51,30 @@ const PARTITE: PartitaMese[] = [
     ora: "21:00",
     squadraCasa: "Silea",
     squadraOspite: "Mogliano",
+    ...SENZA_DETTAGLI,
     campionato: { id: "serie-d", nome: "Serie D", colore: "#ff0000" },
   },
 ];
 
+// Fixture separata (per non cambiare la legenda dei test esistenti): un
+// Campionato con colore chiaro, che richiede il testo scuro.
+const PARTITA_COLORE_CHIARO: PartitaMese = {
+  id: "p4",
+  data: "2026-10-21",
+  ora: "19:00",
+  squadraCasa: "Mogliano U14",
+  squadraOspite: "Casale U14",
+  ...SENZA_DETTAGLI,
+  campionato: { id: "u14", nome: "Under 14", colore: "#ffff66" },
+};
+
 let contenitore: HTMLDivElement;
 let root: Root;
 
-function monta(meseOggi = "2026-07") {
+function monta(meseOggi = "2026-07", partite: PartitaMese[] = PARTITE) {
   act(() => {
     root.render(
-      <CalendarioVista partite={PARTITE} meseOggi={meseOggi}>
+      <CalendarioVista partite={partite} meseOggi={meseOggi}>
         <p>ELENCO SETTIMANALE</p>
       </CalendarioVista>
     );
@@ -95,7 +120,55 @@ function testoGriglia(): string {
 // browser (anche su Esc).
 type ProtoDialog = { showModal?: () => void; close?: () => void };
 const protoDialog = HTMLDialogElement.prototype as unknown as ProtoDialog;
-const dialogOriginale = { showModal: protoDialog.showModal, close: protoDialog.close };
+const dialogOriginale: ProtoDialog = {
+  showModal: protoDialog.showModal,
+  close: protoDialog.close,
+};
+
+// Teardown: se jsdom non aveva il metodo, la proprieta' va cancellata (non
+// riassegnata a undefined), cosi' gli altri test vedono il prototipo intatto.
+function ripristinaDialog(nome: keyof ProtoDialog) {
+  const originale = dialogOriginale[nome];
+  if (originale === undefined) delete protoDialog[nome];
+  else protoDialog[nome] = originale;
+}
+
+// Esc come lo gestisce il browser: evento "cancel" (annullabile) e, se non
+// annullato, chiusura del dialog con evento "close".
+function premiEsc(d: HTMLDialogElement) {
+  act(() => {
+    const cancel = new Event("cancel", { cancelable: true });
+    d.dispatchEvent(cancel);
+    if (!cancel.defaultPrevented && d.hasAttribute("open")) {
+      d.removeAttribute("open");
+      d.dispatchEvent(new Event("close"));
+    }
+  });
+}
+
+function puntatore(tipo: "pointerdown" | "click", bersaglio: Element, x: number, y: number) {
+  act(() => {
+    bersaglio.dispatchEvent(
+      new MouseEvent(tipo, { bubbles: true, cancelable: true, clientX: x, clientY: y })
+    );
+  });
+}
+
+// Rettangolo del contenuto del popup (jsdom non fa layout): 100..300 x 100..300.
+function stubRettangoloContenuto(d: HTMLDialogElement) {
+  const corpo = d.firstElementChild as HTMLElement;
+  vi.spyOn(corpo, "getBoundingClientRect").mockReturnValue({
+    left: 100,
+    right: 300,
+    top: 100,
+    bottom: 300,
+    width: 200,
+    height: 200,
+    x: 100,
+    y: 100,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
 
 function dialog(): HTMLDialogElement {
   const trovato = contenitore.querySelector("dialog");
@@ -130,8 +203,8 @@ afterEach(() => {
   act(() => root.unmount());
   contenitore.remove();
   vi.restoreAllMocks();
-  protoDialog.showModal = dialogOriginale.showModal;
-  protoDialog.close = dialogOriginale.close;
+  ripristinaDialog("showModal");
+  ripristinaDialog("close");
 });
 
 describe("CalendarioVista - dettaglio Partita", () => {
@@ -193,26 +266,116 @@ describe("CalendarioVista - dettaglio Partita", () => {
     expect(document.activeElement).toBe(origine);
   });
 
-  it("chiusura con Esc (evento close del browser) riporta il focus", () => {
+  it("chiusura con Esc (cancel + close del browser) riporta il focus", () => {
     monta();
     clicca(bottone("Mese"));
     const origine = striscia("Mogliano U16");
     clicca(origine);
-    act(() => dialog().close());
+    premiEsc(dialog());
     expect(dialog().hasAttribute("open")).toBe(false);
+    expect(dialog().textContent).toBe("");
     expect(document.activeElement).toBe(origine);
   });
 
-  it("clic sullo sfondo chiude, clic dentro la finestra no", () => {
+  it("clic dentro la finestra non chiude", () => {
+    monta();
+    clicca(bottone("Mese"));
+    clicca(striscia("Mogliano - Treviso"));
+    const d = dialog();
+    stubRettangoloContenuto(d);
+    const titolo = d.querySelector("h2")!;
+    puntatore("pointerdown", titolo, 150, 150);
+    puntatore("click", titolo, 150, 150);
+    expect(d.hasAttribute("open")).toBe(true);
+  });
+
+  it("selezione iniziata dentro e rilasciata fuori non chiude", () => {
+    monta();
+    clicca(bottone("Mese"));
+    clicca(striscia("Mogliano - Treviso"));
+    const d = dialog();
+    stubRettangoloContenuto(d);
+    puntatore("pointerdown", d.querySelector("h2")!, 150, 150);
+    // Il click finale ha come target il dialog (antenato comune).
+    puntatore("click", d, 20, 20);
+    expect(d.hasAttribute("open")).toBe(true);
+  });
+
+  it("click sul dialog ma dentro il rettangolo del contenuto (scrollbar) non chiude", () => {
+    monta();
+    clicca(bottone("Mese"));
+    clicca(striscia("Mogliano - Treviso"));
+    const d = dialog();
+    stubRettangoloContenuto(d);
+    puntatore("pointerdown", d, 295, 200);
+    puntatore("click", d, 295, 200);
+    expect(d.hasAttribute("open")).toBe(true);
+  });
+
+  it("pointerdown e click sullo sfondo chiudono e riportano il focus", () => {
     monta();
     clicca(bottone("Mese"));
     const origine = striscia("Mogliano - Treviso");
     clicca(origine);
-    clicca(dialog().querySelector("h2")!);
+    const d = dialog();
+    stubRettangoloContenuto(d);
+    puntatore("pointerdown", d, 20, 20);
+    puntatore("click", d, 20, 20);
+    expect(d.hasAttribute("open")).toBe(false);
+    expect(document.activeElement).toBe(origine);
+  });
+
+  it("striscia e testata usano il colore del Campionato", () => {
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano - Treviso");
+    expect(origine.style.backgroundColor).toBe("rgb(255, 0, 0)");
+    clicca(origine);
+    const testata = dialog().firstElementChild!.firstElementChild as HTMLElement;
+    expect(testata.style.backgroundColor).toBe("rgb(255, 0, 0)");
+    expect(testata.classList.contains(styles.dialogoTestataTestoScuro)).toBe(false);
+  });
+
+  it("Campionato con colore chiaro: testo scuro su striscia e testata", () => {
+    monta("2026-07", [...PARTITE, PARTITA_COLORE_CHIARO]);
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano U14 - Casale U14");
+    expect(origine.style.backgroundColor).toBe("rgb(255, 255, 102)");
+    expect(origine.classList.contains(styles.eventoTestoScuro)).toBe(true);
+    expect(striscia("Mogliano - Treviso").classList.contains(styles.eventoTestoScuro)).toBe(
+      false
+    );
+    clicca(origine);
+    const testata = dialog().firstElementChild!.firstElementChild as HTMLElement;
+    expect(testata.style.backgroundColor).toBe("rgb(255, 255, 102)");
+    expect(testata.classList.contains(styles.dialogoTestataTestoScuro)).toBe(true);
+  });
+
+  it("senza showModal/close (browser vecchi): attributo open, nessun crash", () => {
+    protoDialog.showModal = undefined;
+    protoDialog.close = undefined;
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano - Treviso");
+    clicca(origine);
     expect(dialog().hasAttribute("open")).toBe(true);
-    clicca(dialog());
+    expect(dialog().textContent).toContain("Palazzetto Mogliano");
+    clicca(bottone("Chiudi"));
     expect(dialog().hasAttribute("open")).toBe(false);
     expect(document.activeElement).toBe(origine);
+  });
+
+  it("striscia non piu' nel documento: il focus va al titolo del mese", () => {
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano - Treviso");
+    clicca(origine);
+    // Simula la sparizione del pulsante di origine prima della chiusura.
+    const li = origine.parentElement!;
+    li.removeChild(origine);
+    clicca(bottone("Chiudi"));
+    expect(document.activeElement).toBe(contenitore.querySelector("h2"));
+    li.appendChild(origine); // ripristino per lo smontaggio di React
   });
 });
 
