@@ -319,6 +319,13 @@
   color: var(--color-text-primary);
 }
 
+/* tabIndex=-1: riceve il focus da script quando la Partita di origine del
+   popup non e' piu' nel documento (seguito Story 18.32). */
+.titoloMese:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .frecciaMese {
   display: inline-flex;
   align-items: center;
@@ -459,8 +466,9 @@
 }
 
 /* Cella con piu' Partite di quante ne entrino: scroll interno, mai la
-   cella che cresce e sposta la riga (tabIndex=0 nel componente solo quando
-   ci sono Partite, cosi' e' raggiungibile e scorribile da tastiera). */
+   cella che cresce e sposta la riga. Da tastiera la lista scorre da sola
+   seguendo il focus: ogni Partita e' un pulsante raggiungibile con Tab
+   (seguito Story 18.32), la lista non ha piu' un tabIndex proprio. */
 .eventiGiorno {
   display: flex;
   flex-direction: column;
@@ -471,11 +479,6 @@
   padding: 0;
   list-style: none;
   overflow-y: auto;
-}
-
-.eventiGiorno:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 1px;
 }
 
 .voceEvento {
@@ -518,12 +521,15 @@
    Seguito Story 18.32: popup di dettaglio della Partita (<dialog> modale).
    Angoli vivi, intestazione nel colore del Campionato (default #2e6f99
    come .matchCard), testo var(--color-text-primary) su bianco, niente nero.
-   Il dialog non ha padding: il contenuto lo riempie tutto, cosi' un click
-   con target il dialog stesso e' sempre un click sullo sfondo.
+   Il dialog non ha padding e non scorre (overflow: hidden): il contenuto
+   lo riempie tutto e lo scroll sta su .dialogoCorpo, cosi' ne' la
+   scrollbar ne' il contenuto hanno come target il dialog stesso - un click
+   con target il dialog e' sempre un click sullo sfondo.
    ------------------------------------------------------------------ */
 .dialogo {
   width: min(480px, calc(100vw - 32px));
   max-width: none;
+  max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   margin: auto;
   padding: 0;
@@ -532,7 +538,7 @@
   background: #ffffff;
   color: var(--color-text-primary);
   box-shadow: 0 12px 32px rgba(16, 24, 32, 0.3);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .dialogo::backdrop {
@@ -542,6 +548,8 @@
 .dialogoCorpo {
   display: flex;
   flex-direction: column;
+  max-height: inherit;
+  overflow-y: auto;
 }
 
 .dialogoTestata {

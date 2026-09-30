@@ -14,6 +14,7 @@ import {
   unisciNascostiDaSalvare,
   formattaParziali,
   righeDettaglioPartita,
+  partitaPerVistaMese,
 } from "./griglia-mensile";
 
 describe("settimaneDelMese", () => {
@@ -205,7 +206,16 @@ describe("formattaParziali", () => {
 });
 
 describe("righeDettaglioPartita", () => {
-  const base = { data: "2026-10-14", ora: "20:30" };
+  const base = {
+    data: "2026-10-14",
+    ora: "20:30",
+    giornata: null,
+    impianto: null,
+    indirizzoImpianto: null,
+    statoDescrizione: null,
+    risultato: null,
+    parziali: null,
+  };
 
   it("Partita futura completa: data, ora, palestra, indirizzo in ordine", () => {
     const righe = righeDettaglioPartita({
@@ -242,7 +252,7 @@ describe("righeDettaglioPartita", () => {
       giornata: "",
       impianto: "  ",
       indirizzoImpianto: null,
-      statoDescrizione: undefined,
+      statoDescrizione: null,
       risultato: "",
       parziali: "",
     });
@@ -258,6 +268,41 @@ describe("righeDettaglioPartita", () => {
   });
 
   it("data non parsabile: resta solo l'ora", () => {
-    expect(righeDettaglioPartita({ data: "abc", ora: "18:00" })[0].valore).toBe("ore 18:00");
+    expect(righeDettaglioPartita({ ...base, data: "abc", ora: "18:00" })[0].valore).toBe("ore 18:00");
+  });
+
+  it("stato e risultato insieme: entrambi mostrati, stato prima del risultato", () => {
+    const righe = righeDettaglioPartita({ ...base, statoDescrizione: "Giocata", risultato: "3-1" });
+    expect(righe.map((r) => [r.chiave, r.valore])).toEqual([
+      ["quando", "mercoledì 14 ottobre 2026, ore 20:30"],
+      ["stato", "Giocata"],
+      ["risultato", "3-1"],
+    ]);
+  });
+});
+
+describe("partitaPerVistaMese", () => {
+  it("da una riga completa escono tutti i campi di griglia e popup, nient'altro", () => {
+    const completa = {
+      id: "p1",
+      data: "2026-10-14",
+      ora: "20:30",
+      squadraCasa: "Mogliano",
+      squadraOspite: "Treviso",
+      impianto: "Palazzetto Mogliano",
+      indirizzoImpianto: "Via Roma 1, Mogliano Veneto",
+      giornata: "3",
+      statoDescrizione: "Giocata",
+      risultato: "3-1",
+      parziali: "25-20,22-25,25-18,25-19",
+      campionato: { id: "serie-d", nome: "Serie D", colore: "#ff0000" },
+    };
+    // Campi in piu' della riga Prisma non devono arrivare al client.
+    const riga = {
+      ...completa,
+      gruppoId: "g1",
+      campionato: { ...completa.campionato, linkFipav: "https://esempio" },
+    };
+    expect(partitaPerVistaMese(riga)).toEqual(completa);
   });
 });

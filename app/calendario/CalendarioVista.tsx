@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import {
@@ -183,9 +191,15 @@ function GrigliaMese({
     setSelezionata(partita);
   }
 
+  // Fallback del ritorno del focus: se la striscia di origine non e' piu' nel
+  // documento, il titolo del mese (tabIndex=-1, focusabile solo da script).
+  const titoloMeseRef = useRef<HTMLHeadingElement>(null);
+
   function dettaglioChiuso() {
     setSelezionata(null);
-    origineRef.current?.focus();
+    const origine = origineRef.current;
+    if (origine?.isConnected) origine.focus();
+    else titoloMeseRef.current?.focus();
     origineRef.current = null;
   }
 
@@ -201,7 +215,12 @@ function GrigliaMese({
         >
           <span aria-hidden="true">‹</span>
         </button>
-        <h2 className={styles.titoloMese} aria-live="polite">
+        <h2
+          ref={titoloMeseRef}
+          className={styles.titoloMese}
+          aria-live="polite"
+          tabIndex={-1}
+        >
           {etichettaMese(mese)}
         </h2>
         <button
@@ -273,11 +292,7 @@ function GrigliaMese({
                 {etichetta}
               </span>
               {partiteGiorno.length > 0 && (
-                <ul
-                  className={styles.eventiGiorno}
-                  tabIndex={0}
-                  aria-label={`Partite di ${etichetta}`}
-                >
+                <ul className={styles.eventiGiorno} aria-label={`Partite di ${etichetta}`}>
                   {partiteGiorno.map((partita) => {
                     const colore = partita.campionato.colore;
                     const classiEvento =
@@ -318,6 +333,28 @@ function GrigliaMese({
   );
 }
 
+// Browser senza <dialog> completo (Safari < 15.4): showModal/close possono
+// mancare. Fallback sull'attributo "open" (finestra non modale ma
+// visibile) e, alla chiusura, evento "close" emesso a mano cosi' il
+// percorso di chiusura (stato + focus) resta uno solo. Mai un crash.
+function haShowModal(dialog: HTMLDialogElement): boolean {
+  return typeof dialog.showModal === "function";
+}
+
+function apriDialog(dialog: HTMLDialogElement) {
+  if (haShowModal(dialog)) dialog.showModal();
+  else dialog.setAttribute("open", "");
+}
+
+function chiudiDialog(dialog: HTMLDialogElement) {
+  if (typeof dialog.close === "function") {
+    dialog.close();
+  } else if (dialog.hasAttribute("open")) {
+    dialog.removeAttribute("open");
+    dialog.dispatchEvent(new Event("close"));
+  }
+}
+
 // Seguito Story 18.32: popup modale con il dettaglio della Partita. <dialog>
 // nativo con showModal() (focus intrappolato, Esc e sfondo inerte gestiti
 // dal browser); nessuna richiesta al click, i dati arrivano gia' dal server.
@@ -329,7 +366,10 @@ function DettaglioPartita({
   onChiuso: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const corpoRef = useRef<HTMLDivElement>(null);
   const chiudiRef = useRef<HTMLButtonElement>(null);
+  // true solo se il pointerdown e' partito sullo sfondo (target = dialog).
+  const premutoSuSfondoRef = useRef(false);
   const idBase = useId();
   const idCampionato = `${idBase}-campionato`;
   const idTitolo = `${idBase}-titolo`;
@@ -337,17 +377,38 @@ function DettaglioPartita({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (partita && !dialog.open) {
-      dialog.showModal();
+    // hasAttribute, non dialog.open: la proprieta' manca dove manca <dialog>.
+    const aperto = dialog.hasAttribute("open");
+    if (partita && !aperto) {
+      apriDialog(dialog);
       // Focus iniziale esplicito sul bottone x, dentro la finestra.
       chiudiRef.current?.focus();
-    } else if (!partita && dialog.open) {
-      dialog.close();
+    } else if (!partita && aperto) {
+      chiudiDialog(dialog);
     }
   }, [partita]);
 
   function chiudi() {
-    dialogRef.current?.close();
+    if (dialogRef.current) chiudiDialog(dialogRef.current);
+  }
+
+  // Clic sullo sfondo: il dialog non ha padding e lo scroll sta sul corpo
+  // interno (la scrollbar non e' del dialog), quindi un click con target il
+  // dialog stesso cade sul backdrop. Si chiude solo se anche il pointerdown
+  // e' partito li' (una selezione di testo iniziata dentro e rilasciata fuori
+  // non chiude) e le coordinate sono fuori dal rettangolo del contenuto.
+  function clickSuDialog(e: MouseEvent<HTMLDialogElement>) {
+    const premutoSuSfondo = premutoSuSfondoRef.current;
+    premutoSuSfondoRef.current = false;
+    if (e.target !== e.currentTarget || !premutoSuSfondo) return;
+    const rect = corpoRef.current?.getBoundingClientRect();
+    const fuori =
+      !rect ||
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+    if (fuori) chiudi();
   }
 
   const colore = partita?.campionato.colore ?? null;
@@ -366,14 +427,17 @@ function DettaglioPartita({
       className={styles.dialogo}
       aria-labelledby={partita ? `${idCampionato} ${idTitolo}` : undefined}
       onClose={onChiuso}
-      // Clic sullo sfondo: il dialog non ha padding e il contenuto lo riempie
-      // tutto, quindi un click con target il dialog stesso cade sul backdrop.
-      onClick={(e) => {
-        if (e.target === e.currentTarget) chiudi();
+      onPointerDown={(e) => {
+        premutoSuSfondoRef.current = e.target === e.currentTarget;
+      }}
+      onClick={clickSuDialog}
+      // Esc nel fallback senza showModal (il browser non lo gestisce da se').
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !haShowModal(e.currentTarget)) chiudi();
       }}
     >
       {partita && (
-        <div className={styles.dialogoCorpo}>
+        <div ref={corpoRef} className={styles.dialogoCorpo}>
           <div
             className={classiTestata}
             style={colore ? { backgroundColor: colore } : undefined}
@@ -409,7 +473,7 @@ function DettaglioPartita({
                           href={linkNaviga}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label={`Naviga verso ${partita.impianto || "il luogo della partita"}`}
+                          aria-label={`Naviga verso ${partita.impianto?.trim() || "il luogo della partita"}`}
                         >
                           Naviga
                         </a>
