@@ -1,0 +1,4 @@
+# Fine riga fissi per gli script, indipendenti da core.autocrlf: bash non
+# esegue uno .sh con CRLF, cmd puo' sbagliare le etichette di un .bat con LF.
+*.sh text eol=lf
+*.bat text eol=crlf

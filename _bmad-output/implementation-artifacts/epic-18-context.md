@@ -4,7 +4,7 @@
 
 ## Goal
 
-Build a public, login-free marketing site for the Settore Volley inside the same Next.js/Cloudflare app (no separate system, no duplicated data, no public API) — a visually striking "Poster Sportivo" showcase covering a homepage, and dedicated pages for Squadre, Calendario, Staff and Contatti. It mirrors existing data read-only (Sponsor, Partita/Campionato, Gruppo/Allenatore) and mirrors the club's social presence (Facebook posts, live FIPAV results/standings) without ever writing back to those platforms. This is an explicitly open-ended epic (like Epic 9/11/17): stories keep being added one at a time as the live site gets used and the user gives visual/UX feedback.
+Costruire un sito pubblico (senza login) per il Settore Volley dentro la stessa app Next.js/Cloudflare — nessun sistema separato, nessuna duplicazione dei dati, nessuna API pubblica — con un registro visivo accattivante "Poster Sportivo": home e pagine dedicate Squadre, Calendario, Staff, Contatti e Classifiche. Il sito rispecchia in sola lettura i dati esistenti (Sponsor, Partita/Campionato, Gruppo/Allenatore/Atleta) e la presenza social/sportiva della società (post Facebook, risultati e classifiche live dal portale FIPAV), senza mai scrivere verso quelle piattaforme. Epica volutamente APERTA (come Epic 9/11/17): le story si aggiungono una alla volta in base al feedback visivo/UX dell'utente sul sito in produzione.
 
 ## Stories
 
@@ -20,60 +20,64 @@ Build a public, login-free marketing site for the Settore Volley inside the same
 - Story 18.10: Pagina pubblica "Staff"
 - Story 18.11: Pagina pubblica "Contatti"
 - Story 18.12: Applicazione del registro visivo "Poster Sportivo" alle pagine pubbliche esistenti
-- Story 18.13: Carosello automatico dei post Facebook in home (sostituisce l'embed statico)
+- Story 18.13: Carosello automatico dei post Facebook in home
 - Story 18.14: Caricamento della foto di sfondo dell'hero da Admin/Dirigente
-- Story 18.15: Rimuovere il nero dal registro visivo "Poster Sportivo" — revisione UX con Sally
-- Story 18.16: Applicare al codice reale il nuovo colore del registro (blu-carbone + azzurro-partite)
+- Story 18.15: Rimuovere il nero dal registro visivo "Poster Sportivo" (revisione DESIGN.md)
+- Story 18.16: Applicare al codice il nuovo colore del registro (blu carbone + azzurro partite)
 - Story 18.17: Rimuovere il pulsante "Preferenze cookie" dopo una scelta registrata
-- Story 18.18: Rivedere il menu di navigazione pubblica su mobile (voci su due righe)
-- Story 18.19: Separare il titolo hero dal blocco Post Facebook, blocco più stretto e più alto
-- Story 18.20: Logo della Polisportiva nel footer pubblico, con link al sito e ai social
-- Story 18.21: Favicon e titolo della scheda del browser dinamico dal nome del Settore
+- Story 18.18: Menu di navigazione pubblica su mobile (voci su due righe)
+- Story 18.19: Separare il titolo hero dal blocco Post Facebook
+- Story 18.20: Logo della Polisportiva nel footer pubblico, con link a sito e social
+- Story 18.21: Favicon e titolo della scheda dinamici dal nome del Settore
 - Story 18.22: Foto dell'Allenatore nella sezione Staff
 - Story 18.23: Riordino dell'header pubblico e larghezza didascalia Facebook su mobile
 - Story 18.24: Elenco Atlete a blocchi per categoria su "Squadre", con foto e Numero
 - Story 18.25: Contenuto centrato nella pagina pubblica `/squadre`
 - Story 18.26 (BUG): `null value` su `accessToken` — chiusa, non un difetto applicativo
 - Story 18.27: Scheda Gruppo molto più larga in `/squadre`
-- Story 18.32: Vista mensile "stile Google Calendar" per `/calendario` (solo analisi, nessuno sviluppo)
-- Story 18.33: Risultati e classifiche recuperati in tempo reale dal portale FIPAV, in home
+- Story 18.32: Vista mensile "stile Google Calendar" per `/calendario` (solo analisi)
+- Story 18.33: Risultati e classifiche live dal portale FIPAV in home
+- Story 18.34: Classifiche spostate su una pagina pubblica dedicata `/classifiche`
 
 ## Requirements & Constraints
 
-- No page under this epic requires authentication, and none may expose data reserved to authenticated Roles: no Atleta list/details (the one deliberate exception is Story 18.24, which reverses 18.8's exclusion on explicit user confirmation to show only Atleta nome/foto/numero — never email, codice fiscale, credentials, or internal-only fields).
-- Social integration direction is strictly platform-to-site (mirroring/read-only); the site never publishes or writes to social platforms.
-- Prefer the simplest solution over a more "complete" one (e.g. official read-only embeds over managing API tokens) unless the user explicitly reopens that trade-off (as happened for the Facebook carousel, Story 18.13).
-- Every public section that depends on optional/external data is fail-soft: if the data is absent, misconfigured, or the fetch fails, that section is silently omitted — never an error, a broken image, or a placeholder saying "not available" (contrast: interior pages actively show "no results" messages, e.g. Story 18.9/18.10 AC).
-- Cookie/GDPR compliance (Garante Privacy Italia): no non-essential cookie or third-party script (social embeds, future analytics) loads on a public page before explicit visitor consent; consent must stay revocable — do not silently regress that guarantee (open, unresolved tension flagged in Story 18.17).
-- Accessibility baseline for every interactive public element: minimum 44×44px touch target, visible keyboard focus outline, WCAG 2.2.2 pause/resume control on any auto-advancing carousel.
-- Every new public route must be explicitly added to `PUBLIC_ROUTES` (`lib/auth/route-guard.ts`) or an anonymous Visitor is redirected to `/accedi` — this is not automatic from removing a route from `PROTECTED_ROUTES`.
+- Nessuna pagina di questa epica richiede autenticazione, e nessuna espone dati riservati ai Ruoli autenticati. Unica eccezione deliberata: Story 18.24 (confermata dall'utente) mostra delle Atlete solo nome/foto/Numero — mai email, codice fiscale, credenziali o campi interni.
+- Social solo in direzione piattaforma → sito (mirroring in lettura); il sito non pubblica né scrive mai sui social. Lo stesso vale per FIPAV: il percorso pubblico non scrive mai nel DB.
+- Preferire la soluzione più semplice a quella più "completa", salvo che l'utente riapra esplicitamente il compromesso (come per il carosello Facebook, 18.13).
+- Fail-soft per ogni sezione che dipende da dati opzionali/esterni: se il dato manca, è mal configurato o il fetch fallisce/va in timeout/l'HTML cambia formato, il blocco viene omesso in silenzio — mai errori, immagini rotte o messaggi "non disponibile"; un blocco non deve mai bloccare gli altri. Eccezione: le pagine dedicate il cui unico scopo è quel contenuto mostrano un messaggio esplicito quando è vuoto (es. "Nessuna classifica disponibile al momento", "nessuna partita").
+- Cookie/GDPR (Garante Privacy): nessun cookie non essenziale né script di terze parti (embed social, analytics futuri) prima del consenso esplicito; il consenso deve restare revocabile (tensione aperta segnalata in 18.17, non regredire).
+- Accessibilità di base per ogni elemento interattivo: touch target minimo 44×44px, outline di focus visibile, controllo pausa/ripresa (WCAG 2.2.2) su ogni carosello automatico.
+- Ogni nuova rotta pubblica va aggiunta esplicitamente a `PUBLIC_ROUTES`, altrimenti il Visitatore anonimo viene rediretto a `/accedi` (non basta che non sia in `PROTECTED_ROUTES`).
+- Regola permanente di progetto: se una story tocca una funzionalità già documentata nella guida in-app, aggiornarne anche il contenuto guida.
 
 ## Technical Decisions
 
-- Foundational split (Story 18.1): the authenticated internal dashboard moved from `"/"` to `/app` (all `PROTECTED_ROUTES` prefixes, internal `<Link>`s, and post-login/registration redirects updated accordingly); the public site now owns `"/"`. Role-based authorization logic itself is unchanged, only paths moved.
-- Public pages read existing Prisma models directly and read-only (`Sponsor`, `Partita`/`Campionato`, `Gruppo`/`GruppoAllenatore`, `Allenatore`) — no separate public API/schema, no data duplication.
-- Season resolution on public pages must use the read-only `trovaAnnoAgonisticoCorrente` helper, never `risolviAnnoAgonisticoCorrente` (which has a write side-effect of creating the season if missing) — a write side-effect is never acceptable on a public GET page.
-- Image uploads (team photo, hero photo, Polisportiva logo) follow the established mirror pattern from logo/Sponsor: `lib/storage/validazione-immagine.ts` (2MB limit, PNG/JPEG, magic-byte check), a dedicated public Storage bucket with its SELECT policy set from the very first migration (a lesson paid for twice already on earlier buckets), existence tracked via Storage `list()` rather than a Prisma column when the asset is a site/entity-level singleton, and a dedicated `lib/storage/<nome>.ts` module mirroring `lib/storage/logo.ts`.
-- Site-wide public settings (Facebook page URL, public contacts, Polisportiva links) live as new optional fields on the existing `ConfigurazioneApplicazione` singleton (no-RLS by design, AD-9 exception, mirrors `nomeSettore`/`emailSegreteria`). A real secret (the Facebook Graph API Page Access Token) must NOT go there — it needs its own RLS-protected singleton table, mirroring the `ConfigurazioneSmtp` pattern (AD-12: runtime-configurable by Admin, never hardcoded, never sent to the client).
-- Privately-stored images that must surface on a public page (Allenatore/Atleta foto profilo) are fetched server-side with the privileged admin client (bypasses RLS) and served via short-lived signed URLs — the bucket's RLS/policies are never relaxed or made permanently publicly readable.
-- Shared carousel index arithmetic (`lib/carosello-indice.ts`, promoted out of the Sponsor carousel, Story 16.3) is reused by every new auto-advancing carousel (e.g. Facebook posts, Story 18.13) instead of being duplicated.
-- Public data-fetching pages are generally `force-dynamic` Server Components with fail-soft `.catch(() => [])` reads; the FIPAV live results/standings feature (18.33) instead uses Next.js `fetch` with a short `revalidate` window to avoid hammering a third-party site with no SLA while still feeling "live".
+- Divisione fondativa (18.1): la dashboard interna autenticata vive sotto `/app` (prefissi di `PROTECTED_ROUTES`, link interni e redirect post-login/registrazione aggiornati); il sito pubblico possiede `"/"`. La logica di autorizzazione per Ruolo è invariata.
+- Le pagine pubbliche leggono direttamente e in sola lettura i modelli Prisma esistenti — nessuno schema/API pubblica separata.
+- Stagione corrente sulle pagine pubbliche: usare sempre `trovaAnnoAgonisticoCorrente` (sola lettura), mai `risolviAnnoAgonisticoCorrente` (crea la stagione se manca — effetto collaterale di scrittura inaccettabile su una GET pubblica).
+- Upload immagini (foto squadra, hero, logo Polisportiva) seguono il pattern logo/Sponsor: validazione condivisa (2MB, PNG/JPEG, controllo magic byte), bucket Storage pubblico dedicato con policy SELECT già nella prima migrazione, esistenza tracciata via `list()` per gli asset singleton, modulo `lib/storage/<nome>.ts` speculare a quello del logo. La foto squadra può caricarla anche l'Allenatore assegnato al Gruppo.
+- Impostazioni pubbliche del sito (URL pagina Facebook, contatti, link Polisportiva) come campi opzionali sul singleton `ConfigurazioneApplicazione`. Un vero segreto (token Graph API Facebook) va invece in una tabella singleton propria protetta da RLS (pattern `ConfigurazioneSmtp`), mai hardcoded né inviato al client. Ogni nuova tabella strutturale va comunque in ENABLE RLS + REVOKE esplicito.
+- Immagini private da mostrare in pubblico (foto profilo Allenatore/Atleta): lette lato server con il client admin privilegiato e servite con signed URL a breve scadenza — mai rilassare le policy del bucket.
+- L'aritmetica dell'indice dei caroselli (`lib/carosello-indice.ts`) è condivisa e va riusata da ogni nuovo carosello automatico.
+- Pagine pubbliche generalmente Server Component `force-dynamic` con letture fail-soft. I dati FIPAV live (18.33/18.34) usano invece `fetch` Next.js con breve `revalidate` (~10 min) e timeout breve, un solo fetch per Campionato (la stessa pagina di `Campionato.linkFipav` contiene sia `tbl-risultati` sia `tbl-classifica`, classifica di default "all'ultima giornata"); nessun nuovo campo su `Campionato`. Percorso del tutto indipendente dalla sincronizzazione manuale interna (Epic 10), che resta invariata: i dati pubblici possono legittimamente differire da quelli salvati su `Partita`.
+- Il menu pubblico è dinamico e gestito da pannello (Epic 19, `VoceMenuPubblico`): una nuova pagina pubblica che deve comparire nel menu di default si porta dietro una migrazione di seed della voce con ordine sensato (precedente: voce "Torneo"; "Classifiche" dopo "Calendario").
 
 ## UX & Interaction Patterns
 
-- Visual register "Poster Sportivo" (`ux-designs/ux-societa-manager-2026-08-13/DESIGN.md`+`EXPERIENCE.md`, `status: final`, since revised by Story 18.15/18.16): white/azzurro dominate; the only dark structural color is `{colors.blu-carbone}` `#0F2438` (header, hero, footer) — pure/near-black (`#0B0E14`) is explicitly banned per direct user feedback, do not reintroduce it. Match-cards use their own dedicated `{colors.azzurro-partite}` `#2E6F99`, never blu-carbone.
-- Diagonal `clip-path` cuts and condensed weight-900 typography on titles/nav/buttons are structural, not decorative. `{colors.magenta}` is reserved for a single hero eyebrow badge only (never repeated elsewhere); the "vs" divider on match-cards uses the lighter `{colors.magenta-chiaro}` instead (full magenta fails contrast on azzurro-partite).
-- Mobile navigation is a deliberate horizontal list with wrap, not a hamburger/drawer — a mockup showing a drawer is illustrative only and must not be copied literally; this decision has been reopened by user feedback more than once (18.18, 18.23) without changing the outcome so far.
-- Missing images (team photo, hero photo, staff/Atleta photo) always render the shared `placeholder-foto` diagonal-hatch/initials treatment from `DESIGN.md`, never a broken image or empty area.
-- Every interactive element (nav item, primary button, cookie-banner action, social icon, carousel control) needs a 44×44px touch target and a visible focus outline using the `focus-*` tokens.
+- Registro "Poster Sportivo" (`ux-designs/ux-societa-manager-2026-08-13/DESIGN.md` + `EXPERIENCE.md`, rivisto da 18.15/18.16): dominano bianco/azzurro; l'unico colore scuro strutturale è `{colors.blu-carbone}` `#0F2438` (header, hero, footer). Il nero/quasi-nero è vietato per feedback diretto dell'utente — non reintrodurlo. Le card partita usano `{colors.azzurro-partite}` `#2E6F99`, mai il blu carbone.
+- Tagli diagonali `clip-path` e tipografia condensata peso 900 su titoli/nav/bottoni sono strutturali. `{colors.magenta}` è riservato al solo badge eyebrow dell'hero; il divisore "vs" delle card usa `{colors.magenta-chiaro}` (il magenta pieno non passa il contrasto).
+- Navigazione mobile: lista orizzontale con wrap, non hamburger/drawer (un mockup con drawer è solo illustrativo); decisione riaperta più volte (18.18, 18.23) senza cambiarne l'esito.
+- Immagini mancanti (squadra, hero, staff, Atleta): sempre il placeholder condiviso `placeholder-foto` (tratteggio diagonale/iniziali), mai immagine rotta o area vuota.
+- Layout `/squadre`: contenuto centrato (`.main` max 1000px, 18.25) e schede Gruppo a una sola colonna (18.27) — non riaprire.
+- Tabelle classifica: in home (se presente) formato compatto; nella pagina dedicata tutte le 13 colonne, una card per Campionato, nessun selettore/filtro.
 
 ## Cross-Story Dependencies
 
-- Story 18.1 is foundational; nearly every other story in this epic depends on it (the `/app` migration and the public home skeleton).
-- Story 18.7 (nav menu) is a precondition for Squadre/Calendario/Staff/Contatti (18.8–18.11) being reachable, but each of those stories must still independently register its own route in `PUBLIC_ROUTES`.
-- Story 18.12 (apply visual register) depends on 18.1–18.5, 18.7, 18.8 plus the UX session; Story 18.15 (remove black) revises the same `DESIGN.md` again and Story 18.16 applies that revised palette to code — 18.15 must land before 18.16.
-- Story 18.13 (Facebook carousel) reopens 18.5's original decision to use a passive official embed; Story 18.19 then iterates again on 18.13's hero layout, and Story 18.23 iterates again on both the header and the Facebook caption layout for mobile.
-- Story 18.24 (Atlete list on `/squadre`) depends on Story 19.15 (Epic 19, Gruppo `ordine` field) and Story 9.35 (Atleta `numero` field) — both were opened specifically to unblock this story; it also explicitly reverses the privacy exclusion set by Story 18.8.
-- Story 18.27 depends on the `/squadre` centered-layout decision from Story 18.25 and must not reopen it.
-- Story 18.33 (FIPAV live results) is an independent, read-only addition to the home page, ordered immediately before the existing Story 18.3 "partite della settimana" section, and explicitly does not touch the pre-existing manual FIPAV sync from Story 10.11 (Epic 10).
-- Story 18.32 is analysis-only; any future development story implementing it depends on the open decisions it lists being closed with the user first.
+- 18.1 è fondativa: quasi tutte le altre story ne dipendono.
+- 18.7 (menu) rende raggiungibili 18.8–18.11, ma ogni pagina deve registrare comunque la propria rotta in `PUBLIC_ROUTES`. Il menu è poi diventato dinamico con Epic 19 (19.6–19.8): nuove voci passano dal seed di `VoceMenuPubblico`.
+- 18.12 dipende da 18.1–18.5, 18.7, 18.8 e dalla sessione UX; 18.15 rivede DESIGN.md e deve precedere 18.16, che applica la palette al codice.
+- 18.13 riapre la scelta dell'embed passivo di 18.5; 18.19 e 18.23 iterano ancora su hero, header e didascalia Facebook.
+- 18.24 dipende da 19.15 (campo `ordine` del Gruppo) e 9.35 (campo `numero` dell'Atleta) e ribalta l'esclusione privacy di 18.8; 18.27 dipende dal layout centrato di 18.25.
+- 18.33 aggiunge in home "Risultati della settimana scorsa" subito PRIMA di "Partite della settimana" (18.3, invariata) e non tocca la sincronizzazione FIPAV manuale di Epic 10 (10.11).
+- 18.34 riusa invariata l'infrastruttura di 18.33 (fetch live con cache, parser, vista per Campionato): rimuove del tutto la sezione classifiche dalla home (i risultati restano in home) e la sposta su `/classifiche`, con voce di menu seed dopo "Calendario".
+- 18.32 è solo analisi: una futura story di sviluppo dipende dalla chiusura con l'utente delle decisioni aperte che elenca (riusabile `Campionato.colore` per la legenda).

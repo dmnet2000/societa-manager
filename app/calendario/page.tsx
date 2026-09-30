@@ -3,6 +3,8 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
+import { meseCorrente } from "@/lib/mese-calendario";
+import { CalendarioVista } from "./CalendarioVista";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import styles from "./calendario.module.css";
@@ -55,7 +57,9 @@ export default async function CalendarioPage() {
             squadraOspite: true,
             impianto: true,
             indirizzoImpianto: true,
-            campionato: { select: { nome: true, colore: true } },
+            // Story 18.32: id aggiunto per la legenda/filtro della vista
+            // mensile (una checkbox per Campionato, identificato per id).
+            campionato: { select: { id: true, nome: true, colore: true } },
           },
         })
         .catch((err) => {
@@ -68,6 +72,18 @@ export default async function CalendarioPage() {
   // settimana lunedi'-domenica tra la prima e l'ultima partita della
   // stagione, incluse le settimane senza alcuna partita (AC #1).
   const settimane = raggruppaPerSettimana(partite);
+
+  // Story 18.32: la vista mensile riceve solo i campi che mostra (niente
+  // impianto/indirizzo serializzati al client inutilmente) e lavora tutta
+  // client-side su questi stessi dati, nessuna richiesta al cambio mese.
+  const partiteMese = partite.map((partita) => ({
+    id: partita.id,
+    data: partita.data,
+    ora: partita.ora,
+    squadraCasa: partita.squadraCasa,
+    squadraOspite: partita.squadraOspite,
+    campionato: partita.campionato,
+  }));
 
   return (
     <>
@@ -85,7 +101,12 @@ export default async function CalendarioPage() {
             Nessuna partita programmata per la stagione in corso.
           </p>
         ) : (
-          settimane.map((settimana) => (
+          // Story 18.32: l'elenco settimanale resta questo Server Component,
+          // invariato - CalendarioVista (client) decide solo se mostrare lui
+          // o la griglia mensile. Mese iniziale calcolato qui sul server
+          // (UTC), mai new Date() nel render client.
+          <CalendarioVista partite={partiteMese} meseOggi={meseCorrente()}>
+          {settimane.map((settimana) => (
             <section
               key={settimana.chiave}
               className={styles.sezioneSettimana}
@@ -142,7 +163,8 @@ export default async function CalendarioPage() {
                 </div>
               )}
             </section>
-          ))
+          ))}
+          </CalendarioVista>
         )}
       </main>
       <FooterPubblico />
