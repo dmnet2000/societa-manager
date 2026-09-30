@@ -34,6 +34,7 @@ export function GruppoRow({
   fotoEsiste,
   fotoUrl,
   fotoAggiornataIl,
+  puoModificareAtleta,
 }: {
   gruppo: Gruppo;
   allenatoriDisponibili: Allenatore[];
@@ -41,6 +42,9 @@ export function GruppoRow({
   fotoEsiste: boolean;
   fotoUrl: string;
   fotoAggiornataIl: string | null;
+  // Story 9.45: ADMIN/SEGRETERIA (calcolato una volta in page.tsx) -
+  // passato a ogni AtletaTabellaRiga sotto insieme a atleta.datiAnagrafici.
+  puoModificareAtleta?: boolean;
 }) {
   // Story 9.37: toggle sola-lettura/modifica per nome/categoria del
   // Gruppo, mirror di CategoriaTorneoRow.tsx (Story 20.1) - stessa
@@ -365,6 +369,7 @@ export function GruppoRow({
                     gruppoId={gruppo.id}
                     gruppoNome={gruppo.nome}
                     atleta={atleta}
+                    puoModificare={puoModificareAtleta}
                   />
                 ))}
               </tbody>

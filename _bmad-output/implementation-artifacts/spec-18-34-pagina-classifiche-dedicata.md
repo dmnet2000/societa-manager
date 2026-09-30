@@ -19,6 +19,7 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 ## Boundaries & Constraints
 
 **Always:**
+
 - Logica di fetch/parsing/cache (query Campionati con `linkFipav`, `leggiLiveFipav` per Campionato, `classifichePerCampionatoDaLetture`) riusata invariata da `lib/sincronizza-gare-fipav/` — la query Prisma + il fetch in parallelo per Campionato (oggi inline in `app/page.tsx`) vanno estratti in una funzione condivisa in `lib/sincronizza-gare-fipav/leggi-live-fipav.ts`, chiamata sia da `app/page.tsx` sia dalla nuova `app/classifiche/page.tsx` — mai due implementazioni parallele della stessa query+fetch.
 - `app/page.tsx`: la sezione JSX "Classifica" (oggi `styles.sezioneClassifiche`) viene rimossa per intero. La sezione "Risultati della settimana scorsa" (distinta, stessa Story 18.33) resta invariata, stesso posto, stesso comportamento — non dipende dalla sezione classifica rimossa se non per la lettura condivisa (`letturePerCampionato`), che resta necessaria a entrambe.
 - `/classifiche`: stesso principio fail-soft di Story 18.33 (fetch fallito per un Campionato → quella card omessa, mai un errore visibile) e stesso principio "nessun blocco per un Campionato senza `linkFipav`".
@@ -34,7 +35,7 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Almeno un Campionato con `linkFipav`, fetch riuscito | Lettura riuscita | `/classifiche` mostra una card per quel Campionato, tutte le 13 colonne | N/A |
 | Nessun Campionato con `linkFipav`, o tutti i fetch falliti | `classifichePerCampionatoDaLetture` restituisce `[]` | Messaggio esplicito "Nessuna classifica disponibile al momento", nessuna area vuota senza spiegazione | N/A |
 | Un Campionato fallisce, altri riescono | Fetch fallito per uno | Quel Campionato omesso, gli altri mostrati regolarmente | N/A |
@@ -55,6 +56,7 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 ## Tasks & Acceptance
 
 **Execution:**
+
 - [x] `lib/sincronizza-gare-fipav/leggi-live-fipav.ts` -- nuova `leggiCampionatiConLetturaFipav`, estratta da `app/page.tsx`, + test
 - [x] `app/page.tsx` -- usa la funzione condivisa, rimuove la sezione "Classifica"
 - [x] `app/classifiche/page.tsx` (nuovo) + `app/classifiche/classifiche.module.css` (nuovo) -- pagina pubblica con tutte le 13 colonne, messaggio esplicito se vuota
@@ -62,6 +64,7 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 - [x] Test: verificare che la funzione condivisa produca lo stesso risultato per entrambi i chiamanti (home e `/classifiche`), che un Campionato fallito venga omesso, che la migrazione inserisca la voce nell'ordine corretto (test SQL diretto o verifica manuale, a discrezione dello sviluppo dato che questo progetto non ha test automatici sulle migrazioni) -- coperto con test unitari su `leggiCampionatiConLetturaFipav` (stessa funzione, unico chiamante testato, entrambe le pagine ereditano il comportamento); migrazione verificata solo per lettura/ragionamento manuale (nessun harness SQL nel progetto, dev locale non disponibile su questa macchina, vedi Verification)
 
 **Acceptance Criteria:**
+
 - Vedi Story 18.34 completa in `_bmad-output/planning-artifacts/epics.md` (Epic 18) — 6 AC con le 5 decisioni chiuse il 2026-09-28, riportate qui per intero come parte del contratto di questa spec.
 
 ## Design Notes
@@ -73,12 +76,14 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 ## Verification
 
 **Commands:**
+
 - `npx prisma validate` -- expected: schema valido
 - `npx vitest run` -- expected: tutti i test passano, inclusi quelli nuovi
 - `npx tsc --noEmit` -- expected: nessun errore
 - `npx eslint <file toccati>` -- expected: nessun errore
 
 **Manual checks (dopo il deploy, dev locale non disponibile su questa macchina):**
+
 - Visitare `/classifiche`, verificare che mostri le stesse classifiche di prima (ora con tutte le colonne) e che la home non le mostri più
 - Verificare che la voce "Classifiche" compaia nel menu pubblico, dopo "Calendario", senza alcuna azione manuale
 - Verificare che "Risultati della settimana scorsa" in home resti invariata
@@ -88,6 +93,7 @@ baseline_commit: '85ac41990dab5f327422ed3fca3f584536b2871a'
 Review a 3 layer (Blind Hunter, Edge Case Hunter, Verification Gap Reviewer) completata 2026-09-28 su `.tmp-diff-18-34.txt` (baseline `85ac41990dab5f327422ed3fca3f584536b2871a`).
 
 **Patch applicate:**
+
 - **[Blind Hunter, il più serio]** `/classifiche` mancava da `PUBLIC_ROUTES` (`lib/auth/route-guard.ts`) — un Visitatore anonimo che apriva la pagina (o cliccava la voce "Classifiche" nel menu) veniva reindirizzato a `/accedi` invece di vedere la pagina pubblica: stesso identico bug già capitato 3 volte prima nel progetto (`/torneo`, `/sponsor`, e le 4 rotte di Story 18.7), ogni volta dimenticato all'introduzione di una nuova pagina pubblica. Corretto anche `rottaRiservata` di conseguenza (riusa `isPublicRoute`/`PUBLIC_ROUTES`, stessa fix). Aggiunti 2 test di regressione (`route-guard.test.ts`, `route-decision.test.ts`) per intercettare in futuro la stessa dimenticanza.
 - **[Blind Hunter]** Guida in-app (`lib/guida/contenuti.ts`) ancora descriveva la classifica come mostrata "sulla home pubblica" — aggiornata per riflettere lo spostamento su `/classifiche` (regola permanente del progetto dall'Epic 17).
 - **[Edge Case Hunter + Blind Hunter, convergenti]** Migrazione fragile: la subquery su `url = '/calendario'` falliva silenziosamente (UPDATE no-op + INSERT con `ordine` NULL) se quella riga fosse mancante/rinominata, e non era deterministica con eventuali righe `/calendario` duplicate (nessun vincolo di unicità su `url`). Corretto con `COALESCE(..., MAX(ordine), 0)` + `ORDER BY "ordine" ASC LIMIT 1`: degrada a fine elenco invece di far fallire il deploy, sceglie deterministicamente in caso di duplicati.

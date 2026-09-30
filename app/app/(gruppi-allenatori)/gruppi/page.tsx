@@ -12,6 +12,10 @@ import { parseRuoli } from "@/lib/ruoli";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoGruppoForm } from "./NuovoGruppoForm";
 import { GruppoRow } from "./GruppoRow";
+import {
+  ModificaDatiAtletaForm,
+  type DatiAnagraficiAtleta,
+} from "./ModificaDatiAtletaForm";
 import styles from "./gruppi.module.css";
 
 // Dati mutabili in tempo reale (creazione Gruppo/assegnazione Allenatori
@@ -69,6 +73,14 @@ export default async function GruppiPage() {
     ruoli.includes("SEGRETERIA") &&
     !ruoli.includes("ADMIN") &&
     !ruoli.includes("DIRIGENTE");
+
+  // Story 9.45: perimetro di aggiornaDatiAtletaAction (gruppi/actions.ts) -
+  // ADMIN o SEGRETERIA, indipendentemente da soloVisualizzazione sopra
+  // (deviazione voluta dalla precedenza Story 2.10, confermata con l'utente
+  // 2026-09-29: qui Segreteria scrive, Dirigente/Allenatore restano
+  // esclusi). Calcolato una sola volta, usato da entrambi i rami sotto.
+  const puoModificareAtleta =
+    ruoli.includes("ADMIN") || ruoli.includes("SEGRETERIA");
   // Gruppo/Allenatore/GruppoAllenatore/GruppoAtleta non sono protetti da RLS
   // (AD-9): gestibili via Prisma diretto, come Palestra/Campo (Story 2.1).
   // Scala ridotta (poche decine di Gruppi/Allenatori, ~200 Atlete al
@@ -161,6 +173,26 @@ export default async function GruppiPage() {
   );
   const atletaPerId = new Map(atleteMinime.map((atleta) => [atleta.id, atleta]));
 
+  // Story 9.45: dati anagrafici correnti da pre-compilare in
+  // ModificaDatiAtletaForm - costruita solo quando serve (puoModificareAtleta)
+  // per non passare Codice Fiscale/Email/Cellulare a un render a cui non
+  // servono. dataNascita troncata a yyyy-mm-dd (atteso da <input
+  // type="date">), stesso pattern gia' in uso in conferma-certificati/page.tsx
+  // per dataInizioValidita/dataFineValidita.
+  const datiAnagraficiPerId: Map<string, DatiAnagraficiAtleta> = puoModificareAtleta
+    ? new Map(
+        atlete.map((a) => [
+          a.id,
+          {
+            dataNascita: a.dataNascita.slice(0, 10),
+            codiceFiscale: a.codiceFiscale,
+            email: a.email,
+            cellulare: a.cellulare,
+          },
+        ])
+      )
+    : new Map();
+
   // Richiesta utente 2026-08-07: Set invece di Map - qui serve solo
   // l'appartenenza (iscritta/tesserata sì o no), non altri campi della riga
   // Iscrizione/Tesseramento, a differenza di certificati/atleteMinime sopra
@@ -232,11 +264,24 @@ export default async function GruppiPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {atlete.map((atleta) => (
-                                <tr key={atleta.id}>
-                                  <td>{atleta.nome}</td>
-                                </tr>
-                              ))}
+                              {atlete.map((atleta) => {
+                                const dati = datiAnagraficiPerId.get(atleta.id);
+                                return (
+                                  <tr key={atleta.id}>
+                                    <td>
+                                      {puoModificareAtleta && dati ? (
+                                        <ModificaDatiAtletaForm
+                                          atletaId={atleta.id}
+                                          nome={atleta.nome}
+                                          dati={dati}
+                                        />
+                                      ) : (
+                                        atleta.nome
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -305,6 +350,10 @@ export default async function GruppiPage() {
                     ...atleta,
                     iscritta: idAtleteIscritte.has(atleta.id),
                     tesserata: idAtleteTesserate.has(atleta.id),
+                    // Story 9.45: undefined per default (nessun ADMIN/
+                    // SEGRETERIA) - AtletaTabellaRiga.tsx mostra il testo
+                    // semplice in quel caso, mai il form.
+                    datiAnagrafici: datiAnagraficiPerId.get(atleta.id),
                   }))
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -325,6 +374,7 @@ export default async function GruppiPage() {
                     fotoEsiste={gruppiConFoto.has(gruppo.id)}
                     fotoUrl={urlPubblicoFotoSquadra(supabase, gruppo.id)}
                     fotoAggiornataIl={fotoAggiornataIl}
+                    puoModificareAtleta={puoModificareAtleta}
                   />
                 );
               })}

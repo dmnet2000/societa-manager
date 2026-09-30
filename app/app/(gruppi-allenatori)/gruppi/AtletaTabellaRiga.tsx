@@ -3,6 +3,10 @@
 import { useActionState, useState } from "react";
 import { rimuoviAtleta, impostaNumeroAtletaAction } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
+import {
+  ModificaDatiAtletaForm,
+  type DatiAnagraficiAtleta,
+} from "./ModificaDatiAtletaForm";
 import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
 import styles from "./gruppi.module.css";
 
@@ -22,6 +26,12 @@ export type AtletaConStato = Atleta & {
   iscritta: boolean;
   tesserata: boolean;
   numero: number | null;
+  // Story 9.45: opzionale come puoModificare sotto - stesso motivo gia'
+  // documentato per iscritta/tesserata/numero sopra, specifico di questa
+  // riga di tabella (non aggiunto al tipo condiviso Atleta di
+  // AtletaAssegnata.tsx, usato anche da /i-miei-gruppi che non ammette
+  // questa modifica). Assente per default -> /i-miei-gruppi invariato.
+  datiAnagrafici?: DatiAnagraficiAtleta;
 };
 
 // Richiesta utente 2026-08-06 (estensione Story 9.33): nome completo
@@ -44,10 +54,15 @@ export function AtletaTabellaRiga({
   gruppoId,
   gruppoNome,
   atleta,
+  puoModificare,
 }: {
   gruppoId: string;
   gruppoNome: string;
   atleta: AtletaConStato;
+  // Story 9.45: prop opzionale, assente per default (mai passata da
+  // /i-miei-gruppi) - solo /gruppi la valorizza per ADMIN/SEGRETERIA
+  // (mai Dirigente/Allenatore, vedi Boundaries spec-9-45).
+  puoModificare?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(rimuoviAtleta, undefined);
   // Story 9.35: useActionState indipendente per il form "Numero" - stessa
@@ -74,7 +89,17 @@ export function AtletaTabellaRiga({
 
   return (
     <tr>
-      <td>{atleta.nome}</td>
+      <td>
+        {puoModificare && atleta.datiAnagrafici ? (
+          <ModificaDatiAtletaForm
+            atletaId={atleta.id}
+            nome={atleta.nome}
+            dati={atleta.datiAnagrafici}
+          />
+        ) : (
+          atleta.nome
+        )}
+      </td>
       <td>
         {/* Story 9.35: form indipendente (proprio useActionState), sempre
             visibile/editabile - a differenza del badge Certificato sopra,

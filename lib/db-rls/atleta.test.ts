@@ -138,7 +138,7 @@ describe("elencaAtlete", () => {
     orderMock.mockReset();
   });
 
-  it("returns Atlete ordered by nome, including categoria e i 3 campi di rimozione (Story 1.6/1.8/9.43)", async () => {
+  it("returns Atlete ordered by nome, including categoria, i 3 campi di rimozione e i 3 campi anagrafici aggiunti dalla Story 9.45", async () => {
     const atlete = [
       {
         id: "a1",
@@ -148,6 +148,9 @@ describe("elencaAtlete", () => {
         rimossaIl: null,
         motivoRimozione: null,
         notaRimozione: null,
+        dataNascita: "2013-05-01T00:00:00.000Z",
+        email: null,
+        cellulare: null,
       },
       {
         id: "a2",
@@ -157,6 +160,9 @@ describe("elencaAtlete", () => {
         rimossaIl: null,
         motivoRimozione: null,
         notaRimozione: null,
+        dataNascita: "2010-02-15T00:00:00.000Z",
+        email: "mario.rossi@example.com",
+        cellulare: "3331234567",
       },
     ];
     orderMock.mockResolvedValue({ data: atlete, error: null });
@@ -165,7 +171,7 @@ describe("elencaAtlete", () => {
 
     expect(fromMock).toHaveBeenCalledWith("atlete");
     expect(elencoSelectMock).toHaveBeenCalledWith(
-      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione"
+      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare"
     );
     // Story 9.43: default (nessuna opzione) -> esclude le rimosse.
     expect(isMock).toHaveBeenCalledWith("rimossaIl", null);

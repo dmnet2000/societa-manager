@@ -9,7 +9,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
-import { creaAtleta } from "@/lib/db-rls/atleta";
+import { creaAtleta, aggiornaAtleta } from "@/lib/db-rls/atleta";
 import { creaNotifica } from "@/lib/db-rls/notifica";
 import { isCodiceFiscaleValido } from "@/lib/matching-codice-fiscale/valida-codice-fiscale";
 import { estraiSessoDaCodiceFiscale } from "@/lib/matching-codice-fiscale/estrai-sesso-da-codice-fiscale";
@@ -791,6 +791,174 @@ export async function creaEAssegnaAtleta(
   // Review fix (code review Story 9.18): stessa coppia di revalidatePath gia'
   // usata da assegnaAtleta/rimuoviAtleta - requireRuolo ammette anche
   // ADMIN/DIRIGENTE per questa action, che vedono il roster anche in /gruppi.
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
+  return { success: true };
+}
+
+// Story 9.45: correzione dei dati anagrafici (Nome, Data di nascita, Codice
+// Fiscale, Email, Cellulare) di un'Atleta gia' censita - creaEAssegnaAtleta
+// sopra permette solo di crearne una nuova. Perimetro ADMIN/SEGRETERIA
+// (confermato con l'utente 2026-09-29): deviazione voluta dalla precedenza
+// Story 2.10 su questa stessa rotta (Admin/Dirigente = gestione, Segreteria
+// = sola lettura) - qui e' l'opposto, Segreteria scrive e Dirigente/
+// Allenatore restano esclusi, perche' i dati anagrafici sono materia
+// amministrativa/di segreteria, non di conduzione tecnica del Gruppo.
+// Validazione mirror di creaEAssegnaAtleta sopra (maiuscolo, CF validato,
+// sesso ri-derivato dal CF) - riusa aggiornaAtleta (lib/db-rls/atleta.ts),
+// finora chiamata solo dal re-import federale.
+export async function aggiornaDatiAtletaAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "SEGRETERIA"]);
+  if (forbidden) return forbidden;
+
+  const atletaId = String(formData.get("atletaId") ?? "");
+  // Story 9.36: stessa sanificazione in maiuscolo gia' applicata a
+  // creaEAssegnaAtleta - "nome" resta un'unica colonna (mirror del valore
+  // gia' concatenato "Cognome Nome" gia' presente su Atleta.nome, nessuno
+  // split automatico: ambiguo su cognomi composti, vedi Boundaries).
+  const nome = String(formData.get("nome") ?? "").trim().toUpperCase();
+  const dataNascitaGrezza = String(formData.get("dataNascita") ?? "").trim();
+  const codiceFiscale = String(formData.get("codiceFiscale") ?? "")
+    .trim()
+    .toUpperCase();
+  const email = String(formData.get("email") ?? "").trim();
+  const cellulare = String(formData.get("cellulare") ?? "").trim();
+
+  if (!atletaId) {
+    return { error: { code: "VALIDATION", message: "Atleta non specificata." } };
+  }
+  if (!nome) {
+    return { error: { code: "VALIDATION", message: "Il nome è obbligatorio." } };
+  }
+  if (!dataNascitaGrezza) {
+    return {
+      error: { code: "VALIDATION", message: "La data di nascita è obbligatoria." },
+    };
+  }
+  // Stesso review fix gia' applicato a creaEAssegnaAtleta: un valore non
+  // parsabile (bypass del widget <input type="date">) produrrebbe altrimenti
+  // un Invalid Date che lancerebbe un RangeError dentro aggiornaAtleta/
+  // serializza (.toISOString()).
+  const dataNascita = new Date(dataNascitaGrezza);
+  if (Number.isNaN(dataNascita.getTime())) {
+    return {
+      error: { code: "VALIDATION", message: "Data di nascita non valida." },
+    };
+  }
+  if (!codiceFiscale) {
+    return {
+      error: { code: "VALIDATION", message: "Il codice fiscale è obbligatorio." },
+    };
+  }
+  if (!isCodiceFiscaleValido(codiceFiscale)) {
+    return { error: { code: "VALIDATION", message: "Codice fiscale non valido." } };
+  }
+
+  // Sesso sempre ri-derivato dal Codice Fiscale, mai un campo separato
+  // modificabile (Boundaries "Always") - stesso principio di
+  // creaEAssegnaAtleta.
+  const sesso = estraiSessoDaCodiceFiscale(codiceFiscale);
+  if (!sesso) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile determinare il sesso dal codice fiscale inserito. Verifica il codice fiscale.",
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  // Legge la riga attuale: serve sia a confermare che l'Atleta esista (AC:
+  // "Atleta non trovata" -> VALIDATION, non un errore generico) sia a
+  // ripassare dataPrimoTesseramento invariato a aggiornaAtleta sotto -
+  // serializza() lo forza a null se assente dall'oggetto passato, unico
+  // campo con questo comportamento (Boundaries "Always") - gli altri campi
+  // esclusivi dell'import federale (luogoNascita/provinciaNascita/
+  // indirizzo/cap/localitaResidenza/provinciaResidenza/categoria/matricola)
+  // restano intatti semplicemente perche' omessi dall'oggetto sotto, non
+  // richiedono questa stessa lettura.
+  let atletaAttuale: { dataPrimoTesseramento: string | null } | null;
+  try {
+    const { data, error } = await supabase
+      .from("atlete")
+      .select("dataPrimoTesseramento")
+      .eq("id", atletaId)
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    atletaAttuale = data;
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    };
+  }
+  if (!atletaAttuale) {
+    return { error: { code: "VALIDATION", message: "Atleta non trovata." } };
+  }
+
+  // Duplicato CF con auto-esclusione (.neq("id", atletaId)): salvare senza
+  // cambiare il proprio Codice Fiscale non deve rifiutarsi contro se stessa
+  // (Boundaries "Always" + I/O Matrix).
+  let esistente: { id: string } | null;
+  try {
+    const { data, error } = await supabase
+      .from("atlete")
+      .select("id")
+      .eq("codiceFiscale", codiceFiscale)
+      .neq("id", atletaId)
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    esistente = data;
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    };
+  }
+  if (esistente) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Esiste già un'Atleta con questo Codice Fiscale.",
+      },
+    };
+  }
+
+  try {
+    await aggiornaAtleta(supabase, atletaId, {
+      codiceFiscale,
+      nome,
+      sesso,
+      dataNascita,
+      email: email || null,
+      cellulare: cellulare || null,
+      dataPrimoTesseramento: atletaAttuale.dataPrimoTesseramento
+        ? new Date(atletaAttuale.dataPrimoTesseramento)
+        : null,
+    });
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    };
+  }
+
+  // Review fix: stessa coppia di revalidatePath di ogni altra Server Action
+  // di questo file che tocca dati Atleta/GruppoAtleta (assegnaAtleta,
+  // rimuoviAtleta, impostaNumeroAtletaAction, creaEAssegnaAtleta) - gli
+  // stessi dati Atleta sono mostrati anche su /app/i-miei-gruppi (letto
+  // dall'Allenatore). Anche se questa action e' chiamabile solo da
+  // ADMIN/SEGRETERIA, un Allenatore con /i-miei-gruppi aperta in un'altra
+  // tab vedrebbe altrimenti dati anagrafici stantii dopo una correzione.
   revalidatePath("/app/gruppi");
   revalidatePath("/app/i-miei-gruppi");
   return { success: true };

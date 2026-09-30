@@ -49,6 +49,7 @@ A differenza degli altri epic, questo non è pianificato in anticipo: è un elen
 - Story 9.42: Dopo il logoff, atterrare sulla home pubblica invece che su `/accedi`
 - Story 9.43: Rimozione delle Atlete non più in società o passate ad altra società (archiviazione reversibile, decisioni chiuse 2026-09-24, sviluppo non ancora iniziato)
 - Story 9.44: Partite della settimana del proprio Gruppo in evidenza sulla home interna (solo story)
+- Story 9.45: Modifica dei dati anagrafici di un'Atleta già esistente, riservata ad Admin e Segreteria (Dirigente/Allenatore esclusi per scelta esplicita dell'utente)
 
 ## Requirements & Constraints
 

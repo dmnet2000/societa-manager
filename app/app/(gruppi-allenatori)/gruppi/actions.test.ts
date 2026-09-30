@@ -27,6 +27,15 @@ const creaNotificaMock = vi.fn();
 // in creaEAssegnaAtleta usa il client supabase (RLS, AD-9), non piu'
 // prisma.atleta.findUnique - mockato qui come .from("atlete")...maybeSingle().
 const atletaMaybeSingleMock = vi.fn();
+// Review fix (code review Story 9.45, Verification Gap Reviewer): chainableQuery()
+// sotto risolveva .eq()/.neq() con funzioni anonime che non registrano gli
+// argomenti ricevuti - una regressione che rimuovesse .neq("id", atletaId)
+// in aggiornaDatiAtletaAction (l'auto-esclusione contro falsi positivi sul
+// proprio Codice Fiscale) sarebbe passata inosservata da ogni test esistente.
+// Tracciati qui separatamente cosi' un test puo' asserire esplicitamente che
+// .neq() sia stato invocato con gli argomenti attesi.
+const atletaEqMock = vi.fn();
+const atletaNeqMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -62,8 +71,13 @@ vi.mock("@/lib/prisma", () => ({
 // Story 9.18: creaEAssegnaAtleta riusa creaAtleta/creaNotifica condivise -
 // mockate qui come funzioni intere (non i dettagli interni supabase-js di
 // quei moduli, gia' testati per conto proprio in lib/db-rls/*.test.ts).
+// Story 9.45: aggiornaAtleta aggiunta allo stesso mock - riusata da
+// aggiornaDatiAtletaAction, gia' testata per conto proprio in
+// lib/db-rls/atleta.test.ts.
+const aggiornaAtletaMock = vi.fn();
 vi.mock("@/lib/db-rls/atleta", () => ({
   creaAtleta: creaAtletaMock,
+  aggiornaAtleta: aggiornaAtletaMock,
 }));
 
 vi.mock("@/lib/db-rls/notifica", () => ({
@@ -82,15 +96,35 @@ vi.mock("@/lib/storage/foto-squadra", () => ({
 // Story 9.15: assegnaAtleta/rimuoviAtleta ora chiamano risolviPossessoGruppo,
 // che legge la sessione tramite createClient() - stesso pattern di mock gia'
 // usato in app/(partite-campionati)/campionati/actions.test.ts.
+// Story 9.45: catena di query estesa con .neq() (verificato duplicato CF con
+// auto-esclusione) - chainable() la rende disponibile dopo .eq() a qualunque
+// profondita', cosi' sia il vecchio .eq().maybeSingle() (creaEAssegnaAtleta)
+// sia il nuovo .eq().neq().maybeSingle() (aggiornaDatiAtletaAction)
+// terminano sullo stesso atletaMaybeSingleMock, impostabile in sequenza con
+// mockResolvedValueOnce quando una singola action fa piu' query.
+function chainableQuery(): {
+  eq: (...args: unknown[]) => ReturnType<typeof chainableQuery>;
+  neq: (...args: unknown[]) => ReturnType<typeof chainableQuery>;
+  maybeSingle: typeof atletaMaybeSingleMock;
+} {
+  return {
+    eq: (...args: unknown[]) => {
+      atletaEqMock(...args);
+      return chainableQuery();
+    },
+    neq: (...args: unknown[]) => {
+      atletaNeqMock(...args);
+      return chainableQuery();
+    },
+    maybeSingle: atletaMaybeSingleMock,
+  };
+}
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: getUserMock },
     from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: atletaMaybeSingleMock,
-        }),
-      }),
+      select: () => chainableQuery(),
     }),
   }),
 }));
@@ -109,6 +143,7 @@ const {
   impostaNumeroAtletaAction,
   creaEAssegnaAtleta,
   caricaFotoSquadraAction,
+  aggiornaDatiAtletaAction,
 } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>, file?: File | null) {
@@ -153,7 +188,10 @@ beforeEach(() => {
   gruppoAtletaDeleteManyMock.mockReset();
   gruppoAtletaUpdateManyMock.mockReset();
   atletaMaybeSingleMock.mockReset();
+  atletaEqMock.mockReset();
+  atletaNeqMock.mockReset();
   creaAtletaMock.mockReset();
+  aggiornaAtletaMock.mockReset();
   creaNotificaMock.mockReset();
   caricaFotoSquadraMock.mockReset();
   caricaFotoSquadraMock.mockResolvedValue(undefined);
@@ -1703,6 +1741,309 @@ describe("creaEAssegnaAtleta", () => {
 
     expect(result).toEqual({ success: true });
     expect(creaAtletaMock).toHaveBeenCalled();
+  });
+});
+
+// Story 9.45: perimetro ADMIN/SEGRETERIA (deviazione voluta dalla
+// precedenza Story 2.10 - qui Segreteria scrive, Dirigente/Allenatore
+// restano esclusi), mirror di validazione di creaEAssegnaAtleta sopra.
+describe("aggiornaDatiAtletaAction", () => {
+  // "RSSMRA85M01H501U" decodifica giorno 01 -> M (stesso CF di
+  // creaEAssegnaAtleta sopra).
+  const campiValidi = {
+    atletaId: "atleta-1",
+    nome: "Rossi Maria",
+    dataNascita: "2012-05-01",
+    codiceFiscale: "RSSMRA85M01H501U",
+  };
+
+  it("returns FORBIDDEN and does nothing if the caller is not Admin/Segreteria (Dirigente/Allenatore esclusi)", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SEGRETERIA"]);
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when atletaId is missing", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, atletaId: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non specificata." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when nome is missing", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, nome: "  " })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il nome è obbligatorio." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when dataNascita is missing", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, dataNascita: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La data di nascita è obbligatoria." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when dataNascita cannot be parsed (bypass del widget date)", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, dataNascita: "non-una-data" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data di nascita non valida." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale is missing", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Il codice fiscale è obbligatorio." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale format is invalid", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "troppo-corto" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Codice fiscale non valido." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the sesso cannot be derived from codiceFiscale", async () => {
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, codiceFiscale: "RSSMRA85M99H501U" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "Impossibile determinare il sesso dal codice fiscale inserito. Verifica il codice fiscale.",
+      },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when the Atleta does not exist", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce({ data: null, error: null });
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Atleta non trovata." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL, no crash, when reading the current riga fails", async () => {
+    atletaMaybeSingleMock.mockRejectedValueOnce(new Error("db down"));
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a validation error when codiceFiscale already belongs to a different Atleta", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: { id: "un-altra-atleta" }, error: null });
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Esiste già un'Atleta con questo Codice Fiscale." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+    // Review fix (Verification Gap Reviewer): asserisce esplicitamente che il
+    // controllo duplicato usi .neq("id", atletaId) (auto-esclusione) - senza
+    // questa assert, una regressione che rimuovesse .neq() dal codice di
+    // produzione passerebbe comunque inosservata (chainableQuery() risolve
+    // .eq()/.neq() identicamente).
+    expect(atletaNeqMock).toHaveBeenCalledWith("id", "atleta-1");
+  });
+
+  it("returns INTERNAL, no crash, when the duplicate check fails", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockRejectedValueOnce(new Error("db down"));
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    });
+    expect(aggiornaAtletaMock).not.toHaveBeenCalled();
+  });
+
+  // I/O Matrix: "Salvataggio senza cambiare il proprio CF" -> accettato. Il
+  // controllo duplicato usa .neq("id", atletaId) (auto-esclusione) - qui
+  // simulato semplicemente facendo risultare nessuna riga (maybeSingle ->
+  // null), esattamente il comportamento reale quando l'unica riga con quel
+  // CF e' la propria, esclusa dal filtro.
+  it("accepts saving without changing the own codiceFiscale (self-exclusion, AC)", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaAtletaMock).toHaveBeenCalled();
+    // Review fix (Verification Gap Reviewer): stessa asserzione esplicita di
+    // cui sopra - qui e' il caso di successo (self-esclusione) del duplicato,
+    // l'altro ramo dello stesso comportamento.
+    expect(atletaNeqMock).toHaveBeenCalledWith("id", "atleta-1");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("updates the Atleta preserving dataPrimoTesseramento read from the current riga (Boundaries)", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({
+        data: { dataPrimoTesseramento: "2020-09-01T00:00:00.000Z" },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    const result = await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, email: "maria@example.com", cellulare: "3331234567" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(aggiornaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({
+        codiceFiscale: "RSSMRA85M01H501U",
+        nome: "ROSSI MARIA",
+        sesso: "M",
+        email: "maria@example.com",
+        cellulare: "3331234567",
+        dataPrimoTesseramento: new Date("2020-09-01T00:00:00.000Z"),
+      })
+    );
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    // Review fix: stessa coppia di revalidatePath di assegnaAtleta/
+    // rimuoviAtleta/impostaNumeroAtletaAction/creaEAssegnaAtleta - i dati
+    // Atleta modificati qui sono mostrati anche su /app/i-miei-gruppi
+    // (Allenatore).
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("passes dataPrimoTesseramento as null when the current riga has none, instead of forcing it via serializza (Boundaries)", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(aggiornaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({ dataPrimoTesseramento: null })
+    );
+  });
+
+  it("uppercases nome before persisting (Story 9.36 convention)", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, nome: "rossi maria" })
+    );
+
+    expect(aggiornaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({ nome: "ROSSI MARIA" })
+    );
+  });
+
+  it("treats email/cellulare as null when omitted", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(aggiornaAtletaMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({ email: null, cellulare: null })
+    );
+  });
+
+  it("returns INTERNAL, no crash, when aggiornaAtleta fails", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockRejectedValue(new Error("db down"));
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile aggiornare l'Atleta. Riprova." },
+    });
+  });
+
+  it("allows a SEGRETERIA caller (writes here, unlike the read-only precedence on this same route, Story 2.10)", async () => {
+    requireRuoloMock.mockResolvedValue(null);
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    const result = await aggiornaDatiAtletaAction(undefined, buildFormData(campiValidi));
+
+    expect(result).toEqual({ success: true });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
   });
 });
 

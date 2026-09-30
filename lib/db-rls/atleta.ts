@@ -79,6 +79,15 @@ export type AtletaElenco = {
   nome: string;
   codiceFiscale: string;
   categoria: string | null;
+  // Story 9.45: 3 campi aggiunti al select esistente - servono a
+  // gruppi/page.tsx per costruire datiAnagraficiPerId (dati correnti da
+  // pre-compilare in ModificaDatiAtletaForm). Gli ~18 chiamanti esistenti
+  // ignorano semplicemente i campi extra, stesso principio gia' seguito per
+  // codiceFiscale/categoria (nessuno di quei chiamanti fa un confronto
+  // esatto sulla shape dell'oggetto restituito).
+  dataNascita: string;
+  email: string | null;
+  cellulare: string | null;
   // Story 9.43: sempre selezionati (anche quando includiRimosse e' false,
   // nel qual caso valgono sempre null per una riga restituita) - un'unica
   // query resta la sola fonte di verita' del filtro (Design Notes
@@ -113,7 +122,7 @@ export async function elencaAtlete(
   let query = supabase
     .from("atlete")
     .select(
-      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione"
+      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare"
     );
 
   if (!opzioni?.includiRimosse) {

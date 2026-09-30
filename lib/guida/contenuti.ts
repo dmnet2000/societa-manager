@@ -132,8 +132,19 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Puoi correggere nome e categoria di un Gruppo già creato con \"Modifica\", accanto alla categoria di ogni riga - non serve cancellare e ricreare il Gruppo per sistemare un errore di inserimento.",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
       "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
+      // Story 9.45: nuova capacita' - pulsante "Modifica" accanto al nome di
+      // ogni Atleta, mirror dello stile della riga sopra sul Gruppo. Solo
+      // Admin e Segreteria (mai Dirigente/Allenatore): correggere Nome/Data
+      // di nascita/Codice Fiscale/Email/Cellulare e' materia amministrativa,
+      // non di conduzione tecnica del Gruppo.
+      "Puoi correggere Nome, Data di nascita, Codice Fiscale, Email e Cellulare di un'Atleta già censita con \"Modifica\", accanto al suo nome - i dati esclusivi dell'import federale (luogo di nascita, indirizzo, categoria, matricola...) non sono modificabili da qui. Disponibile solo per Admin e Segreteria.",
       "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/slot.",
-      "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica - per quello serve il Ruolo Admin o Dirigente.",
+      // Story 9.45 (review fix): questa riga era diventata falsa per
+      // Segreteria - da questa storia può correggere i dati anagrafici di
+      // un'Atleta (unica eccezione alla sola lettura), pur restando in sola
+      // lettura su tutto il resto della pagina (creazione/modifica Gruppi,
+      // assegnazione Allenatori/Atlete).
+      "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica sui Gruppi - per quello serve il Ruolo Admin o Dirigente. Un'unica eccezione: puoi comunque correggere i dati anagrafici di un'Atleta con \"Modifica\", accanto al suo nome.",
     ],
   },
   {
