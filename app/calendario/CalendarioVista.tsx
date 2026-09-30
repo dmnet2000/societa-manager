@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
+import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import {
   CHIAVE_STORAGE_NASCOSTI,
   INTESTAZIONI_SETTIMANA,
@@ -15,9 +16,11 @@ import {
   meseAdiacente,
   meseIniziale,
   partitePerGiorno,
+  righeDettaglioPartita,
   settimaneDelMese,
   unisciNascostiDaSalvare,
   type CampionatoLegenda,
+  type PartitaVistaMese,
 } from "@/lib/griglia-mensile";
 import styles from "./calendario.module.css";
 
@@ -27,14 +30,9 @@ import styles from "./calendario.module.css";
 // Mese lavora esclusivamente sulle Partite gia' lette dal server: nessuna
 // richiesta al cambio mese, nessuna scrittura server.
 
-export type PartitaMese = {
-  id: string;
-  data: string;
-  ora: string;
-  squadraCasa: string;
-  squadraOspite: string;
-  campionato: { id: string; nome: string; colore: string | null };
-};
+// Campi della griglia + campi del popup di dettaglio (seguito Story 18.32),
+// definiti una volta sola in lib/griglia-mensile.ts.
+export type PartitaMese = PartitaVistaMese;
 
 type Vista = "elenco" | "mese";
 
@@ -173,6 +171,24 @@ function GrigliaMese({
   const tuttiDeselezionati =
     campionati.length > 0 && campionati.every((c) => nascosti.includes(c.id));
 
+  // Seguito Story 18.32: un solo <dialog> per tutta la griglia, con la
+  // Partita selezionata nello stato. Il pulsante di origine viene salvato al
+  // click per ridargli il focus alla chiusura (x, Esc o clic sullo sfondo:
+  // tutte passano dall'evento "close" del dialog).
+  const [selezionata, setSelezionata] = useState<PartitaMese | null>(null);
+  const origineRef = useRef<HTMLButtonElement | null>(null);
+
+  function apriDettaglio(partita: PartitaMese, origine: HTMLButtonElement) {
+    origineRef.current = origine;
+    setSelezionata(partita);
+  }
+
+  function dettaglioChiuso() {
+    setSelezionata(null);
+    origineRef.current?.focus();
+    origineRef.current = null;
+  }
+
   return (
     <div className={styles.vistaMese}>
       <div className={styles.navigazioneMese}>
@@ -269,19 +285,23 @@ function GrigliaMese({
                         ? `${styles.evento} ${styles.eventoTestoScuro}`
                         : styles.evento;
                     return (
-                      <li
-                        key={partita.id}
-                        className={classiEvento}
-                        style={colore ? { backgroundColor: colore } : undefined}
-                        title={partita.campionato.nome}
-                      >
-                        <span className={styles.oraEvento}>{partita.ora}</span>{" "}
-                        <span>
-                          {partita.squadraCasa} - {partita.squadraOspite}
-                        </span>
-                        <span className={styles.soloLettoreSchermo}>
-                          {` (${partita.campionato.nome})`}
-                        </span>
+                      <li key={partita.id} className={styles.voceEvento}>
+                        <button
+                          type="button"
+                          className={classiEvento}
+                          style={colore ? { backgroundColor: colore } : undefined}
+                          title={partita.campionato.nome}
+                          aria-haspopup="dialog"
+                          onClick={(e) => apriDettaglio(partita, e.currentTarget)}
+                        >
+                          <span className={styles.oraEvento}>{partita.ora}</span>{" "}
+                          <span>
+                            {partita.squadraCasa} - {partita.squadraOspite}
+                          </span>
+                          <span className={styles.soloLettoreSchermo}>
+                            {` (${partita.campionato.nome})`}
+                          </span>
+                        </button>
                       </li>
                     );
                   })}
@@ -292,6 +312,116 @@ function GrigliaMese({
         })}
       </div>
       )}
+
+      <DettaglioPartita partita={selezionata} onChiuso={dettaglioChiuso} />
     </div>
+  );
+}
+
+// Seguito Story 18.32: popup modale con il dettaglio della Partita. <dialog>
+// nativo con showModal() (focus intrappolato, Esc e sfondo inerte gestiti
+// dal browser); nessuna richiesta al click, i dati arrivano gia' dal server.
+function DettaglioPartita({
+  partita,
+  onChiuso,
+}: {
+  partita: PartitaMese | null;
+  onChiuso: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const chiudiRef = useRef<HTMLButtonElement>(null);
+  const idBase = useId();
+  const idCampionato = `${idBase}-campionato`;
+  const idTitolo = `${idBase}-titolo`;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (partita && !dialog.open) {
+      dialog.showModal();
+      // Focus iniziale esplicito sul bottone x, dentro la finestra.
+      chiudiRef.current?.focus();
+    } else if (!partita && dialog.open) {
+      dialog.close();
+    }
+  }, [partita]);
+
+  function chiudi() {
+    dialogRef.current?.close();
+  }
+
+  const colore = partita?.campionato.colore ?? null;
+  const classiTestata =
+    colore && testoScuroSuSfondo(colore)
+      ? `${styles.dialogoTestata} ${styles.dialogoTestataTestoScuro}`
+      : styles.dialogoTestata;
+  const righe = partita ? righeDettaglioPartita(partita) : [];
+  const linkNaviga = partita
+    ? costruisciLinkNaviga({ indirizzo: partita.indirizzoImpianto })
+    : null;
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className={styles.dialogo}
+      aria-labelledby={partita ? `${idCampionato} ${idTitolo}` : undefined}
+      onClose={onChiuso}
+      // Clic sullo sfondo: il dialog non ha padding e il contenuto lo riempie
+      // tutto, quindi un click con target il dialog stesso cade sul backdrop.
+      onClick={(e) => {
+        if (e.target === e.currentTarget) chiudi();
+      }}
+    >
+      {partita && (
+        <div className={styles.dialogoCorpo}>
+          <div
+            className={classiTestata}
+            style={colore ? { backgroundColor: colore } : undefined}
+          >
+            <p id={idCampionato} className={styles.dialogoCampionato}>
+              {partita.campionato.nome}
+            </p>
+            <button
+              ref={chiudiRef}
+              type="button"
+              className={styles.dialogoChiudi}
+              onClick={chiudi}
+              aria-label="Chiudi"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <div className={styles.dialogoDettagli}>
+            <h2 id={idTitolo} className={styles.dialogoTitolo}>
+              {partita.squadraCasa} - {partita.squadraOspite}
+            </h2>
+            <dl className={styles.dialogoRighe}>
+              {righe.map((riga) => (
+                <div key={riga.chiave} className={styles.dialogoRiga}>
+                  <dt className={styles.dialogoEtichetta}>{riga.etichetta}</dt>
+                  <dd className={styles.dialogoValore}>
+                    {riga.valore}
+                    {riga.chiave === "indirizzo" && linkNaviga && (
+                      <>
+                        {" "}
+                        <a
+                          className={styles.dialogoNaviga}
+                          href={linkNaviga}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Naviga verso ${partita.impianto || "il luogo della partita"}`}
+                        >
+                          Naviga
+                        </a>
+                      </>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      )}
+    </dialog>
   );
 }

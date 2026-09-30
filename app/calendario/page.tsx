@@ -4,6 +4,7 @@ import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settima
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { meseCorrente } from "@/lib/mese-calendario";
+import { partitaPerVistaMese } from "@/lib/griglia-mensile";
 import { CalendarioVista } from "./CalendarioVista";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
@@ -57,6 +58,12 @@ export default async function CalendarioPage() {
             squadraOspite: true,
             impianto: true,
             indirizzoImpianto: true,
+            // Seguito Story 18.32: campi del popup di dettaglio della vista
+            // Mese (letti qui, mai una richiesta al click).
+            giornata: true,
+            statoDescrizione: true,
+            risultato: true,
+            parziali: true,
             // Story 18.32: id aggiunto per la legenda/filtro della vista
             // mensile (una checkbox per Campionato, identificato per id).
             campionato: { select: { id: true, nome: true, colore: true } },
@@ -73,17 +80,12 @@ export default async function CalendarioPage() {
   // stagione, incluse le settimane senza alcuna partita (AC #1).
   const settimane = raggruppaPerSettimana(partite);
 
-  // Story 18.32: la vista mensile riceve solo i campi che mostra (niente
-  // impianto/indirizzo serializzati al client inutilmente) e lavora tutta
-  // client-side su questi stessi dati, nessuna richiesta al cambio mese.
-  const partiteMese = partite.map((partita) => ({
-    id: partita.id,
-    data: partita.data,
-    ora: partita.ora,
-    squadraCasa: partita.squadraCasa,
-    squadraOspite: partita.squadraOspite,
-    campionato: partita.campionato,
-  }));
+  // Story 18.32: la vista mensile riceve solo i campi che mostra e lavora
+  // tutta client-side su questi stessi dati, nessuna richiesta al cambio
+  // mese. Seguito: anche i campi del popup di dettaglio (palestra,
+  // indirizzo, giornata, stato, risultato, parziali), nessuna richiesta al
+  // click su una Partita.
+  const partiteMese = partite.map(partitaPerVistaMese);
 
   return (
     <>

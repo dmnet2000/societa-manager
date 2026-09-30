@@ -12,6 +12,8 @@ import {
   partitePerGiorno,
   settimaneDelMese,
   unisciNascostiDaSalvare,
+  formattaParziali,
+  righeDettaglioPartita,
 } from "./griglia-mensile";
 
 describe("settimaneDelMese", () => {
@@ -187,5 +189,75 @@ describe("unisciNascostiDaSalvare", () => {
   });
   it("id non stringa e duplicati nel salvato scartati", () => {
     expect(unisciNascostiDaSalvare('["x",3,"x"]', [], validi)).toEqual(["x"]);
+  });
+});
+
+describe("formattaParziali", () => {
+  it("separa i set con virgola e spazio", () => {
+    expect(formattaParziali("25-20,22-25,25-18,25-19")).toBe("25-20, 22-25, 25-18, 25-19");
+  });
+  it("null, vuoto o solo separatori -> null", () => {
+    expect(formattaParziali(null)).toBeNull();
+    expect(formattaParziali(undefined)).toBeNull();
+    expect(formattaParziali("")).toBeNull();
+    expect(formattaParziali(" , ")).toBeNull();
+  });
+});
+
+describe("righeDettaglioPartita", () => {
+  const base = { data: "2026-10-14", ora: "20:30" };
+
+  it("Partita futura completa: data, ora, palestra, indirizzo in ordine", () => {
+    const righe = righeDettaglioPartita({
+      ...base,
+      giornata: "3",
+      impianto: "Palazzetto Mogliano",
+      indirizzoImpianto: "Via Roma 1, Mogliano Veneto",
+      statoDescrizione: null,
+      risultato: null,
+      parziali: null,
+    });
+    expect(righe).toEqual([
+      { chiave: "quando", etichetta: "Quando", valore: "mercoledì 14 ottobre 2026, ore 20:30" },
+      { chiave: "giornata", etichetta: "Giornata", valore: "3" },
+      { chiave: "palestra", etichetta: "Palestra", valore: "Palazzetto Mogliano" },
+      { chiave: "indirizzo", etichetta: "Indirizzo", valore: "Via Roma 1, Mogliano Veneto" },
+    ]);
+  });
+
+  it("Partita giocata: risultato e parziali", () => {
+    const righe = righeDettaglioPartita({
+      ...base,
+      risultato: "3-1",
+      parziali: "25-20,22-25,25-18,25-19",
+    });
+    expect(righe.map((r) => r.chiave)).toEqual(["quando", "risultato", "parziali"]);
+    expect(righe[1].valore).toBe("3-1");
+    expect(righe[2].valore).toBe("25-20, 22-25, 25-18, 25-19");
+  });
+
+  it("campi opzionali null o vuoti omessi", () => {
+    const righe = righeDettaglioPartita({
+      ...base,
+      giornata: "",
+      impianto: "  ",
+      indirizzoImpianto: null,
+      statoDescrizione: undefined,
+      risultato: "",
+      parziali: "",
+    });
+    expect(righe.map((r) => r.chiave)).toEqual(["quando"]);
+  });
+
+  it("stato senza risultato: mostra lo stato", () => {
+    const righe = righeDettaglioPartita({ ...base, statoDescrizione: "Rinviata", risultato: null });
+    expect(righe.map((r) => [r.chiave, r.valore])).toEqual([
+      ["quando", "mercoledì 14 ottobre 2026, ore 20:30"],
+      ["stato", "Rinviata"],
+    ]);
+  });
+
+  it("data non parsabile: resta solo l'ora", () => {
+    expect(righeDettaglioPartita({ data: "abc", ora: "18:00" })[0].valore).toBe("ore 18:00");
   });
 });

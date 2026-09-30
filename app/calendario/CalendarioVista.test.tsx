@@ -17,6 +17,12 @@ const PARTITE: PartitaMese[] = [
     ora: "20:30",
     squadraCasa: "Mogliano",
     squadraOspite: "Treviso",
+    impianto: "Palazzetto Mogliano",
+    indirizzoImpianto: "Via Roma 1, Mogliano Veneto",
+    giornata: "3",
+    statoDescrizione: "Giocata",
+    risultato: "3-1",
+    parziali: "25-20,22-25,25-18,25-19",
     campionato: { id: "serie-d", nome: "Serie D", colore: "#ff0000" },
   },
   {
@@ -84,7 +90,36 @@ function testoGriglia(): string {
   return [...contenitore.querySelectorAll("li")].map((li) => li.textContent).join(" | ");
 }
 
+// jsdom puo' non implementare showModal/close di <dialog>: stub minimale
+// basato sull'attributo "open", close() emette l'evento "close" come il
+// browser (anche su Esc).
+type ProtoDialog = { showModal?: () => void; close?: () => void };
+const protoDialog = HTMLDialogElement.prototype as unknown as ProtoDialog;
+const dialogOriginale = { showModal: protoDialog.showModal, close: protoDialog.close };
+
+function dialog(): HTMLDialogElement {
+  const trovato = contenitore.querySelector("dialog");
+  if (!trovato) throw new Error("dialog non trovato");
+  return trovato;
+}
+
+function striscia(testo: string): HTMLButtonElement {
+  const trovato = [...contenitore.querySelectorAll("li button")].find((b) =>
+    b.textContent?.includes(testo)
+  );
+  if (!trovato) throw new Error(`Striscia "${testo}" non trovata`);
+  return trovato as HTMLButtonElement;
+}
+
 beforeEach(() => {
+  protoDialog.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  };
+  protoDialog.close = function (this: HTMLDialogElement) {
+    if (!this.hasAttribute("open")) return;
+    this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
+  };
   window.localStorage.clear();
   contenitore = document.createElement("div");
   document.body.appendChild(contenitore);
@@ -95,6 +130,90 @@ afterEach(() => {
   act(() => root.unmount());
   contenitore.remove();
   vi.restoreAllMocks();
+  protoDialog.showModal = dialogOriginale.showModal;
+  protoDialog.close = dialogOriginale.close;
+});
+
+describe("CalendarioVista - dettaglio Partita", () => {
+  it("click su una striscia apre il popup con tutti i dettagli", () => {
+    monta();
+    clicca(bottone("Mese"));
+    expect(dialog().hasAttribute("open")).toBe(false);
+    clicca(striscia("Mogliano - Treviso"));
+
+    const d = dialog();
+    expect(d.hasAttribute("open")).toBe(true);
+    const testo = d.textContent ?? "";
+    expect(testo).toContain("Serie D");
+    expect(testo).toContain("Mogliano - Treviso");
+    expect(testo).toContain("mercoledì 14 ottobre 2026, ore 20:30");
+    expect(testo).toContain("Palazzetto Mogliano");
+    expect(testo).toContain("Via Roma 1, Mogliano Veneto");
+    expect(testo).toContain("Giocata");
+    expect(testo).toContain("3-1");
+    expect(testo).toContain("25-20, 22-25, 25-18, 25-19");
+
+    // Titolo collegato e focus iniziale dentro la finestra.
+    const ids = d.getAttribute("aria-labelledby")!.split(" ");
+    expect(ids.map((id) => document.getElementById(id)?.textContent)).toEqual([
+      "Serie D",
+      "Mogliano - Treviso",
+    ]);
+    expect(d.contains(document.activeElement)).toBe(true);
+
+    const naviga = d.querySelector("a")!;
+    expect(naviga.textContent).toBe("Naviga");
+    expect(naviga.getAttribute("href")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Via%20Roma%201%2C%20Mogliano%20Veneto"
+    );
+    expect(naviga.getAttribute("target")).toBe("_blank");
+    expect(naviga.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it("campi opzionali assenti omessi, nessun Naviga senza indirizzo", () => {
+    monta();
+    clicca(bottone("Mese"));
+    clicca(striscia("Mogliano U16 - Preganziol U16"));
+    const d = dialog();
+    const etichette = [...d.querySelectorAll("dt")].map((dt) => dt.textContent);
+    expect(etichette).toEqual(["Quando"]);
+    expect(d.querySelector("a")).toBeNull();
+    expect(d.textContent).not.toContain("non disponibile");
+  });
+
+  it("chiusura con x riporta il focus sulla striscia", () => {
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano - Treviso");
+    origine.focus();
+    clicca(origine);
+    clicca(bottone("Chiudi"));
+    expect(dialog().hasAttribute("open")).toBe(false);
+    expect(dialog().textContent).toBe("");
+    expect(document.activeElement).toBe(origine);
+  });
+
+  it("chiusura con Esc (evento close del browser) riporta il focus", () => {
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano U16");
+    clicca(origine);
+    act(() => dialog().close());
+    expect(dialog().hasAttribute("open")).toBe(false);
+    expect(document.activeElement).toBe(origine);
+  });
+
+  it("clic sullo sfondo chiude, clic dentro la finestra no", () => {
+    monta();
+    clicca(bottone("Mese"));
+    const origine = striscia("Mogliano - Treviso");
+    clicca(origine);
+    clicca(dialog().querySelector("h2")!);
+    expect(dialog().hasAttribute("open")).toBe(true);
+    clicca(dialog());
+    expect(dialog().hasAttribute("open")).toBe(false);
+    expect(document.activeElement).toBe(origine);
+  });
 });
 
 describe("CalendarioVista", () => {

@@ -231,3 +231,101 @@ export function partitePerGiorno<T extends { data: string; ora: string }>(
   }
   return mappa;
 }
+
+// Seguito Story 18.32: dettaglio della Partita nel popup della vista Mese.
+// Parziali salvati come "25-20,22-25" (lib/sincronizza-gare-fipav/parser.ts):
+// resi "25-20, 22-25"; null se assenti/vuoti.
+export function formattaParziali(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const set = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return set.length > 0 ? set.join(", ") : null;
+}
+
+// Campi del popup: sempre presenti nell'oggetto (null quando mancano sulla
+// Partita), cosi' un campo dimenticato nella proiezione e' un errore di tipo.
+export type CampiDettaglioPartita = {
+  data: string;
+  ora: string;
+  giornata: string | null;
+  impianto: string | null;
+  indirizzoImpianto: string | null;
+  statoDescrizione: string | null;
+  risultato: string | null;
+  parziali: string | null;
+};
+
+// Campi che servono alla griglia (striscia + legenda).
+export type CampiGrigliaPartita = {
+  id: string;
+  data: string;
+  ora: string;
+  squadraCasa: string;
+  squadraOspite: string;
+  campionato: CampionatoLegenda;
+};
+
+// Partita come la riceve il client della vista Mese: griglia + popup.
+export type PartitaVistaMese = CampiGrigliaPartita & CampiDettaglioPartita;
+
+// Proiezione di una riga Prisma (che puo' avere campi in piu') sui soli
+// campi serializzati al client della vista Mese.
+export function partitaPerVistaMese(riga: PartitaVistaMese): PartitaVistaMese {
+  return {
+    id: riga.id,
+    data: riga.data,
+    ora: riga.ora,
+    squadraCasa: riga.squadraCasa,
+    squadraOspite: riga.squadraOspite,
+    impianto: riga.impianto,
+    indirizzoImpianto: riga.indirizzoImpianto,
+    giornata: riga.giornata,
+    statoDescrizione: riga.statoDescrizione,
+    risultato: riga.risultato,
+    parziali: riga.parziali,
+    campionato: {
+      id: riga.campionato.id,
+      nome: riga.campionato.nome,
+      colore: riga.campionato.colore,
+    },
+  };
+}
+
+export type RigaDettaglio = {
+  chiave: "quando" | "giornata" | "palestra" | "indirizzo" | "stato" | "risultato" | "parziali";
+  etichetta: string;
+  valore: string;
+};
+
+function valorizzato(valore: string | null | undefined): string | null {
+  const pulito = valore?.trim();
+  return pulito ? pulito : null;
+}
+
+// Righe etichetta/valore dei soli campi presenti, in ordine fisso (Campionato
+// e squadre stanno in intestazione/titolo del popup, non qui). Un campo
+// opzionale assente viene omesso, mai un "non disponibile".
+export function righeDettaglioPartita(partita: CampiDettaglioPartita): RigaDettaglio[] {
+  const righe: RigaDettaglio[] = [];
+  const giorno = normalizzaData(partita.data);
+  const ora = valorizzato(partita.ora);
+  const quando = [giorno ? `${etichettaGiorno(giorno)} ${giorno.slice(0, 4)}` : null, ora ? `ore ${ora}` : null]
+    .filter(Boolean)
+    .join(", ");
+  if (quando) righe.push({ chiave: "quando", etichetta: "Quando", valore: quando });
+
+  const campi: [RigaDettaglio["chiave"], string, string | null][] = [
+    ["giornata", "Giornata", valorizzato(partita.giornata)],
+    ["palestra", "Palestra", valorizzato(partita.impianto)],
+    ["indirizzo", "Indirizzo", valorizzato(partita.indirizzoImpianto)],
+    ["stato", "Stato", valorizzato(partita.statoDescrizione)],
+    ["risultato", "Risultato", valorizzato(partita.risultato)],
+    ["parziali", "Parziali", formattaParziali(partita.parziali)],
+  ];
+  for (const [chiave, etichetta, valore] of campi) {
+    if (valore) righe.push({ chiave, etichetta, valore });
+  }
+  return righe;
+}

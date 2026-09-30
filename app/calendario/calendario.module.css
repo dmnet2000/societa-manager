@@ -478,19 +478,178 @@
   outline-offset: 1px;
 }
 
-.evento {
+.voceEvento {
   flex-shrink: 0;
+}
+
+/* Seguito Story 18.32: la striscia e' un <button> che apre il popup di
+   dettaglio - reset dello stile nativo, touch target >=44px. Focus ring in
+   currentColor rientrato: il testo e' gia' scelto per contrastare con il
+   colore del Campionato (testoScuroSuSfondo), e l'outline interno non viene
+   tagliato dallo scroll della lista. */
+.evento {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
   padding: 2px var(--space-1);
+  border: 0;
+  border-radius: 0;
   background: #2e6f99;
   color: #ffffff;
   font-family: Arial, sans-serif;
   font-size: 12px;
   line-height: 1.3;
+  text-align: left;
   overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.evento:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
 }
 
 .eventoTestoScuro {
   color: #1a1a1a;
+}
+
+/* ------------------------------------------------------------------
+   Seguito Story 18.32: popup di dettaglio della Partita (<dialog> modale).
+   Angoli vivi, intestazione nel colore del Campionato (default #2e6f99
+   come .matchCard), testo var(--color-text-primary) su bianco, niente nero.
+   Il dialog non ha padding: il contenuto lo riempie tutto, cosi' un click
+   con target il dialog stesso e' sempre un click sullo sfondo.
+   ------------------------------------------------------------------ */
+.dialogo {
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--color-text-primary);
+  box-shadow: 0 12px 32px rgba(16, 24, 32, 0.3);
+  overflow-y: auto;
+}
+
+.dialogo::backdrop {
+  background: rgba(16, 24, 32, 0.6);
+}
+
+.dialogoCorpo {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialogoTestata {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  background: #2e6f99;
+  color: #ffffff;
+}
+
+.dialogoTestataTestoScuro {
+  color: #1a1a1a;
+}
+
+.dialogoCampionato {
+  align-self: center;
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.dialogoChiudi {
+  flex-shrink: 0;
+  width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dialogoChiudi:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
+}
+
+.dialogoDettagli {
+  padding: var(--space-4);
+}
+
+.dialogoTitolo {
+  margin: 0 0 var(--space-3);
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.dialogoRighe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.dialogoRiga {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.dialogoEtichetta {
+  font-family: "Arial Black", sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #5b6472;
+}
+
+.dialogoValore {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.dialogoNaviga {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  color: var(--color-navy);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.dialogoNaviga:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .oraEvento {
@@ -560,5 +719,16 @@
   .evento {
     font-size: 13px;
     padding: var(--space-1) var(--space-2);
+  }
+
+  /* Popup: etichetta sopra il valore, titolo ridotto (stessa scala di
+     .squadre sotto i 900px). */
+  .dialogoTitolo {
+    font-size: 18px;
+  }
+
+  .dialogoRiga {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 }
