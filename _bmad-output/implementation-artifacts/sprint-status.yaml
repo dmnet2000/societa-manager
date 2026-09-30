@@ -1,3 +1,4 @@
+# last_updated: 2026-09-30 (Story 9.45: voce mancante aggiunta al tracking - spec-9-45-modifica-dati-anagrafici-atleta.md gia' in stato done con tutti i task completati e review fix applicato (seconda revalidatePath per /i-miei-gruppi). 9-45-modifica-dati-anagrafici-atleta: done.)
 # last_updated: 2026-09-28 (Story 18.34 aggiunta su richiesta esplicita dell'utente: spostare la sezione classifiche dalla home pubblica a un nuovo menu dedicato "Classifiche" - solo la story, NESSUNA IMPLEMENTAZIONE. Verificato nel codice: tutta l'infrastruttura di fetch/parsing/cache live gia' esiste (Story 18.33, vista-home-live.ts/leggi-live-fipav.ts/parser.ts), riusabile invariata da una nuova pagina; il menu pubblico e' gia' interamente dinamico e gestibile senza codice (VoceMenuPubblico, Story 19.6/19.7/19.8) - precedente diretto gia' nel progetto per una nuova pagina con una sua voce di menu (Torneo, migrazione 20260825010000). 5 decisioni aperte, incluso se la sezione risultati (distinta dalla classifica, stessa story 18.33) resti in home o si sposti anch'essa. Vedi epics.md#Story 18.34. 18-34-pagina-classifiche-dedicata aggiunta in backlog.)
 # last_updated: 2026-09-28 (Story 18.34: decisioni chiuse con la scelta di default su richiesta "procedi" dell'utente (nessuna confermata singolarmente) - la classifica sparisce del tutto dalla home (nessun teaser), i risultati restano invariati in home, la nuova pagina mostra tutte le 13 colonne (non solo le 6 compatte di oggi), URL /classifiche con voce di menu "Classifiche" dopo "Calendario" via migrazione di seed (mirror di Torneo), nessun selettore Campionato/Girone (pagina unica). Sviluppo avviato via bmad-build. 18-34-pagina-classifiche-dedicata: backlog -> in-progress.)
 # last_updated: 2026-09-28 (Story 18.34: implementazione completata e verificata (tsc/eslint/vitest/prisma validate puliti), review a 3 layer completata - patch applicate per il bug piu' serio trovato dal Blind Hunter (/classifiche mancante da PUBLIC_ROUTES, lib/auth/route-guard.ts: un Visitatore anonimo veniva reindirizzato a /accedi invece di vedere la pagina pubblica - stesso bug gia' capitato 3 volte prima per /torneo/altre rotte), oltre a: guida in-app aggiornata (lib/guida/contenuti.ts), CSS morto rimosso (.sezioneClassifiche), migrazione resa robusta contro una riga "/calendario" mancante/duplicata (COALESCE + ORDER BY), accessibilita' colonne tabella (<abbr>), commento fuorviante corretto, 2 nuovi test di regressione aggiunti (route-guard.test.ts/route-decision.test.ts) per intercettare in futuro lo stesso bug PUBLIC_ROUTES. 4 findings minori loggati in deferred-work.md. 18-34-pagina-classifiche-dedicata: in-progress -> review.)
@@ -773,6 +774,16 @@ development_status:
   # aperte, inclusa se includere anche il Genitore (non nominato dalla
   # richiesta letterale). Vedi epics.md#Story 9.44.
   9-44-partite-settimana-in-evidenza-home: review
+
+  # Story 9.45 aggiunta e implementata 2026-09-29 su richiesta esplicita
+  # dell'utente: modifica dei dati anagrafici (Nome, Data di nascita, CF,
+  # Email, Cellulare) di un'Atleta gia' esistente su /gruppi, riservata ad
+  # ADMIN e SEGRETERIA (Dirigente/Allenatore esclusi per scelta esplicita,
+  # deviazione voluta da Story 2.10). Nuova aggiornaDatiAtletaAction che
+  # riusa aggiornaAtleta preservando dataPrimoTesseramento, componente
+  # condiviso ModificaDatiAtletaForm.tsx, guida in-app aggiornata. Nessuna
+  # migrazione. Vedi spec-9-45-modifica-dati-anagrafici-atleta.md.
+  9-45-modifica-dati-anagrafici-atleta: done
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
