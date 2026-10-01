@@ -29,8 +29,6 @@ const {
   leggiUrlPaginaInstagram,
   salvaUrlPaginaInstagram,
   nomeSettoreAbbreviato,
-  leggiFrequenzaSincronizzazioneFipavOre,
-  salvaFrequenzaSincronizzazioneFipavOre,
   ID_CONFIGURAZIONE_APPLICAZIONE,
 } = await import("./configurazione-applicazione");
 
@@ -549,67 +547,6 @@ describe("salvaUrlPaginaInstagram", () => {
       where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
       create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, urlPaginaInstagram: null },
       update: { urlPaginaInstagram: null },
-    });
-  });
-});
-
-// Story 10.12: mirror esatto dei describe sopra per leggiEmailSegreteria/salvaEmailSegreteria.
-describe("leggiFrequenzaSincronizzazioneFipavOre", () => {
-  beforeEach(() => {
-    findUniqueMock.mockReset();
-  });
-
-  it("returns the stored frequenzaSincronizzazioneFipavOre", async () => {
-    findUniqueMock.mockResolvedValue({ frequenzaSincronizzazioneFipavOre: 8 });
-
-    const result = await leggiFrequenzaSincronizzazioneFipavOre();
-
-    expect(findUniqueMock).toHaveBeenCalledWith({
-      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-      select: { frequenzaSincronizzazioneFipavOre: true },
-    });
-    expect(result).toBe(8);
-  });
-
-  it("returns null when no row exists yet (mai salvato)", async () => {
-    findUniqueMock.mockResolvedValue(null);
-
-    const result = await leggiFrequenzaSincronizzazioneFipavOre();
-
-    expect(result).toBeNull();
-  });
-
-  it("returns null when the stored value is null", async () => {
-    findUniqueMock.mockResolvedValue({ frequenzaSincronizzazioneFipavOre: null });
-
-    const result = await leggiFrequenzaSincronizzazioneFipavOre();
-
-    expect(result).toBeNull();
-  });
-});
-
-describe("salvaFrequenzaSincronizzazioneFipavOre", () => {
-  beforeEach(() => {
-    upsertMock.mockReset();
-  });
-
-  it("upserts on the fixed id, atomic - no read-then-branch", async () => {
-    await salvaFrequenzaSincronizzazioneFipavOre(8);
-
-    expect(upsertMock).toHaveBeenCalledWith({
-      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: 8 },
-      update: { frequenzaSincronizzazioneFipavOre: 8 },
-    });
-  });
-
-  it("allows clearing the value back to null", async () => {
-    await salvaFrequenzaSincronizzazioneFipavOre(null);
-
-    expect(upsertMock).toHaveBeenCalledWith({
-      where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-      create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: null },
-      update: { frequenzaSincronizzazioneFipavOre: null },
     });
   });
 });

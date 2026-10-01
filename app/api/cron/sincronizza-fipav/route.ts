@@ -2,7 +2,6 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaCampionatoFipav } from "@/lib/sincronizza-gare-fipav/sincronizza";
-import { leggiFrequenzaSincronizzazioneFipavOre } from "@/lib/configurazione-applicazione";
 
 // Review fix (mirror di app/api/cron/promemoria-certificati/route.ts, Story
 // 4.6): confronto a tempo costante per l'unico segreto che protegge questo
@@ -17,11 +16,6 @@ function segretoValido(fornito: string | null, atteso: string): boolean {
   if (bufferFornito.length !== bufferAtteso.length) return false;
   return timingSafeEqual(bufferFornito, bufferAtteso);
 }
-
-// Story 10.12 (Design Notes): fallback quando l'Admin non ha mai impostato
-// una cadenza da /app/impostazioni.
-const FREQUENZA_FALLBACK_ORE = 24;
-const MILLISECONDI_PER_ORA = 60 * 60 * 1000;
 
 type CampionatoDaSincronizzare = {
   id: string;
@@ -39,21 +33,23 @@ function ilPiuVecchioPrimo(a: CampionatoDaSincronizzare, b: CampionatoDaSincroni
   return a.ultimaSincronizzazioneFipavIl.getTime() - b.ultimaSincronizzazioneFipavIl.getTime();
 }
 
-// Story 10.12 (review fix, 2026-09-28): bug di produzione osservato dopo il
-// primo tentativo reale - elaborare TUTTI i Campionati nella stessa
-// invocazione (prima in sequenza, poi in parallelo) rischiava sia un
-// timeout lato workflow GitHub Actions sia di bombardare il portale FIPAV
-// con piu' richieste ravvicinate. Corretto elaborando UN SOLO Campionato
-// per invocazione - quello con `ultimaSincronizzazioneFipavIl` piu' vecchio
-// (o mai sincronizzato), tra quelli la cui finestra di frequenza e'
-// trascorsa - invocato ogni 10 minuti da
-// .github/workflows/sincronizza-fipav.yml invece che ogni ora: con piu'
-// Campionati, la rotazione completa richiede piu' battiti, mai una raffica
-// di richieste simultanee/ravvicinate allo stesso portale di terzi.
-// `frequenzaSincronizzazioneFipavOre` (ConfigurazioneApplicazione,
-// editabile da /app/impostazioni) governa ancora ogni quante ore un
-// singolo Campionato viene ri-sincronizzato, non piu' un'unica esecuzione
-// globale.
+// Richiesta utente 2026-10-01: sincronizzazione una volta al giorno (ciclo
+// notturno delle 2:00 ora italiana guidato da cron-worker/src/index.ts),
+// non piu' un battito ogni 10 minuti con una cadenza per-Campionato. Ogni
+// chiamata elabora ancora UN SOLO Campionato (mai tutti insieme, review fix
+// Story 10.12: timeout e raffica di richieste al portale FIPAV): il Worker
+// richiama questo endpoint in sequenza, con 1 minuto di pausa tra un
+// Campionato e l'altro, finche' `rimanenti` non arriva a 0.
+// - `dal` (ISO, obbligatorio): inizio del ciclo - sono "dovuti" i Campionati
+//   mai sincronizzati o sincronizzati prima di questo istante, cosi' un
+//   Campionato gia' fatto in questo ciclo non viene ripreso.
+// - `escludi` (id separati da virgola, facoltativo): Campionati falliti in
+//   questo stesso giro del Worker, da non ritentare subito (il timestamp non
+//   avanza su un fallimento: senza esclusione verrebbero ripresi a ogni
+//   chiamata).
+// La cadenza e' fissa, una volta per notte: la vecchia impostazione
+// "ogni quante ore" (ConfigurazioneApplicazione.frequenzaSincronizzazioneFipavOre)
+// e' stata rimossa da /app/impostazioni insieme al suo codice.
 export async function GET(request: NextRequest) {
   const segretoAtteso = process.env.CRON_SECRET;
   const autorizzazione = request.headers.get("authorization");
@@ -62,51 +58,59 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  const parametri = request.nextUrl.searchParams;
+  const dal = new Date(parametri.get("dal") ?? "");
+  if (Number.isNaN(dal.getTime())) {
+    return NextResponse.json({ error: "PARAMETRO_DAL_NON_VALIDO" }, { status: 400 });
+  }
+  const escludi = new Set(
+    (parametri.get("escludi") ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+
   // Un solo "ora" per l'intera esecuzione (mai piu' letture indipendenti di
   // new Date()) - stesso principio "oggi esplicito" gia' stabilito da
   // promemoria-certificati/route.ts.
   const ora = new Date();
 
-  let frequenzaOre: number | null;
   let campionati: CampionatoDaSincronizzare[];
   try {
-    [frequenzaOre, campionati] = await Promise.all([
-      leggiFrequenzaSincronizzazioneFipavOre(),
-      prisma.campionato.findMany({
-        where: { linkFipav: { not: null } },
-        select: {
-          id: true,
-          gruppoId: true,
-          linkFipav: true,
-          ultimaSincronizzazioneFipavIl: true,
-        },
-      }) as Promise<CampionatoDaSincronizzare[]>,
-    ]);
+    campionati = (await prisma.campionato.findMany({
+      where: { linkFipav: { not: null } },
+      select: {
+        id: true,
+        gruppoId: true,
+        linkFipav: true,
+        ultimaSincronizzazioneFipavIl: true,
+      },
+    })) as CampionatoDaSincronizzare[];
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "LETTURA_FALLITA" }, { status: 500 });
   }
 
-  const frequenzaEffettiva = frequenzaOre ?? FREQUENZA_FALLBACK_ORE;
-
-  const dovuti = campionati.filter((c) => {
-    if (!c.ultimaSincronizzazioneFipavIl) return true;
-    const oreTrascorse =
-      (ora.getTime() - c.ultimaSincronizzazioneFipavIl.getTime()) / MILLISECONDI_PER_ORA;
-    return oreTrascorse >= frequenzaEffettiva;
-  });
+  const dovuti = campionati
+    .filter((c) => !escludi.has(c.id))
+    .filter((c) => !c.ultimaSincronizzazioneFipavIl || c.ultimaSincronizzazioneFipavIl < dal)
+    .sort(ilPiuVecchioPrimo);
 
   if (dovuti.length === 0) {
     return NextResponse.json({
       eseguito: false,
+      rimanenti: 0,
       motivo:
         campionati.length === 0
           ? "Nessun Campionato con un link FIPAV impostato."
-          : `Tutti i ${campionati.length} Campionati sono stati sincronizzati entro la cadenza configurata (${frequenzaEffettiva}h) - salto questa esecuzione.`,
+          : `Nessun Campionato da sincronizzare in questo ciclo (${campionati.length} con link FIPAV).`,
     });
   }
 
-  const campionato = [...dovuti].sort(ilPiuVecchioPrimo)[0];
+  const [campionato, ...altri] = dovuti;
+  // Dopo questa chiamata restano gli altri dovuti, qualunque sia l'esito di
+  // questo (un fallito viene escluso dal Worker per il resto del giro).
+  const rimanenti = altri.length;
 
   let risultato;
   try {
@@ -121,6 +125,7 @@ export async function GET(request: NextRequest) {
       eseguito: true,
       campionatoId: campionato.id,
       esito: "fallito",
+      rimanenti,
     });
   }
 
@@ -133,13 +138,13 @@ export async function GET(request: NextRequest) {
       campionatoId: campionato.id,
       esito: "fallito",
       errore: risultato.error.message,
+      rimanenti,
     });
   }
 
   // Aggiornato SOLO su successo (mai su un fallimento sopra) - un
-  // Campionato fallito viene ritentato al battito successivo (10 minuti
-  // dopo), non bloccato per l'intera finestra di frequenza come sarebbe
-  // se il timestamp avanzasse comunque.
+  // Campionato fallito resta "dovuto" e viene ritentato alla ripresa
+  // successiva del ciclo (cron-worker, ogni 15 minuti durante le 2:00).
   try {
     await prisma.campionato.update({
       where: { id: campionato.id },
@@ -161,5 +166,6 @@ export async function GET(request: NextRequest) {
     aggiornati: risultato.aggiornate,
     bloccati: risultato.bloccate,
     scartati: risultato.scartate.length,
+    rimanenti,
   });
 }

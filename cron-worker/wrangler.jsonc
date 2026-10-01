@@ -6,11 +6,12 @@
 	// Due schedule diversi nello stesso Worker - src/index.ts guarda
 	// event.cron per sapere quale dei due si e' attivato e chiama
 	// l'endpoint giusto. Un cambio di cadenza qui richiede un
-	// `wrangler deploy` (vedi docs/deploy-produzione.md Fase 6bis) - a
-	// differenza della cadenza REALE di sincronizzazione FIPAV per singolo
-	// Campionato, che resta configurabile da /app/impostazioni senza
-	// alcun deploy.
+	// `wrangler deploy` (vedi docs/deploy-produzione.md Fase 6bis).
 	"triggers": {
-		"crons": ["*/10 * * * *", "0 6 * * *"]
+		// Sincronizzazione FIPAV: ciclo notturno alle 2:00 ora italiana
+		// (00:xx UTC con ora legale, 01:xx UTC con ora solare - il Worker
+		// procede solo se a Roma sono le 2), con riprese ai quarti d'ora se
+		// il ciclo non e' finito entro i 15 minuti di un'invocazione.
+		"crons": ["0,15,30,45 0,1 * * *", "0 6 * * *"]
 	}
 }

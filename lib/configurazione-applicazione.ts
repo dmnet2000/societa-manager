@@ -188,27 +188,6 @@ export async function salvaUrlPaginaInstagram(url: string | null): Promise<void>
   });
 }
 
-// Story 10.12: mirror esatto di leggiEmailSegreteria/salvaEmailSegreteria
-// sopra - cadenza (in ore) della sincronizzazione automatica FIPAV, letta
-// dall'endpoint app/api/cron/sincronizza-fipav (fallback 24 ore applicato
-// li', non qui - questa funzione restituisce il valore grezzo, null incluso)
-// e salvata da /app/impostazioni (Admin-only).
-export async function leggiFrequenzaSincronizzazioneFipavOre(): Promise<number | null> {
-  const configurazione = await prisma.configurazioneApplicazione.findUnique({
-    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-    select: { frequenzaSincronizzazioneFipavOre: true },
-  });
-  return configurazione?.frequenzaSincronizzazioneFipavOre ?? null;
-}
-
-export async function salvaFrequenzaSincronizzazioneFipavOre(ore: number | null): Promise<void> {
-  await prisma.configurazioneApplicazione.upsert({
-    where: { id: ID_CONFIGURAZIONE_APPLICAZIONE },
-    create: { id: ID_CONFIGURAZIONE_APPLICAZIONE, frequenzaSincronizzazioneFipavOre: ore },
-    update: { frequenzaSincronizzazioneFipavOre: ore },
-  });
-}
-
 // Story 10.12 (review fix, 2026-09-28): leggiUltimaSincronizzazioneFipavAutomaticaIl/
 // segnaSincronizzazioneFipavAutomaticaEseguita rimosse - il tracciamento
 // dell'ultima esecuzione riuscita non e' piu' un unico timestamp globale

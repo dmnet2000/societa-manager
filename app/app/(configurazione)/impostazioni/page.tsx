@@ -6,7 +6,6 @@ import {
   leggiContattiPubblici,
   leggiUrlSitoPolisportiva,
   leggiUrlPaginaInstagram,
-  leggiFrequenzaSincronizzazioneFipavOre,
 } from "@/lib/configurazione-applicazione";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
@@ -23,7 +22,6 @@ import { TokenFacebookForm } from "./TokenFacebookForm";
 import { FotoHeroForm } from "./FotoHeroForm";
 import { LogoPolisportivaForm } from "./LogoPolisportivaForm";
 import { SitoPolisportivaForm } from "./SitoPolisportivaForm";
-import { FrequenzaSincronizzazioneFipavForm } from "./FrequenzaSincronizzazioneFipavForm";
 import styles from "./impostazioni.module.css";
 
 // Story 9.24: pagina hub - raggruppa /smtp e /logo (Story 7.1/7.2), non piu'
@@ -76,7 +74,6 @@ export default async function ImpostazioniPage() {
     logoPolisportiva,
     urlSitoPolisportiva,
     urlPaginaInstagram,
-    frequenzaSincronizzazioneFipavOre,
   ] = await Promise.all([
     leggiEmailSegreteria().catch((err) => {
       console.error(err);
@@ -115,11 +112,6 @@ export default async function ImpostazioniPage() {
     }),
     // Story 18.29: stesso pattern fail-soft di urlPaginaFacebook sopra.
     leggiUrlPaginaInstagram().catch((err) => {
-      console.error(err);
-      return null;
-    }),
-    // Story 10.12: stesso pattern fail-soft delle altre letture sopra.
-    leggiFrequenzaSincronizzazioneFipavOre().catch((err) => {
       console.error(err);
       return null;
     }),
@@ -262,14 +254,16 @@ export default async function ImpostazioniPage() {
             bombardare il portale FIPAV con piu' richieste ravvicinate), lo
             stato di ciascuno vive su Campionato.ultimaSincronizzazioneFipavIl,
             non esposto in questa pagina riassuntiva. */}
+        {/* Richiesta utente 2026-10-01: cadenza fissa, una volta per notte
+            (cron-worker/src/index.ts) - il campo "ogni quante ore" e' stato
+            tolto da qui perche' non avrebbe piu' alcun effetto. */}
         <p className={styles.messaggioVuoto}>
-          La sincronizzazione automatica elabora un Campionato alla volta (in
-          rotazione, dal meno recente), non tutti insieme, per non
-          sovraccaricare il portale FIPAV.
+          La sincronizzazione automatica parte ogni notte alle 2:00 e
+          aggiorna i Campionati con un link FIPAV uno alla volta, con un
+          minuto di pausa tra l&apos;uno e l&apos;altro, per non sovraccaricare il
+          portale FIPAV. Per un aggiornamento immediato usa il bottone
+          &quot;Sincronizza da FIPAV&quot; nella pagina Campionati.
         </p>
-        <FrequenzaSincronizzazioneFipavForm
-          frequenzaAttualeOre={frequenzaSincronizzazioneFipavOre}
-        />
       </div>
     </main>
   );

@@ -469,6 +469,10 @@ model ConfigurazioneApplicazione {
   // l'endpoint app/api/cron/sincronizza-fipav esegue davvero solo se sono
   // passate almeno queste ore dall'ultima esecuzione riuscita. Fallback 24
   // ore quando null (mai impostato).
+  // NON PIU' USATA (2026-10-01): la sincronizzazione automatica e' ora un
+  // ciclo notturno fisso alle 2:00 (cron-worker/src/index.ts), il campo e'
+  // stato tolto da /app/impostazioni insieme al suo codice. Colonna lasciata
+  // nel database per non richiedere una migrazione.
   frequenzaSincronizzazioneFipavOre Int?
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
