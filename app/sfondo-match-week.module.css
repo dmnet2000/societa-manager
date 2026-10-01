@@ -1,0 +1,102 @@
+/* Sfondo "Match Week" delle fasce partite/risultati/classifiche del sito
+   pubblico (variante C scelta dall'utente il 2026-10-01, sulla falsa riga
+   di ux-designs/stile.jpg): blu notte con aloni e fasce di luce oblique,
+   rete accennata in alto a destra, contorno di pallone in basso a destra
+   (app/SfondoMatchWeek.tsx) e filo bianco tra una riga partita e l'altra.
+   Solo CSS + SVG inline: nessuna immagine, nessuna libreria, nessun font.
+   Vedi DESIGN.md -> Componenti -> "Fascia Match Week". */
+
+.fascia {
+  /* Tavolozza del testo dentro la fascia: titoli e messaggi della pagina
+     usano --color-text-primary/secondary, qui ridefinite per il fondo
+     scuro (bianco >= 7.8:1, #C3D6F5 >= 5.3:1 anche sull'alone piu' chiaro).
+     La card classifica (bianca) ripristina le proprie - vedi
+     home-pubblica.module.css .schedaClassifica. Le righe partita hanno
+     custom property proprie, non toccate. */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #c3d6f5;
+  --color-focus-ring: var(--color-focus-ring-on-navy);
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #ffffff;
+  background-color: #0a1a3f;
+  background-image:
+    linear-gradient(
+      112deg,
+      transparent 0 30%,
+      rgba(90, 150, 255, 0.16) 30% 31.5%,
+      transparent 31.5% 58%,
+      rgba(90, 150, 255, 0.1) 58% 62%,
+      transparent 62% 80%,
+      rgba(90, 150, 255, 0.08) 80% 81%,
+      transparent 81%
+    ),
+    radial-gradient(ellipse 60% 50% at 88% 8%, rgba(40, 110, 255, 0.55), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 5% 95%, rgba(30, 90, 230, 0.45), transparent 70%),
+    linear-gradient(165deg, #0f2d75 0%, #0a1a3f 55%, #071331 100%);
+}
+
+/* Il contenuto sta sempre sopra le decorazioni. */
+.fascia > :not(.decorazione) {
+  position: relative;
+  z-index: 1;
+}
+
+.decorazione {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.rete {
+  top: -40px;
+  right: -40px;
+  width: 420px;
+  height: 320px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 22px);
+  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, #000 25%, transparent 70%);
+  mask-image: radial-gradient(ellipse at 100% 0%, #000 25%, transparent 70%);
+}
+
+.pallone {
+  right: -60px;
+  bottom: -70px;
+  width: 300px;
+  height: 300px;
+  color: rgba(255, 255, 255, 0.14);
+}
+
+/* Filo bianco obliquo tra le righe partita, come le fasce della grafica
+   (segue il clip-path della riga). */
+.fascia li {
+  filter: drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.85));
+}
+
+@media (max-width: 900px) {
+  .rete {
+    width: 240px;
+    height: 200px;
+  }
+
+  .pallone {
+    right: -50px;
+    bottom: -50px;
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Contrasto elevato di sistema: niente decorazioni ne' filo. */
+@media (forced-colors: active) {
+  .decorazione {
+    display: none;
+  }
+
+  .fascia li {
+    filter: none;
+  }
+}

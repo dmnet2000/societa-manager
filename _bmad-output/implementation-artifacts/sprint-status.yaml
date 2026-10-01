@@ -1,3 +1,5 @@
+# last_updated: 2026-10-01 (Story 18.35: implementata via bmad-build (baseline 7df7e5d949ff12cf77b52529b671891aa816434b). Nuovo componente app/RigaPartita.tsx + riga-partita.module.css usato in /calendario Elenco e home Partite/Risultati; helper lib/data-riga-partita.ts e lib/props-riga-partita.ts. Review a 3 layer: 12 patch (vs 20px su mobile, data estesa per screen reader, orario nei Risultati, fallback orario/risultato vuoti, colore Campionato normalizzato, niente overflow a 375px, testo pieno su mobile, filo bianco sul blocco data, liste ul/li, test delle mappature pagina->props, test UTC reso significativo, DESIGN.md/EXPERIENCE.md aggiornati). 150 file / 2411 test verdi, tsc/lint puliti, build riuscita. Verifica visiva demandata al deploy. Classifiche (parte B) in deferred-work. 18-35-riga-partita-match-week: in-progress -> review.)
+# last_updated: 2026-09-30 (Story 18.35 aggiunta e avviata via bmad-build: riga partita stile Match Week (stile.jpg) per /calendario Elenco e home Partite/Risultati; decisioni utente: sfondo = Campionato.colore, blocco data rosso, nessuna riga evidenziata. Classifiche separate in deferred-work. 18-35-riga-partita-match-week: in-progress.)
 # last_updated: 2026-09-30 (Story 18.32: implementazione completata via bmad-build su spec-18-32-calendario-vista-mensile.md (baseline 05cb733c1baffdc05d25cf6388206c96c4db38dd). Nuovi lib/griglia-mensile.ts (funzioni pure UTC) e app/calendario/CalendarioVista.tsx (interruttore Elenco/Mese, legenda checkbox per Campionato persistita in localStorage, griglia Lun-Dom con scroll interno nelle celle, sotto 900px colonna di giorni - da confermare con l'utente). Review a 3 layer: 7 patch applicate (toggle con setState funzionale, id salvati di altre stagioni conservati, messaggio con tutti i Campionati deselezionati, stato mese/nascosti nel parent inizializzato solo al primo click su Mese, rimossi useEffect di lettura ed eslint-disable, contrasto giorni fuori mese, celle vuote silenziose per screen reader, test del componente in jsdom), nessun defer. 147 file / 2349 test verdi, tsc/lint puliti, build riuscita. Verifica dal vivo demandata al deploy (dev locale rotto). Commit lasciato all'utente. 18-32-calendario-vista-mensile-google-style: in-progress -> review.)
 # last_updated: 2026-09-30 (Story 18.32: decisioni chiuse con l'utente - checkbox per Campionato, interruttore Elenco/Mese sulla stessa /calendario, tutte le Partite nella cella con scroll interno, selezione ricordata in localStorage; di default (non chieste) riuso del fetch stagione esistente e cella vuota silenziosa. Spec spec-18-32-calendario-vista-mensile.md approvata, sviluppo avviato via bmad-build. 18-32-calendario-vista-mensile-google-style: backlog -> in-progress.)
 # last_updated: 2026-09-30 (Story 9.45: voce mancante aggiunta al tracking - spec-9-45-modifica-dati-anagrafici-atleta.md gia' in stato done con tutti i task completati e review fix applicato (seconda revalidatePath per /i-miei-gruppi). 9-45-modifica-dati-anagrafici-atleta: done.)
@@ -1575,6 +1577,14 @@ development_status:
   # (Story 18.33, distinta dalla classifica) resti in home o si sposti
   # anch'essa. Vedi epics.md#Story 18.34.
   18-34-pagina-classifiche-dedicata: review
+
+  # Story 18.35 aggiunta 2026-09-30 su richiesta esplicita dell'utente: stile
+  # "Match Week" (ux-designs/stile.jpg) per le partite del sito pubblico -
+  # riga partita condivisa per /calendario (Elenco) e home (Partite della
+  # settimana, Risultati della settimana scorsa). Parte Classifiche separata
+  # su scelta dell'utente, annotata in deferred-work.md. Vedi
+  # spec-18-35-riga-partita-match-week.md.
+  18-35-riga-partita-match-week: review
 
   # Story 20.28 aggiunta su richiesta esplicita dell'utente 2026-09-12: "nella
   # sezione sito statico non vedo gli slot assegnati sui tabelloni delle

@@ -12,8 +12,6 @@ import {
   parseDataUtc,
   raggruppaPerSettimana,
 } from "@/lib/raggruppa-per-settimana";
-import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
-import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
 import { elencaGruppiConFoto, urlPubblicoFotoSquadra } from "@/lib/storage/foto-squadra";
 import { leggiInfoFotoHero, urlPubblicoFotoHero } from "@/lib/storage/foto-hero";
 import { leggiUltimiPostFacebook } from "@/lib/facebook-graph";
@@ -28,6 +26,9 @@ import { CookieBanner } from "./CookieBanner";
 import { HeaderPubblico } from "./HeaderPubblico";
 import { FooterPubblico } from "./FooterPubblico";
 import { HeroPostFacebook } from "./HeroPostFacebook";
+import { RigaPartita } from "./RigaPartita";
+import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "./SfondoMatchWeek";
+import { propsRigaDaPartita, propsRigaDaRisultato } from "@/lib/props-riga-partita";
 import styles from "./home-pubblica.module.css";
 
 // Story 18.1 (Epic 18): nuova home pubblica su "/" (senza autenticazione),
@@ -40,15 +41,6 @@ import styles from "./home-pubblica.module.css";
 // qualunque momento - stesso motivo di dynamic = "force-dynamic" gia' in uso
 // su /accedi.
 export const dynamic = "force-dynamic";
-
-// Story 18.3: mirror del wrapper locale gia' in uso in
-// app/app/(partite-campionati)/partite/page.tsx - timeZone: "UTC" esplicito
-// (senza, il fuso orario locale del processo potrebbe mostrare una data
-// sfalsata di un giorno rispetto alla stringa "YYYY-MM-DD" originale).
-// parseDataUtc riusata (gia' esportata), non un secondo parsing indipendente.
-function formattaData(data: string): string {
-  return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
-}
 
 export default async function HomePubblicaPage() {
   // Nessuna sessione qui (pagina pubblica): createClient() funziona
@@ -366,49 +358,30 @@ export default async function HomePubblicaPage() {
             con linkFipav) -> nessuna sezione, nessun messaggio. */}
         {mostraRisultatiSettimanaScorsa && (
           <section
-            className={styles.sezioneRisultati}
+            className={`${styles.sezioneRisultati} ${classeFasciaMatchWeek}`}
             aria-labelledby="titolo-risultati-settimana"
           >
+            {/* Sfondo Match Week (variante C, scelta utente 2026-10-01),
+                stesso di "Partite della settimana" e /classifiche. */}
+            <DecorazioniMatchWeek />
             <h2 id="titolo-risultati-settimana" className={styles.titoloSezione}>
               Risultati della settimana scorsa
             </h2>
-            {/* Card riusate INVARIATE da "Partite della settimana" sotto
-                (styles.schedaPartita/dataPartita/squadrePartita/vs/
-                gruppoPartita/testoScuro) - solo styles.risultatoGara e'
-                nuova, al posto di luogo/link-naviga (vedi Design Notes
-                home-pubblica.module.css). */}
-            <div className={styles.listaRisultati}>
-              {risultatiSettimanaScorsa.map((riga) => {
-                const colore = riga.campionatoColore;
-                const classiScheda = colore && testoScuroSuSfondo(colore)
-                  ? `${styles.schedaPartita} ${styles.testoScuro}`
-                  : styles.schedaPartita;
-                return (
-                  <div
-                    className={classiScheda}
-                    style={colore ? { backgroundColor: colore } : undefined}
-                    key={riga.chiave}
-                  >
-                    <div className={styles.dataPartita}>
-                      <span>{formattaData(riga.data)}</span>
-                      <span>{riga.ora}</span>
-                    </div>
-                    <div className={styles.squadrePartita}>
-                      {riga.squadraCasa} <span className={styles.vs}>vs</span> {riga.squadraOspite}
-                    </div>
-                    <div className={styles.risultatoGara}>
-                      {/* Review fix (Blind Hunter): senza statoDescrizione,
-                          una gara rinviata/sospesa e una il cui risultato
-                          non e' ancora stato pubblicato mostravano lo stesso
-                          identico testo generico - qui si preferisce il
-                          motivo esplicito del portale quando disponibile. */}
-                      {riga.risultato ?? riga.statoDescrizione ?? "Risultato non disponibile"}
-                    </div>
-                    <span className={styles.gruppoPartita}>{riga.campionatoNome}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Story 18.35: stessa riga Match Week di "Partite della
+                settimana" sotto e di /calendario (app/RigaPartita.tsx) - a
+                destra il risultato a contorno, altrimenti in piccolo il
+                motivo del portale (statoDescrizione, review fix Blind
+                Hunter Story 18.33) o "Risultato non disponibile". Nessuna
+                palestra: il dato live FIPAV non la porta; l'orario resta in
+                piccolo sotto il risultato. Mappatura testata in
+                lib/props-riga-partita.ts. */}
+            <ul className={styles.listaRisultati}>
+              {risultatiSettimanaScorsa.map((riga) => (
+                <li key={riga.chiave}>
+                  <RigaPartita {...propsRigaDaRisultato(riga)} />
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -427,59 +400,25 @@ export default async function HomePubblicaPage() {
           // Review fix: aria-labelledby (non aria-label) - un solo <h2> qui
           // gia' fa da nome accessibile: ripeterne il testo in aria-label lo
           // avrebbe solo duplicato.
-          <section className={styles.sezionePartite} aria-labelledby="titolo-partite-settimana">
+          <section
+            className={`${styles.sezionePartite} ${classeFasciaMatchWeek}`}
+            aria-labelledby="titolo-partite-settimana"
+          >
+            <DecorazioniMatchWeek />
             <h2 id="titolo-partite-settimana" className={styles.titoloSezione}>
               Partite della settimana
             </h2>
-            {/* Card invece di tabella (indicazione utente 2026-08-12, vedi
-                commento in home-pubblica.module.css sopra .listaPartite) -
-                stessi campi di sola lettura della vecchia riga <tr>
-                (Giorno/Ora/Squadre/Luogo/Gruppo), nessuna colonna
-                "Azioni" (AC #3, nessun Ruolo puo' modificare da qui). */}
-            <div className={styles.listaPartite}>
-              {partiteSettimana.map((partita) => {
-                const linkNaviga = costruisciLinkNaviga({
-                  indirizzo: partita.indirizzoImpianto,
-                });
-                const colore = partita.campionato.colore;
-                const classiScheda = colore && testoScuroSuSfondo(colore)
-                  ? `${styles.schedaPartita} ${styles.testoScuro}`
-                  : styles.schedaPartita;
-                return (
-                  <div
-                    className={classiScheda}
-                    style={colore ? { backgroundColor: colore } : undefined}
-                    key={partita.id}
-                  >
-                    <div className={styles.dataPartita}>
-                      <span>{formattaData(partita.data)}</span>
-                      <span>{partita.ora}</span>
-                    </div>
-                    <div className={styles.squadrePartita}>
-                      {partita.squadraCasa} <span className={styles.vs}>vs</span> {partita.squadraOspite}
-                    </div>
-                    <div className={styles.luogoPartita}>
-                      {partita.impianto}
-                      {linkNaviga && (
-                        <>
-                          {" "}
-                          <a
-                            className={styles.linkNaviga}
-                            href={linkNaviga}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
-                          >
-                            Naviga
-                          </a>
-                        </>
-                      )}
-                    </div>
-                    <span className={styles.gruppoPartita}>{partita.campionato.nome}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Story 18.35: riga Match Week (app/RigaPartita.tsx), stessi
+                campi di sola lettura di prima (Giorno/Ora/Squadre/Luogo/
+                Campionato), nessuna azione (AC #3 Story 18.3). Mappatura
+                testata in lib/props-riga-partita.ts. */}
+            <ul className={styles.listaPartite}>
+              {partiteSettimana.map((partita) => (
+                <li key={partita.id}>
+                  <RigaPartita {...propsRigaDaPartita(partita)} />
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

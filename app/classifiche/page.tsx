@@ -3,6 +3,7 @@ import { leggiCampionatiConLetturaFipav } from "@/lib/sincronizza-gare-fipav/leg
 import { classifichePerCampionatoDaLetture } from "@/lib/sincronizza-gare-fipav/vista-home-live";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
+import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "../SfondoMatchWeek";
 import homeStyles from "../home-pubblica.module.css";
 import styles from "./classifiche.module.css";
 
@@ -54,7 +55,10 @@ export default async function ClassifichePage() {
   return (
     <>
       <HeaderPubblico />
-      <main className={styles.main}>
+      {/* Sfondo Match Week (variante C, scelta utente 2026-10-01) su tutta
+          la pagina, stesso delle fasce partite/risultati della home. */}
+      <main className={`${styles.main} ${classeFasciaMatchWeek}`}>
+        <DecorazioniMatchWeek />
         <h1 className={styles.titolo}>Classifiche</h1>
         {/* AC #6 (spec-18-34): messaggio esplicito invece di un'area vuota
             quando nessun Campionato ha linkFipav impostato o tutti i fetch

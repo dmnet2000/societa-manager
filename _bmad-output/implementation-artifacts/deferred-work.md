@@ -1244,3 +1244,7 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-45-modifica-dati-anagrafici-atleta.md`
   summary: nessuna traccia di controllo (audit trail: chi ha modificato cosa e quando) per le modifiche ai dati anagrafici di un'Atleta - a differenza dei campi di rimozione (`rimossaIl`/`motivoRimozione`/`notaRimozione`, Story 9.43) che restano tracciati.
   evidence: funzionalità aggiuntiva esplicitamente fuori scope dello spec-9-45 (Boundaries "Never" non la menziona) - dati identitari sensibili (Codice Fiscale, Data di nascita), un audit trail sarebbe una feature a sé stante che richiede una decisione di prodotto (nuova tabella/colonne) prima di poter essere implementata.
+
+- source_spec: none
+  summary: Restyling "Match Week" di /classifiche (stile.jpg) - ogni squadra una riga inclinata con posizione nel blocco rosso, nome grande, punti grandi a contorno a destra, altre colonne in piccolo sotto il nome (decisioni utente 2026-09-30).
+  evidence: separato su scelta dell'utente dalla story delle righe partita (calendario + home), da fare subito dopo riusando gli stili (blocco rosso, numero a contorno) introdotti lì.

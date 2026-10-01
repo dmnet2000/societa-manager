@@ -1,0 +1,352 @@
+/* Story 18.35: "riga partita" in stile Match Week (app/RigaPartita.tsx),
+   evoluzione di components.match-card del registro "Poster Sportivo"
+   (DESIGN.md -> Componenti -> "Riga partita Match Week").
+   Sfondo = Campionato.colore normalizzato (inline in RigaPartita.tsx,
+   default {colors.azzurro-partite} #2E6F99), tavolozza del testo tramite
+   custom property locali, cosi' la variante .testoScuro cambia un solo
+   punto. Nessuna immagine/texture di sfondo della grafica di riferimento
+   (rete, pallone, grana) e nessun logo - vincolo esplicito della storia. */
+
+.riga {
+  /* {colors.bianco} / {colors.testo-chiaro-partite} #EAF4FB (4.89:1 sul
+     default) / {colors.magenta-chiaro} #FFCBE6 per "vs" (3.88:1, solo a
+     dimensione display - testo grande). */
+  --riga-testo: #ffffff;
+  --riga-testo-secondario: #eaf4fb;
+  --riga-vs: #ffcbe6;
+  --riga-separatore: rgba(255, 255, 255, 0.55);
+
+  display: grid;
+  /* fit-content(40%): la colonna destra si adatta all'orario/risultato ma
+     non supera mai il 40% della riga (un risultato lungo va a capo invece
+     di spingere la riga oltre il bordo). */
+  grid-template-columns: 96px minmax(0, 1fr) fit-content(40%);
+  align-items: stretch;
+  color: var(--riga-testo);
+  /* Inclinazione: bordi superiore/inferiore leggermente obliqui, testo
+     dritto (mai transform: skew, deformerebbe il testo). */
+  clip-path: polygon(0 8px, 100% 0, 100% calc(100% - 8px), 0 100%);
+  border-radius: 0;
+}
+
+/* Colore del Campionato troppo chiaro per il testo bianco
+   (testoScuroSuSfondo, luminanza > 0.5): testi e contorno passano a
+   {colors.blu-carbone} #0F2438 - mai nero puro (vincolo "niente nero").
+   Per costruzione il contrasto e' >= 8.27:1 su ogni sfondo sopra soglia;
+   {colors.vs-su-chiaro} #9C1458 >= 4.14:1 (usato solo a dimensione
+   display). */
+.testoScuro {
+  --riga-testo: #0f2438;
+  --riga-testo-secondario: #0f2438;
+  --riga-vs: #9c1458;
+  --riga-separatore: rgba(15, 36, 56, 0.55);
+}
+
+/* Blocco data: sempre {colors.rosso-matchweek} #C8102E con testo bianco
+   (5.88:1, AA anche per testo normale), indipendente dal colore del
+   Campionato - bordo destro obliquo come nella grafica.
+   Review: su un Campionato rosso (o simile) il blocco si confonderebbe con
+   lo sfondo - un filo bianco sul lato obliquo lo stacca sempre. Il
+   contenitore e' bianco con la sagoma esterna, il rosso (::before) e'
+   la stessa sagoma arretrata di 4px sul lato obliquo. */
+.data {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #ffffff;
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-2);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.data::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #c8102e;
+  clip-path: polygon(0 0, calc(100% - 4px) 0, calc(100% - 18px) 100%, 0 100%);
+}
+
+.dataTesto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  /* Compensa il taglio obliquo a destra: il testo resta centrato sulla
+     parte piena del blocco. */
+  margin-right: 9px;
+}
+
+.dataGiorno,
+.dataMese {
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.dataNumero {
+  font-size: 44px;
+  margin: 2px 0;
+}
+
+/* Data estesa per screen reader (le tre parti visive sono aria-hidden). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: calc(var(--space-4) + 4px) var(--space-4);
+}
+
+/* {typography.label-tag} */
+.campionato {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--riga-testo-secondario);
+  overflow-wrap: break-word;
+}
+
+/* {typography.display-card}: squadre maiuscole su due righe, la seconda
+   introdotta da "vs". overflow-wrap: break-word spezza una parola solo se
+   non ci sta intera (un nome lungo senza spazi non sfonda la riga a
+   375px, uno normale va a capo tra le parole). */
+.squadre {
+  display: flex;
+  flex-direction: column;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.squadra {
+  display: block;
+  min-width: 0;
+}
+
+/* Stessa dimensione/peso del nome squadra, mai piu' piccolo (contrasto
+   {colors.magenta-chiaro} valido solo come testo grande). */
+.vs {
+  color: var(--riga-vs);
+  font-size: inherit;
+  font-weight: inherit;
+  text-transform: lowercase;
+}
+
+/* {typography.meta} maiuscolo e spaziato, come la riga palestra della
+   grafica. */
+.palestra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-3);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--riga-testo-secondario);
+}
+
+.nomePalestra {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Target >= 44px (min-height sul link stesso, non sul contenitore). */
+.linkNaviga {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  color: var(--riga-testo);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* {colors.focus-ring-chiaro} sul default scuro, blu-carbone sulla
+   variante chiara (stesso colore del testo principale della riga). */
+.linkNaviga:focus-visible {
+  outline: 2px solid var(--riga-testo);
+  outline-offset: -2px;
+}
+
+/* Colonna destra: separatore verticale + orario (o risultato) grande, ed
+   eventualmente l'orario in piccolo sotto il risultato. */
+.destra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: var(--space-4) 0;
+  padding: 0 var(--space-6) 0 var(--space-5);
+  border-left: 2px solid var(--riga-separatore);
+  text-align: center;
+}
+
+/* Orario/risultato "a contorno": testo trasparente con traccia del colore
+   del testo della riga (solo desktop, vedi media query sotto). */
+.contorno {
+  max-width: 100%;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: normal;
+  /* anywhere (non break-word) solo qui e su .statoRisultato: riduce anche
+     il min-content, cosi' fit-content(40%) della colonna non puo' essere
+     forzato oltre il limite da una parola lunga (break-word spezza solo
+     al render, ma la colonna si allargherebbe prima al min-content). Una
+     parola viene comunque spezzata solo se non ci sta intera. */
+  overflow-wrap: anywhere;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--riga-testo);
+}
+
+/* Fallback: dove la traccia non e' supportata il testo resta pieno. */
+@supports not (-webkit-text-stroke: 1px) {
+  .contorno {
+    color: var(--riga-testo);
+  }
+}
+
+/* Contrasto elevato di sistema: testo pieno, la traccia potrebbe sparire. */
+@media (forced-colors: active) {
+  .contorno {
+    color: CanvasText;
+    -webkit-text-stroke: 0;
+  }
+}
+
+/* Orario da definire / stato del portale / Risultato non disponibile: in
+   piccolo, mai a contorno. */
+.statoRisultato {
+  max-width: 140px;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--riga-testo);
+  overflow-wrap: anywhere;
+}
+
+/* Orario della gara nei Risultati, sotto il risultato. */
+.oraSecondaria {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--riga-testo-secondario);
+  white-space: nowrap;
+}
+
+/* Breakpoint unico del sito pubblico: blocco data piu' stretto, orario piu'
+   piccolo ma sempre a destra - nessuno scroll orizzontale a 375px. */
+@media (max-width: 900px) {
+  .riga {
+    grid-template-columns: 60px minmax(0, 1fr) fit-content(38%);
+    clip-path: polygon(0 6px, 100% 0, 100% calc(100% - 6px), 0 100%);
+  }
+
+  .data {
+    padding: var(--space-3) var(--space-2) var(--space-3) var(--space-1);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+
+  .data::before {
+    clip-path: polygon(0 0, calc(100% - 3px) 0, calc(100% - 11px) 100%, 0 100%);
+  }
+
+  .dataTesto {
+    margin-right: 5px;
+  }
+
+  .dataGiorno,
+  .dataMese {
+    font-size: 12px;
+  }
+
+  .dataNumero {
+    font-size: 28px;
+  }
+
+  .corpo {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .campionato,
+  .palestra {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .squadre {
+    font-size: 16px;
+  }
+
+  /* Review: .vs eredita font-size da .squadre - senza questo override
+     scenderebbe a 16px, sotto la soglia "large text" WCAG (~18.66px bold)
+     che il contrasto 3.88:1 di {colors.magenta-chiaro} richiede. 20px bold
+     resta sopra soglia (ripristinato l'override che la vecchia match-card
+     aveva in calendario.module.css). */
+  .vs {
+    font-size: 20px;
+  }
+
+  .destra {
+    margin: var(--space-3) 0;
+    padding: 0 var(--space-3);
+  }
+
+  /* Review: a 20-36px il solo contorno e' troppo sottile per essere letto
+     bene - testo pieno sotto il breakpoint, contorno solo su desktop. */
+  .contorno {
+    font-size: clamp(20px, 6vw, 36px);
+    color: var(--riga-testo);
+    -webkit-text-stroke: 0;
+  }
+
+  .statoRisultato {
+    max-width: 84px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .oraSecondaria {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+}

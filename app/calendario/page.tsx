@@ -1,26 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
-import { raggruppaPerSettimana, parseDataUtc } from "@/lib/raggruppa-per-settimana";
-import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
-import { testoScuroSuSfondo } from "@/lib/colore-testo-leggibile";
+import { raggruppaPerSettimana } from "@/lib/raggruppa-per-settimana";
 import { meseCorrente } from "@/lib/mese-calendario";
 import { partitaPerVistaMese } from "@/lib/griglia-mensile";
 import { CalendarioVista } from "./CalendarioVista";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
+import { RigaPartita } from "../RigaPartita";
+import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "../SfondoMatchWeek";
+import { propsRigaDaPartita } from "@/lib/props-riga-partita";
 import styles from "./calendario.module.css";
 
 // Story 18.9: terza pagina pubblica reale (dopo Home e Squadre). Dati
 // possono cambiare in qualunque momento dalla console Admin/Allenatore -
 // stesso motivo di dynamic = "force-dynamic" gia' in uso su "/" e "/squadre".
 export const dynamic = "force-dynamic";
-
-// Mirror del wrapper locale gia' in uso in app/page.tsx e
-// app/app/(partite-campionati)/partite/page.tsx - parseDataUtc riusata
-// (mai un secondo parsing indipendente), timeZone: "UTC" esplicito.
-function formattaData(data: string): string {
-  return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
-}
 
 export default async function CalendarioPage() {
   // Nessuna sessione qui (pagina pubblica). Sola lettura
@@ -108,6 +102,10 @@ export default async function CalendarioPage() {
           // o la griglia mensile. Mese iniziale calcolato qui sul server
           // (UTC), mai new Date() nel render client.
           <CalendarioVista partite={partiteMese} meseOggi={meseCorrente()}>
+          {/* Sfondo Match Week (variante C, scelta utente 2026-10-01) solo
+              sulla vista Elenco, stesso della home e di /classifiche. */}
+          <div className={`${styles.elencoMatchWeek} ${classeFasciaMatchWeek}`}>
+          <DecorazioniMatchWeek />
           {settimane.map((settimana) => (
             <section
               key={settimana.chiave}
@@ -122,50 +120,20 @@ export default async function CalendarioPage() {
                   Nessuna partita questa settimana.
                 </p>
               ) : (
-                <div className={styles.matchGrid}>
-                  {settimana.partite.map((partita) => {
-                    const linkNaviga = costruisciLinkNaviga({
-                      indirizzo: partita.indirizzoImpianto,
-                    });
-                    const colore = partita.campionato.colore;
-                    const classiCard = colore && testoScuroSuSfondo(colore)
-                      ? `${styles.matchCard} ${styles.testoScuro}`
-                      : styles.matchCard;
-                    return (
-                      <div
-                        className={classiCard}
-                        style={colore ? { backgroundColor: colore } : undefined}
-                        key={partita.id}
-                      >
-                        <div className={styles.categoria}>{partita.campionato.nome}</div>
-                        <div className={styles.squadre}>
-                          <span>{partita.squadraCasa}</span>
-                          <span className={styles.vs}>vs</span>
-                          <span>{partita.squadraOspite}</span>
-                        </div>
-                        <div className={styles.meta}>
-                          <span>{formattaData(partita.data)}</span>
-                          <span>{partita.ora}</span>
-                          {partita.impianto && <span>{partita.impianto}</span>}
-                          {linkNaviga && (
-                            <a
-                              className={styles.linkNaviga}
-                              href={linkNaviga}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={`Naviga verso ${partita.impianto || "il luogo della partita"}`}
-                            >
-                              Naviga
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                // Story 18.35: riga Match Week condivisa con la home
+                // (app/RigaPartita.tsx), stessi dati di prima; mappatura
+                // testata in lib/props-riga-partita.ts. Elenco semantico.
+                <ul className={styles.matchGrid}>
+                  {settimana.partite.map((partita) => (
+                    <li key={partita.id}>
+                      <RigaPartita {...propsRigaDaPartita(partita)} />
+                    </li>
+                  ))}
+                </ul>
               )}
             </section>
           ))}
+          </div>
           </CalendarioVista>
         )}
       </main>

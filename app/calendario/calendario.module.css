@@ -31,6 +31,15 @@
   color: var(--color-text-secondary);
 }
 
+/* Sfondo Match Week (variante C, scelta utente 2026-10-01) solo sulla vista
+   Elenco: contenitore dei children di CalendarioVista in page.tsx, la vista
+   Mese resta invariata. A piena larghezza (annulla il padding orizzontale
+   di .main), come le fasce della home. */
+.elencoMatchWeek {
+  margin: var(--space-4) calc(-1 * var(--space-6)) calc(-1 * var(--space-8));
+  padding: var(--space-2) var(--space-6) var(--space-8);
+}
+
 .sezioneSettimana {
   margin-top: var(--space-8);
 }
@@ -39,7 +48,7 @@
   margin-top: var(--space-6);
 }
 
-/* {typography.label-heading} + {colors.grigio} #5B6472 - stesso ruolo
+/* {typography.label-heading} - stesso ruolo
    semantico gia' descritto in DESIGN.md ("testo secondario su sfondo
    chiaro: numerazione di sezione"), qui applicato all'intestazione di
    raggruppamento settimanale. */
@@ -49,7 +58,9 @@
   font-weight: 900;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #5b6472;
+  /* Era {colors.grigio} #5B6472 su fondo chiaro: dentro la fascia scura
+     Match Week segue il testo secondario della fascia (#C3D6F5). */
+  color: var(--color-text-secondary);
   margin-bottom: var(--space-3);
 }
 
@@ -64,11 +75,20 @@
    Una sola colonna fa si' che ogni card occupi sempre l'intera larghezza
    di .main, indipendentemente dal numero di partite della settimana -
    nessun rischio di sovrapposizione tra card affiancate (scartato come
-   alternativa, vedi deferred-work.md). */
+   alternativa, vedi deferred-work.md).
+   Story 18.35: ogni partita e' ora una riga Match Week condivisa con la
+   home (app/RigaPartita.tsx + app/riga-partita.module.css) - le classi
+   della vecchia match-card (.matchCard, .testoScuro, .categoria, .squadre,
+   .vs, .meta, .linkNaviga) sono state rimosse da qui. Righe ravvicinate come
+   nella grafica di riferimento. */
 .matchGrid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  /* <ul> semantico (review Story 18.35): reset degli stili lista. */
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 @media (max-width: 900px) {
@@ -78,189 +98,11 @@
   }
 }
 
-/* components.match-card: sfondo {colors.azzurro-partite} #2E6F99, testo
-   {colors.bianco}, taglio diagonale asimmetrico nell'angolo in basso a
-   sinistra, {rounded.none} (nessun angolo arrotondato - divergenza
-   deliberata dal resto del sistema, vedi DESIGN.md -> Forme).
-   Richiesta utente (2026-09-24): il Campionato puo' sovrascrivere questo
-   sfondo con un colore proprio (style inline in page.tsx, colonna
-   Campionato.colore) - #2e6f99 resta il default per chi non ne ha scelto
-   uno. */
-.matchCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  background: #2e6f99;
-  color: #ffffff;
-  padding: var(--space-4);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%);
-  border-radius: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Applicata insieme a .matchCard SOLO quando testoScuroSuSfondo (lib/
-   colore-testo-leggibile.ts) giudica il colore scelto abbastanza chiaro da
-   rendere illeggibile il testo chiaro di default (bianco/quasi-bianco) -
-   sostituisce ogni colore di testo della card con una tavolozza scura.
-   Semplificazione dichiarata: una soglia di luminanza binaria non garantisce
-   AA per ogni singolo colore possibile (un colore a luminanza intermedia
-   resta un compromesso), ma evita il caso peggiore (testo quasi invisibile). */
-.testoScuro {
-  color: #1a1a1a;
-}
-
-.testoScuro .categoria,
-.testoScuro .meta,
-.testoScuro .linkNaviga {
-  color: #33475b;
-}
-
-.testoScuro .vs {
-  color: #9c1458;
-}
-
-.testoScuro .linkNaviga:focus-visible {
-  outline-color: #1a1a1a;
-}
-
-/* Corner-accent decorativo (triangolo azzurro 15% opacita', angolo in alto
-   a destra) - dettaglio minore non legato ad alcun AC, vedi Dev Notes. */
-.matchCard::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 56px;
-  height: 56px;
-  background: var(--color-primary);
-  opacity: 0.15;
-  clip-path: polygon(100% 0, 0 0, 100% 100%);
-}
-
-/* {typography.label-tag} + {colors.testo-chiaro-partite} #EAF4FB -
-   letterale, non var(--color-primary): l'azzurro pieno scenderebbe a
-   1.90:1 su questo sfondo piu' chiaro, sotto soglia AA. Colore sovrascritto
-   da .testoScuro sopra quando il Campionato ha un colore chiaro. */
-.categoria {
-  font-family: Arial, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #eaf4fb;
-}
-
-/* {typography.display-card}. Richiesta esplicita dell'utente (2026-09-11):
-   spostata di 100px verso destra (stesso meccanismo padding-left gia' in
-   uso per .meta piu' sotto).
-   Story 20.33 (richiesta esplicita dell'utente, "stessa cosa per la
-   sezione calendario" dopo il fix equivalente su /torneo): verificato dal
-   vivo su volleymogliano.it/calendario a 375px - senza flex-wrap, i due
-   nomi squadra + "vs" restavano forzati su una riga sola che, con
-   padding-left: 100px a font-size 22px, sfondava il bordo destro dello
-   schermo (contenuto tagliato/invisibile, `overflow-x:hidden` globale in
-   app/globals.css - stesso sintomo "pagina non si ridimensiona" gia'
-   diagnosticato per /torneo, ma qui la causa e' .squadre stesso, non
-   .main: /calendario non centra .main con margin:auto, quindi non soffre
-   del bug .main-su-flex-item risolto li'). flex-wrap qui sotto evita il
-   taglio a qualunque larghezza; la riduzione di font-size E padding-left
-   sotto i 900px (stesso breakpoint unico del sito pubblico) libera spazio
-   sufficiente sui telefoni, mantenendo intatti i 100px espliciti richiesti
-   dall'utente su desktop/tablet. */
-.squadre {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding-left: 100px;
-  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  /* overflow-wrap: mirror di torneo-pubblico.module.css .squadre - un
-     singolo nome squadra senza spazi resterebbe piu' largo della card
-     anche dopo flex-wrap (che sposta solo interi elementi flex a capo, non
-     spezza il testo dentro uno di essi). */
-  overflow-wrap: break-word;
-}
-
-@media (max-width: 900px) {
-  .squadre {
-    padding-left: var(--space-6);
-    font-size: 16px;
-  }
-
-  /* Review fix (Blind Hunter): .vs eredita font-size da .squadre
-     (font-size: inherit, vedi sotto) - senza questo override sarebbe sceso
-     a 16px insieme al nome squadra, sotto la soglia "large text" WCAG che
-     il commento su .vs impone esplicitamente ("mai piu' piccolo di
-     {typography.display-card}", il contrasto 3.88:1 del magenta chiaro
-     passa AA SOLO a quella soglia). 20px bold resta sopra i ~18.66px
-     minimi per "large text", stesso principio gia' rispettato a 22px. */
-  .vs {
-    font-size: 20px;
-  }
-}
-
-/* {colors.magenta-chiaro} #FFCBE6 - letterale, non var(--color-magenta):
-   il magenta pieno scenderebbe a 1.21:1 su questo sfondo, quasi la stessa
-   luminanza dello sfondo - mai piu' piccolo di {typography.display-card}
-   (a dimensione ridotta il contrasto scenderebbe ulteriormente, gia'
-   stretto a 3.88:1, vedi DESIGN.md -> Colori). */
-.vs {
-  color: #ffcbe6;
-  font-size: inherit;
-  font-weight: inherit;
-}
-
-/* {typography.meta} + {colors.testo-chiaro-partite} #EAF4FB (nessun
-   corrispondente in globals.css, hex letterale). Fix bug segnalato
-   dall'utente: .meta e' l'ultima riga della card, proprio dove il
-   clip-path diagonale di .matchCard (angolo in basso a sinistra) taglia
-   di piu' - il testo chiaro a ridosso del bordo tagliato si fondeva
-   visivamente con lo sfondo bianco della pagina sottostante ("bianco su
-   bianco"). padding-left aggiuntivo sposta il testo a destra, fuori dalla
-   zona del taglio, senza toccare categoria/squadre sopra (non a rischio,
-   il taglio e' quasi nullo in alto). Richiesta esplicita dell'utente
-   (2026-09-11): ulteriori 50px verso destra, ancora oltre il fix originale -
-   var(--space-4) non piu' sufficiente da solo secondo il riscontro visivo
-   dell'utente. */
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  padding-left: calc(var(--space-4) + 50px);
-  font-family: Arial, sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: #eaf4fb;
-}
-
-/* Link "Naviga" - {colors.testo-chiaro-partite} #EAF4FB, non
-   var(--color-primary): stesso motivo di .categoria/.meta sopra, l'azzurro
-   pieno scende a 1.90:1 su questo sfondo (fix code review). */
-.linkNaviga {
-  color: #eaf4fb;
-  font-weight: 700;
-}
-
-/* {colors.focus-ring-chiaro} #FFFFFF - il link vive su sfondo scuro
-   ({colors.azzurro-partite}), stessa regola contestuale DESIGN.md (focus
-   scuro->bianco, mai lo stesso colore del testo circostante). */
-.linkNaviga:focus-visible {
-  outline: 2px solid #ffffff;
-  outline-offset: 2px;
-}
-
 /* ------------------------------------------------------------------
    Story 18.32: interruttore Elenco/Mese + vista mensile "stile Google
    Calendar". Registro "Poster Sportivo": angoli vivi, niente nero (testo
    var(--color-text-primary) #101820 come il titolo pagina), strisce evento
-   sullo stesso #2e6f99 di default di .matchCard, sovrascritto inline dal
+   sullo stesso #2e6f99 di default della riga partita, sovrascritto inline dal
    colore del Campionato. Focus ring var(--color-focus-ring) su sfondo
    chiaro; touch target >=44px su interruttore, frecce e checkbox.
    ------------------------------------------------------------------ */
@@ -520,7 +362,7 @@
 /* ------------------------------------------------------------------
    Seguito Story 18.32: popup di dettaglio della Partita (<dialog> modale).
    Angoli vivi, intestazione nel colore del Campionato (default #2e6f99
-   come .matchCard), testo var(--color-text-primary) su bianco, niente nero.
+   come la riga partita), testo var(--color-text-primary) su bianco, niente nero.
    Il dialog non ha padding e non scorre (overflow: hidden): il contenuto
    lo riempie tutto e lo scroll sta su .dialogoCorpo, cosi' ne' la
    scrollbar ne' il contenuto hanno come target il dialog stesso - un click
