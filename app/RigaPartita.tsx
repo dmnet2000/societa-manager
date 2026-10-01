@@ -39,6 +39,7 @@ export function RigaPartita({
   const nomeImpianto = testoOppureNull(impianto);
 
   return (
+    <div className={styles.cornice}>
     <div className={classiRiga} style={{ backgroundColor: sfondo }}>
       {/* Blocco data sempre rosso (decisione utente 2026-09-30), anche
           quando la data non e' parsabile: in quel caso resta vuoto, la
@@ -90,6 +91,7 @@ export function RigaPartita({
       <div className={styles.destra}>
         <ColonnaDestra destra={destra} />
       </div>
+    </div>
     </div>
   );
 }

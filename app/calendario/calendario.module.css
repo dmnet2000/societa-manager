@@ -31,15 +31,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Sfondo Match Week (variante C, scelta utente 2026-10-01) solo sulla vista
-   Elenco: contenitore dei children di CalendarioVista in page.tsx, la vista
-   Mese resta invariata. A piena larghezza (annulla il padding orizzontale
-   di .main), come le fasce della home. */
-.elencoMatchWeek {
-  margin: var(--space-4) calc(-1 * var(--space-6)) calc(-1 * var(--space-8));
-  padding: var(--space-2) var(--space-6) var(--space-8);
-}
-
 .sezioneSettimana {
   margin-top: var(--space-8);
 }
@@ -107,10 +98,14 @@
    chiaro; touch target >=44px su interruttore, frecce e checkbox.
    ------------------------------------------------------------------ */
 
+/* Su fondo scuro Match Week (richiesta utente 2026-10-01): bordo bianco per
+   staccare il gruppo dal fondo, colore del pulsante selezionato piu' scuro
+   del navy - {colors.blu-carbone} #0F2438 (bianco sopra 15.6:1), stesso blu
+   scuro della riga partita a testo scuro. */
 .interruttore {
   display: inline-flex;
   margin-top: var(--space-6);
-  border: 2px solid var(--color-navy);
+  border: 2px solid #ffffff;
 }
 
 .bottoneVista {
@@ -120,7 +115,7 @@
   border: 0;
   border-radius: 0;
   background: #ffffff;
-  color: var(--color-navy);
+  color: #0f2438;
   font-family: "Arial Black", sans-serif;
   font-size: 13px;
   font-weight: 900;
@@ -130,7 +125,7 @@
 }
 
 .bottoneVista[aria-pressed="true"] {
-  background: var(--color-navy);
+  background: #0f2438;
   color: #ffffff;
 }
 
@@ -212,7 +207,9 @@
   font-weight: 900;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #5b6472;
+  /* Era {colors.grigio} #5B6472 su fondo chiaro: ora su fondo scuro Match
+     Week, segue il testo secondario della fascia. */
+  color: var(--color-text-secondary);
 }
 
 .voceLegenda {
@@ -252,6 +249,16 @@
 .messaggioNessunCampionato {
   margin-top: var(--space-4);
   color: var(--color-text-secondary);
+}
+
+/* La griglia (celle bianche) e il popup restano su superficie chiara anche
+   dentro il fondo scuro Match Week: ripristinano la tavolozza di
+   globals.css che la fascia (app/sfondo-match-week.module.css) ridefinisce. */
+.griglia,
+.dialogo {
+  --color-text-primary: #101820;
+  --color-text-secondary: #46586b;
+  --color-focus-ring: #006da6;
 }
 
 .griglia {

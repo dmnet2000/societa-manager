@@ -64,9 +64,26 @@ export type PartitaPerRiga = {
   impianto: string | null;
   indirizzoImpianto: string | null;
   campionato: { nome: string; colore: string | null };
+  // Richiesta utente 2026-10-01: /calendario (vista Elenco) mostra il
+  // risultato delle partite gia' giocate. Opzionali: la home "Partite della
+  // settimana" non li seleziona e resta con l'orario.
+  risultato?: string | null;
+  statoDescrizione?: string | null;
 };
 
 export function propsRigaDaPartita(partita: PartitaPerRiga): RigaPartitaProps {
+  // Risultato presente (scritto dalla sincronizzazione FIPAV) -> a destra il
+  // risultato a contorno con l'orario in piccolo sotto, come nei Risultati
+  // della home; altrimenti l'orario. Nessun confronto con la data di oggi:
+  // una partita passata senza risultato resta con l'orario.
+  const destra: RigaPartitaProps["destra"] = testoOppureNull(partita.risultato)
+    ? {
+        tipo: "risultato",
+        risultato: partita.risultato ?? null,
+        stato: partita.statoDescrizione ?? null,
+        ora: partita.ora,
+      }
+    : { tipo: "ora", valore: partita.ora };
   return {
     data: partita.data,
     campionatoNome: partita.campionato.nome,
@@ -75,7 +92,7 @@ export function propsRigaDaPartita(partita: PartitaPerRiga): RigaPartitaProps {
     squadraOspite: partita.squadraOspite,
     impianto: partita.impianto,
     indirizzoImpianto: partita.indirizzoImpianto,
-    destra: { tipo: "ora", valore: partita.ora },
+    destra,
   };
 }
 

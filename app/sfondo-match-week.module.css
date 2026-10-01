@@ -2,7 +2,8 @@
    pubblico (variante C scelta dall'utente il 2026-10-01, sulla falsa riga
    di ux-designs/stile.jpg): blu notte con aloni e fasce di luce oblique,
    rete accennata in alto a destra, contorno di pallone in basso a destra
-   (app/SfondoMatchWeek.tsx) e filo bianco tra una riga partita e l'altra.
+   (app/SfondoMatchWeek.tsx). Il filo bianco tra una riga partita e l'altra
+   sta in app/riga-partita.module.css (.cornice), non qui.
    Solo CSS + SVG inline: nessuna immagine, nessuna libreria, nessun font.
    Vedi DESIGN.md -> Componenti -> "Fascia Match Week". */
 
@@ -70,12 +71,6 @@
   color: rgba(255, 255, 255, 0.14);
 }
 
-/* Filo bianco obliquo tra le righe partita, come le fasce della grafica
-   (segue il clip-path della riga). */
-.fascia li {
-  filter: drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.85));
-}
-
 @media (max-width: 900px) {
   .rete {
     width: 240px;
@@ -90,13 +85,9 @@
   }
 }
 
-/* Contrasto elevato di sistema: niente decorazioni ne' filo. */
+/* Contrasto elevato di sistema: niente decorazioni. */
 @media (forced-colors: active) {
   .decorazione {
     display: none;
-  }
-
-  .fascia li {
-    filter: none;
   }
 }

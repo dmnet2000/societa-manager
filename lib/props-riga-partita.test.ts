@@ -82,6 +82,30 @@ describe("propsRigaDaPartita", () => {
     expect(props.impianto).toBeNull();
     expect(props.indirizzoImpianto).toBeNull();
   });
+
+  it("con risultato mostra il risultato e l'orario in piccolo", () => {
+    const props = propsRigaDaPartita({
+      ...PARTITA,
+      risultato: "3 - 1",
+      statoDescrizione: "Giocata",
+    });
+    expect(props.destra).toEqual({
+      tipo: "risultato",
+      risultato: "3 - 1",
+      stato: "Giocata",
+      ora: "20:30",
+    });
+    // Palestra e Naviga restano anche per le partite gia' giocate.
+    expect(props.impianto).toBe("Palestra Olme");
+  });
+
+  it("risultato null, vuoto o di soli spazi -> resta l'orario", () => {
+    for (const risultato of [null, undefined, "", "   "]) {
+      expect(
+        propsRigaDaPartita({ ...PARTITA, risultato, statoDescrizione: "Rinviata" }).destra,
+      ).toEqual({ tipo: "ora", valore: "20:30" });
+    }
+  });
 });
 
 const RISULTATO: RisultatoSettimanaScorsa = {

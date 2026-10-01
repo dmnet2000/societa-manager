@@ -84,7 +84,13 @@ export default async function CalendarioPage() {
   return (
     <>
       <HeaderPubblico />
-      <main className={styles.main}>
+      {/* Sfondo Match Week (variante C, scelta utente 2026-10-01) su tutta
+          la pagina, titolo e interruttore Elenco/Mese compresi (richiesta
+          utente 2026-10-01), stesso della home e di /classifiche. La
+          griglia Mese e il popup restano su superficie chiara (vedi
+          calendario.module.css). */}
+      <main className={`${styles.main} ${classeFasciaMatchWeek}`}>
+        <DecorazioniMatchWeek />
         <h1 className={styles.titolo}>Calendario</h1>
         {/* AC #3: messaggio esplicito invece di un'area vuota quando
             l'intera stagione non ha alcuna partita programmata (incluso il
@@ -102,10 +108,6 @@ export default async function CalendarioPage() {
           // o la griglia mensile. Mese iniziale calcolato qui sul server
           // (UTC), mai new Date() nel render client.
           <CalendarioVista partite={partiteMese} meseOggi={meseCorrente()}>
-          {/* Sfondo Match Week (variante C, scelta utente 2026-10-01) solo
-              sulla vista Elenco, stesso della home e di /classifiche. */}
-          <div className={`${styles.elencoMatchWeek} ${classeFasciaMatchWeek}`}>
-          <DecorazioniMatchWeek />
           {settimane.map((settimana) => (
             <section
               key={settimana.chiave}
@@ -133,7 +135,6 @@ export default async function CalendarioPage() {
               )}
             </section>
           ))}
-          </div>
           </CalendarioVista>
         )}
       </main>

@@ -7,6 +7,21 @@
    punto. Nessuna immagine/texture di sfondo della grafica di riferimento
    (rete, pallone, grana) e nessun logo - vincolo esplicito della storia. */
 
+/* Filo bianco obliquo sopra la riga, come le fasce della grafica (scelta
+   utente 2026-10-01, sfondo Match Week variante C): drop-shadow sul
+   contenitore, cosi' segue il clip-path della riga. Su fondo chiaro resta
+   invisibile. Qui e non sulla fascia: la fascia di /calendario contiene
+   anche la griglia Mese, i cui <li> non devono averlo. */
+.cornice {
+  filter: drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.85));
+}
+
+@media (forced-colors: active) {
+  .cornice {
+    filter: none;
+  }
+}
+
 .riga {
   /* {colors.bianco} / {colors.testo-chiaro-partite} #EAF4FB (4.89:1 sul
      default) / {colors.magenta-chiaro} #FFCBE6 per "vs" (3.88:1, solo a
