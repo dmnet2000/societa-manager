@@ -64,9 +64,9 @@ export type PartitaPerRiga = {
   impianto: string | null;
   indirizzoImpianto: string | null;
   campionato: { nome: string; colore: string | null };
-  // Richiesta utente 2026-10-01: /calendario (vista Elenco) mostra il
-  // risultato delle partite gia' giocate. Opzionali: la home "Partite della
-  // settimana" non li seleziona e resta con l'orario.
+  // Richiesta utente 2026-10-01: /calendario (vista Elenco) e la home
+  // "Partite della settimana" mostrano il risultato delle partite gia'
+  // giocate. Opzionali: assenti = si mostra l'orario.
   risultato?: string | null;
   statoDescrizione?: string | null;
 };

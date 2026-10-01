@@ -167,6 +167,12 @@ export default async function HomePubblicaPage() {
           squadraOspite: true,
           impianto: true,
           indirizzoImpianto: true,
+          // Richiesta utente 2026-10-01: come in /calendario, una partita
+          // gia' giocata mostra il risultato (scritto dalla sincronizzazione
+          // FIPAV) al posto dell'orario - mappatura in
+          // lib/props-riga-partita.ts (propsRigaDaPartita).
+          risultato: true,
+          statoDescrizione: true,
           // Richiesta utente (2026-09-24): etichetta sulla card = nome del
           // Campionato, non del Gruppo - stessa modifica di /calendario,
           // stesso motivo (un Gruppo puo' avere piu' Campionati).
@@ -410,8 +416,10 @@ export default async function HomePubblicaPage() {
             </h2>
             {/* Story 18.35: riga Match Week (app/RigaPartita.tsx), stessi
                 campi di sola lettura di prima (Giorno/Ora/Squadre/Luogo/
-                Campionato), nessuna azione (AC #3 Story 18.3). Mappatura
-                testata in lib/props-riga-partita.ts. */}
+                Campionato), nessuna azione (AC #3 Story 18.3); dal
+                2026-10-01 il risultato sincronizzato FIPAV, se presente, al
+                posto dell'orario. Mappatura testata in
+                lib/props-riga-partita.ts. */}
             <ul className={styles.listaPartite}>
               {partiteSettimana.map((partita) => (
                 <li key={partita.id}>
