@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   classifichePerCampionatoDaLetture,
+  eNostraSquadra,
+  nostraSquadraDaRisultati,
   risultatiSettimanaScorsaDaLetture,
   type LetturaPerCampionato,
 } from "./vista-home-live";
@@ -235,5 +237,125 @@ describe("classifichePerCampionatoDaLetture", () => {
     ];
 
     expect(classifichePerCampionatoDaLetture(letture)).toEqual([]);
+  });
+});
+
+// Story 18.36: matrice I/O righe "Nostra squadra" / "Ambiguo" / "Nessun
+// risultato".
+const RIGA_CLASSIFICA_VOLLEY_X = {
+  posizione: "1",
+  squadra: "Volley X",
+  punti: "10",
+  partiteGiocate: null,
+  partiteVinte: null,
+  partitePerse: null,
+  setFatti: null,
+  setSubiti: null,
+  quozienteSet: null,
+  puntiFatti: null,
+  puntiSubiti: null,
+  quozientePunti: null,
+  penalizzazione: null,
+};
+
+describe("nostraSquadraDaRisultati (Story 18.36)", () => {
+  it("nostra squadra: l'unico nome presente in tutte le gare, trim + case-insensitive", () => {
+    const risultati = [
+      garaFittizia({ squadraCasa: "VOLLEY X", squadraOspite: "Alfa" }),
+      garaFittizia({ squadraCasa: "Beta", squadraOspite: " volley x " }),
+      garaFittizia({ squadraCasa: "Volley X", squadraOspite: "Gamma" }),
+    ];
+
+    expect(nostraSquadraDaRisultati(risultati)).toBe("VOLLEY X");
+  });
+
+  it("ambiguo: una sola gara (due nomi comuni) -> null", () => {
+    expect(nostraSquadraDaRisultati([garaFittizia()])).toBeNull();
+  });
+
+  it("ambiguo: andata e ritorno tra le stesse due squadre -> null", () => {
+    const risultati = [
+      garaFittizia({ squadraCasa: "A", squadraOspite: "B" }),
+      garaFittizia({ squadraCasa: "b", squadraOspite: "a" }),
+    ];
+
+    expect(nostraSquadraDaRisultati(risultati)).toBeNull();
+  });
+
+  it("nessun nome comune a tutte le gare -> null", () => {
+    const risultati = [
+      garaFittizia({ squadraCasa: "A", squadraOspite: "B" }),
+      garaFittizia({ squadraCasa: "C", squadraOspite: "D" }),
+    ];
+
+    expect(nostraSquadraDaRisultati(risultati)).toBeNull();
+  });
+
+  it("nessun risultato -> null", () => {
+    expect(nostraSquadraDaRisultati([])).toBeNull();
+  });
+
+  it("nostra squadra ospite nella prima gara: nome preso da squadraOspite (trim)", () => {
+    const risultati = [
+      garaFittizia({ squadraCasa: "Alfa", squadraOspite: " volley x " }),
+      garaFittizia({ squadraCasa: "Volley X", squadraOspite: "Beta" }),
+    ];
+
+    expect(nostraSquadraDaRisultati(risultati)).toBe("volley x");
+  });
+
+  it("nomi che differiscono per doppi spazi o NBSP valgono come lo stesso nome", () => {
+    const risultati = [
+      garaFittizia({ squadraCasa: "Volley  X", squadraOspite: "Alfa" }),
+      garaFittizia({ squadraCasa: "Beta", squadraOspite: "Volley X" }),
+    ];
+
+    expect(nostraSquadraDaRisultati(risultati)).toBe("Volley  X");
+  });
+});
+
+describe("eNostraSquadra (Story 18.36)", () => {
+  it("confronto trim + case-insensitive, mai con nostraSquadra null", () => {
+    expect(eNostraSquadra("Volley X", "VOLLEY X")).toBe(true);
+    expect(eNostraSquadra(" volley x", "Volley X ")).toBe(true);
+    expect(eNostraSquadra("Volley Y", "Volley X")).toBe(false);
+    expect(eNostraSquadra("Volley X", null)).toBe(false);
+  });
+
+  it("doppi spazi interni e NBSP valgono come uno spazio", () => {
+    expect(eNostraSquadra("Volley  X", "Volley X")).toBe(true);
+    expect(eNostraSquadra("Volley X", "volley x")).toBe(true);
+    expect(eNostraSquadra("Volley   X", "Volley X")).toBe(true);
+    expect(eNostraSquadra("VolleyX", "Volley X")).toBe(false);
+  });
+});
+
+describe("classifichePerCampionatoDaLetture - nostraSquadra (Story 18.36)", () => {
+  it("calcola nostraSquadra dai risultati del Campionato", () => {
+    const letture: LetturaPerCampionato[] = [
+      {
+        campionato: CAMPIONATO_A,
+        lettura: {
+          risultati: [
+            garaFittizia({ squadraCasa: "Volley X", squadraOspite: "Alfa" }),
+            garaFittizia({ squadraCasa: "Beta", squadraOspite: "Volley X" }),
+          ],
+          classifica: [RIGA_CLASSIFICA_VOLLEY_X],
+        },
+      },
+    ];
+
+    expect(classifichePerCampionatoDaLetture(letture)[0].nostraSquadra).toBe("Volley X");
+  });
+
+  it("nostraSquadra null senza risultati", () => {
+    const letture: LetturaPerCampionato[] = [
+      {
+        campionato: CAMPIONATO_A,
+        lettura: { risultati: [], classifica: [RIGA_CLASSIFICA_VOLLEY_X] },
+      },
+    ];
+
+    expect(classifichePerCampionatoDaLetture(letture)[0].nostraSquadra).toBeNull();
   });
 });

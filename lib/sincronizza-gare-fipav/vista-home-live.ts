@@ -86,13 +86,66 @@ export type ClassificaVista = {
   campionatoColore: string | null;
   gruppoNome: string;
   righe: LetturaLiveFipav["classifica"];
+  // Story 18.36: nome della nostra squadra come compare nei risultati
+  // (nostraSquadraDaRisultati), null se non determinabile in modo univoco.
+  nostraSquadra: string | null;
 };
 
-// AC #3/#4/#5 (spec-18-33): una card per Campionato, solo per chi ha una
+// Story 18.36: il link FIPAV di un Campionato contiene l'id del club, quindi
+// lettura.risultati elenca solo le gare della nostra squadra (epics.md Story
+// 10.11). La nostra squadra e' l'unico nome presente in TUTTE le gare
+// (squadraCasa o squadraOspite), confronto trim + case-insensitive con
+// spazi interni/NBSP collassati (chiaveSquadra). Zero
+// gare, oppure piu' nomi comuni a tutte (es. una sola gara: entrambe le
+// squadre) -> nome non univoco -> null. Restituisce il nome come scritto
+// nella prima gara (trim). Nessun campo DB ne' configurazione: dedotto dai
+// dati letti.
+export function nostraSquadraDaRisultati(
+  risultati: Pick<LetturaLiveFipav["risultati"][number], "squadraCasa" | "squadraOspite">[]
+): string | null {
+  if (risultati.length === 0) return null;
+
+  const nomiGara = (gara: (typeof risultati)[number]) =>
+    new Set(
+      [chiaveSquadra(gara.squadraCasa), chiaveSquadra(gara.squadraOspite)].filter(
+        (n) => n.length > 0
+      )
+    );
+
+  let comuni = nomiGara(risultati[0]);
+  for (const gara of risultati.slice(1)) {
+    const nomi = nomiGara(gara);
+    comuni = new Set([...comuni].filter((n) => nomi.has(n)));
+    if (comuni.size === 0) return null;
+  }
+  if (comuni.size !== 1) return null;
+
+  const [unico] = comuni;
+  const prima = risultati[0];
+  return chiaveSquadra(prima.squadraCasa) === unico
+    ? prima.squadraCasa.trim()
+    : prima.squadraOspite.trim();
+}
+
+// Story 18.36: confronto usato da /classifiche per distinguere la riga della
+// nostra squadra (stessa normalizzazione di nostraSquadraDaRisultati). Se il
+// nome non compare in classifica nessuna riga risulta distinta.
+export function eNostraSquadra(squadra: string, nostraSquadra: string | null): boolean {
+  if (!nostraSquadra) return false;
+  return chiaveSquadra(squadra) === chiaveSquadra(nostraSquadra);
+}
+
+// Trim, spazi interni collassati e minuscolo. \s comprende anche NBSP (un
+// nome copiato dall'HTML del portale puo' contenerne).
+function chiaveSquadra(nome: string): string {
+  return nome.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+// AC #3/#4/#5 (spec-18-33): una classifica per Campionato, solo per chi ha una
 // lettura riuscita CON almeno una riga di classifica - un Campionato con
 // lettura fallita (null) o una classifica vuota (girone appena creato, caso
 // limite non coperto dalla matrice I/O ma comunque fail-soft per coerenza
-// con le altre sezioni) non genera alcuna card, mai una card vuota.
+// con le altre sezioni) non genera alcuna classifica, mai una classifica vuota.
 export function classifichePerCampionatoDaLetture(
   letturePerCampionato: LetturaPerCampionato[]
 ): ClassificaVista[] {
@@ -107,5 +160,6 @@ export function classifichePerCampionatoDaLetture(
       campionatoColore: campionato.colore,
       gruppoNome: campionato.gruppo.nome,
       righe: lettura.classifica,
+      nostraSquadra: nostraSquadraDaRisultati(lettura.risultati),
     }));
 }

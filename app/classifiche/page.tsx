@@ -4,7 +4,7 @@ import { classifichePerCampionatoDaLetture } from "@/lib/sincronizza-gare-fipav/
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "../SfondoMatchWeek";
-import homeStyles from "../home-pubblica.module.css";
+import { ClassificaMatchWeek } from "./ClassificaMatchWeek";
 import styles from "./classifiche.module.css";
 
 // Story 18.34: nuova pagina pubblica, mirror strutturale di
@@ -46,7 +46,7 @@ export default async function ClassifichePage() {
     : [];
 
   // Story 18.34 (AC #1): stessa estrazione pura e testata di
-  // lib/sincronizza-gare-fipav/vista-home-live.ts (Story 18.33) - una card
+  // lib/sincronizza-gare-fipav/vista-home-live.ts (Story 18.33) - una classifica
   // per Campionato con lettura riuscita e classifica non vuota, riusata
   // invariata (nessuna seconda copia della logica di filtro).
   const classifichePerCampionato = classifichePerCampionatoDaLetture(letturePerCampionato);
@@ -69,94 +69,14 @@ export default async function ClassifichePage() {
         {!mostraClassifiche ? (
           <p className={styles.messaggioVuoto}>Nessuna classifica disponibile al momento.</p>
         ) : (
-          <div className={homeStyles.listaClassifiche}>
-            {/* Story 18.34 (AC #1): TUTTE le 13 colonne lette dal parser
-                (Pos./Squadra/Punti/PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.) - a
-                differenza della card home (Story 18.33, solo 6 colonne per
-                compattezza), questa pagina dedicata non ha quel vincolo. */}
+          <div className={styles.listaClassifiche}>
+            {/* Story 18.36: ogni classifica e' una tabella Match Week
+                (ClassificaMatchWeek.tsx) trasparente sulla fascia, con il
+                titolo su una fascia obliqua del colore del Campionato -
+                tutte le 13 colonne del parser restano visibili. Stesso
+                ordine delle righe del portale. */}
             {classifichePerCampionato.map((classifica) => (
-              <div
-                className={homeStyles.schedaClassifica}
-                style={
-                  classifica.campionatoColore
-                    ? { borderTopColor: classifica.campionatoColore }
-                    : undefined
-                }
-                key={classifica.campionatoId}
-              >
-                <h2 className={homeStyles.titoloClassifica}>
-                  {classifica.campionatoNome} — {classifica.gruppoNome}
-                </h2>
-                <table className={homeStyles.tabellaClassifica}>
-                  {/* Mirror del review fix gia' applicato alla card home
-                      (Blind Hunter, Story 18.33): un utente di screen reader
-                      che naviga direttamente nella tabella non deve perdere
-                      il contesto di quale Campionato/Gruppo stia leggendo. */}
-                  <caption className={homeStyles.srOnly}>
-                    Classifica {classifica.campionatoNome} — {classifica.gruppoNome}
-                  </caption>
-                  <thead>
-                    {/* Review fix (Blind Hunter): title da solo non e'
-                        affidabile per screen reader e irraggiungibile su
-                        touch (nessun hover) - <abbr title="..."> dentro ogni
-                        <th> espone lo stesso significato esteso anche li'. */}
-                    <tr>
-                      <th scope="col">Pos.</th>
-                      <th scope="col">Squadra</th>
-                      <th scope="col">Punti</th>
-                      <th scope="col">
-                        <abbr title="Partite Giocate">PG</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Partite Vinte">PV</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Partite Perse">PP</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Set Fatti">SF</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Set Subiti">SS</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Quoziente Set">QS</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Punti Fatti">PF</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Punti Subiti">PS</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Quoziente Punti">QP</abbr>
-                      </th>
-                      <th scope="col">
-                        <abbr title="Penalizzazione">Penal.</abbr>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classifica.righe.map((riga, indice) => (
-                      <tr key={`${classifica.campionatoId}-${riga.posizione}-${indice}`}>
-                        <td>{riga.posizione}</td>
-                        <td>{riga.squadra}</td>
-                        <td>{riga.punti ?? "—"}</td>
-                        <td>{riga.partiteGiocate ?? "—"}</td>
-                        <td>{riga.partiteVinte ?? "—"}</td>
-                        <td>{riga.partitePerse ?? "—"}</td>
-                        <td>{riga.setFatti ?? "—"}</td>
-                        <td>{riga.setSubiti ?? "—"}</td>
-                        <td>{riga.quozienteSet ?? "—"}</td>
-                        <td>{riga.puntiFatti ?? "—"}</td>
-                        <td>{riga.puntiSubiti ?? "—"}</td>
-                        <td>{riga.quozientePunti ?? "—"}</td>
-                        <td>{riga.penalizzazione ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ClassificaMatchWeek classifica={classifica} key={classifica.campionatoId} />
             ))}
           </div>
         )}

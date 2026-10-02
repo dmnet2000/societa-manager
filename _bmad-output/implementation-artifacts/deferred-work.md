@@ -1248,3 +1248,9 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: none
   summary: Restyling "Match Week" di /classifiche (stile.jpg) - ogni squadra una riga inclinata con posizione nel blocco rosso, nome grande, punti grandi a contorno a destra, altre colonne in piccolo sotto il nome (decisioni utente 2026-09-30).
   evidence: separato su scelta dell'utente dalla story delle righe partita (calendario + home), da fare subito dopo riusando gli stili (blocco rosso, numero a contorno) introdotti lì.
+
+## Deferred from: bmad-build review of spec-18-36-classifiche-match-week (2026-10-02)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-18-36-classifiche-match-week.md`
+  summary: nessuna legenda visibile delle sigle (PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.) per chi usa il touch - il nome esteso arriva solo da `title` (mouse) e dal testo per screen reader.
+  evidence: stesso limite gia' presente nella tabella precedente (`<abbr title>` nelle intestazioni, Story 18.34), non introdotto da questa story; una legenda (es. `<details>` sotto le classifiche) e' un'aggiunta di contenuto da concordare con l'utente.

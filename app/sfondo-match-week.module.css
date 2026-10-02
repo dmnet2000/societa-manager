@@ -11,9 +11,9 @@
   /* Tavolozza del testo dentro la fascia: titoli e messaggi della pagina
      usano --color-text-primary/secondary, qui ridefinite per il fondo
      scuro (bianco >= 7.8:1, #C3D6F5 >= 5.3:1 anche sull'alone piu' chiaro).
-     La card classifica (bianca) ripristina le proprie - vedi
-     home-pubblica.module.css .schedaClassifica. Le righe partita hanno
-     custom property proprie, non toccate. */
+     Anche la tabella classifica (Story 18.36, classifiche.module.css
+     .tabellaClassifica) le usa, trasparente sulla fascia. Le righe partita
+     hanno custom property proprie, non toccate. */
   --color-text-primary: #ffffff;
   --color-text-secondary: #c3d6f5;
   --color-focus-ring: var(--color-focus-ring-on-navy);

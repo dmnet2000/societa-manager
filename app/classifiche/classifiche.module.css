@@ -1,11 +1,13 @@
 /* Story 18.34: modulo dedicato al contenuto di /classifiche, convenzione del
    progetto "un CSS module per pagina" (mirror di app/calendario/calendario.module.css,
    stesso registro "Poster Sportivo", DESIGN.md/EXPERIENCE.md
-   ux-designs/ux-societa-manager-2026-08-13). Le classi specifiche della
-   card classifica (.schedaClassifica/.tabellaClassifica/.titoloClassifica/
-   .listaClassifiche) restano riusate direttamente da ../home-pubblica.module.css
-   (Code Map spec-18-34) - solo il layout di pagina vive qui, non una
-   duplicazione delle ~60 righe di CSS gia' esistenti. */
+   ux-designs/ux-societa-manager-2026-08-13).
+   Story 18.36: la card classifica bianca (prima importata da
+   ../home-pubblica.module.css) e' sostituita dalla tabella classifica Match
+   Week (ClassificaMatchWeek.tsx): tabella compatta trasparente sullo sfondo
+   blu della fascia, titolo su fascia obliqua del colore del Campionato,
+   posizione in quadratino rosso, Punti in risalto, nostra squadra
+   evidenziata (scelta utente 2026-10-02 dopo l'anteprima). */
 
 .main {
   padding: var(--space-8) var(--space-6);
@@ -30,9 +32,183 @@
   color: var(--color-text-secondary);
 }
 
+.listaClassifiche {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-3);
+}
+
+/* Fascia del titolo: sfondo = colore del Campionato normalizzato (inline in
+   ClassificaMatchWeek.tsx, default {colors.azzurro-partite} #2E6F99),
+   lato destro obliquo come le righe partita. Testo bianco (4.89:1+ sul
+   default), {colors.blu-carbone} sui colori chiari (.fasciaTestoScuro). */
+.fasciaTitolo {
+  display: inline-block;
+  max-width: 100%;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #ffffff;
+  overflow-wrap: break-word;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) calc(var(--space-6) + 12px) var(--space-2) var(--space-4);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+}
+
+.fasciaTestoScuro {
+  color: #0f2438;
+}
+
+/* 13 colonne non stanno a 375px: scorre solo il contenitore, mai la
+   pagina. */
+.scorrimentoTabella {
+  overflow-x: auto;
+}
+
+.scorrimentoTabella:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Tabella trasparente sulla fascia: testo bianco (--color-text-primary
+   ridefinita da sfondo-match-week.module.css, >= 7.8:1), intestazioni
+   --color-text-secondary #C3D6F5 (>= 5.3:1), fili bianchi sottili. */
+.tabellaClassifica {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.tabellaClassifica th,
+.tabellaClassifica td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.tabellaClassifica thead th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.tabellaClassifica abbr {
+  text-decoration: none;
+  cursor: help;
+}
+
+.tabellaClassifica tbody td,
+.tabellaClassifica tbody th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tabellaClassifica tbody tr:last-child td,
+.tabellaClassifica tbody tr:last-child th {
+  border-bottom: none;
+}
+
+/* Nome squadra: <th scope="row">, peso normale come le altre celle. */
+.squadra {
+  font-weight: 400;
+}
+
+/* Quadratino posizione: sempre {colors.rosso-matchweek} #C8102E, bianco
+   sopra (5.88:1), dimensione di tabella. */
+.posizione {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--space-1);
+  background: #c8102e;
+  color: #ffffff;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Punti in risalto: grassetto e un po' piu' grandi. */
+.colonnaPunti {
+  font-weight: 700;
+}
+
+.tabellaClassifica tbody .colonnaPunti {
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-weight: 900;
+  font-size: 17px;
+}
+
+/* Nostra squadra: sfondo tenue + nome in grassetto (annunciata agli screen
+   reader con testo nascosto in ClassificaMatchWeek.tsx). */
+.rigaNostra {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.rigaNostra .squadra {
+  font-weight: 700;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Contrasto elevato di sistema: niente sagoma obliqua, bordi di sistema
+   per fascia e quadratino (sfondi sostituiti dai colori di sistema). */
+@media (forced-colors: active) {
+  .fasciaTitolo {
+    clip-path: none;
+    border: 1px solid CanvasText;
+  }
+
+  .posizione {
+    border: 1px solid CanvasText;
+  }
+
+  .rigaNostra .squadra {
+    text-decoration: underline;
+  }
+}
+
 @media (max-width: 900px) {
   .titolo {
     font-size: 22px;
     line-height: 1.1;
+  }
+
+  .fasciaTitolo {
+    font-size: 15px;
+  }
+
+  .tabellaClassifica {
+    font-size: 13px;
+  }
+
+  .tabellaClassifica th,
+  .tabellaClassifica td {
+    padding: var(--space-2);
+  }
+
+  .tabellaClassifica tbody .colonnaPunti {
+    font-size: 15px;
   }
 }
