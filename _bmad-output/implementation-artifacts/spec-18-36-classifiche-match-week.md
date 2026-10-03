@@ -2,7 +2,7 @@
 title: 'Story 18.36: classifiche in stile "Match Week" su /classifiche'
 type: 'feature'
 created: '2026-10-01'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '60cb7e38b7f5bc80f8987a2b11ca2b43edeedb38'
 review_loop_iteration: 1
 context: []
@@ -54,10 +54,10 @@ context: []
 
 **Execution:**
 - [x] `lib/sincronizza-gare-fipav/vista-home-live.ts` + test -- `nostraSquadraDaRisultati`, `eNostraSquadra`, `ClassificaVista.nostraSquadra` (invariato dalla prima iterazione, KEEP).
-- [ ] `app/RigaClassifica.tsx`, `app/riga-classifica.module.css`, `app/RigaClassifica.test.tsx` -- eliminare (righe Match Week separate superate).
-- [ ] `app/classifiche/ClassificaMatchWeek.tsx` + `classifiche.module.css` -- `<section aria-labelledby>` con `<h2>` dentro una fascia obliqua del colore del Campionato (variante testo scuro), poi un contenitore a scorrimento orizzontale con `<table>` trasparente: `<caption>` nascosta, `<thead>` con le 13 intestazioni (`<abbr title>` come prima della story), posizione in quadratino rosso, Punti in risalto, riga nostra (solo la prima che corrisponde) con sfondo tenue + nome in grassetto + testo nascosto ", la nostra squadra".
-- [ ] `app/classifiche/ClassificaMatchWeek.test.tsx` -- matrice I/O lato componente: riga tipica, valori assenti/posizione vuota, nostra squadra (una sola), nessuna evidenziata, colore chiaro sulla fascia, `aria-labelledby`.
-- [ ] `DESIGN.md`, `lib/guida/contenuti.ts`, commenti CSS -- sostituire "Riga classifica Match Week" con "Tabella classifica Match Week".
+- [x] `app/RigaClassifica.tsx`, `app/riga-classifica.module.css`, `app/RigaClassifica.test.tsx` -- eliminare (righe Match Week separate superate).
+- [x] `app/classifiche/ClassificaMatchWeek.tsx` + `classifiche.module.css` -- `<section aria-labelledby>` con `<h2>` dentro una fascia obliqua del colore del Campionato (variante testo scuro), poi un contenitore a scorrimento orizzontale con `<table>` trasparente: `<caption>` nascosta, `<thead>` con le 13 intestazioni (`<abbr title>` come prima della story), posizione in quadratino rosso, Punti in risalto, riga nostra (solo la prima che corrisponde) con sfondo tenue + nome in grassetto + testo nascosto ", la nostra squadra".
+- [x] `app/classifiche/ClassificaMatchWeek.test.tsx` -- matrice I/O lato componente: riga tipica, valori assenti/posizione vuota, nostra squadra (una sola), nessuna evidenziata, colore chiaro sulla fascia, `aria-labelledby`.
+- [x] `DESIGN.md`, `lib/guida/contenuti.ts`, commenti CSS -- sostituire "Riga classifica Match Week" con "Tabella classifica Match Week".
 
 **Acceptance Criteria:**
 - Given `/classifiche` con almeno un Campionato letto, when la apro, then vedo per ogni Campionato una tabella compatta di 13 colonne sullo sfondo blu, con titolo in fascia obliqua colorata, posizioni in quadratini rossi, punti in risalto e la nostra squadra evidenziata.
@@ -80,3 +80,36 @@ Fascia titolo: `clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%)`
 
 **Manual checks (dev locale rotto):**
 - anteprima statica generata dai componenti reali; `/classifiche` a 375px e desktop al deploy.
+
+## Suggested Review Order
+
+**Riconoscimento della nostra squadra**
+
+- Punto d'ingresso: unico nome presente in tutte le gare dei risultati FIPAV, altrimenti null.
+  [`vista-home-live.ts:103`](../../lib/sincronizza-gare-fipav/vista-home-live.ts#L103)
+
+- Confronto con la classifica: trim, spazi collassati, minuscolo.
+  [`vista-home-live.ts:133`](../../lib/sincronizza-gare-fipav/vista-home-live.ts#L133)
+
+**Tabella classifica Match Week**
+
+- Fascia titolo colorata, una sola riga nostra, tabella semantica con 13 colonne.
+  [`ClassificaMatchWeek.tsx:32`](../../app/classifiche/ClassificaMatchWeek.tsx#L32)
+
+- Fascia obliqua, tabella trasparente, quadratino rosso, punti, nostra squadra, forced-colors.
+  [`classifiche.module.css:42`](../../app/classifiche/classifiche.module.css#L42)
+
+- Integrazione nella pagina, titolo e messaggio vuoto invariati.
+  [`page.tsx:72`](../../app/classifiche/page.tsx#L72)
+
+**Documentazione e test**
+
+- DESIGN.md: "Tabella classifica Match Week".
+  [`DESIGN.md:414`](../planning-artifacts/ux-designs/ux-societa-manager-2026-08-13/DESIGN.md#L414)
+
+- Guida in-app per l'Admin.
+  [`contenuti.ts:393`](../../lib/guida/contenuti.ts#L393)
+
+- Test di funzioni e componente (matrice I/O).
+  [`vista-home-live.test.ts:1`](../../lib/sincronizza-gare-fipav/vista-home-live.test.ts#L1)
+  [`ClassificaMatchWeek.test.tsx:47`](../../app/classifiche/ClassificaMatchWeek.test.tsx#L47)

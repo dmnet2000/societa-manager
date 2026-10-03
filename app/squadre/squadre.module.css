@@ -1,35 +1,26 @@
 /* Story 18.8: modulo dedicato al CONTENUTO della pagina /squadre,
    convenzione del progetto "un CSS module per pagina, mai condiviso".
-   Story 18.12: restyle completo al registro "Poster Sportivo"
-   (DESIGN.md/EXPERIENCE.md, ux-designs/ux-societa-manager-2026-08-13).
-   Nessun custom property nuovo in app/globals.css - hex letterali
-   commentati, eccezione solo per i 4 valori con hex identico gia'
-   verificati nella storia. Story 18.25: .main guadagna un'eccezione di
-   larghezza (vedi sotto) - il resto della pagina resta piena larghezza.
-   Story 18.27: .listaGruppi passa da 3 a 1 colonna (vedi sotto) - nessuna
-   verifica dal vivo ancora eseguita (ambiente locale rotto, stessa nota
-   gia' lasciata per Story 18.25 sopra), demandata all'utente dopo il
-   prossimo deploy. */
+   Story 18.12: restyle al registro "Poster Sportivo" (DESIGN.md/EXPERIENCE.md,
+   ux-designs/ux-societa-manager-2026-08-13).
+   Story 18.37 (decisioni utente 2026-10-02): stile "Match Week" come
+   partite, calendario e classifiche - sfondo blu della fascia
+   (../sfondo-match-week.module.css) su tutta la pagina, titoli di
+   categoria e nome squadra su fascia obliqua, card squadra con sagoma
+   obliqua e filo bianco, numero di maglia nel quadratino rosso. Il vecchio
+   sfondo grigio-chiaro #F2F5F7 e la card bianca con ombra sono superati.
+   Dentro la fascia --color-text-primary = bianco e --color-text-secondary
+   = #C3D6F5 (ridefiniti da .fascia). Nessuna verifica dal vivo (ambiente
+   locale rotto): anteprima statica + controllo al deploy. */
 
-/* {colors.grigio-chiaro} #F2F5F7 - letterale, diverso da
-   var(--color-surface-alt). DESIGN.md elenca esplicitamente "sezione
-   Squadre" tra le superfici a sfondo grigio-chiaro dedicato.
-
-   Story 18.25 (richiesta esplicita dell'utente, 2026-09-01): contenuto
-   centrato su schermi larghi - stesso identico trattamento gia' applicato a
-   /torneo (Story 20.14, torneo-pubblico.module.css .main). Quella storia
-   aveva lasciato /calendario e /squadre esplicitamente a piena larghezza
-   ("nessun retrofit") - questa story inverte quella scelta SOLO per
-   /squadre (mai la centratura di /torneo, che resta invariata). /calendario
-   (e /staff, /contatti) restano a piena larghezza, non rivalutate qui.
-   Nessuna verifica dal vivo ancora eseguita (ambiente locale rotto, mirror
-   della stessa nota gia' lasciata per Story 20.17 in torneo-pubblico.module.css)
-   - demandata all'utente dopo il prossimo deploy. */
+/* Sfondo a piena larghezza (fascia sul <main>), contenuto centrato a max
+   1000px come da Story 18.25 (.contenuto). */
 .main {
+  padding: var(--space-8) var(--space-6);
+}
+
+.contenuto {
   max-width: 1000px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
-  background: #f2f5f7;
 }
 
 /* {typography.display-section}, stesso token del titolo di /calendario. */
@@ -41,13 +32,7 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--color-text-primary);
-}
-
-@media (max-width: 900px) {
-  .titolo {
-    font-size: 22px;
-    line-height: 1.1;
-  }
+  margin: 0;
 }
 
 .messaggioVuoto {
@@ -55,56 +40,105 @@
   color: var(--color-text-secondary);
 }
 
-/* team-grid: 1 sola colonna a qualunque larghezza (Story 18.27, richiesta
-   esplicita dell'utente: ".schedaGruppo dovrebbe essere almeno il triplo di
-   larghezza") - prima erano 3 colonne desktop, ciascuna scheda occupava
-   circa 1/3 di .main (max-width:1000px, Story 18.25) al netto del gap;
-   ora ne occupa l'intera larghezza, ben oltre il triplo (l'AC #1 della
-   story chiede esplicitamente "almeno" il triplo, non un fattore esatto -
-   il gap tra le colonne, presente solo nel layout a 3 colonne, rende il
-   rapporto reale sempre superiore a 3x). Sotto i 900px il comportamento
-   era gia' a 1 colonna (nessun cambiamento visibile su mobile) - la media
-   query che lo imponeva e' stata rimossa perche' ridondante.
-   {spacing.card-gap} 28px - letterale, invariato. */
+/* Story 18.24: blocco per una run contigua di Gruppi della stessa
+   categoria - solo intestazione + margine. */
+.bloccoCategoria {
+  margin-top: var(--space-8);
+}
+
+.bloccoCategoria:first-of-type {
+  margin-top: var(--space-6);
+}
+
+/* Fasce oblique dei titoli (stessa sagoma della fascia titolo di
+   /classifiche): categoria in {colors.rosso-matchweek} #C8102E (bianco
+   sopra 5.88:1), nome squadra in {colors.azzurro-partite} #2E6F99 (bianco
+   sopra 5.4:1). Lato destro inclinato, testo dritto. */
+.titoloBloccoCategoria,
+.nomeGruppo {
+  display: inline-block;
+  max-width: 100%;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #ffffff;
+  overflow-wrap: break-word;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+}
+
+.titoloBloccoCategoria {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: 1.5px;
+  background: #c8102e;
+  padding: var(--space-2) calc(var(--space-6) + 12px) var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+/* {typography.display-card} sulla fascia azzurra. */
+.nomeGruppo {
+  font-size: 22px;
+  line-height: 1.15;
+  background: #2e6f99;
+  padding: var(--space-2) calc(var(--space-6) + 12px) var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+/* team-grid: 1 colonna a qualunque larghezza (Story 18.27). Il gap lascia
+   vedere il filo bianco di ogni card. */
 .listaGruppi {
   display: grid;
   grid-template-columns: 1fr;
   gap: 28px;
-  margin-top: var(--space-4);
 }
 
-/* components.team-card: sfondo {colors.bianco}, nessun angolo arrotondato,
-   ombra leggera (unica ammessa nel sistema, riservata alle superfici
-   chiare), sollevamento all'hover (micro-animazione di stato). */
-.schedaGruppo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  background: var(--color-surface);
-  border-radius: 0;
-  padding: var(--space-4);
-  box-shadow: 0 8px 24px rgba(15, 36, 56, 0.08);
+/* Filo bianco obliquo sopra la card, come le righe partita (.cornice in
+   ../riga-partita.module.css): drop-shadow sul contenitore, cosi' segue il
+   clip-path della scheda. Sollevamento all'hover spostato qui (la
+   scheda ritagliata non mostrerebbe un'ombra). */
+.corniceGruppo {
+  filter: drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.85));
   transition: transform 0.25s ease;
 }
 
-.schedaGruppo:hover {
+.corniceGruppo:hover {
   transform: translateY(-6px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .schedaGruppo {
+  .corniceGruppo {
     transition: none;
   }
 
-  .schedaGruppo:hover {
+  .corniceGruppo:hover {
     transform: none;
   }
 }
 
+/* components.team-card, variante Match Week: fondo blu notte
+   semitrasparente sulla fascia (#071331 al 78%: sul punto piu' chiaro
+   dell'alone il fondo risultante resta piu' scuro di #12285e - bianco
+   >= 12:1, #C3D6F5 >= 8:1), bordi superiore/inferiore leggermente obliqui
+   (clip-path, testo dritto), nessun angolo arrotondato. */
+.schedaGruppo {
+  display: flex;
+  flex-direction: column;
+  background: rgba(7, 19, 49, 0.78);
+  clip-path: polygon(0 10px, 100% 0, 100% calc(100% - 10px), 0 100%);
+  padding-bottom: var(--space-4);
+}
+
+.contenutoScheda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+
 /* {team-card.photo-height-desktop/-mobile} 260px/140px, clip-path
-   diagonale sul bordo inferiore. Condivisa da .immagineGruppo (foto reale)
-   e .placeholderFoto (nuovo, AC #5) - stessa dimensione/taglio per un
-   passaggio visivo coerente quando una foto viene caricata in seguito. */
+   diagonale sul bordo inferiore. Condivisa da foto reale e placeholder. */
 .immagineGruppo,
 .placeholderFoto {
   width: 100%;
@@ -124,12 +158,9 @@
   }
 }
 
-/* Placeholder foto per Gruppo senza foto caricata (AC #5) - trattamento
-   visivo intenzionale finche' la foto non arriva (Story 18.4), non
-   un'icona rotta o un'area vuota. Trama diagonale {colors.blu-carbone}/
-   {colors.placeholder-hatch-alt}, didascalia centrata. Distinto dalla
-   galleria "parziale" della home (nessun placeholder li', vedi
-   home-pubblica.module.css). */
+/* Placeholder foto per Gruppo senza foto caricata (Story 18.12 AC #5):
+   trama diagonale {colors.blu-carbone}/{colors.placeholder-hatch-alt},
+   didascalia centrata. */
 .placeholderFoto {
   position: relative;
   background: repeating-linear-gradient(
@@ -158,31 +189,21 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* {typography.display-card}. */
-.nomeGruppo {
-  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--color-text-primary);
-}
-
-/* {typography.label-tag} + {colors.azzurro-scuro} #0072A3 - letterale,
-   var(--color-primary-hover) vale #0086bd, valore diverso, non riusabile. */
+/* {typography.label-tag} in #C3D6F5 (prima {colors.azzurro-scuro}
+   #0072A3, illeggibile sul fondo scuro). */
 .categoriaGruppo {
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #0072a3;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 /* {typography.body}. */
 .listaAllenatori {
-  margin-top: var(--space-1);
+  margin: var(--space-1) 0 0;
   padding-left: var(--space-4);
   font-family: Arial, sans-serif;
   font-size: 14px;
@@ -191,53 +212,21 @@
   color: var(--color-text-primary);
 }
 
-/* Story 18.24: blocco visivo per una run contigua di Gruppi della stessa
-   categoria (raggruppaGruppiPerCategoriaContigua) - mirror dello stesso
-   principio di spaziatura verticale gia' in uso per .sezioneSettimana
-   (calendario.module.css)/.sezioneCategoria (torneo-pubblico.module.css),
-   nessun riquadro proprio: solo intestazione + margine, le .schedaGruppo
-   dentro restano lo stesso "team-card" di sempre. */
-.bloccoCategoria {
-  margin-top: var(--space-8);
-}
-
-.bloccoCategoria:first-of-type {
-  margin-top: var(--space-6);
-}
-
-/* {typography.label-heading} + {colors.grigio} #5B6472 - stesso token di
-   .titoloGirone/.titoloSettimana nelle altre pagine pubbliche
-   (torneo-pubblico.module.css/calendario.module.css), qui applicato
-   all'intestazione di blocco categoria. */
-.titoloBloccoCategoria {
-  font-family: "Arial Black", sans-serif;
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #5b6472;
-  margin-bottom: var(--space-3);
-}
-
-/* Story 18.24: sezione Atlete dentro ogni .schedaGruppo - rovescia
-   esplicitamente Story 18.8 AC #2 su conferma diretta dell'utente
-   (spec-18-24 Intent). */
+/* Story 18.24: sezione Atlete dentro ogni scheda. */
 .sezioneAtlete {
+  align-self: stretch;
   margin-top: var(--space-3);
   padding-top: var(--space-3);
-  border-top: 1px solid #e5e9ee;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Stessa tipografia/colore di .categoriaGruppo ma grigio (non azzurro) -
-   un'etichetta di sezione secondaria, non l'informazione principale della
-   card. */
 .titoloSezioneAtlete {
   font-family: Arial, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #5b6472;
+  color: var(--color-text-secondary);
   margin: 0 0 var(--space-2);
 }
 
@@ -262,22 +251,19 @@
   gap: var(--space-2);
 }
 
-/* Foto profilo Atleta (Story 9.12/18.24) - stesso trattamento circolare di
-   .fotoAllenatore (staff.module.css), scalato a 40px (qui nidificata
-   dentro una card piu' piccola, non l'elemento principale di una riga a
-   piena larghezza). */
+/* Foto profilo Atleta (Story 9.12/18.24), circolare 40px, bordo bianco
+   tenue per staccarla dal fondo scuro. */
 .fotoAtleta {
   flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid #e5e9ee;
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-/* Placeholder a iniziali quando l'Atleta non ha una foto caricata - mirror
-   di .inizialiAllenatore (staff.module.css), stessa palette
-   {colors.blu-carbone} #0F2438, scalato a 40px/12px. */
+/* Placeholder a iniziali: {colors.azzurro-partite} #2E6F99 (il blu-carbone
+   di prima sparirebbe sul fondo scuro), bianco sopra. */
 .inizialiAtleta {
   flex-shrink: 0;
   display: flex;
@@ -286,7 +272,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #0f2438;
+  background: #2e6f99;
   font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
   font-size: 12px;
   font-weight: 900;
@@ -297,27 +283,79 @@
 .nomeAtleta {
   flex: 1;
   min-width: 0;
+  overflow-wrap: break-word;
   font-family: Arial, sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: var(--color-text-primary);
 }
 
-/* Numero di maglia (Story 9.35) - badge compatto, stesso principio visivo
-   di .badgeRuoloAggiuntivo (staff.module.css) ma neutro (nessuna semantica
-   di "ruolo"), solo un numero identificativo breve. */
+/* Numero di maglia (Story 9.35) nel quadratino {colors.rosso-matchweek}
+   #C8102E, bianco sopra (5.88:1) - stesso trattamento della posizione in
+   /classifiche. */
 .numeroAtleta {
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: 28px;
+  height: 28px;
   padding: 0 var(--space-1);
-  border-radius: 999px;
-  background: #f2f5f7;
-  font-family: Arial, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  color: #5b6472;
+  background: #c8102e;
+  font-family: "Arial Black", "Arial Narrow", Impact, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Contrasto elevato di sistema: niente sagome oblique ne' filo (potrebbero
+   sparire), bordi di sistema per card, fasce e quadratini. */
+@media (forced-colors: active) {
+  .corniceGruppo {
+    filter: none;
+  }
+
+  .schedaGruppo,
+  .titoloBloccoCategoria,
+  .nomeGruppo {
+    clip-path: none;
+    border: 1px solid CanvasText;
+  }
+
+  .numeroAtleta,
+  .inizialiAtleta {
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .titolo {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+
+  .titoloBloccoCategoria {
+    font-size: 14px;
+  }
+
+  .nomeGruppo {
+    font-size: 18px;
+  }
 }

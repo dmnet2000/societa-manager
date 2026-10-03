@@ -1254,3 +1254,7 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: `_bmad-output/implementation-artifacts/spec-18-36-classifiche-match-week.md`
   summary: nessuna legenda visibile delle sigle (PG/PV/PP/SF/SS/QS/PF/PS/QP/Penal.) per chi usa il touch - il nome esteso arriva solo da `title` (mouse) e dal testo per screen reader.
   evidence: stesso limite gia' presente nella tabella precedente (`<abbr title>` nelle intestazioni, Story 18.34), non introdotto da questa story; una legenda (es. `<details>` sotto le classifiche) e' un'aggiunta di contenuto da concordare con l'utente.
+
+- source_spec: none
+  summary: stile Match Week su /squadre - sfondo blu Match Week su tutta la pagina, titoli (categoria e nome squadra) su fascia obliqua, numero maglia delle atlete nel quadratino rosso #C8102E, card squadra con sagoma obliqua e filo bianco (decisioni utente 2026-10-02).
+  evidence: richiesto durante la Story 19.17 (ordine/visibilita' classifiche), obiettivo indipendente; l'utente ha scelto di farlo subito dopo la 19.17 come Story 18.37.

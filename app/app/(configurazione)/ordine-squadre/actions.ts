@@ -8,6 +8,8 @@ import {
   elencaGruppiOrdinati,
   riordinaGruppi,
   impostaVisibilitaGruppo,
+  impostaVisibilitaClassifica,
+  campionatoConClassificaInStagione,
 } from "@/lib/ordine-squadre";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -126,5 +128,74 @@ export async function impostaVisibilitaGruppoAction(
 
   revalidatePath("/app/ordine-squadre");
   revalidatePath("/squadre");
+  return { success: true };
+}
+
+// Story 19.17 (Epic 19, Ruolo Site Manager): mirror di
+// impostaVisibilitaGruppoAction per la classifica di un Campionato su
+// /classifiche - stesso perimetro di Ruoli, stessa validazione esplicita del
+// valore (mai "false" silenzioso). Revalida /app/ordine-squadre e
+// /classifiche (non /squadre: la classifica non compare li'). Nessun
+// controllo "almeno una visibile": /classifiche gestisce gia' il caso vuoto
+// con "Nessuna classifica disponibile al momento.".
+// Review fix: l'id viene accettato solo se stringa (trim), e il Campionato
+// deve appartenere alla stagione corrente e avere un link FIPAV (stesso
+// approccio di scope di spostaGruppoAction - mai fidarsi di un id arbitrario
+// arrivato dal client). Un Campionato sparito tra la verifica e la scrittura
+// (Prisma P2025) produce un messaggio dedicato invece di un generico
+// "Riprova".
+export async function impostaVisibilitaClassificaAction(
+  _prevState: OrdineSquadreActionState,
+  formData: FormData
+): Promise<OrdineSquadreActionState> {
+  const forbidden = await requireRuolo(RUOLI_ORDINE_SQUADRE);
+  if (forbidden) return forbidden;
+
+  const idGrezzo = formData.get("id");
+  const id = typeof idGrezzo === "string" ? idGrezzo.trim() : "";
+  const classificaVisibileGrezzo = formData.get("classificaVisibile");
+
+  if (!id) {
+    return { error: { code: "VALIDATION", message: "Campionato non valido." } };
+  }
+  if (classificaVisibileGrezzo !== "true" && classificaVisibileGrezzo !== "false") {
+    return { error: { code: "VALIDATION", message: "Valore di visibilità non valido." } };
+  }
+  const classificaVisibile = classificaVisibileGrezzo === "true";
+
+  try {
+    // Sola lettura (trovaAnnoAgonisticoCorrente, mai
+    // risolviAnnoAgonisticoCorrente), stesso vincolo di spostaGruppoAction.
+    const annoCorrente = await trovaAnnoAgonisticoCorrente();
+    if (!annoCorrente) {
+      return {
+        error: { code: "VALIDATION", message: "Nessuna stagione corrente trovata." },
+      };
+    }
+    if (!(await campionatoConClassificaInStagione(id, annoCorrente.id))) {
+      return { error: { code: "VALIDATION", message: "Campionato non valido." } };
+    }
+
+    await impostaVisibilitaClassifica(id, classificaVisibile);
+  } catch (err) {
+    if ((err as { code?: string }).code === "P2025") {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Campionato non trovato. Ricarica la pagina.",
+        },
+      };
+    }
+    console.error(err);
+    return {
+      error: {
+        code: "INTERNAL",
+        message: "Impossibile aggiornare la visibilità della classifica. Riprova.",
+      },
+    };
+  }
+
+  revalidatePath("/app/ordine-squadre");
+  revalidatePath("/classifiche");
   return { success: true };
 }

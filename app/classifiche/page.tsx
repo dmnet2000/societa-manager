@@ -39,7 +39,11 @@ export default async function ClassifichePage() {
   // (.catch() qui, seconda rete di sicurezza esplicita, stesso principio di
   // app/page.tsx - AC #5).
   const letturePerCampionato = annoCorrente
-    ? await leggiCampionatiConLetturaFipav(annoCorrente.id).catch((err) => {
+    ? // Story 19.17: solo le classifiche visibili (interruttore in
+      // /app/ordine-squadre) - le nascoste non vengono nemmeno lette.
+      await leggiCampionatiConLetturaFipav(annoCorrente.id, {
+        soloClassificheVisibili: true,
+      }).catch((err) => {
         console.error(err);
         return [];
       })

@@ -46,9 +46,11 @@ export default async function OrdineSquadrePage() {
         contenuto={contenutoPerRotta("/app/ordine-squadre", ruoli)}
       />
       <p className={styles.avviso}>
-        L&apos;ordine impostato qui determina l&apos;ordine con cui le
-        squadre compaiono sulla pagina pubblica &quot;/squadre&quot;, non
-        appena salvato.
+        L&apos;ordine impostato qui vale, non appena salvato, sia per le
+        squadre sulla pagina pubblica &quot;/squadre&quot; sia per le loro
+        classifiche su &quot;/classifiche&quot;. Sotto ogni squadra puoi
+        nascondere o mostrare la classifica di ciascun campionato con link
+        FIPAV; nascondere una squadra non nasconde la sua classifica.
       </p>
 
       <section className={styles.sezione}>
@@ -73,6 +75,9 @@ export default async function OrdineSquadrePage() {
                   // Story 19.16: gia' incluso da elencaGruppiOrdinati (nessun
                   // "select" in quella query, nessuna modifica li' necessaria).
                   visibilePubblico: gruppo.visibilePubblico,
+                  // Story 19.17: Campionati con link FIPAV (gia' filtrati e
+                  // ordinati per nome da elencaGruppiOrdinati).
+                  campionati: gruppo.campionati,
                 }}
                 primo={indice === 0}
                 ultimo={indice === gruppi.length - 1}

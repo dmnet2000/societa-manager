@@ -17,10 +17,21 @@ import { prisma } from "@/lib/prisma";
 // deterministico, cosi' l'indice calcolato da spostaGruppoAction su una
 // rilettura corrisponde sempre a quanto l'Admin vede nella pagina gia'
 // renderizzata.
+// Story 19.17: include i Campionati del Gruppo con link FIPAV (gli unici con
+// una classifica su /classifiche), ordinati per nome - stesso ordine con cui
+// compaiono su /classifiche a parita' di Gruppo - per l'interruttore
+// Nascondi/Mostra classifica sotto ogni squadra.
 export async function elencaGruppiOrdinati(annoAgonisticoId: string) {
   return prisma.gruppo.findMany({
     where: { annoAgonisticoId },
     orderBy: [{ ordine: "asc" }, { nome: "asc" }],
+    include: {
+      campionati: {
+        where: { linkFipav: { not: null } },
+        orderBy: { nome: "asc" },
+        select: { id: true, nome: true, classificaVisibile: true },
+      },
+    },
   });
 }
 
@@ -47,4 +58,31 @@ export async function impostaVisibilitaGruppo(
   visibilePubblico: boolean
 ): Promise<void> {
   await prisma.gruppo.update({ where: { id }, data: { visibilePubblico } });
+}
+
+// Story 19.17 (review fix): verifica di scope per
+// impostaVisibilitaClassificaAction - il Campionato deve appartenere alla
+// stagione indicata e avere un link FIPAV (gli unici con un interruttore in
+// /app/ordine-squadre), stesso principio di spostaGruppoAction che lavora
+// solo sui Gruppi della stagione corrente invece di fidarsi del client.
+export async function campionatoConClassificaInStagione(
+  id: string,
+  annoAgonisticoId: string
+): Promise<boolean> {
+  const campionato = await prisma.campionato.findFirst({
+    where: { id, annoAgonisticoId, linkFipav: { not: null } },
+    select: { id: true },
+  });
+  return campionato !== null;
+}
+
+// Story 19.17: mirror di impostaVisibilitaGruppo per la classifica di un
+// Campionato su /classifiche. Nessun "ordine" proprio da preservare: la
+// posizione deriva da Gruppo.ordine + nome, quindi una classifica rimostrata
+// riappare nella stessa posizione.
+export async function impostaVisibilitaClassifica(
+  id: string,
+  classificaVisibile: boolean
+): Promise<void> {
+  await prisma.campionato.update({ where: { id }, data: { classificaVisibile } });
 }

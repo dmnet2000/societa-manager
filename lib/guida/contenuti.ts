@@ -183,9 +183,14 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     titolo: "Ordine squadre",
     ruoliAmmessi: ["ADMIN", "SITE_MANAGER"],
     corpo: [
-      "Qui scegli l'ordine con cui le squadre della stagione corrente compaiono sulla pagina pubblica \"/squadre\".",
+      // Story 19.17: la prima frase ora vale per /squadre e /classifiche.
+      "Qui scegli l'ordine con cui le squadre della stagione corrente compaiono sulla pagina pubblica \"/squadre\" e, con lo stesso ordine, le loro classifiche sulla pagina pubblica \"/classifiche\".",
       "Ogni squadra ha due bottoni Su/Giù: spostala per cambiarne la posizione, il salvataggio è immediato.",
       "Il bottone Nascondi/Mostra controlla se la squadra compare su \"/squadre\": una squadra nascosta sparisce dal sito pubblico ma resta gestibile normalmente da /app/gruppi, e riprende la propria posizione se la rendi di nuovo visibile.",
+      // Story 19.17: visibilita' delle classifiche su /classifiche.
+      "Su \"/classifiche\", se una squadra ha più campionati, le sue classifiche compaiono in ordine alfabetico di campionato.",
+      "Sotto ogni squadra trovi i suoi campionati con link FIPAV, ciascuno con un proprio bottone Nascondi/Mostra classifica: ad esempio a campionato terminato puoi nasconderne la classifica da \"/classifiche\", che riapparirà nella stessa posizione se la rendi di nuovo visibile. Nascondere la squadra non nasconde le sue classifiche (e viceversa); i risultati in home restano sempre visibili.",
+      "Se a un campionato viene tolto il link FIPAV (da /app/campionati), il suo interruttore sparisce da questa pagina, ma lo stato Nascosta/Visibile resta salvato e torna a valere se il link viene rimesso.",
       "Questa vista non permette di creare squadre né di assegnare Allenatori/Atlete - per quello serve il Ruolo Admin o Dirigente su /app/gruppi.",
     ],
   },

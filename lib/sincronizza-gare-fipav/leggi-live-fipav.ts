@@ -135,12 +135,28 @@ export function leggiLiveFipav(
 // solo, il .catch(() => null) qui e' una seconda rete esplicita) - un
 // Campionato il cui fetch fallisce non deve mai far fallire Promise.all per
 // gli altri (AC #5 spec-18-33/#5 spec-18-34).
+//
+// Story 19.17: ordine = ordine delle squadre di /app/ordine-squadre -
+// Gruppo.ordine, poi nome Gruppo (stesso tie-break deterministico di
+// elencaGruppiOrdinati), poi nome Campionato. Opzione
+// "soloClassificheVisibili" (usata solo da /classifiche): esclude i
+// Campionati con classificaVisibile = false gia' nella query, cosi' per
+// loro non parte nemmeno il fetch FIPAV. La home non la passa: i suoi
+// Risultati includono sempre tutti i Campionati e restano ordinati per
+// data/ora a valle (risultatiSettimanaScorsaDaLetture), ma a parita' di
+// data/ora (sort stabile) ora escono nell'ordine delle squadre invece che
+// alfabetico per Campionato - effetto accettato.
 export async function leggiCampionatiConLetturaFipav(
-  annoAgonisticoId: string
+  annoAgonisticoId: string,
+  opzioni: { soloClassificheVisibili?: boolean } = {}
 ): Promise<LetturaPerCampionato[]> {
   const campionatiConLinkFipav = await prisma.campionato.findMany({
-    where: { annoAgonisticoId, linkFipav: { not: null } },
-    orderBy: { nome: "asc" },
+    where: {
+      annoAgonisticoId,
+      linkFipav: { not: null },
+      ...(opzioni.soloClassificheVisibili ? { classificaVisibile: true } : {}),
+    },
+    orderBy: [{ gruppo: { ordine: "asc" } }, { gruppo: { nome: "asc" } }, { nome: "asc" }],
     select: {
       id: true,
       nome: true,

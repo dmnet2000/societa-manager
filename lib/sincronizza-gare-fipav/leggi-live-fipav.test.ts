@@ -207,14 +207,36 @@ function campionato(overrides: Partial<{
 // entrambi i chiamanti ne ereditano lo stesso comportamento verificato
 // (nessuna seconda copia della logica da testare separatamente).
 describe("leggiCampionatiConLetturaFipav", () => {
-  it("queries Campionato scoped to the season, with linkFipav not null, ordered by nome", async () => {
+  it("queries Campionato scoped to the season, with linkFipav not null, ordered by Gruppo.ordine, Gruppo.nome, then nome (Story 19.17), without visibility filter by default", async () => {
     findManyMock.mockResolvedValue([]);
 
     await leggiCampionatiConLetturaFipav("anno-1");
 
     expect(findManyMock).toHaveBeenCalledWith({
       where: { annoAgonisticoId: "anno-1", linkFipav: { not: null } },
-      orderBy: { nome: "asc" },
+      orderBy: [{ gruppo: { ordine: "asc" } }, { gruppo: { nome: "asc" } }, { nome: "asc" }],
+      select: {
+        id: true,
+        nome: true,
+        colore: true,
+        linkFipav: true,
+        gruppo: { select: { nome: true } },
+      },
+    });
+  });
+
+  it("filters classificaVisibile = true when soloClassificheVisibili is set (Story 19.17, /classifiche)", async () => {
+    findManyMock.mockResolvedValue([]);
+
+    await leggiCampionatiConLetturaFipav("anno-1", { soloClassificheVisibili: true });
+
+    expect(findManyMock).toHaveBeenCalledWith({
+      where: {
+        annoAgonisticoId: "anno-1",
+        linkFipav: { not: null },
+        classificaVisibile: true,
+      },
+      orderBy: [{ gruppo: { ordine: "asc" } }, { gruppo: { nome: "asc" } }, { nome: "asc" }],
       select: {
         id: true,
         nome: true,

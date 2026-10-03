@@ -1,3 +1,6 @@
+# last_updated: 2026-10-02 (Story 19.17: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). Campionato.classificaVisibile + migrazione 20261002000000, /classifiche ordinata come le squadre e filtrata, interruttore per Campionato in /app/ordine-squadre. Review a 3 layer: 8 patch (tie-break ordine, scope e P2025 nell azione, aria-label, test pagina/componente/ordine, testi guida e pagina, commenti RLS/CSS). 155 file / 2451 test verdi, tsc/lint puliti. Migrazione da applicare al deploy. 19-17-ordine-visibilita-classifiche: in-progress -> review.)
+# last_updated: 2026-10-02 (Story 19.17 aggiunta e avviata via bmad-build: ordine classifiche = ordine squadre, interruttore visibilita classifica in /app/ordine-squadre. 19-17-ordine-visibilita-classifiche: in-progress. Stile Match Week di /squadre (futura 18.37) registrato in deferred-work.)
+# last_updated: 2026-10-02 (Story 18.36 rivista dopo anteprima: su richiesta utente tabella compatta trasparente sulla fascia (titolo in fascia obliqua colore Campionato, posizione in quadratino rosso, punti in risalto, nostra squadra evidenziata) al posto delle righe Match Week separate; RigaClassifica rimossa. 153 file / 2427 test verdi, tsc/lint puliti. 18-36-classifiche-match-week: review.)
 # last_updated: 2026-10-02 (Story 18.36: implementata via bmad-build (baseline 60cb7e38b7f5bc80f8987a2b11ca2b43edeedb38). Nuovi app/RigaClassifica.tsx + riga-classifica.module.css e app/classifiche/ClassificaMatchWeek.tsx; nostra squadra dedotta dai risultati FIPAV (vista-home-live.ts). Review a 3 layer: 9 patch (fallback posizione/squadra, colonna mobile 60px, role=list, forced-colors, normalizzazione spazi, una sola riga distinta, test ramo ospite e blocco classifica, guida). 154 file / 2433 test verdi, tsc/lint puliti. Legenda sigle in deferred-work. Verifica visiva demandata al deploy. 18-36-classifiche-match-week: in-progress -> review.)
 # last_updated: 2026-10-02 (Story 18.36 aggiunta e avviata via bmad-build: classifiche Match Week su /classifiche, riga per squadra, nostra squadra distinta. 18-36-classifiche-match-week: in-progress.)
 # last_updated: 2026-10-01 (Story 18.35: implementata via bmad-build (baseline 7df7e5d949ff12cf77b52529b671891aa816434b). Nuovo componente app/RigaPartita.tsx + riga-partita.module.css usato in /calendario Elenco e home Partite/Risultati; helper lib/data-riga-partita.ts e lib/props-riga-partita.ts. Review a 3 layer: 12 patch (vs 20px su mobile, data estesa per screen reader, orario nei Risultati, fallback orario/risultato vuoti, colore Campionato normalizzato, niente overflow a 375px, testo pieno su mobile, filo bianco sul blocco data, liste ul/li, test delle mappature pagina->props, test UTC reso significativo, DESIGN.md/EXPERIENCE.md aggiornati). 150 file / 2411 test verdi, tsc/lint puliti, build riuscita. Verifica visiva demandata al deploy. Classifiche (parte B) in deferred-work. 18-35-riga-partita-match-week: in-progress -> review.)
@@ -1523,6 +1526,14 @@ development_status:
   # tsc/lint/build/prisma validate puliti. Vedi
   # spec-19-16-visibilita-pubblica-gruppi.md.
   19-16-visibilita-pubblica-gruppi: review
+
+  # Story 19.17 aggiunta 2026-10-02 su richiesta dell'utente ("sezione
+  # classifiche vorrei decidere l'ordine di visualizzazione"): /classifiche
+  # segue l'ordine di /app/ordine-squadre (Gruppo.ordine) + nuovo
+  # Campionato.classificaVisibile con interruttore nella stessa pagina
+  # (ADMIN, SITE_MANAGER) per nascondere la classifica a campionato finito.
+  # Vedi spec-19-17-ordine-visibilita-classifiche.md.
+  19-17-ordine-visibilita-classifiche: review
 
   # Story 18.31 aggiunta su richiesta esplicita dell'utente 2026-09-11:
   # "per il calendario delle partite sito statica sposta piu' a destra

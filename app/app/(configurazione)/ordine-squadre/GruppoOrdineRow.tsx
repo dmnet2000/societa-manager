@@ -1,15 +1,83 @@
 "use client";
 
 import { useActionState } from "react";
-import { spostaGruppoAction, impostaVisibilitaGruppoAction } from "./actions";
+import {
+  spostaGruppoAction,
+  impostaVisibilitaGruppoAction,
+  impostaVisibilitaClassificaAction,
+} from "./actions";
 import styles from "./ordine-squadre.module.css";
+
+// Story 19.17: solo i Campionati con link FIPAV (gli unici con una
+// classifica su /classifiche) - filtrati gia' da elencaGruppiOrdinati.
+type CampionatoClassifica = {
+  id: string;
+  nome: string;
+  classificaVisibile: boolean;
+};
 
 type Gruppo = {
   id: string;
   nome: string;
   categoria: string;
   visibilePubblico: boolean;
+  campionati: CampionatoClassifica[];
 };
+
+// Story 19.17: un form/azione per ciascun Campionato (stesso principio "un
+// controllo indipendente = un useActionState" gia' in uso sotto), cosi'
+// l'errore o il pending di una classifica non si confonde con le altre.
+// Indipendente dalla visibilita' del Gruppo (Story 19.16).
+function ClassificaVisibilitaRow({ campionato }: { campionato: CampionatoClassifica }) {
+  const [state, action, pending] = useActionState(
+    impostaVisibilitaClassificaAction,
+    undefined
+  );
+
+  return (
+    <li>
+      <div className={styles.contenutoRigaClassifica}>
+        <span className={styles.nomeCampionato}>{campionato.nome}</span>
+        <div className={styles.azioniIntestazione}>
+          <span
+            className={
+              campionato.classificaVisibile ? styles.badgeSuccesso : styles.badgeDanger
+            }
+          >
+            {campionato.classificaVisibile ? "Classifica visibile" : "Classifica nascosta"}
+          </span>
+          <form action={action} className={styles.formClassifica}>
+            <input type="hidden" name="id" value={campionato.id} />
+            <input
+              type="hidden"
+              name="classificaVisibile"
+              value={String(!campionato.classificaVisibile)}
+            />
+            <button
+              disabled={pending}
+              type="submit"
+              className={`${styles.bottoneSecondario} ${styles.bottoneClassifica}`}
+              // Review fix: l'aria-label inizia con la parola visibile del
+              // bottone (WCAG 2.5.3 "Label in Name").
+              aria-label={
+                campionato.classificaVisibile
+                  ? `Nascondi la classifica di "${campionato.nome}" dalla pagina pubblica /classifiche`
+                  : `Mostra la classifica di "${campionato.nome}" sulla pagina pubblica /classifiche`
+              }
+            >
+              {campionato.classificaVisibile ? "Nascondi" : "Mostra"}
+            </button>
+          </form>
+        </div>
+      </div>
+      {state && "error" in state && (
+        <p role="alert" className={styles.errore}>
+          {state.error.message}
+        </p>
+      )}
+    </li>
+  );
+}
 
 // Story 19.15 (Epic 19, Ruolo Site Manager): mirror di VoceMenuPubblicoRow.tsx
 // (Story 19.7) - originariamente SOLO i due bottoni Su/Giù ("nessun altro
@@ -109,6 +177,18 @@ export function GruppoOrdineRow({
         <p role="alert" className={styles.errore}>
           {visibilitaState.error.message}
         </p>
+      )}
+      {/* Story 19.17: interruttore classifica per ogni Campionato con link
+          FIPAV della squadra - nessun blocco se non ce ne sono. */}
+      {gruppo.campionati.length > 0 && (
+        <ul
+          className={styles.elencoClassifiche}
+          aria-label={`Classifiche di "${gruppo.nome}" su /classifiche`}
+        >
+          {gruppo.campionati.map((campionato) => (
+            <ClassificaVisibilitaRow campionato={campionato} key={campionato.id} />
+          ))}
+        </ul>
       )}
     </article>
   );

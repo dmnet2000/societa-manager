@@ -225,6 +225,25 @@ describe("classifichePerCampionatoDaLetture", () => {
     expect(classifiche[0].righe).toHaveLength(1);
   });
 
+  // Story 19.17: /classifiche si affida all'ordine d'ingresso (ordine
+  // squadre deciso in /app/ordine-squadre) - nessun riordino qui.
+  it("conserva l'ordine d'ingresso delle letture, anche saltando quelle senza classifica", () => {
+    const classifica = [RIGA_CLASSIFICA_VOLLEY_X];
+    const CAMPIONATO_C = { id: "campionato-c", nome: "Allieve", colore: null, gruppo: { nome: "Allieve" } };
+    const letture: LetturaPerCampionato[] = [
+      { campionato: CAMPIONATO_B, lettura: { risultati: [], classifica } },
+      { campionato: CAMPIONATO_C, lettura: null },
+      { campionato: CAMPIONATO_A, lettura: { risultati: [], classifica } },
+      { campionato: CAMPIONATO_C, lettura: { risultati: [], classifica } },
+    ];
+
+    expect(classifichePerCampionatoDaLetture(letture).map((c) => c.campionatoId)).toEqual([
+      "campionato-b",
+      "campionato-a",
+      "campionato-c",
+    ]);
+  });
+
   it("omette un Campionato senza linkFipav/con lettura fallita (matrice I/O riga 4/5/6)", () => {
     const letture: LetturaPerCampionato[] = [{ campionato: CAMPIONATO_A, lettura: null }];
 

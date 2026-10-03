@@ -9,10 +9,11 @@ import {
   generaUrlFirmatoFotoProfilo,
 } from "@/lib/storage/foto-profilo";
 import { elencaAtletePubbliche } from "@/lib/db-rls/atleta";
-import { inizialiNomeCompleto } from "@/lib/iniziali-nome";
 import { raggruppaGruppiPerCategoriaContigua } from "@/lib/raggruppa-gruppi-per-categoria";
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
+import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "../SfondoMatchWeek";
+import { SchedaGruppo } from "./SchedaGruppo";
 import styles from "./squadre.module.css";
 
 // Story 18.8: seconda pagina pubblica reale (dopo la home, Story 18.1-18.7).
@@ -203,7 +204,12 @@ export default async function SquadrePage() {
   return (
     <>
       <HeaderPubblico />
-      <main className={styles.main}>
+      {/* Story 18.37: sfondo Match Week (variante C) su tutta la pagina,
+          come /calendario e /classifiche; contenuto ancora centrato a max
+          1000px (Story 18.25) dentro .contenuto. */}
+      <main className={`${styles.main} ${classeFasciaMatchWeek}`}>
+        <DecorazioniMatchWeek />
+        <div className={styles.contenuto}>
         <h1 className={styles.titolo}>Squadre</h1>
         {/* AC #4: messaggio esplicito invece di un'area vuota quando non
             c'e' alcun Gruppo per la stagione corrente - qui l'intera
@@ -228,92 +234,28 @@ export default async function SquadrePage() {
                 {blocco.gruppi.map((gruppo) => {
                   // Review fix: un solo lookup nella Map (non has() + get()) -
                   // undefined distingue "nessuna foto" da "foto con
-                  // aggiornatoIl null" altrettanto bene di has(), stesso
-                  // risultato con una chiamata invece di due.
+                  // aggiornatoIl null" altrettanto bene di has().
                   const fotoInfo = fotoPerGruppo.get(gruppo.id);
                   return (
-                    <div className={styles.schedaGruppo} key={gruppo.id}>
-                      {fotoInfo !== undefined ? (
-                        <img
-                          className={styles.immagineGruppo}
-                          src={`${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(fotoInfo ?? "")}`}
-                          alt={`Foto di squadra di ${gruppo.nome}`}
-                        />
-                      ) : (
-                        // Story 18.12 (AC #5): placeholder intenzionale finché
-                        // il Gruppo non carica una foto - distinto dalla
-                        // galleria "parziale" della home (Story 18.4 AC #3,
-                        // non toccata da questa storia), dove l'assenza di
-                        // foto resta invece "nessun placeholder".
-                        <div
-                          className={styles.placeholderFoto}
-                          role="img"
-                          aria-label={`Nessuna foto di squadra caricata per ${gruppo.nome}`}
-                        />
-                      )}
-                      {/* Story 18.24: h3 (non piu' h2) - ora nesting sotto
-                          l'intestazione di blocco categoria (h2) sopra,
-                          stessa classe/aspetto visivo invariato. */}
-                      <h3 className={styles.nomeGruppo}>{gruppo.nome}</h3>
-                      <p className={styles.categoriaGruppo}>{gruppo.categoria}</p>
-                      {/* AC #3: un Gruppo senza Allenatori compare comunque,
-                          senza elenco staff - nessun filtro sull'array dei
-                          Gruppi sopra, solo un rendering condizionale qui. */}
-                      {gruppo.allenatori.length > 0 && (
-                        <ul className={styles.listaAllenatori}>
-                          {gruppo.allenatori.map(({ allenatore }) => (
-                            <li key={allenatore.id}>
-                              {allenatore.nome} {allenatore.cognome}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {/* Story 18.24: rovescia esplicitamente Story 18.8 AC
-                          #2 (su conferma diretta dell'utente) - nome/foto/
-                          Numero di ogni Atleta diventano pubblici qui.
-                          Messaggio esplicito invece di un'area vuota
-                          quando il Gruppo non ha ancora Atlete assegnate
-                          (spec-18-24 I/O matrix). */}
-                      <div className={styles.sezioneAtlete}>
-                        <h4 className={styles.titoloSezioneAtlete}>Atlete</h4>
-                        {gruppo.atlete.length === 0 ? (
-                          <p className={styles.messaggioAtleteVuoto}>
-                            Nessuna atleta assegnata.
-                          </p>
-                        ) : (
-                          <ul className={styles.listaAtlete}>
-                            {gruppo.atlete.map((atleta) => (
-                              <li key={atleta.id} className={styles.rigaAtleta}>
-                                {atleta.fotoUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element -- URL firmato a breve scadenza, non ottimizzabile da next/image (mirror /staff)
-                                  <img
-                                    className={styles.fotoAtleta}
-                                    src={atleta.fotoUrl}
-                                    alt=""
-                                    width={40}
-                                    height={40}
-                                  />
-                                ) : (
-                                  <div className={styles.inizialiAtleta} aria-hidden="true">
-                                    {inizialiNomeCompleto(atleta.nome)}
-                                  </div>
-                                )}
-                                <span className={styles.nomeAtleta}>{atleta.nome}</span>
-                                {atleta.numero != null && (
-                                  <span className={styles.numeroAtleta}>{atleta.numero}</span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
+                    <SchedaGruppo
+                      key={gruppo.id}
+                      nome={gruppo.nome}
+                      categoria={gruppo.categoria}
+                      urlFoto={
+                        fotoInfo !== undefined
+                          ? `${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(fotoInfo ?? "")}`
+                          : null
+                      }
+                      allenatori={gruppo.allenatori.map(({ allenatore }) => allenatore)}
+                      atlete={gruppo.atlete}
+                    />
                   );
                 })}
               </div>
             </section>
           ))
         )}
+        </div>
       </main>
       <FooterPubblico />
     </>

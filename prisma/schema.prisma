@@ -599,6 +599,12 @@ model Campionato {
   // simultanee. Mai toccato dal bottone manuale (Story 10.11, traccia
   // separata per design, invariato).
   ultimaSincronizzazioneFipavIl DateTime?
+  // Story 19.17 (Epic 19, Ruolo Site Manager): interruttore di visibilita'
+  // della classifica di questo Campionato sulla pagina pubblica
+  // /classifiche, controllabile da /app/ordine-squadre. DEFAULT true:
+  // nessuna classifica sparisce al deploy. Indipendente da
+  // Gruppo.visibilePubblico (Story 19.16), ignorato dalla home.
+  classificaVisibile            Boolean        @default(true)
   annoAgonisticoId              String
   annoAgonistico                AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id])
   gruppoId                      String
