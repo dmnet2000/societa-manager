@@ -126,6 +126,9 @@
   flex-direction: column;
   background: rgba(7, 19, 49, 0.78);
   clip-path: polygon(0 10px, 100% 0, 100% calc(100% - 10px), 0 100%);
+  /* 10px sopra = altezza del bordo obliquo: la foto parte sotto la
+     sagoma e non perde l'angolo in alto a sinistra. */
+  padding-top: 10px;
   padding-bottom: var(--space-4);
 }
 
@@ -147,12 +150,18 @@
   border-radius: 0;
 }
 
+/* Richiesta utente 2026-10-03: la foto di squadra non va mai tagliata -
+   altezza naturale (proporzioni originali), e' la card ad allargarsi.
+   Niente object-fit: cover ne' taglio diagonale sulla foto reale (il
+   clip-path nasconderebbe l'angolo in basso); la sagoma obliqua resta
+   sulla card (.schedaGruppo) e sul placeholder. */
 .immagineGruppo {
-  object-fit: cover;
+  display: block;
+  height: auto;
+  clip-path: none;
 }
 
 @media (max-width: 900px) {
-  .immagineGruppo,
   .placeholderFoto {
     height: 140px;
   }
