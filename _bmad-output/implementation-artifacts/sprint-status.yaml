@@ -1,3 +1,4 @@
+# last_updated: 2026-10-04 (Story 18.37: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). /squadre in stile Match Week: fascia sulla pagina, fasce oblique per categoria/nome squadra, card scura con sagoma obliqua e filo bianco, numero di maglia nel quadratino rosso, foto di squadra mai tagliata (rinegoziato 2026-10-03). Card estratta in app/squadre/SchedaGruppo.tsx con propsSchedaGruppo testata. Review a 3 layer: patch su DESIGN.md, foto lazy, hover solo con mouse, placeholder in forced-colors, mappatura testata, test completati. 156 file / 2463 test verdi, tsc/lint puliti. 18-37-squadre-match-week: in-progress -> review.)
 # last_updated: 2026-10-02 (Story 19.17: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). Campionato.classificaVisibile + migrazione 20261002000000, /classifiche ordinata come le squadre e filtrata, interruttore per Campionato in /app/ordine-squadre. Review a 3 layer: 8 patch (tie-break ordine, scope e P2025 nell azione, aria-label, test pagina/componente/ordine, testi guida e pagina, commenti RLS/CSS). 155 file / 2451 test verdi, tsc/lint puliti. Migrazione da applicare al deploy. 19-17-ordine-visibilita-classifiche: in-progress -> review.)
 # last_updated: 2026-10-02 (Story 19.17 aggiunta e avviata via bmad-build: ordine classifiche = ordine squadre, interruttore visibilita classifica in /app/ordine-squadre. 19-17-ordine-visibilita-classifiche: in-progress. Stile Match Week di /squadre (futura 18.37) registrato in deferred-work.)
 # last_updated: 2026-10-02 (Story 18.36 rivista dopo anteprima: su richiesta utente tabella compatta trasparente sulla fascia (titolo in fascia obliqua colore Campionato, posizione in quadratino rosso, punti in risalto, nostra squadra evidenziata) al posto delle righe Match Week separate; RigaClassifica rimossa. 153 file / 2427 test verdi, tsc/lint puliti. 18-36-classifiche-match-week: review.)
@@ -1606,6 +1607,14 @@ development_status:
   # squadra distinta (dedotta dai risultati FIPAV, nessun nuovo campo).
   # Vedi spec-18-36-classifiche-match-week.md.
   18-36-classifiche-match-week: review
+
+  # Story 18.37 aggiunta 2026-10-02 su richiesta dell'utente ("applicami
+  # anche lo stesso stile delle partite alla sezione squadre"): /squadre
+  # sulla fascia Match Week, titoli su fascia obliqua, card con sagoma
+  # obliqua e filo bianco, numero di maglia nel quadratino rosso; foto di
+  # squadra mai tagliata (rinegoziato 2026-10-03 dopo l'anteprima). Vedi
+  # spec-18-37-squadre-match-week.md.
+  18-37-squadre-match-week: review
 
   # Story 20.28 aggiunta su richiesta esplicita dell'utente 2026-09-12: "nella
   # sezione sito statico non vedo gli slot assegnati sui tabelloni delle

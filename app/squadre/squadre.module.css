@@ -102,8 +102,12 @@
   transition: transform 0.25s ease;
 }
 
-.corniceGruppo:hover {
-  transform: translateY(-6px);
+/* Solo con un puntatore che supporta l'hover: su touch il sollevamento
+   resterebbe "appiccicato" dopo il tocco. */
+@media (hover: hover) {
+  .corniceGruppo:hover {
+    transform: translateY(-6px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -346,6 +350,14 @@
 
   .numeroAtleta,
   .inizialiAtleta {
+    border: 1px solid CanvasText;
+  }
+
+  /* La trama del placeholder sparisce con i colori forzati: bordo di
+     sistema perche' resti un riquadro riconoscibile (con la didascalia
+     "[FOTO SQUADRA]"), mai un'area vuota (Story 18.12). */
+  .placeholderFoto {
+    clip-path: none;
     border: 1px solid CanvasText;
   }
 }

@@ -2,7 +2,7 @@
 title: 'Story 18.37: stile "Match Week" sulla pagina pubblica /squadre'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e1ad3fe644acb084436d92d4b5e8f5e4a0d69059'
 review_loop_iteration: 0
 context: []
@@ -18,7 +18,7 @@ context: []
 
 ## Boundaries & Constraints
 
-**Always:** riuso di `DecorazioniMatchWeek`/`classeFasciaMatchWeek` (`app/SfondoMatchWeek.tsx`) sull'intera pagina, sfondo a piena larghezza con contenuto ancora centrato a max 1000px (Story 18.25). Card: fondo scuro semitrasparente sul blu, testo bianco/`#C3D6F5` (contrasti ≥ 4.5:1 per il testo normale, verificati e commentati), sagoma con `clip-path` obliquo e filo bianco via `drop-shadow` sul contenitore. Foto squadra e placeholder restano con il loro taglio. Quadratino numero: bianco su `#C8102E` (5.88:1). Fasce: categoria in rosso `#C8102E`, nome squadra in azzurro `#2e6f99`, testo bianco. "Niente nero", `forced-colors` leggibile (bordi di sistema al posto di sagome/fili), `prefers-reduced-motion` rispettato, nessuno scroll orizzontale a 375px. Gerarchia h1/h2/h3/h4 invariata. DESIGN.md (team-card) aggiornato.
+**Always:** riuso di `DecorazioniMatchWeek`/`classeFasciaMatchWeek` (`app/SfondoMatchWeek.tsx`) sull'intera pagina, sfondo a piena larghezza con contenuto ancora centrato a max 1000px (Story 18.25). Card: fondo scuro semitrasparente sul blu, testo bianco/`#C3D6F5` (contrasti ≥ 4.5:1 per il testo normale, verificati e commentati), sagoma con `clip-path` obliquo e filo bianco via `drop-shadow` sul contenitore. Foto squadra mai tagliata: proporzioni originali a tutta larghezza, è la card ad allungarsi (rinegoziato dall'utente il 2026-10-03 dopo l'anteprima); il placeholder senza foto resta ad altezza fissa con il suo taglio. Quadratino numero: bianco su `#C8102E` (5.88:1). Fasce: categoria in rosso `#C8102E`, nome squadra in azzurro `#2e6f99`, testo bianco. "Niente nero", `forced-colors` leggibile (bordi di sistema al posto di sagome/fili), `prefers-reduced-motion` rispettato, nessuno scroll orizzontale a 375px. Gerarchia h1/h2/h3/h4 invariata. DESIGN.md (team-card) aggiornato.
 
 **Ask First:** cambiare dati mostrati, ordine/raggruppamento, foto o layout a una colonna; toccare la home o altre pagine.
 
@@ -38,15 +38,19 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/squadre/page.tsx` -- fascia Match Week sulla pagina, contenitore centrato, wrapper per il filo della card; markup dati invariato.
-- [ ] `app/squadre/squadre.module.css` -- nuovi stili Match Week (fasce, card, quadratino numero, testi, `forced-colors`, mobile), rimozione degli stili chiari non più usati.
-- [ ] `app/sfondo-match-week.module.css` -- commento aggiornato (anche `/squadre`).
-- [ ] `DESIGN.md` -- variante Match Week della `team-card` e della sezione Squadre.
+- [x] `app/squadre/page.tsx` -- fascia Match Week sulla pagina, contenitore centrato, wrapper per il filo della card; markup dati invariato.
+- [x] `app/squadre/squadre.module.css` -- nuovi stili Match Week (fasce, card, quadratino numero, testi, `forced-colors`, mobile), rimozione degli stili chiari non più usati.
+- [x] `app/sfondo-match-week.module.css` -- commento aggiornato (anche `/squadre`).
+- [x] `DESIGN.md` -- variante Match Week della `team-card` e della sezione Squadre.
 
 **Acceptance Criteria:**
 - Given `/squadre` con almeno una squadra, when la apro, then vedo lo sfondo blu Match Week, titoli di categoria e nome squadra su fasce oblique, card squadra con sagoma obliqua e filo bianco, e i numeri di maglia in quadratini rossi.
 - Given una larghezza di 375px e nomi lunghi, when guardo la pagina, then nulla è tagliato e la pagina non scorre in orizzontale.
 - Given il contrasto elevato di sistema, when apro la pagina, then card, fasce e numeri restano distinguibili.
+
+## Spec Change Log
+
+- 2026-10-03 — **Rinegoziazione utente dopo l'anteprima** (non un finding di review): "la foto della squadra risulta tagliata in altezza, non tagliarla piuttosto allarga il div". Emendata la riga Always sulla foto (blocco frozen, su richiesta umana). Stato evitato: foto ad altezza fissa 260/140px con `object-fit: cover` e taglio diagonale in basso. KEEP: placeholder ad altezza fissa con trama e taglio; 10px di spazio sopra la foto perché il bordo obliquo della card non ne tagli l'angolo; `SchedaGruppo` estratta da `page.tsx` (stesso markup e dati) per anteprima e test.
 
 ## Verification
 
@@ -57,3 +61,41 @@ context: []
 
 **Manual checks (dev locale rotto):**
 - anteprima statica dai componenti reali; `/squadre` a 375px e desktop al deploy.
+
+## Suggested Review Order
+
+**Card squadra Match Week**
+
+- Punto d'ingresso: card estratta dalla pagina, foto intera con caricamento lazy, numero di maglia.
+  [`SchedaGruppo.tsx:46`](../../app/squadre/SchedaGruppo.tsx#L46)
+
+- Mappatura dati -> card (foto con ?v=, allenatori dalle righe di join), testata.
+  [`SchedaGruppo.tsx:24`](../../app/squadre/SchedaGruppo.tsx#L24)
+
+- Pagina: fascia Match Week su tutto il main, contenuto centrato.
+  [`page.tsx:236`](../../app/squadre/page.tsx#L236)
+
+**Stili**
+
+- Fasce oblique di categoria (rosso) e nome squadra (azzurro).
+  [`squadre.module.css:57`](../../app/squadre/squadre.module.css#L57)
+
+- Filo bianco e hover solo con mouse; card scura con sagoma obliqua.
+  [`squadre.module.css:100`](../../app/squadre/squadre.module.css#L100)
+  [`squadre.module.css:128`](../../app/squadre/squadre.module.css#L128)
+
+- Foto mai tagliata (rinegoziazione 2026-10-03).
+  [`squadre.module.css:162`](../../app/squadre/squadre.module.css#L162)
+
+- Quadratino numero di maglia e contrasto elevato di sistema.
+  [`squadre.module.css:309`](../../app/squadre/squadre.module.css#L309)
+  [`squadre.module.css:339`](../../app/squadre/squadre.module.css#L339)
+
+**Documentazione e test**
+
+- DESIGN.md: "Team-card Match Week".
+  [`DESIGN.md:416`](../planning-artifacts/ux-designs/ux-societa-manager-2026-08-13/DESIGN.md#L416)
+
+- Test di card e mappatura.
+  [`SchedaGruppo.test.tsx:26`](../../app/squadre/SchedaGruppo.test.tsx#L26)
+  [`SchedaGruppo.test.tsx:93`](../../app/squadre/SchedaGruppo.test.tsx#L93)

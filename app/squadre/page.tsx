@@ -13,7 +13,7 @@ import { raggruppaGruppiPerCategoriaContigua } from "@/lib/raggruppa-gruppi-per-
 import { HeaderPubblico } from "../HeaderPubblico";
 import { FooterPubblico } from "../FooterPubblico";
 import { DecorazioniMatchWeek, classeFasciaMatchWeek } from "../SfondoMatchWeek";
-import { SchedaGruppo } from "./SchedaGruppo";
+import { SchedaGruppo, propsSchedaGruppo } from "./SchedaGruppo";
 import styles from "./squadre.module.css";
 
 // Story 18.8: seconda pagina pubblica reale (dopo la home, Story 18.1-18.7).
@@ -210,51 +210,41 @@ export default async function SquadrePage() {
       <main className={`${styles.main} ${classeFasciaMatchWeek}`}>
         <DecorazioniMatchWeek />
         <div className={styles.contenuto}>
-        <h1 className={styles.titolo}>Squadre</h1>
-        {/* AC #4: messaggio esplicito invece di un'area vuota quando non
-            c'e' alcun Gruppo per la stagione corrente - qui l'intera
-            pagina esiste solo per questo contenuto (a differenza delle
-            sezioni opzionali della home, che semplicemente spariscono). */}
-        {gruppi.length === 0 ? (
-          <p className={styles.messaggioVuoto}>
-            Nessuna squadra disponibile per la stagione corrente.
-          </p>
-        ) : (
-          // Story 18.24: un blocco per ogni run contigua della stessa
-          // categoria nell'ordine scelto dal Site Manager
-          // (raggruppaGruppiPerCategoriaContigua) - non piu' un'unica
-          // griglia piatta di tutti i Gruppi.
-          blocchiCategoria.map((blocco, indiceBlocco) => (
-            <section
-              key={`${blocco.categoria}-${indiceBlocco}`}
-              className={styles.bloccoCategoria}
-            >
-              <h2 className={styles.titoloBloccoCategoria}>{blocco.categoria}</h2>
-              <div className={styles.listaGruppi}>
-                {blocco.gruppi.map((gruppo) => {
-                  // Review fix: un solo lookup nella Map (non has() + get()) -
-                  // undefined distingue "nessuna foto" da "foto con
-                  // aggiornatoIl null" altrettanto bene di has().
-                  const fotoInfo = fotoPerGruppo.get(gruppo.id);
-                  return (
+          <h1 className={styles.titolo}>Squadre</h1>
+          {/* AC #4: messaggio esplicito invece di un'area vuota quando non
+              c'e' alcun Gruppo per la stagione corrente - qui l'intera
+              pagina esiste solo per questo contenuto (a differenza delle
+              sezioni opzionali della home, che semplicemente spariscono). */}
+          {gruppi.length === 0 ? (
+            <p className={styles.messaggioVuoto}>
+              Nessuna squadra disponibile per la stagione corrente.
+            </p>
+          ) : (
+            // Story 18.24: un blocco per ogni run contigua della stessa
+            // categoria nell'ordine scelto dal Site Manager
+            // (raggruppaGruppiPerCategoriaContigua) - non piu' un'unica
+            // griglia piatta di tutti i Gruppi.
+            blocchiCategoria.map((blocco, indiceBlocco) => (
+              <section
+                key={`${blocco.categoria}-${indiceBlocco}`}
+                className={styles.bloccoCategoria}
+              >
+                <h2 className={styles.titoloBloccoCategoria}>{blocco.categoria}</h2>
+                <div className={styles.listaGruppi}>
+                  {blocco.gruppi.map((gruppo) => (
+                    // Mappatura dati -> card testata in SchedaGruppo.test.tsx
+                    // (propsSchedaGruppo).
                     <SchedaGruppo
                       key={gruppo.id}
-                      nome={gruppo.nome}
-                      categoria={gruppo.categoria}
-                      urlFoto={
-                        fotoInfo !== undefined
-                          ? `${urlPubblicoFotoSquadra(supabase, gruppo.id)}?v=${encodeURIComponent(fotoInfo ?? "")}`
-                          : null
-                      }
-                      allenatori={gruppo.allenatori.map(({ allenatore }) => allenatore)}
-                      atlete={gruppo.atlete}
+                      {...propsSchedaGruppo(gruppo, fotoPerGruppo.get(gruppo.id), () =>
+                        urlPubblicoFotoSquadra(supabase, gruppo.id)
+                      )}
                     />
-                  );
-                })}
-              </div>
-            </section>
-          ))
-        )}
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       </main>
       <FooterPubblico />

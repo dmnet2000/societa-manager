@@ -15,6 +15,34 @@ export type SchedaGruppoProps = {
   atlete: { id: string; nome: string; fotoUrl: string | null; numero: number | null }[];
 };
 
+// Review 18.37: mappatura pagina -> props estratta e testata (prima inline
+// nel JSX di page.tsx, nessun test l'avrebbe vista rompersi).
+// - fotoInfo undefined = nessuna foto caricata (placeholder); null o
+//   stringa = foto presente, aggiornatoIl (eventualmente null) come
+//   ?v= anti-cache. Un solo lookup nella Map lato pagina.
+// - allenatori arrivano come righe di join { allenatore }.
+export function propsSchedaGruppo(
+  gruppo: {
+    nome: string;
+    categoria: string;
+    allenatori: { allenatore: SchedaGruppoProps["allenatori"][number] }[];
+    atlete: SchedaGruppoProps["atlete"];
+  },
+  fotoInfo: string | null | undefined,
+  urlPubblicoFoto: () => string
+): SchedaGruppoProps {
+  return {
+    nome: gruppo.nome,
+    categoria: gruppo.categoria,
+    urlFoto:
+      fotoInfo !== undefined
+        ? `${urlPubblicoFoto()}?v=${encodeURIComponent(fotoInfo ?? "")}`
+        : null,
+    allenatori: gruppo.allenatori.map(({ allenatore }) => allenatore),
+    atlete: gruppo.atlete,
+  };
+}
+
 export function SchedaGruppo({ nome, categoria, urlFoto, allenatori, atlete }: SchedaGruppoProps) {
   return (
     // Filo bianco obliquo: drop-shadow sul contenitore, segue il clip-path
@@ -22,8 +50,16 @@ export function SchedaGruppo({ nome, categoria, urlFoto, allenatori, atlete }: S
     <div className={styles.corniceGruppo}>
       <div className={styles.schedaGruppo}>
         {urlFoto !== null ? (
+          // loading="lazy": con una colonna sola e molte squadre, solo le
+          // foto vicine allo schermo vengono scaricate subito.
           // eslint-disable-next-line @next/next/no-img-element -- URL di Storage con versione in query, mirror del markup precedente
-          <img className={styles.immagineGruppo} src={urlFoto} alt={`Foto di squadra di ${nome}`} />
+          <img
+            className={styles.immagineGruppo}
+            src={urlFoto}
+            alt={`Foto di squadra di ${nome}`}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           // Story 18.12 (AC #5): placeholder intenzionale finché il Gruppo
           // non carica una foto.
@@ -48,8 +84,10 @@ export function SchedaGruppo({ nome, categoria, urlFoto, allenatori, atlete }: S
               ))}
             </ul>
           )}
-          {/* Story 18.24: nome/foto/Numero di ogni Atleta pubblici qui;
-              messaggio esplicito se il Gruppo non ha Atlete. */}
+          {/* Story 18.24: rovescia esplicitamente Story 18.8 AC #2 (su
+              conferma diretta dell'utente) - nome/foto/Numero di ogni
+              Atleta diventano pubblici qui. Messaggio esplicito se il
+              Gruppo non ha ancora Atlete (spec-18-24 I/O matrix). */}
           <div className={styles.sezioneAtlete}>
             <h4 className={styles.titoloSezioneAtlete}>Atlete</h4>
             {atlete.length === 0 ? (
