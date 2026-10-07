@@ -1,9 +1,15 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { AtletaElenco, MotivoRimozioneAtleta } from "@/lib/db-rls/atleta";
 import { CampoRicercaAtlete, esitoRicercaAtlete } from "@/app/CampoRicercaAtlete";
 import { corrispondeRicercaAtleta } from "@/lib/ricerca-atlete";
+import {
+  ordinaRigheIscrizione,
+  prossimoOrdinamentoIscrizioni,
+  type ColonnaOrdinamentoIscrizioni,
+  type OrdinamentoIscrizioni,
+} from "@/lib/ordina-righe-iscrizione";
 import { IscrizioneRow } from "./IscrizioneRow";
 import { RipristinaAtletaForm } from "./RipristinaAtletaForm";
 import { MOTIVI } from "./RimuoviAtletaForm";
@@ -13,6 +19,13 @@ export type RigaIscrizione = {
   atleta: AtletaElenco;
   iscrizioneId: string | null;
   gruppi: string[];
+};
+
+// Story 9.46: colonne ordinabili (Codice Fiscale volutamente esclusa).
+const COLONNE_ORDINABILI: Record<ColonnaOrdinamentoIscrizioni, string> = {
+  nome: "Nome",
+  gruppo: "Gruppo",
+  stato: "Stato Iscrizione",
 };
 
 // Story 9.43: etichetta del motivo di rimozione - un valore non riconosciuto
@@ -48,6 +61,57 @@ export function IscrizioniElenco({
   const [ricerca, setRicerca] = useState("");
   const [rimosseVisibili, setRimosseVisibili] = useState(false);
   const idSezioneRimosse = useId();
+  // Story 9.46: ordinamento client-side, iniziale per Nome crescente (lo
+  // stesso ordine in cui la pagina carica le Atlete). Si ordina sulla prop
+  // `righe`: confermaIscrizione/escludiIscrizione chiamano revalidatePath,
+  // che da una Server Function aggiorna subito i dati della pagina senza
+  // rimontare questo componente - la prop cambia, la riga si sposta appena
+  // l'azione termina e l'ordinamento scelto resta. Le righe riordinate non
+  // vengono smontate (key = id Atleta), lo stato locale di IscrizioneRow
+  // resta. Un ricaricamento completo del browser riporta l'ordine per Nome.
+  const [ordinamento, setOrdinamento] = useState<OrdinamentoIscrizioni>({
+    colonna: "nome",
+    direzione: "asc",
+  });
+
+  const righeOrdinate = useMemo(
+    () => ordinaRigheIscrizione(righe, ordinamento.colonna, ordinamento.direzione),
+    [righe, ordinamento]
+  );
+
+  // Mirror di TabellaIncontriCategoria.tsx (Story 20.24): aria-sort sul th,
+  // aria-label con la direzione sul bottone, freccia solo decorativa.
+  function intestazioneOrdinabile(colonna: ColonnaOrdinamentoIscrizioni) {
+    const etichetta = COLONNE_ORDINABILI[colonna];
+    const attiva = ordinamento.colonna === colonna;
+    const direzione = attiva ? ordinamento.direzione : null;
+    const ariaSort = !attiva ? "none" : direzione === "asc" ? "ascending" : "descending";
+    const ariaLabel = !attiva
+      ? `Ordina per ${etichetta}`
+      : direzione === "asc"
+        ? `${etichetta}, ordinato crescente. Ordina decrescente`
+        : `${etichetta}, ordinato decrescente. Ordina crescente`;
+
+    return (
+      <th scope="col" aria-sort={ariaSort} className={styles.thOrdinabile}>
+        <button
+          type="button"
+          className={styles.bottoneOrdinamento}
+          onClick={() =>
+            setOrdinamento((attuale) => prossimoOrdinamentoIscrizioni(attuale, colonna))
+          }
+          aria-label={ariaLabel}
+        >
+          {etichetta}
+          {attiva && (
+            <span className={styles.frecciaOrdinamento} aria-hidden="true">
+              {direzione === "asc" ? "▲" : "▼"}
+            </span>
+          )}
+        </button>
+      </th>
+    );
+  }
 
   const visibili = righe.filter((riga) => corrispondeRicercaAtleta(riga.atleta, ricerca)).length;
   const rimosseVisibiliConteggio = righeRimosse.filter((atleta) =>
@@ -66,14 +130,14 @@ export function IscrizioniElenco({
         <table className={styles.tabella}>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Codice Fiscale</th>
-              <th>Gruppo</th>
-              <th>Stato Iscrizione</th>
+              {intestazioneOrdinabile("nome")}
+              <th scope="col">Codice Fiscale</th>
+              {intestazioneOrdinabile("gruppo")}
+              {intestazioneOrdinabile("stato")}
             </tr>
           </thead>
           <tbody>
-            {righe.map((riga) => (
+            {righeOrdinate.map((riga) => (
               <IscrizioneRow
                 key={riga.atleta.id}
                 atleta={riga.atleta}

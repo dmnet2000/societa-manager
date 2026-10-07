@@ -72,6 +72,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui vedi lo stato di iscrizione di ogni Atleta per la stagione corrente.",
       "Per trovare un'Atleta usa il campo \"Cerca\" sopra l'elenco: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). Se scrivi più parole, l'Atleta deve contenerle tutte.",
+      "L'elenco parte ordinato per Nome. Per cambiare ordine clicca sulle intestazioni \"Nome\", \"Gruppo\" o \"Stato Iscrizione\": il primo clic su una nuova colonna ordina in modo crescente, il clic successivo sulla stessa colonna inverte la direzione (una freccia indica la colonna e la direzione). Ordinando per Gruppo le Atlete senza Gruppo restano sempre in fondo; ordinando per Stato in modo crescente le Atlete \"Non iscritta\" compaiono per prime. Dopo una conferma o un'esclusione l'elenco si aggiorna da solo e la riga si sposta al suo nuovo posto, mantenendo l'ordinamento scelto. L'ordinamento si combina con la ricerca; ricaricando la pagina l'elenco torna ordinato per Nome.",
       "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
       "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
       "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",

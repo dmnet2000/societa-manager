@@ -1,3 +1,5 @@
+# last_updated: 2026-10-07 (Story 9.46: implementata via bmad-build (baseline eede1daa0c4f94d90e2e9b918dfa9443b6155b9d). Intestazioni Nome/Gruppo/Stato ordinabili in /app/conferma-iscrizioni, logica pura in lib/ordina-righe-iscrizione.ts. Review a 3 layer: Gruppi in ordine numerico (U8<U10), confronto su tutti i Gruppi, spareggio stabile, Nome attivo all avvio, guida allineata a revalidatePath, hover solo con mouse, test del componente (jsdom). 158 file / 2484 test verdi, tsc/lint puliti. 9-46-ordinamento-conferma-iscrizioni: in-progress -> review.)
+# last_updated: 2026-10-07 (Story 9.46 aggiunta e avviata via bmad-build: ordinamento per Nome/Gruppo/Stato in /app/conferma-iscrizioni. 9-46-ordinamento-conferma-iscrizioni: in-progress.)
 # last_updated: 2026-10-04 (Story 18.37: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). /squadre in stile Match Week: fascia sulla pagina, fasce oblique per categoria/nome squadra, card scura con sagoma obliqua e filo bianco, numero di maglia nel quadratino rosso, foto di squadra mai tagliata (rinegoziato 2026-10-03). Card estratta in app/squadre/SchedaGruppo.tsx con propsSchedaGruppo testata. Review a 3 layer: patch su DESIGN.md, foto lazy, hover solo con mouse, placeholder in forced-colors, mappatura testata, test completati. 156 file / 2463 test verdi, tsc/lint puliti. 18-37-squadre-match-week: in-progress -> review.)
 # last_updated: 2026-10-02 (Story 19.17: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). Campionato.classificaVisibile + migrazione 20261002000000, /classifiche ordinata come le squadre e filtrata, interruttore per Campionato in /app/ordine-squadre. Review a 3 layer: 8 patch (tie-break ordine, scope e P2025 nell azione, aria-label, test pagina/componente/ordine, testi guida e pagina, commenti RLS/CSS). 155 file / 2451 test verdi, tsc/lint puliti. Migrazione da applicare al deploy. 19-17-ordine-visibilita-classifiche: in-progress -> review.)
 # last_updated: 2026-10-02 (Story 19.17 aggiunta e avviata via bmad-build: ordine classifiche = ordine squadre, interruttore visibilita classifica in /app/ordine-squadre. 19-17-ordine-visibilita-classifiche: in-progress. Stile Match Week di /squadre (futura 18.37) registrato in deferred-work.)
@@ -794,6 +796,13 @@ development_status:
   # condiviso ModificaDatiAtletaForm.tsx, guida in-app aggiornata. Nessuna
   # migrazione. Vedi spec-9-45-modifica-dati-anagrafici-atleta.md.
   9-45-modifica-dati-anagrafici-atleta: done
+
+  # Story 9.46 aggiunta 2026-10-07 su richiesta dell'utente ("sezione
+  # conferma iscrizione vorrei poter ordinare la lista per gruppo, per nome,
+  # e per stato iscrizione"): intestazioni ordinabili lato client, modello
+  # tabella incontri del torneo (Story 20.24). Vedi
+  # spec-9-46-ordinamento-conferma-iscrizioni.md.
+  9-46-ordinamento-conferma-iscrizioni: review
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
