@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,8 @@ import { creaNotifica } from "@/lib/db-rls/notifica";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { leggiEmailSegreteria } from "@/lib/configurazione-applicazione";
 import { inviaEmail } from "@/lib/email/invia-email";
+import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
+import { elencaNomiGruppiAtletaCorrenti } from "@/lib/nomi-gruppi-atleta";
 import { parseDataIsoValida } from "@/lib/parse-data-iso";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -210,6 +213,59 @@ export async function caricaCertificato(
       }
     } catch (err) {
       console.error(err);
+    }
+
+    // Story 4.7: notifica a ogni Utente Admin attivo, terzo effetto
+    // collaterale indipendente dai due blocchi sopra (fail-soft, mai
+    // bloccante per l'upload ne' per la mail alla Segreteria). Nessun
+    // allegato, solo un link a /app/conferma-certificati (pagina protetta,
+    // AD-6/NFR2: il dato sanitario resta nel bucket privato). Un Admin il
+    // cui indirizzo coincide con l'Email Segreteria e' escluso: riceve gia'
+    // la mail sopra (con allegato), nessun doppione.
+    try {
+      const [emailAdmin, emailSegreteria] = await Promise.all([
+        elencaEmailPerRuolo("ADMIN"),
+        leggiEmailSegreteria(),
+      ]);
+      const segreteriaNormalizzata = emailSegreteria?.trim().toLowerCase();
+      const destinatariAdmin = Array.from(
+        new Set(emailAdmin.map((e) => e.trim().toLowerCase()))
+      ).filter((e) => e !== segreteriaNormalizzata);
+
+      if (destinatariAdmin.length > 0) {
+        // Stesso principio di Story 9.43 sopra: Atleta rimossa -> salta.
+        const atlete = await elencaAtlete(supabase, { includiRimosse: true });
+        const atleta = atlete.find((a) => a.id === atletaId);
+        if (atleta?.rimossaIl) {
+          console.warn(
+            `Story 4.7: Certificato caricato per l'Atleta rimossa ${atletaId} - email agli Admin saltata.`
+          );
+        } else {
+          const gruppi = await elencaNomiGruppiAtletaCorrenti(atletaId);
+          const headersList = await headers();
+          const host = headersList.get("host");
+          const proto = headersList.get("x-forwarded-proto") ?? "https";
+          const link = `${proto}://${host}/app/conferma-certificati`;
+          const dataOra = new Intl.DateTimeFormat("it-IT", {
+            timeZone: "Europe/Rome",
+            dateStyle: "short",
+            timeStyle: "short",
+          }).format(new Date());
+
+          await inviaEmail({
+            destinatario: destinatariAdmin,
+            oggetto: "Nuovo Certificato Medico caricato",
+            testo:
+              `È stato caricato un nuovo Certificato Medico.\n\n` +
+              `Atleta: ${atleta?.nome ?? "non risolvibile"}\n` +
+              `Gruppo: ${gruppi.length > 0 ? gruppi.join(", ") : "nessun Gruppo nella stagione corrente"}\n` +
+              `Caricato il: ${dataOra}\n\n` +
+              `Per verificarlo e confermarlo accedi a: ${link}`,
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`[caricaCertificato] notifica agli Admin fallita per ${atletaId}`, err);
     }
   } catch (err) {
     console.error(err);

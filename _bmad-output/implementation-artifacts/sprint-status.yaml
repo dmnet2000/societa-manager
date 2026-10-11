@@ -427,7 +427,7 @@ development_status:
   3-3-storico-presenze-con-trend-percentuale: done
   epic-3-retrospective: optional
 
-  epic-4: done
+  epic-4: in-progress
   4-1-upload-certificato-medico: done
   4-2-notifica-automatica-upload: done
 
@@ -454,6 +454,12 @@ development_status:
   4-4-conferma-validazione-certificato: done
   4-5-alert-scadenza-non-bloccante: done
   4-6-promemoria-scadenza: done
+  # Story 4.7 aggiunta 2026-10-11 su richiesta utente: "lato Admin, deve
+  # avere una notifica via mail quando viene uploadato un nuovo
+  # certificato". Epic 4 riaperto per questa singola estensione (stesso
+  # principio degli elenchi aperti). Mail con link, senza allegato (dato
+  # sanitario, AD-6/NFR2). Vedi epics.md#Story 4.7.
+  4-7-notifica-email-admin-nuovo-certificato: review
   epic-4-retrospective: optional
 
   epic-5: done

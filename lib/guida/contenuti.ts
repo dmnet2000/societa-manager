@@ -88,6 +88,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Per trovare un'Atleta usa il campo \"Cerca\" sopra le sezioni: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). La ricerca filtra sia \"Da confermare\" sia \"Confermati\"; se scrivi più parole, l'Atleta deve contenerle tutte.",
       "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
       "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
+      "Se sei Admin ricevi una mail ogni volta che viene caricato un nuovo Certificato, con nome dell'Atleta, Gruppo, data/ora del caricamento e un link a questa pagina - il file non è allegato, per vederlo devi accedere all'app. Se il tuo indirizzo coincide con l'email della Segreteria ricevi una sola mail, quella della Segreteria.",
     ],
   },
   {

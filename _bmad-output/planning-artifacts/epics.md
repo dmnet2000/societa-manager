@@ -509,6 +509,25 @@ So that ho il tempo di rinnovarlo senza scoprirlo all'ultimo.
 **Then** il sistema invia un promemoria a Genitore, Atleta, Allenatore e Dirigente
 **And** l'invio è gestito da un solo Cloudflare Cron Trigger giornaliero → un solo Route Handler (AD-7), non da timer sparsi
 
+### Story 4.7: Notifica email all'Admin per nuovo certificato caricato
+
+As a Admin,
+I want ricevere una mail quando viene caricato un nuovo Certificato Medico,
+So that sono informato subito dei nuovi caricamenti senza dover controllare l'app.
+
+**Acceptance Criteria:**
+
+**Given** un Genitore o un'Atleta carica un Certificato Medico (Story 4.1)
+**When** l'upload si completa
+**Then** ogni utente con ruolo Admin riceve un'email di notifica con nome dell'Atleta, Gruppo e data/ora del caricamento
+**And** la mail contiene un link a `/app/conferma-certificati` (pagina protetta, accesso solo dopo login), non il file allegato — il dato sanitario resta nel bucket privato (AD-6, NFR2)
+**And** l'invio riusa l'infrastruttura SMTP esistente (Story 7.1, `lib/email/invia-email.ts`), nello stesso punto in cui parte la mail alla Segreteria (Story 4.3)
+**And** se l'invio all'Admin fallisce (SMTP non configurato, errore di rete) l'upload resta comunque riuscito e la mail alla Segreteria parte lo stesso (fail-soft, errore solo loggato)
+**And** se un Admin coincide con l'indirizzo email della Segreteria, riceve una sola mail (nessun doppione)
+**And** la guida in-app (`lib/guida/contenuti.ts`) è aggiornata per citare la notifica all'Admin
+
+**Note:** richiesta utente 2026-10-11. Decisione in implementazione: destinatari = tutti gli Utenti attivi con Ruolo Admin (`elencaEmailPerRuolo("ADMIN")`, stesso pattern della notifica registrazione), nessun indirizzo dedicato in Configurazione Applicazione e nessun interruttore per disattivarla (estensibili in seguito se richiesto). Atleta rimossa → mail saltata, come per la Segreteria (Story 9.43).
+
 ## Epic 5: Vista Dirigente e Amministrazione Avanzata
 
 Il Dirigente ha una vista d'insieme aggregata su gruppi, orari e stato dei certificati; l'Admin può affinare i permessi sui dati sanitari.

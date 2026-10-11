@@ -14,6 +14,9 @@ const leggiEmailSegreteriaMock = vi.fn();
 const scaricaFileCertificatoMock = vi.fn();
 const inviaEmailMock = vi.fn();
 const elencaAtleteMock = vi.fn();
+const elencaEmailPerRuoloMock = vi.fn();
+const elencaNomiGruppiAtletaCorrentiMock = vi.fn();
+const headersMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`);
@@ -62,6 +65,18 @@ vi.mock("@/lib/configurazione-applicazione", () => ({
 
 vi.mock("@/lib/email/invia-email", () => ({
   inviaEmail: inviaEmailMock,
+}));
+
+vi.mock("@/lib/utenti/email-per-ruolo", () => ({
+  elencaEmailPerRuolo: elencaEmailPerRuoloMock,
+}));
+
+vi.mock("@/lib/nomi-gruppi-atleta", () => ({
+  elencaNomiGruppiAtletaCorrenti: elencaNomiGruppiAtletaCorrentiMock,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: headersMock,
 }));
 
 vi.mock("next/cache", () => ({
@@ -153,6 +168,14 @@ beforeEach(() => {
   elencaAtleteMock.mockResolvedValue([
     { id: "atleta-1", nome: "Verifica Atleta", codiceFiscale: "CF", categoria: null },
   ]);
+  elencaEmailPerRuoloMock.mockReset();
+  elencaEmailPerRuoloMock.mockResolvedValue([]);
+  elencaNomiGruppiAtletaCorrentiMock.mockReset();
+  elencaNomiGruppiAtletaCorrentiMock.mockResolvedValue(["Under 14"]);
+  headersMock.mockReset();
+  headersMock.mockResolvedValue(
+    new Headers({ host: "app.esempio.it", "x-forwarded-proto": "https" })
+  );
   revalidatePathMock.mockReset();
   redirectMock.mockClear();
 });
@@ -649,6 +672,121 @@ describe("caricaCertificato (Server Action)", () => {
     expect(inviaEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({ destinatario: "segreteria@esempio.it" })
     );
+  });
+});
+
+describe("caricaCertificato - notifica email agli Admin (Story 4.7)", () => {
+  function chiamataAdmin() {
+    return inviaEmailMock.mock.calls
+      .map(([dati]) => dati)
+      .find((dati) => Array.isArray(dati.destinatario));
+  }
+
+  it("invia a ogni Admin una mail con nome Atleta, Gruppo, data/ora e link, senza allegato (AC #1/#2)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin1@esempio.it", "admin2@esempio.it"]);
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("ADMIN");
+    const dati = chiamataAdmin();
+    expect(dati.destinatario).toEqual(["admin1@esempio.it", "admin2@esempio.it"]);
+    expect(dati.oggetto).toBe("Nuovo Certificato Medico caricato");
+    expect(dati.testo).toContain("Verifica Atleta");
+    expect(dati.testo).toContain("Under 14");
+    expect(dati.testo).toMatch(/Caricato il: \d{2}\/\d{2}\/\d{2}/);
+    expect(dati.testo).toContain("https://app.esempio.it/app/conferma-certificati");
+    expect(dati.allegati).toBeUndefined();
+    expect(elencaNomiGruppiAtletaCorrentiMock).toHaveBeenCalledWith("atleta-1");
+  });
+
+  it("non invia nulla agli Admin se non ce ne sono di attivi", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue([]);
+
+    await caricaCertificato(undefined, buildFormData({ atletaId: "atleta-1", file: fileValido() }));
+
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("esclude l'Admin che coincide con l'Email Segreteria (nessun doppione, AC #5)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("Segreteria@Esempio.it");
+    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it", "admin@esempio.it"]);
+
+    await caricaCertificato(undefined, buildFormData({ atletaId: "atleta-1", file: fileValido() }));
+
+    expect(inviaEmailMock).toHaveBeenCalledTimes(2);
+    expect(chiamataAdmin().destinatario).toEqual(["admin@esempio.it"]);
+  });
+
+  it("non invia la mail agli Admin se l'unico Admin e' la Segreteria stessa", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    elencaEmailPerRuoloMock.mockResolvedValue(["segreteria@esempio.it"]);
+
+    await caricaCertificato(undefined, buildFormData({ atletaId: "atleta-1", file: fileValido() }));
+
+    expect(inviaEmailMock).toHaveBeenCalledTimes(1);
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destinatario: "segreteria@esempio.it" })
+    );
+  });
+
+  it("la mail alla Segreteria parte e l'upload riesce anche se l'invio agli Admin fallisce (AC #4)", async () => {
+    leggiEmailSegreteriaMock.mockResolvedValue("segreteria@esempio.it");
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@esempio.it"]);
+    inviaEmailMock.mockImplementation(async (dati: { destinatario: unknown }) => {
+      if (Array.isArray(dati.destinatario)) throw new Error("SMTP giu'");
+    });
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ destinatario: "segreteria@esempio.it" })
+    );
+  });
+
+  it("l'upload riesce anche se la lettura degli Admin lancia (AC #4)", async () => {
+    elencaEmailPerRuoloMock.mockRejectedValue(new Error("db down"));
+
+    const result = await caricaCertificato(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", file: fileValido() })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("indica il fallback quando l'Atleta non ha Gruppi nella stagione corrente", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@esempio.it"]);
+    elencaNomiGruppiAtletaCorrentiMock.mockResolvedValue([]);
+
+    await caricaCertificato(undefined, buildFormData({ atletaId: "atleta-1", file: fileValido() }));
+
+    expect(chiamataAdmin().testo).toContain("nessun Gruppo nella stagione corrente");
+  });
+
+  it("non invia la mail agli Admin per un'Atleta rimossa (stesso principio di Story 9.43)", async () => {
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@esempio.it"]);
+    elencaAtleteMock.mockResolvedValue([
+      {
+        id: "atleta-1",
+        nome: "Verifica Atleta",
+        codiceFiscale: "CF",
+        categoria: null,
+        rimossaIl: "2026-09-20T00:00:00.000Z",
+      },
+    ]);
+
+    await caricaCertificato(undefined, buildFormData({ atletaId: "atleta-1", file: fileValido() }));
+
+    expect(inviaEmailMock).not.toHaveBeenCalled();
   });
 });
 
