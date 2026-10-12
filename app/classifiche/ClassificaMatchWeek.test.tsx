@@ -57,10 +57,10 @@ describe("ClassificaMatchWeek", () => {
     const html = render();
     expect(html).toContain('<section aria-labelledby="classifica-camp-1">');
     expect(html).toContain(
-      `<h2 ${classe(styles.fasciaTitolo)} id="classifica-camp-1" style="background-color:#2e6f99">Serie C — Prima Squadra</h2>`
+      `<h2 ${classe(styles.fasciaTitolo)} id="classifica-camp-1" style="background-color:#2e6f99">Serie C</h2>`
     );
-    expect(html).toContain('role="region" aria-label="Tabella Serie C — Prima Squadra"');
-    expect(html).toContain("Classifica Serie C — Prima Squadra</caption>");
+    expect(html).toContain('role="region" aria-label="Tabella Serie C"');
+    expect(html).toContain("Classifica Serie C</caption>");
   });
 
   it("13 intestazioni, sigle con nome esteso", () => {

@@ -1,3 +1,4 @@
+
 ---
 title: 'Story 9.46: ordinamento della lista in Conferma iscrizioni (Gruppo, Nome, Stato)'
 type: 'feature'

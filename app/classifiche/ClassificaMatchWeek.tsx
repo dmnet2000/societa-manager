@@ -43,7 +43,9 @@ export function ClassificaMatchWeek({ classifica }: { classifica: ClassificaVist
   const indiceNostra = classifica.righe.findIndex((riga) =>
     eNostraSquadra(riga.squadra, classifica.nostraSquadra)
   );
-  const titolo = `${classifica.campionatoNome} — ${classifica.gruppoNome}`;
+  // Solo il nome del Campionato (richiesta utente 2026-10-12): il nome del
+  // Gruppo era ridondante nel titolo.
+  const titolo = classifica.campionatoNome;
 
   return (
     <section aria-labelledby={idTitolo}>
