@@ -170,6 +170,18 @@ export const PROTECTED_ROUTES: {
     gruppo: "Atleti",
   },
   {
+    // Story 26.1 (Epic 26, Tesseramento multi-Federazione): elenco delle
+    // Federazioni usate dai Tesseramenti - stesso perimetro Ruoli di
+    // /conferma-tesseramenti (decisione utente 2026-10-12) e dichiarata
+    // subito dopo, cosi' compare come quinta figlia del gruppo "Atleti"
+    // (nessun gruppo "Configurazione" visibile al Dirigente esiste nel menu;
+    // "Gestione sito" riguarda il sito pubblico).
+    prefix: "/app/federazioni",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    navLabel: "Federazioni",
+    gruppo: "Atleti",
+  },
+  {
     // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
     // introdotto come infrastruttura pura da Story 15.1 - raggruppa con
     // /palestre sotto la voce di menu "Orari/Palestre". Nessun cambio a

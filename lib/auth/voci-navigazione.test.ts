@@ -99,6 +99,7 @@ describe("filtraVociNavigazione", () => {
     expect(href).not.toContain("/app/conferma-iscrizioni");
     expect(href).not.toContain("/app/conferma-certificati");
     expect(href).not.toContain("/app/conferma-tesseramenti");
+    expect(href).not.toContain("/app/federazioni");
     expect(href).not.toContain("/app/admin");
     expect(href).not.toContain("/app/precaricamento-allenatori");
     expect(href).not.toContain("/app/permessi-accesso");
@@ -223,9 +224,10 @@ describe("filtraVociNavigazione", () => {
         "/app/conferma-iscrizioni",
         "/app/conferma-certificati",
         "/app/conferma-tesseramenti",
+        "/app/federazioni",
       ])
     );
-    expect(atleti).toHaveLength(4);
+    expect(atleti).toHaveLength(5);
 
     expect(accounting.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
@@ -380,6 +382,7 @@ describe("filtraVociNavigazione", () => {
         { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
         { href: "/app/conferma-certificati", label: "Conferma certificati" },
         { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
+        { href: "/app/federazioni", label: "Federazioni" },
       ]);
     }
   );
@@ -404,6 +407,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
+      { href: "/app/federazioni", label: "Federazioni" },
     ]);
   });
 
@@ -471,6 +475,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
+      { href: "/app/federazioni", label: "Federazioni" },
     ]);
   });
 
@@ -536,6 +541,7 @@ describe("filtraVociNavigazione", () => {
           { href: "/app/conferma-iscrizioni", label: "Conferma iscrizioni" },
           { href: "/app/conferma-certificati", label: "Conferma certificati" },
           { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
+          { href: "/app/federazioni", label: "Federazioni" },
         ],
       },
       {

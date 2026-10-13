@@ -2,65 +2,68 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
-import { prisma } from "@/lib/prisma";
 import { risolviAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { salvaModificheTesseramento } from "@/lib/tesseramento";
 
-export type ConfermaTesseramentiState =
+export type SalvaTesseramentiState =
   | { error: { code: string; message: string } }
   | { success: true }
   | undefined;
 
-// Story 13.1 estensione (2026-08-06): la dipendenza obbligatoria
-// dall'Iscrizione (decisione originale di apertura Epic 13) e' stata
-// rimossa su richiesta esplicita dell'utente - il Tesseramento e'
-// confermabile per qualunque Atleta, indipendentemente dallo stato della
-// sua Iscrizione (colonna "Stato Iscrizione" resta solo informativa in
-// pagina). Sostituita anche la conferma singola per-riga con una conferma
-// massiva: la UI invia un checkbox per riga, questa azione conferma tutte
-// le Atlete selezionate in un'unica submission.
-export async function confermaTesseramenti(
-  _prevState: ConfermaTesseramentiState,
+// Story 26.2 (Epic 26, Tesseramento multi-Federazione): sostituisce
+// confermaTesseramenti (conferma massiva Story 13.1 estensione 2026-08-06).
+// La tabella invia, per ogni riga MODIFICATA (hidden "atletaModificata"),
+// l'insieme completo delle Federazioni spuntate ("federazione:<atletaId>");
+// le righe non toccate non vengono scritte, cosi' un salvataggio non
+// sovrascrive le modifiche fatte nel frattempo da un altro utente su altre
+// Atlete. Regole e scrittura tutto-o-niente in lib/tesseramento.ts.
+export async function salvaTesseramenti(
+  _prevState: SalvaTesseramentiState,
   formData: FormData
-): Promise<ConfermaTesseramentiState> {
+): Promise<SalvaTesseramentiState> {
   const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
   if (forbidden) return forbidden;
 
-  const atletaIds = [...new Set(formData.getAll("atletaId").map(String))];
+  const atletaIds = [...new Set(formData.getAll("atletaModificata").map(String))].filter(
+    (id) => id !== ""
+  );
   if (atletaIds.length === 0) {
-    return {
-      error: { code: "VALIDATION", message: "Seleziona almeno un'Atleta." },
-    };
+    return { error: { code: "VALIDATION", message: "Nessuna modifica da salvare." } };
   }
+  const modifiche = atletaIds.map((atletaId) => ({
+    atletaId,
+    federazioni: formData.getAll(`federazione:${atletaId}`).map(String),
+  }));
+  const consentiSvuotamento = formData.get("confermaRimozioneTotale") === "1";
 
   try {
     const anno = await risolviAnnoAgonisticoCorrente();
-
-    // Idempotente (AC #4 originale, invariato): upsert con update no-op,
-    // stesso principio della conferma singola sostituita. $transaction cosi'
-    // una conferma multipla o va a buon fine per intero o non scrive nulla,
-    // invece di lasciare un sottoinsieme confermato e l'altro no su un
-    // errore a meta' batch.
-    await prisma.$transaction(
-      atletaIds.map((atletaId) =>
-        prisma.tesseramento.upsert({
-          where: {
-            atletaId_annoAgonisticoId: { atletaId, annoAgonisticoId: anno.id },
-          },
-          create: { atletaId, annoAgonisticoId: anno.id },
-          update: {},
-        })
-      )
-    );
+    const esito = await salvaModificheTesseramento(anno.id, modifiche, {
+      consentiSvuotamento,
+    });
+    if (!esito.ok) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message:
+            esito.motivo === "conferma_richiesta"
+              ? "Alcune Atlete resterebbero senza alcuna federazione: ricarica la pagina, ricontrolla e salva di nuovo confermando la rimozione."
+              : "Una o più federazioni selezionate non esistono più o sono state disattivate. Ricarica la pagina e riprova.",
+        },
+      };
+    }
   } catch (err) {
     console.error(err);
     return {
       error: {
         code: "INTERNAL",
-        message: "Impossibile confermare i Tesseramenti selezionati. Riprova.",
+        message: "Impossibile salvare i tesseramenti. Riprova.",
       },
     };
   }
 
   revalidatePath("/app/conferma-tesseramenti");
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
   return { success: true };
 }

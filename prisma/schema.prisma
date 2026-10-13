@@ -288,23 +288,51 @@ model Iscrizione {
 // Atleta. Nessun campo `attiva`: a differenza di Iscrizione, questa storia
 // non implementa un'esclusione (nessun bisogno di prodotto espresso in
 // apertura dell'Epic 13) - una futura storia potrebbe aggiungerlo con lo
-// stesso schema di Iscrizione, se il bisogno emergesse. Il Tesseramento e'
-// confermabile solo se l'Iscrizione per la stessa Atleta+Anno Agonistico e'
-// gia' confermata (dipendenza applicativa, verificata dalla Server Action -
-// nessun vincolo DB la esprime, la FK verso Iscrizione non esiste perche'
-// Tesseramento referenzia Atleta+AnnoAgonistico direttamente, non la riga
-// Iscrizione).
+// stesso schema di Iscrizione, se il bisogno emergesse. La dipendenza
+// originale da Iscrizione e' stata rimossa (estensione Story 13.1,
+// 2026-08-06): il Tesseramento e' indipendente dall'Iscrizione.
+// Story 26.2 (Epic 26, Tesseramento multi-Federazione): "federazioneIds" =
+// id delle Federazione con cui l'Atleta e' tesserata nella stagione (array
+// Postgres, decisione utente 2026-10-12 - preferito a una riga per
+// federazione). Nessuna FK sugli id: integrita' verificata in
+// lib/tesseramento.ts, unico punto di accesso a questo model. Invariante:
+// una riga esiste solo con array non vuoto (svuotarlo elimina la riga).
 model Tesseramento {
   id               String         @id @default(uuid())
   atletaId         String
   annoAgonisticoId String
   atleta           Atleta         @relation(fields: [atletaId], references: [id], onDelete: Cascade)
   annoAgonistico   AnnoAgonistico @relation(fields: [annoAgonisticoId], references: [id], onDelete: Cascade)
+  federazioneIds   String[]
   confermataIl     DateTime       @default(now())
   createdAt        DateTime       @default(now())
 
   @@unique([atletaId, annoAgonisticoId])
   @@map("tesseramenti")
+}
+
+// Story 26.1 (Epic 26, Tesseramento multi-Federazione): elenco configurabile
+// delle federazioni (FIPAV, CSI, UISP, ...) con cui un'Atleta puo' essere
+// tesserata, gestito da ADMIN/DIRIGENTE in /app/federazioni. Entita'
+// strutturale (AD-9), stesso trattamento RLS di VoceMenuPubblico: RLS
+// abilitata senza policy + REVOKE esplicito, accesso solo via Prisma
+// diretto. "nome" @unique e' solo la garanzia DB sull'uguaglianza esatta -
+// l'univocita' senza distinzione maiuscole/minuscole e' verificata dal
+// Server Action (nessun indice funzionale lower(nome): non esprimibile nello
+// schema Prisma, causerebbe drift). "attiva" false = non piu' selezionabile
+// per nuovi tesseramenti ma storico intatto (unico modo di "togliere" una
+// federazione gia' usata - l'eliminazione fisica e' bloccata in quel caso).
+// Collegata al Tesseramento dalla Story 26.2.
+model Federazione {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  sigla     String?
+  ordine    Int
+  attiva    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("federazioni")
 }
 
 // Protetta da RLS (AD-4/AD-9, esplicitamente nel bind-list): letta/scritta a

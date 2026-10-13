@@ -109,3 +109,87 @@
   cursor: default;
   opacity: 0.6;
 }
+
+/* Story 26.2 (Epic 26): matrice Atlete x Federazioni. Etichetta del
+   checkbox larga quanto la cella e alta almeno 44px (touch target). */
+.etichettaCheckbox {
+  width: 100%;
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
+}
+
+.rigaModificata td {
+  background: var(--color-surface-alt);
+}
+
+.disattivata {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.conferma {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.conferma p {
+  margin: 0;
+}
+
+.conferma ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
+}
+
+.azioniConferma {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.bottonePericolo,
+.bottoneSecondario {
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.bottonePericolo {
+  background: var(--color-danger);
+  color: var(--color-surface);
+  border: none;
+}
+
+.bottoneSecondario {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.bottonePericolo:focus-visible,
+.bottoneSecondario:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.bottonePericolo:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

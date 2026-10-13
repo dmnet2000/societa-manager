@@ -317,6 +317,25 @@ describe("getRouteDecision", () => {
     ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
+  it("allows Admin or Dirigente on /federazioni (Story 26.1)", async () => {
+    expect(await getRouteDecision("/app/federazioni", true, ["ADMIN"])).toEqual({
+      action: "allow",
+    });
+    expect(await getRouteDecision("/app/federazioni", true, ["DIRIGENTE"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it.each(["SEGRETERIA", "ALLENATORE", "ATLETA", "GENITORE", "SITE_MANAGER"] as const)(
+    "redirects to /non-autorizzato on /federazioni for %s (Story 26.1)",
+    async (ruolo) => {
+      expect(await getRouteDecision("/app/federazioni", true, [ruolo])).toEqual({
+        action: "redirect",
+        location: "/app/non-autorizzato",
+      });
+    }
+  );
+
   it("allows either Admin or Dirigente on /palestre (Story 2.1, FR-1)", async () => {
     expect(await getRouteDecision("/app/palestre", true, ["DIRIGENTE"])).toEqual({
       action: "allow",

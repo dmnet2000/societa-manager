@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { etichetteTesseramentoPerAtleta } from "@/lib/tesseramento";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
@@ -136,18 +137,17 @@ export default async function GruppiPage() {
       // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento nella
       // tabella Atlete - stesso pattern di lettura gia' usato da
       // conferma-tesseramenti/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
-      // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
+      // Tesseramento via lib/tesseramento.ts, modulo unico dalla Story 26.2).
       // Story 2.10: saltate nel ramo di sola lettura Segreteria - quel ramo
       // non mostra le colonne Iscrizione/Tesseramento.
       soloVisualizzazione || !annoCorrente
         ? Promise.resolve([])
         : elencaIscrizioniPerAnno(supabase, annoCorrente.id),
+      // Story 26.2: etichette delle Federazioni per Atleta (modulo unico
+      // lib/tesseramento.ts) invece del semplice elenco atletaId.
       soloVisualizzazione || !annoCorrente
-        ? Promise.resolve([])
-        : prisma.tesseramento.findMany({
-            where: { annoAgonisticoId: annoCorrente.id },
-            select: { atletaId: true },
-          }),
+        ? Promise.resolve(new Map<string, string[]>())
+        : etichetteTesseramentoPerAtleta(annoCorrente.id),
       // Story 18.4: UNA sola chiamata Storage per l'intero elenco Gruppi,
       // non N chiamate leggiInfoFotoSquadra() per-Gruppo dentro il .map()
       // sotto - vedi lib/storage/foto-squadra.ts.
@@ -194,11 +194,11 @@ export default async function GruppiPage() {
     : new Map();
 
   // Richiesta utente 2026-08-07: Set invece di Map - qui serve solo
-  // l'appartenenza (iscritta/tesserata sì o no), non altri campi della riga
-  // Iscrizione/Tesseramento, a differenza di certificati/atleteMinime sopra
+  // l'appartenenza (iscritta sì o no), non altri campi della riga
+  // Iscrizione (il Tesseramento e' invece una Map atletaId -> etichette delle
+  // Federazioni, Story 26.2), a differenza di certificati/atleteMinime sopra
   // che portano dati aggiuntivi (dataFineValidita/stato).
   const idAtleteIscritte = new Set(iscrizioni.map((i) => i.atletaId));
-  const idAtleteTesserate = new Set(tesseramenti.map((t) => t.atletaId));
 
   // Story 2.10: ramo di sola lettura per Segreteria - stessi dati
   // (gruppi/atlete via atletaPerId/gruppoAtleteRows) gia' risolti sopra,
@@ -349,7 +349,7 @@ export default async function GruppiPage() {
                   .map((atleta) => ({
                     ...atleta,
                     iscritta: idAtleteIscritte.has(atleta.id),
-                    tesserata: idAtleteTesserate.has(atleta.id),
+                    federazioniTesseramento: tesseramenti.get(atleta.id) ?? [],
                     // Story 9.45: undefined per default (nessun ADMIN/
                     // SEGRETERIA) - AtletaTabellaRiga.tsx mostra il testo
                     // semplice in quel caso, mai il form.

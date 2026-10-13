@@ -18,16 +18,18 @@ import styles from "./gruppi.module.css";
 // pur essendo consumato solo qui.
 // Story 9.35: "numero" aggiunto qui (non al tipo condiviso Atleta di
 // AtletaAssegnata.tsx) per lo stesso motivo gia' documentato sopra per
-// iscritta/tesserata - specifico della riga GruppoAtleta (Atleta+Gruppo+
+// iscritta/federazioniTesseramento - specifico della riga GruppoAtleta (Atleta+Gruppo+
 // Stagione), mai valorizzato per un'Atleta nel <select> "disponibili" (non
 // ancora assegnata a nessun Gruppo, quindi senza una riga GruppoAtleta da
 // cui leggerlo).
 export type AtletaConStato = Atleta & {
   iscritta: boolean;
-  tesserata: boolean;
+  // Story 26.2: etichette (sigla o nome) delle Federazioni con cui e'
+  // tesserata nella stagione corrente - vuoto = non tesserata.
+  federazioniTesseramento: string[];
   numero: number | null;
   // Story 9.45: opzionale come puoModificare sotto - stesso motivo gia'
-  // documentato per iscritta/tesserata/numero sopra, specifico di questa
+  // documentato per iscritta/federazioniTesseramento/numero sopra, specifico di questa
   // riga di tabella (non aggiunto al tipo condiviso Atleta di
   // AtletaAssegnata.tsx, usato anche da /i-miei-gruppi che non ammette
   // questa modifica). Assente per default -> /i-miei-gruppi invariato.
@@ -183,8 +185,10 @@ export function AtletaTabellaRiga({
         )}
       </td>
       <td>
-        {atleta.tesserata ? (
-          <span className={styles.badgeSuccesso}>Tesserata</span>
+        {atleta.federazioniTesseramento.length > 0 ? (
+          <span className={styles.badgeSuccesso}>
+            Tesserata · {atleta.federazioniTesseramento.join(", ")}
+          </span>
         ) : (
           <span className={styles.badgeDanger}>Non tesserata</span>
         )}

@@ -4018,3 +4018,79 @@ so that posso capire l'interesse reale verso il sito senza dover interrogare dir
 6. **Visibilità pubblica**: il punteggio live (e le eventuali segnalazioni di formazione) devono comparire anche sulla pagina pubblica `/torneo` (per il pubblico/le famiglie in palestra), o restano solo uno strumento interno al tavolo?
 7. **Rapporto con il flusso attuale**: il nuovo strumento **sostituisce** il form di inserimento risultato finale esistente, o resta un **modo alternativo** di arrivare allo stesso risultato (il form manuale resta comunque disponibile come ripiego se non è disponibile/usato per un incontro)?
 8. **Tempistica rispetto al Torneo**: se esiste già una data del prossimo Torneo Memorial, va capito se questa epica ha senso arrivarci in tempo per quell'edizione o è un investimento per quelle successive — cambia la priorità, non la fattibilità.
+
+## Epic 26: Tesseramento multi-Federazione
+
+*(Aperto 2026-10-12, richiesta esplicita dell'utente — SOLO story scritte, nessuna implementazione ora: "ogni atleta può essere tesserato su più federazioni anche in contemporanea, per cui sarebbe da aggiungere: 1) sezione di configurazione dove poter aggiungere le federazioni. 2) sezione tesseramenti visualizzare in fase di conferma tesseramento un check box per ogni federazione. 3) possibilità di modificare per le atlete già tesserate la federazione con la quale sono state tesserate." Estende Epic 13 (Story 13.1 + estensione 2026-08-06). Tutte le decisioni chiuse con l'utente lo stesso giorno — vedi sotto. Rotto in 2 story: i punti 2) e 3) della richiesta sono confluiti in un'unica story (26.2) su decisione esplicita dell'utente ("unica tabella").)*
+
+**Punto di partenza reale (verificato nel codice 2026-10-12):** `Tesseramento` (`prisma/schema.prisma`) è oggi un flag per coppia `atletaId`+`annoAgonisticoId` (`@@unique`), senza alcuna nozione di federazione — "tesserata" significa genericamente "tesserata con la federazione", implicitamente una sola. La conferma avviene su `/app/conferma-tesseramenti` (`ConfermaTesseramentiForm.tsx`: un checkbox per riga solo sulle Atlete non ancora tesserate, bottone unico "Conferma selezionate" → `confermaTesseramenti(formData)`, upsert in blocco in una `$transaction`). Non esiste oggi alcun modo di annullare/modificare un Tesseramento già confermato. Lo stato Tesseramento è letto anche da `/app/gruppi` (badge "Tesserata"/"Non tesserata", Story 9.33) e da `/app/i-miei-gruppi`. Ruoli: solo Admin/Dirigente (Segreteria esclusa, decisione Epic 13 — invariata).
+
+**Decisioni (chiuse con l'utente 2026-10-12):**
+- **Modello dati: array, non una riga per federazione.** Nuova entità `Federazione` (`id`, `nome` univoco, `sigla` opzionale es. "FIPAV"/"CSI"/"UISP", `attiva` boolean, `ordine` per la visualizzazione). `Tesseramento` resta **una riga per Atleta+stagione** (`@@unique([atletaId, annoAgonisticoId])` invariato) e riceve un nuovo campo `federazioneIds String[]` (array Postgres nativo, interrogabile da Prisma con `has`/`hasSome`) con gli id delle Federazioni con cui l'Atleta è tesserata. Scartati: (a) una riga per federazione (`@@unique` a tre campi) — più rigoroso ma più pesante da scrivere/leggere, non giustificato finché non servono dati per singola federazione; (b) un campo `Json` — nessuna tipizzazione Prisma né query `has`; (c) un `enum` Prisma/Postgres — incompatibile con federazioni configurabili da UI (ogni nuovo valore richiederebbe una migrazione).
+- **Compromessi accettati consapevolmente con l'array**: nessuna integrità referenziale lato DB sugli id (validata nel codice in scrittura e prima di un'eliminazione, vedi sotto); nessun posto per dati per singola federazione (numero tessera, data, scadenza) — se un domani servissero, si migra a una riga per federazione (`INSERT … SELECT … unnest(federazioneIds)`, conversione senza perdita di dati).
+- **Vincolo tecnico per contenere quel costo futuro (obbligatorio, Story 26.2)**: tutti gli accessi in lettura/scrittura al Tesseramento passano da un unico modulo `lib/tesseramento.ts` (es. `federazioniDiAtleta`, `impostaFederazioni`, `atleteTesserate`, `federazioneInUso`) — nessuna pagina/Server Action interroga `federazioneIds` o `prisma.tesseramento` direttamente. Così una futura migrazione a una riga per federazione tocca solo la migrazione e quel modulo, non le ~10 pagine/componenti che oggi leggono lo stato Tesseramento.
+- **Lista vuota**: invariante "una riga `Tesseramento` esiste ⇔ `federazioneIds` non vuoto". Togliere l'ultima federazione **elimina la riga** (mai salvato `[]`), così la semantica "esiste un Tesseramento = tesserata" di oggi resta vera ovunque. Garantita dentro `impostaFederazioni`.
+- **Rimozione dell'ultima federazione**: richiede una **conferma esplicita** prima del salvataggio (decisione utente).
+- **Migrazione dei Tesseramenti esistenti**: tutti i Tesseramenti già confermati ricevono `federazioneIds = [id FIPAV]`, con la Federazione FIPAV creata dalla migrazione stessa (decisione utente).
+- **Ruoli**: l'elenco Federazioni è gestito da **Admin e Dirigente** (decisione utente) — stesso perimetro di `/app/conferma-tesseramenti`.
+- **UI: tabella unica** (decisione utente) — conferma di nuovi tesseramenti e modifica di quelli esistenti avvengono nella stessa matrice Atlete × Federazioni con checkbox già spuntati, un solo "Salva". Niente azione "Modifica" separata per riga.
+- **Eliminazione di una Federazione**: bloccata se un qualunque Tesseramento (qualunque stagione) la contiene nell'array (`federazioneInUso` → `federazioneIds: { has: id }`) — in quel caso si può solo **disattivare** (`attiva: false`): sparisce dalle colonne per i nuovi tesseramenti ma lo storico resta leggibile. Eliminazione fisica ammessa solo se mai usata.
+- **RLS**: `Federazione` è strutturale (AD-9, solo Admin/Dirigente via Prisma, come `Tesseramento`) ma va comunque messa in `ENABLE ROW LEVEL SECURITY` + `REVOKE` esplicito ad `anon`/`authenticated` nella migrazione (regola permanente dal 2026-08-04, nessuna tabella "no RLS" lasciata solo con un commento).
+- **Wizard nuova stagione**: invariato — nessun riporto automatico dei Tesseramenti (né delle federazioni scelte) alla nuova stagione, come oggi.
+- **Guida in-app**: ogni story aggiorna i contenuti di `lib/guida/contenuti.ts` per le pagine toccate (regola permanente Epic 17).
+
+### Story 26.1: Configurazione Federazioni
+
+As a Admin/Dirigente,
+I want una sezione di configurazione dove aggiungere, rinominare, ordinare e disattivare le Federazioni,
+so that posso registrare i Tesseramenti delle Atlete su tutte le federazioni con cui la società opera (es. FIPAV, CSI, UISP), non solo su una.
+
+**Contesto tecnico:** nuovo model `Federazione` + migrazione (con `ENABLE RLS` + `REVOKE`, vedi decisioni) che crea già la riga FIPAV iniziale, così la 26.2 trova la federazione di default pronta. Nuova pagina `/app/federazioni` sotto `app/app/(configurazione)/`, mirror strutturale delle pagine di configurazione esistenti (es. `ordine-squadre`, `impostazioni`); nuova voce in `lib/auth/route-guard.ts` con `ruoliAmmessi: ["ADMIN", "DIRIGENTE"]` e voce di navigazione coerente. Server Actions protette da `requireRuolo(["ADMIN", "DIRIGENTE"])`. In questa story la Federazione non è ancora collegata al Tesseramento (lo fa la 26.2): il controllo "Federazione in uso" dell'AC #5 va comunque implementato come `federazioneInUso` nel modulo `lib/tesseramento.ts` (creato qui in forma minima, completato dalla 26.2) — finché `federazioneIds` non esiste restituisce sempre `false`.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin o Dirigente **When** apro `/app/federazioni` **Then** vedo l'elenco delle Federazioni (nome, sigla, stato attiva/disattivata) nell'ordine configurato
+2. **And** posso aggiungere una nuova Federazione indicando nome (obbligatorio, univoco senza distinzione maiuscole/minuscole) e sigla (opzionale) — un nome duplicato produce un errore esplicito, non un errore generico
+3. **And** posso modificare nome/sigla di una Federazione esistente
+4. **And** posso cambiare l'ordine di visualizzazione delle Federazioni (l'ordine è quello usato per le colonne di `/app/conferma-tesseramenti`, Story 26.2)
+5. **And** posso disattivare/riattivare una Federazione; posso eliminarla solo se non compare in alcun Tesseramento di nessuna stagione — altrimenti l'eliminazione è bloccata con un messaggio che suggerisce la disattivazione
+6. **And** dopo la migrazione esiste già la Federazione "FIPAV" attiva
+7. **And** la tabella `federazioni` ha RLS abilitata e nessun privilegio per `anon`/`authenticated`
+8. **And** un utente Segreteria/Allenatore/Atleta/Genitore/Site Manager che apre `/app/federazioni` viene respinto dal route guard, e le Server Actions rifiutano la chiamata
+9. **And** la guida in-app ha una voce per la nuova pagina
+10. **And** test Vitest sulle Server Actions (validazione, duplicati, blocco eliminazione con Federazione in uso, guard Ruoli)
+
+### Story 26.2: Tesseramento per Federazione — tabella unica di conferma e modifica
+
+As a Admin/Dirigente,
+I want una tabella con un checkbox per ogni Atleta e ogni Federazione, già spuntato dove l'Atleta è tesserata, e un unico "Salva",
+so that posso confermare nuovi tesseramenti su una o più federazioni e correggere quelli esistenti (aggiungere, togliere o sostituire una federazione) nello stesso punto.
+
+**Contesto tecnico:**
+- **Schema/migrazione**: `Tesseramento` riceve `federazioneIds String[]`; `@@unique([atletaId, annoAgonisticoId])` invariato. Migrazione: aggiunta colonna `text[] NOT NULL DEFAULT '{}'` → `UPDATE` di tutti i Tesseramenti esistenti a `ARRAY[<id FIPAV>]` → rimozione del default (nessun Tesseramento esistente perso, nessuna riga con array vuoto dopo la migrazione).
+- **Modulo unico `lib/tesseramento.ts`** (vincolo obbligatorio, vedi decisioni): `impostaFederazioni(atletaId, annoId, ids[])` (scrive l'array; se `ids` è vuoto elimina la riga; rifiuta id inesistenti e id di Federazioni disattivate **non già presenti** nell'array attuale), `federazioniDiAtleta`, `atleteTesserate(annoId)` (mappa atletaId → federazioni), `federazioneInUso(id)`. Tutte le letture/scritture esistenti vengono spostate su questo modulo: `conferma-tesseramenti` (`page.tsx`, `actions.ts`), `/app/gruppi` (`page.tsx`, `GruppoRow.tsx`, `AtletaTabellaRiga.tsx`, `actions.ts`), `/app/i-miei-gruppi` (`page.tsx`, `MioGruppoCard.tsx`) — a fine story nessun `prisma.tesseramento` fuori da `lib/tesseramento.ts` (verificabile con un grep).
+- **Tabella** (`ConfermaTesseramentiForm.tsx`): la colonna "Stato Tesseramento" diventa una colonna per ogni Federazione attiva (ordine da 26.1), più una colonna per ogni Federazione **disattivata** che compare in almeno un Tesseramento della stagione corrente (intestazione marcata "disattivata"; in quelle colonne un checkbox spuntato si può togliere, uno vuoto non è selezionabile). Checkbox `name="federazione:<atletaId>"`, `value="<federazioneId>"`, pre-spuntati dallo stato attuale.
+- **Solo le righe modificate vengono inviate**: il client tiene traccia delle righe il cui insieme di checkbox differisce dallo stato iniziale e invia un `atletaId` nascosto solo per quelle; il server riscrive l'array solo per quelle Atlete. Evita che un salvataggio sovrascriva righe non toccate, eventualmente modificate nel frattempo da un altro utente.
+- **Server Action**: `confermaTesseramenti(formData)` sostituita da `salvaTesseramenti(formData)` — per ogni Atleta modificata chiama `impostaFederazioni` con l'insieme ricevuto, tutto dentro una `$transaction` (tutto-o-niente), solo per l'Anno Agonistico corrente.
+- **Conferma della rimozione totale**: se il salvataggio porterebbe una o più Atlete da "almeno una federazione" a "nessuna", prima dell'invio compare una conferma in pagina (non `window.confirm`) che elenca per nome le Atlete che diventerebbero "Non tesserate", con "Conferma"/"Annulla". Difesa anche lato server: senza il campo `confermaRimozioneTotale` la Server Action rifiuta un salvataggio che svuota un Tesseramento esistente.
+- **Badge** in `/app/gruppi` e `/app/i-miei-gruppi`: "Tesserata" con le sigle (o i nomi, se la sigla manca) delle federazioni accanto, es. "Tesserata · FIPAV, CSI"; "Non tesserata" se nessuna.
+
+**Acceptance Criteria:**
+
+1. **Given** esistono N Federazioni attive **When** apro `/app/conferma-tesseramenti` **Then** per ogni Atleta vedo N colonne di checkbox, una per Federazione, nell'ordine configurato, già spuntate dove l'Atleta è tesserata nella stagione corrente
+2. **And** posso spuntare e togliere checkbox su più Atlete e più Federazioni e salvare tutto con un unico bottone "Salva"
+3. **And** posso aggiungere una federazione a un'Atleta già tesserata, toglierne una, o sostituirne una con un'altra, senza perdere le altre federazioni dell'Atleta
+4. **And** il salvataggio è tutto-o-niente: se anche una sola Atleta fallisce (es. Federazione disattivata o eliminata nel frattempo) nulla viene scritto e compare un errore esplicito
+5. **And** vengono scritte solo le Atlete la cui riga è stata modificata; le altre restano intatte anche se modificate nel frattempo da un altro utente
+6. **And** se il salvataggio toglierebbe tutte le federazioni a una o più Atlete, compare prima una conferma in pagina con i nomi di quelle Atlete; "Annulla" non scrive nulla e lascia la tabella com'era prima del tentativo di salvataggio; "Conferma" salva e quelle Atlete risultano "Non tesserate" (riga Tesseramento eliminata)
+7. **And** la Server Action rifiuta un salvataggio che svuota un Tesseramento esistente se manca la conferma esplicita
+8. **And** una Federazione disattivata non è selezionabile per nuovi tesseramenti; se un'Atleta vi è già tesserata nella stagione corrente, la colonna compare marcata "disattivata" e il checkbox spuntato si può togliere
+9. **And** le modifiche riguardano solo l'Anno Agonistico corrente — i Tesseramenti delle stagioni precedenti non vengono mai toccati
+10. **And** dopo la migrazione ogni Tesseramento preesistente ha `federazioneIds = [FIPAV]` e appare spuntato nella colonna FIPAV; nessuna riga con array vuoto
+11. **And** a fine story nessun file fuori da `lib/tesseramento.ts` accede direttamente a `prisma.tesseramento` o a `federazioneIds`
+12. **And** `/app/gruppi` e `/app/i-miei-gruppi` mostrano "Tesserata" con le sigle delle federazioni, "Non tesserata" se nessuna, e riflettono subito un salvataggio (revalidate dei path coinvolti)
+13. **And** la colonna "Stato Iscrizione" resta solo informativa, nessuna dipendenza reintrodotta
+14. **And** solo Admin/Dirigente accedono alla pagina e alla Server Action (Segreteria esclusa, invariato)
+15. **And** la tabella resta leggibile su mobile (scroll orizzontale già presente in `.scrollWrapper`, touch target 44px sui checkbox)
+16. **And** guida in-app di "Conferma tesseramenti" aggiornata (conferma multi-federazione, modifica, rimozione, conferma della rimozione totale)
+17. **And** test Vitest: Server Action (aggiunta, rimozione, sostituzione, rimozione totale con e senza conferma, solo righe modificate scritte, stagione precedente intatta, rifiuto Federazione inattiva/inesistente, guard Ruoli) + test unitari di `lib/tesseramento.ts` (incluso: array vuoto ⇒ riga eliminata)

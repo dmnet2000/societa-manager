@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { etichetteTesseramentoPerAtleta } from "@/lib/tesseramento";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
@@ -92,14 +93,12 @@ export default async function IMieiGruppiPage() {
       // Richiesta utente 2026-08-07: stesso layout a 5 colonne di /gruppi
       // (Story 9.33, round 4/5) applicato anche qui - stesso pattern di
       // lettura di gruppi/page.tsx (Iscrizione via RLS/elencaIscrizioniPerAnno,
-      // Tesseramento via Prisma diretto, non RLS-protetta per AD-9).
+      // Tesseramento via lib/tesseramento.ts, modulo unico dalla Story 26.2).
       annoCorrente ? elencaIscrizioniPerAnno(supabase, annoCorrente.id) : Promise.resolve([]),
+      // Story 26.2: stesso helper di gruppi/page.tsx (lib/tesseramento.ts).
       annoCorrente
-        ? prisma.tesseramento.findMany({
-            where: { annoAgonisticoId: annoCorrente.id },
-            select: { atletaId: true },
-          })
-        : Promise.resolve([]),
+        ? etichetteTesseramentoPerAtleta(annoCorrente.id)
+        : Promise.resolve(new Map<string, string[]>()),
       // Story 18.4: stesso helper bulk di gruppi/page.tsx - una sola
       // chiamata Storage invece di N per-Gruppo.
       elencaGruppiConFoto(supabase),
@@ -119,7 +118,6 @@ export default async function IMieiGruppiPage() {
   // Richiesta utente 2026-08-07: Set invece di Map - stesso principio di
   // gruppi/page.tsx, qui serve solo l'appartenenza.
   const idAtleteIscritte = new Set(iscrizioni.map((i) => i.atletaId));
-  const idAtleteTesserate = new Set(tesseramenti.map((t) => t.atletaId));
 
   return (
     <main>
@@ -156,7 +154,7 @@ export default async function IMieiGruppiPage() {
             .map((a) => ({
               ...a,
               iscritta: idAtleteIscritte.has(a.id),
-              tesserata: idAtleteTesserate.has(a.id),
+              federazioniTesseramento: tesseramenti.get(a.id) ?? [],
             }))
             .sort((a, b) => a.nome.localeCompare(b.nome));
 

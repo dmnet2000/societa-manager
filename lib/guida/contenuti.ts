@@ -96,9 +96,25 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     titolo: "Conferma tesseramenti",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
     corpo: [
-      "Qui confermi il Tesseramento federale delle Atlete per la stagione corrente - solo Admin e Dirigente, la Segreteria non ha accesso a questa pagina.",
-      "Seleziona una o più Atlete con la casella e conferma in blocco con un solo click, invece di una conferma alla volta.",
-      "Il Tesseramento è indipendente dall'Iscrizione: puoi confermare il Tesseramento anche di un'Atleta non ancora iscritta.",
+      "Qui gestisci i Tesseramenti delle Atlete per la stagione corrente - solo Admin e Dirigente, la Segreteria non ha accesso a questa pagina.",
+      "La tabella ha una colonna per ogni federazione (configurabili dalla pagina Federazioni): una casella spuntata significa che l'Atleta è tesserata con quella federazione. Un'Atleta può essere tesserata con più federazioni contemporaneamente.",
+      "Spunta o togli le caselle di quante Atlete vuoi e premi \"Salva\" una sola volta: puoi confermare nuovi tesseramenti, aggiungere una federazione, toglierla o sostituirla con un'altra. Vengono salvate solo le righe che hai modificato.",
+      "Se togli tutte le federazioni a un'Atleta, prima di salvare ti viene chiesta una conferma con l'elenco delle Atlete che risulteranno \"Non tesserate\".",
+      "Una federazione disattivata compare solo se qualche Atleta vi è ancora tesserata in questa stagione: puoi togliere la casella, ma non aggiungerla a nuove Atlete.",
+      "Le modifiche riguardano solo la stagione corrente: i tesseramenti delle stagioni passate non vengono toccati.",
+      "Il Tesseramento è indipendente dall'Iscrizione: puoi tesserare anche un'Atleta non ancora iscritta.",
+    ],
+  },
+  {
+    rotta: "/app/federazioni",
+    titolo: "Federazioni",
+    ruoliAmmessi: ["ADMIN", "DIRIGENTE"],
+    corpo: [
+      "Qui gestisci l'elenco delle federazioni (es. FIPAV, CSI, UISP) con cui le Atlete possono essere tesserate - solo Admin e Dirigente.",
+      "Per aggiungere una federazione indica il nome (obbligatorio, non può ripetere quello di un'altra federazione, anche con maiuscole diverse) e, se vuoi, una sigla breve.",
+      "Con le frecce ↑ e ↓ cambi l'ordine in cui le federazioni vengono mostrate.",
+      "\"Disattiva\" toglie una federazione da quelle selezionabili senza cancellare nulla: puoi riattivarla in qualsiasi momento.",
+      "\"Elimina\" cancella definitivamente una federazione e chiede conferma prima di procedere. Una federazione già usata in un tesseramento non può essere eliminata: in quel caso disattivala.",
     ],
   },
   // Orari/Palestre.
@@ -132,7 +148,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
       "Puoi correggere nome e categoria di un Gruppo già creato con \"Modifica\", accanto alla categoria di ogni riga - non serve cancellare e ricreare il Gruppo per sistemare un errore di inserimento.",
-      "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo, con un badge se un Certificato è in scadenza.",
+      "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo (per il Tesseramento anche le sigle delle federazioni, es. \"Tesserata · FIPAV, CSI\"), con un badge se un Certificato è in scadenza.",
       "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
       // Story 9.45: nuova capacita' - pulsante "Modifica" accanto al nome di
       // ogni Atleta, mirror dello stile della riga sopra sul Gruppo. Solo

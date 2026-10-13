@@ -1,11 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-
-vi.mock("server-only", () => ({}));
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 const requireRuoloMock = vi.fn();
 const risolviAnnoAgonisticoCorrenteMock = vi.fn();
-const tesseramentoUpsertMock = vi.fn();
-const transactionMock = vi.fn();
+const salvaModificheTesseramentoMock = vi.fn();
 const revalidatePathMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
@@ -16,126 +13,143 @@ vi.mock("@/lib/anno-agonistico", () => ({
   risolviAnnoAgonisticoCorrente: risolviAnnoAgonisticoCorrenteMock,
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    tesseramento: { upsert: tesseramentoUpsertMock },
-    $transaction: transactionMock,
-  },
+vi.mock("@/lib/tesseramento", () => ({
+  salvaModificheTesseramento: salvaModificheTesseramentoMock,
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-const { confermaTesseramenti } = await import("./actions");
+const { salvaTesseramenti } = await import("./actions");
 
-function formDataConAtleti(...atletaIds: string[]): FormData {
-  const formData = new FormData();
-  atletaIds.forEach((id) => formData.append("atletaId", id));
-  return formData;
+function formData(voci: [string, string][]): FormData {
+  const dati = new FormData();
+  for (const [chiave, valore] of voci) dati.append(chiave, valore);
+  return dati;
 }
 
-describe("confermaTesseramenti (Server Action)", () => {
-  beforeEach(() => {
-    requireRuoloMock.mockReset();
-    requireRuoloMock.mockResolvedValue(null);
-    risolviAnnoAgonisticoCorrenteMock.mockReset();
-    risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
-    tesseramentoUpsertMock.mockReset();
-    tesseramentoUpsertMock.mockImplementation((args) => args);
-    transactionMock.mockReset();
-    transactionMock.mockImplementation(async (operazioni) => operazioni);
-    revalidatePathMock.mockReset();
-  });
+beforeEach(() => {
+  requireRuoloMock.mockReset();
+  requireRuoloMock.mockResolvedValue(null);
+  risolviAnnoAgonisticoCorrenteMock.mockReset();
+  risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+  salvaModificheTesseramentoMock.mockReset();
+  salvaModificheTesseramentoMock.mockResolvedValue({ ok: true });
+  revalidatePathMock.mockReset();
+});
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("salvaTesseramenti (Server Action)", () => {
   it("restituisce FORBIDDEN e non scrive nulla se il chiamante non e' Admin/Dirigente", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },
     });
-
-    const result = await confermaTesseramenti(
+    const result = await salvaTesseramenti(
       undefined,
-      formDataConAtleti("atleta-1")
+      formData([["atletaModificata", "a1"]])
     );
-
-    expect(result).toEqual({
-      error: { code: "FORBIDDEN", message: "Non autorizzato." },
-    });
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "DIRIGENTE"]);
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(salvaModificheTesseramentoMock).not.toHaveBeenCalled();
   });
 
-  it("rifiuta con VALIDATION se nessuna Atleta e' selezionata, nessuna chiamata al DB (Review fix: la validazione precede ogni accesso ad anno/Prisma)", async () => {
-    const result = await confermaTesseramenti(undefined, new FormData());
-
+  it("rifiuta un invio senza righe modificate", async () => {
+    const result = await salvaTesseramenti(
+      undefined,
+      formData([["federazione:a1", "fipav"]])
+    );
     expect(result).toEqual({
-      error: { code: "VALIDATION", message: "Seleziona almeno un'Atleta." },
+      error: { code: "VALIDATION", message: "Nessuna modifica da salvare." },
     });
     expect(risolviAnnoAgonisticoCorrenteMock).not.toHaveBeenCalled();
-    expect(transactionMock).not.toHaveBeenCalled();
+    expect(salvaModificheTesseramentoMock).not.toHaveBeenCalled();
   });
 
-  it("conferma in blocco tutte le Atlete selezionate, indipendentemente dallo stato Iscrizione (estensione 2026-08-06)", async () => {
-    const result = await confermaTesseramenti(
+  it("invia solo le righe modificate, con l'insieme completo delle loro Federazioni", async () => {
+    const result = await salvaTesseramenti(
       undefined,
-      formDataConAtleti("atleta-1", "atleta-2")
+      formData([
+        ["atletaModificata", "a1"],
+        ["atletaModificata", "a1"],
+        ["atletaModificata", "a2"],
+        ["federazione:a1", "fipav"],
+        ["federazione:a1", "csi"],
+        // Riga non modificata: le sue caselle vengono ignorate.
+        ["federazione:a3", "fipav"],
+      ])
     );
-
     expect(result).toEqual({ success: true });
-    expect(tesseramentoUpsertMock).toHaveBeenCalledWith({
-      where: {
-        atletaId_annoAgonisticoId: { atletaId: "atleta-1", annoAgonisticoId: "anno-1" },
-      },
-      create: { atletaId: "atleta-1", annoAgonisticoId: "anno-1" },
-      update: {},
-    });
-    expect(tesseramentoUpsertMock).toHaveBeenCalledWith({
-      where: {
-        atletaId_annoAgonisticoId: { atletaId: "atleta-2", annoAgonisticoId: "anno-1" },
-      },
-      create: { atletaId: "atleta-2", annoAgonisticoId: "anno-1" },
-      update: {},
-    });
-    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(salvaModificheTesseramentoMock).toHaveBeenCalledWith(
+      "anno-1",
+      [
+        { atletaId: "a1", federazioni: ["fipav", "csi"] },
+        { atletaId: "a2", federazioni: [] },
+      ],
+      { consentiSvuotamento: false }
+    );
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/conferma-tesseramenti");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
   });
 
-  it("deduplica gli atletaId ripetuti (form manomesso) prima di scrivere", async () => {
-    await confermaTesseramenti(
+  it("passa consentiSvuotamento solo con confermaRimozioneTotale=1", async () => {
+    await salvaTesseramenti(
       undefined,
-      formDataConAtleti("atleta-1", "atleta-1")
+      formData([
+        ["atletaModificata", "a1"],
+        ["confermaRimozioneTotale", "1"],
+      ])
     );
-
-    expect(tesseramentoUpsertMock).toHaveBeenCalledTimes(1);
+    expect(salvaModificheTesseramentoMock).toHaveBeenCalledWith(
+      "anno-1",
+      [{ atletaId: "a1", federazioni: [] }],
+      { consentiSvuotamento: true }
+    );
   });
 
-  it("e' idempotente: confermare di nuovo la stessa Atleta non causa errori (AC #4 originale, invariato)", async () => {
-    await confermaTesseramenti(undefined, formDataConAtleti("atleta-1"));
-    const result = await confermaTesseramenti(
-      undefined,
-      formDataConAtleti("atleta-1")
-    );
-
-    expect(result).toEqual({ success: true });
-    expect(transactionMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("restituisce un errore, nessun crash, se la transazione fallisce (nessuna scrittura parziale, nessuna revalidazione della pagina)", async () => {
-    transactionMock.mockRejectedValue(new Error("db down"));
-
-    const result = await confermaTesseramenti(
-      undefined,
-      formDataConAtleti("atleta-1", "atleta-2")
-    );
-
+  it("svuotamento non confermato: errore di validazione, nessuna revalidazione", async () => {
+    salvaModificheTesseramentoMock.mockResolvedValue({
+      ok: false,
+      motivo: "conferma_richiesta",
+      atletaIds: ["a1"],
+    });
+    const result = await salvaTesseramenti(undefined, formData([["atletaModificata", "a1"]]));
     expect(result).toEqual({
       error: {
-        code: "INTERNAL",
-        message: "Impossibile confermare i Tesseramenti selezionati. Riprova.",
+        code: "VALIDATION",
+        message:
+          "Alcune Atlete resterebbero senza alcuna federazione: ricarica la pagina, ricontrolla e salva di nuovo confermando la rimozione.",
       },
     });
-    // Review fix: una revalidatePath dopo una transazione fallita
-    // mostrerebbe alla pagina uno stato che non riflette alcuna scrittura
-    // reale avvenuta.
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("Federazione non valida: errore di validazione", async () => {
+    salvaModificheTesseramentoMock.mockResolvedValue({
+      ok: false,
+      motivo: "federazione_non_valida",
+      atletaIds: ["a1"],
+    });
+    const result = await salvaTesseramenti(
+      undefined,
+      formData([
+        ["atletaModificata", "a1"],
+        ["federazione:a1", "zzz"],
+      ])
+    );
+    expect(result).toMatchObject({ error: { code: "VALIDATION" } });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("restituisce INTERNAL se il salvataggio fallisce", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    salvaModificheTesseramentoMock.mockRejectedValue(new Error("db"));
+    const result = await salvaTesseramenti(undefined, formData([["atletaModificata", "a1"]]));
+    expect(result).toMatchObject({ error: { code: "INTERNAL" } });
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,7 @@
+# last_updated: 2026-10-13 (Story 26.2: implementata via bmad-build (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1). Tesseramento.federazioneIds String[] + migrazione 20261013000000_tesseramento_federazioni (esistenti -> FIPAV, CHECK array non vuoto senza NULL), modulo unico lib/tesseramento.ts (regole pure + salvataggio in $transaction ad array), /app/conferma-tesseramenti a matrice Atlete x Federazioni con un solo Salva, solo righe modificate, conferma in pagina prima di svuotare; badge 'Tesserata · sigle' in /gruppi e /i-miei-gruppi; guida aggiornata. Review a 3 layer: migrazione blindata contro {NULL}/doppioni, conferma senza SubmitEvent.submitter (Safari/iOS), conferma chiusa al cambio caselle e con focus, id orfani esclusi, colonne in funzione pura testata, test del componente (jsdom). 163 file / 2566 test verdi, tsc pulito, lint pulito sui file toccati (lint completo non eseguibile: memoria di sistema esaurita). 26-2-tesseramento-per-federazione-tabella-unica: in-progress -> review.)
+# last_updated: 2026-10-13 (Story 26.2 avviata via bmad-build: tabella unica Atlete x Federazioni, spec-26-2-tesseramento-per-federazione-tabella-unica.md (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1 non ancora committata). 26-2-tesseramento-per-federazione-tabella-unica: in-progress.)
+# last_updated: 2026-10-13 (Story 26.1: implementata via bmad-build (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1). Model Federazione + migrazione 20261012000000_add_federazioni (RLS deny-all + REVOKE, seed FIPAV con id fisso 'federazione-fipav'), lib/federazioni.ts, stub federazioneInUso in lib/tesseramento.ts, pagina /app/federazioni (ADMIN/DIRIGENTE, gruppo menu Atleti), guida in-app. Review a 3 layer: P2002/P2025 mappati, id mancante validato, spazi normalizzati, spareggio ordinamento, doppio invio eliminazione, touch target 44px, nuovo lib/federazioni.test.ts. 161 file / 2541 test verdi, tsc/lint puliti. 26-1-configurazione-federazioni: in-progress -> review.)
+# last_updated: 2026-10-13 (Story 26.1 avviata via bmad-build: Configurazione Federazioni, spec-26-1-configurazione-federazioni.md (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1). epic-26: backlog -> in-progress, 26-1-configurazione-federazioni: in-progress.)
 # last_updated: 2026-10-07 (Story 9.46: implementata via bmad-build (baseline eede1daa0c4f94d90e2e9b918dfa9443b6155b9d). Intestazioni Nome/Gruppo/Stato ordinabili in /app/conferma-iscrizioni, logica pura in lib/ordina-righe-iscrizione.ts. Review a 3 layer: Gruppi in ordine numerico (U8<U10), confronto su tutti i Gruppi, spareggio stabile, Nome attivo all avvio, guida allineata a revalidatePath, hover solo con mouse, test del componente (jsdom). 158 file / 2484 test verdi, tsc/lint puliti. 9-46-ordinamento-conferma-iscrizioni: in-progress -> review.)
 # last_updated: 2026-10-07 (Story 9.46 aggiunta e avviata via bmad-build: ordinamento per Nome/Gruppo/Stato in /app/conferma-iscrizioni. 9-46-ordinamento-conferma-iscrizioni: in-progress.)
 # last_updated: 2026-10-04 (Story 18.37: implementata via bmad-build (baseline e1ad3fe644acb084436d92d4b5e8f5e4a0d69059). /squadre in stile Match Week: fascia sulla pagina, fasce oblique per categoria/nome squadra, card scura con sagoma obliqua e filo bianco, numero di maglia nel quadratino rosso, foto di squadra mai tagliata (rinegoziato 2026-10-03). Card estratta in app/squadre/SchedaGruppo.tsx con propsSchedaGruppo testata. Review a 3 layer: patch su DESIGN.md, foto lazy, hover solo con mouse, placeholder in forced-colors, mappatura testata, test completati. 156 file / 2463 test verdi, tsc/lint puliti. 18-37-squadre-match-week: in-progress -> review.)
@@ -2308,3 +2312,19 @@ development_status:
   # chat). docs/deploy-produzione.md aggiornato con una nuova Fase 8. 2052/
   # 2052 test verdi, build riuscita.
   22-1-cloudflare-web-analytics: done
+
+  # Epic 26 (Tesseramento multi-Federazione) aperto 2026-10-12, richiesta
+  # esplicita dell'utente: un'Atleta puo' essere tesserata con piu'
+  # federazioni contemporaneamente. Solo story scritte, nessuna
+  # implementazione. Decisioni chiuse con l'utente 2026-10-12: array
+  # federazioneIds String[] su Tesseramento (una riga per Atleta+stagione),
+  # accesso solo via lib/tesseramento.ts per contenere il costo di una
+  # futura migrazione a una riga per federazione; Federazioni gestite da
+  # Admin+Dirigente; Tesseramenti esistenti migrati su FIPAV; conferma
+  # esplicita quando si toglie l'ultima federazione; tabella unica per
+  # conferma e modifica (26.2 e l'ex 26.3 unite in una sola story).
+  # 26.1 configurazione Federazioni, 26.2 tabella unica Atlete x
+  # Federazioni. Vedi epics.md#Epic 26.
+  epic-26: in-progress
+  26-1-configurazione-federazioni: review
+  26-2-tesseramento-per-federazione-tabella-unica: review
