@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  ordinaRigheTesseramento,
+  prossimoOrdinamentoTesseramenti,
+  type ColonnaOrdinamentoTesseramenti,
+  type OrdinamentoTesseramenti,
+} from "@/lib/ordina-righe-tesseramento";
 import { salvaTesseramenti } from "./actions";
 import styles from "./conferma-tesseramenti.module.css";
 
@@ -54,6 +60,18 @@ export function ConfermaTesseramentiForm({
   // suo onClick, che scatta prima dell'evento submit del form.
   const confermatoRef = useRef(false);
   const confermaRef = useRef<HTMLDivElement>(null);
+  // Ordinamento client-side a click sulle intestazioni (mirror di Story
+  // 9.46 in conferma-iscrizioni/IscrizioniElenco.tsx), iniziale per Nome
+  // crescente come carica la pagina. Codice Fiscale volutamente escluso.
+  // Righe con key = id Atleta: riordinarle non perde le caselle spuntate.
+  const [ordinamento, setOrdinamento] = useState<OrdinamentoTesseramenti>({
+    colonna: "nome",
+    direzione: "asc",
+  });
+  const atleteOrdinate = useMemo(
+    () => ordinaRigheTesseramento(atlete, ordinamento.colonna, ordinamento.direzione),
+    [atlete, ordinamento]
+  );
 
   // Focus sul riquadro di conferma all'apertura: su una tabella lunga
   // potrebbe comparire fuori vista e "Salva" sembrerebbe non fare nulla.
@@ -91,6 +109,44 @@ export function ConfermaTesseramentiForm({
     });
   }
 
+  // aria-sort sul th, aria-label con la direzione sul bottone, freccia solo
+  // decorativa - come IscrizioniElenco.tsx (Story 9.46).
+  function intestazioneOrdinabile(
+    colonna: ColonnaOrdinamentoTesseramenti,
+    etichetta: string,
+    contenuto: ReactNode = etichetta,
+    title?: string
+  ) {
+    const attiva = ordinamento.colonna === colonna;
+    const direzione = attiva ? ordinamento.direzione : null;
+    const ariaSort = !attiva ? "none" : direzione === "asc" ? "ascending" : "descending";
+    const ariaLabel = !attiva
+      ? `Ordina per ${etichetta}`
+      : direzione === "asc"
+        ? `${etichetta}, ordinato crescente. Ordina decrescente`
+        : `${etichetta}, ordinato decrescente. Ordina crescente`;
+
+    return (
+      <th key={colonna} scope="col" aria-sort={ariaSort} title={title} className={styles.thOrdinabile}>
+        <button
+          type="button"
+          className={styles.bottoneOrdinamento}
+          onClick={() =>
+            setOrdinamento((attuale) => prossimoOrdinamentoTesseramenti(attuale, colonna))
+          }
+          aria-label={ariaLabel}
+        >
+          {contenuto}
+          {attiva && (
+            <span className={styles.frecciaOrdinamento} aria-hidden="true">
+              {direzione === "asc" ? "▲" : "▼"}
+            </span>
+          )}
+        </button>
+      </th>
+    );
+  }
+
   function onSubmit(evento: FormEvent<HTMLFormElement>) {
     const confermato = confermatoRef.current;
     confermatoRef.current = false;
@@ -115,19 +171,24 @@ export function ConfermaTesseramentiForm({
         <table className={styles.tabella}>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Codice Fiscale</th>
-              <th>Stato Iscrizione</th>
-              {colonne.map((c) => (
-                <th key={c.id} title={c.nome}>
-                  {c.etichetta}
-                  {!c.attiva && <span className={styles.disattivata}> (disattivata)</span>}
-                </th>
-              ))}
+              {intestazioneOrdinabile("nome", "Nome")}
+              <th scope="col">Codice Fiscale</th>
+              {intestazioneOrdinabile("stato", "Stato Iscrizione")}
+              {colonne.map((c) =>
+                intestazioneOrdinabile(
+                  `federazione:${c.id}`,
+                  c.nome,
+                  <span>
+                    {c.etichetta}
+                    {!c.attiva && <span className={styles.disattivata}> (disattivata)</span>}
+                  </span>,
+                  c.nome
+                )
+              )}
             </tr>
           </thead>
           <tbody>
-            {atlete.map((atleta) => {
+            {atleteOrdinate.map((atleta) => {
               const ids = selezione[atleta.id] ?? [];
               const modificata = !stessoInsieme(ids, atleta.federazioniIniziali);
               return (

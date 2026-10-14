@@ -145,4 +145,30 @@ describe("ConfermaTesseramentiForm", () => {
     expect(contenitore.querySelector("table")).toBeNull();
     expect(contenitore.textContent).toContain("Nessuna federazione attiva");
   });
+
+  it("ordina le righe cliccando sulle intestazioni, senza perdere le caselle spuntate", () => {
+    render();
+    const ordineRighe = () =>
+      Array.from(contenitore.querySelectorAll("tbody tr")).map(
+        (tr) => tr.querySelector("td")?.textContent
+      );
+    const intestazione = (testo: string) =>
+      Array.from(contenitore.querySelectorAll("thead button")).find((b) =>
+        b.getAttribute("aria-label")?.includes(testo)
+      ) as HTMLButtonElement;
+
+    expect(ordineRighe()).toEqual(["ANNA", "BEA", "CARLA"]);
+    clic(casella("b", "csi"));
+
+    clic(intestazione("FIPAV"));
+    expect(ordineRighe()).toEqual(["BEA", "CARLA", "ANNA"]);
+    expect(intestazione("FIPAV").closest("th")?.getAttribute("aria-sort")).toBe("ascending");
+
+    clic(intestazione("Nome"));
+    clic(intestazione("Nome"));
+    expect(ordineRighe()).toEqual(["CARLA", "BEA", "ANNA"]);
+
+    expect(casella("b", "csi").checked).toBe(true);
+    expect(righeModificate()).toEqual(["b"]);
+  });
 });

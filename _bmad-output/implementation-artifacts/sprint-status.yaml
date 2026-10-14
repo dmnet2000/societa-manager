@@ -1,3 +1,4 @@
+# last_updated: 2026-10-13 (Epic 26 chiuso: deploy in produzione eseguito dall'utente con le migrazioni 20261012000000_add_federazioni e 20261013000000_tesseramento_federazioni, modifiche committate (810034e). 26-1-configurazione-federazioni: review -> done, 26-2-tesseramento-per-federazione-tabella-unica: review -> done, epic-26: in-progress -> done.)
 # last_updated: 2026-10-13 (Story 26.2: implementata via bmad-build (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1). Tesseramento.federazioneIds String[] + migrazione 20261013000000_tesseramento_federazioni (esistenti -> FIPAV, CHECK array non vuoto senza NULL), modulo unico lib/tesseramento.ts (regole pure + salvataggio in $transaction ad array), /app/conferma-tesseramenti a matrice Atlete x Federazioni con un solo Salva, solo righe modificate, conferma in pagina prima di svuotare; badge 'Tesserata · sigle' in /gruppi e /i-miei-gruppi; guida aggiornata. Review a 3 layer: migrazione blindata contro {NULL}/doppioni, conferma senza SubmitEvent.submitter (Safari/iOS), conferma chiusa al cambio caselle e con focus, id orfani esclusi, colonne in funzione pura testata, test del componente (jsdom). 163 file / 2566 test verdi, tsc pulito, lint pulito sui file toccati (lint completo non eseguibile: memoria di sistema esaurita). 26-2-tesseramento-per-federazione-tabella-unica: in-progress -> review.)
 # last_updated: 2026-10-13 (Story 26.2 avviata via bmad-build: tabella unica Atlete x Federazioni, spec-26-2-tesseramento-per-federazione-tabella-unica.md (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1 non ancora committata). 26-2-tesseramento-per-federazione-tabella-unica: in-progress.)
 # last_updated: 2026-10-13 (Story 26.1: implementata via bmad-build (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1). Model Federazione + migrazione 20261012000000_add_federazioni (RLS deny-all + REVOKE, seed FIPAV con id fisso 'federazione-fipav'), lib/federazioni.ts, stub federazioneInUso in lib/tesseramento.ts, pagina /app/federazioni (ADMIN/DIRIGENTE, gruppo menu Atleti), guida in-app. Review a 3 layer: P2002/P2025 mappati, id mancante validato, spazi normalizzati, spareggio ordinamento, doppio invio eliminazione, touch target 44px, nuovo lib/federazioni.test.ts. 161 file / 2541 test verdi, tsc/lint puliti. 26-1-configurazione-federazioni: in-progress -> review.)
@@ -2325,6 +2326,6 @@ development_status:
   # conferma e modifica (26.2 e l'ex 26.3 unite in una sola story).
   # 26.1 configurazione Federazioni, 26.2 tabella unica Atlete x
   # Federazioni. Vedi epics.md#Epic 26.
-  epic-26: in-progress
-  26-1-configurazione-federazioni: review
-  26-2-tesseramento-per-federazione-tabella-unica: review
+  epic-26: done
+  26-1-configurazione-federazioni: done
+  26-2-tesseramento-per-federazione-tabella-unica: done
