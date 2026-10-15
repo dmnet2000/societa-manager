@@ -1,3 +1,5 @@
+# last_updated: 2026-10-15 (Story 9.47 ordinamento /app/conferma-tesseramenti registrata direttamente done: implementata nella sessione del 2026-10-14, verificata dall'utente.)
+# last_updated: 2026-10-15 (Chiusura in blocco su conferma dell'utente: tutte le storie in review verificate dal vivo in produzione -> done (52 storie, epic 2/4/9/10/18/19/20). epic-4 e epic-19: in-progress -> done. Epic 9/11/17/21 restano in-progress (elenchi aperti). 10-10 fattibilita' FIPAV resta backlog, superata da 10-11/10-12.)
 # last_updated: 2026-10-13 (Epic 26 chiuso: deploy in produzione eseguito dall'utente con le migrazioni 20261012000000_add_federazioni e 20261013000000_tesseramento_federazioni, modifiche committate (810034e). 26-1-configurazione-federazioni: review -> done, 26-2-tesseramento-per-federazione-tabella-unica: review -> done, epic-26: in-progress -> done.)
 # last_updated: 2026-10-13 (Story 26.2: implementata via bmad-build (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1). Tesseramento.federazioneIds String[] + migrazione 20261013000000_tesseramento_federazioni (esistenti -> FIPAV, CHECK array non vuoto senza NULL), modulo unico lib/tesseramento.ts (regole pure + salvataggio in $transaction ad array), /app/conferma-tesseramenti a matrice Atlete x Federazioni con un solo Salva, solo righe modificate, conferma in pagina prima di svuotare; badge 'Tesserata · sigle' in /gruppi e /i-miei-gruppi; guida aggiornata. Review a 3 layer: migrazione blindata contro {NULL}/doppioni, conferma senza SubmitEvent.submitter (Safari/iOS), conferma chiusa al cambio caselle e con focus, id orfani esclusi, colonne in funzione pura testata, test del componente (jsdom). 163 file / 2566 test verdi, tsc pulito, lint pulito sui file toccati (lint completo non eseguibile: memoria di sistema esaurita). 26-2-tesseramento-per-federazione-tabella-unica: in-progress -> review.)
 # last_updated: 2026-10-13 (Story 26.2 avviata via bmad-build: tabella unica Atlete x Federazioni, spec-26-2-tesseramento-per-federazione-tabella-unica.md (baseline a573e31fe3119b773aa7fb8fda1df5b055f684e1, stesso working tree della 26.1 non ancora committata). 26-2-tesseramento-per-federazione-tabella-unica: in-progress.)
@@ -423,7 +425,7 @@ development_status:
   # minore applicato (spaziatura nome/categoria nell'intestazione). 2073/
   # 2073 test verdi, tsc/lint puliti. Vedi
   # spec-2-12-gruppi-segreteria-sezioni-per-gruppo.md.
-  2-12-gruppi-segreteria-sezioni-per-gruppo: review
+  2-12-gruppi-segreteria-sezioni-per-gruppo: done
   epic-2-retrospective: optional
 
   epic-3: done
@@ -432,7 +434,7 @@ development_status:
   3-3-storico-presenze-con-trend-percentuale: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-upload-certificato-medico: done
   4-2-notifica-automatica-upload: done
 
@@ -464,7 +466,7 @@ development_status:
   # certificato". Epic 4 riaperto per questa singola estensione (stesso
   # principio degli elenchi aperti). Mail con link, senza allegato (dato
   # sanitario, AD-6/NFR2). Vedi epics.md#Story 4.7.
-  4-7-notifica-email-admin-nuovo-certificato: review
+  4-7-notifica-email-admin-nuovo-certificato: done
   epic-4-retrospective: optional
 
   epic-5: done
@@ -573,7 +575,7 @@ development_status:
   # lock - stesso principio gia' accettato nel progetto, resto minore).
   # Riverificato: 118 file/1708 test verdi, tsc pulito, lint 0 errori,
   # build riuscita.
-  9-35-numero-maglia-atleta-stagione: review
+  9-35-numero-maglia-atleta-stagione: done
 
   # Story 9.36 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # quando si crea una nuova Atleta, Cognome e Nome vanno sanificati in
@@ -586,7 +588,7 @@ development_status:
   # esclusi); import federale (Story 1.3) esplicitamente fuori scope,
   # pipeline indipendente. Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-36-sanificazione-maiuscolo-nuova-atleta: review
+  9-36-sanificazione-maiuscolo-nuova-atleta: done
 
   # Story 9.37 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # possibilita' di modificare nome e categoria di un Gruppo gia' creato.
@@ -601,7 +603,7 @@ development_status:
   # semplice (GruppoRow.tsx oggi mostra nome/categoria come testo piatto,
   # nessuna icona di modifica). Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-37-modifica-nome-categoria-gruppo: review
+  9-37-modifica-nome-categoria-gruppo: done
 
   # Story 9.38 aggiunta su richiesta esplicita dell'utente (2026-08-26),
   # discussa in sessione di party mode (Mary/John/Sally/Winston/Amelia):
@@ -620,7 +622,7 @@ development_status:
   # dopo un updateUserById che ha appena cambiato l'email nello stesso
   # giro, mai esercitato prima. Solo la story scritta ora, nessuna
   # implementazione. Status: backlog.
-  9-38-correzione-email-utente-non-confermato: review
+  9-38-correzione-email-utente-non-confermato: done
 
   # Story 9.39 aggiunta su richiesta esplicita dell'utente (2026-08-26),
   # subito dopo la Story 9.36: "ma hai sistemato anche a DB che siano tutti
@@ -630,7 +632,7 @@ development_status:
   # (UPDATE "atlete" SET "nome" = UPPER("nome")), nessuna modifica di
   # schema - mirror del backfill gia' usato in Story 20.7. Solo la story
   # scritta ora, nessuna implementazione. Status: backlog.
-  9-39-normalizzazione-maiuscolo-atlete-esistenti: review
+  9-39-normalizzazione-maiuscolo-atlete-esistenti: done
 
   # Story 9.40 aggiunta su richiesta esplicita dell'utente (2026-08-27):
   # vista piu' compatta per l'elenco Utenti in /app/admin - solo i Ruoli
@@ -679,7 +681,7 @@ development_status:
   # vivo (dev locale rotto) - demandata esplicitamente all'utente
   # post-deploy. Vedi Spec Change Log in
   # spec-9-40-vista-compatta-admin-utenti.md.
-  9-40-vista-compatta-admin-utenti: review
+  9-40-vista-compatta-admin-utenti: done
 
   # Story 9.41 aggiunta 2026-08-31, richiesta esplicita dell'utente: "per la
   # registrazione del ruolo di segreteria e anche dirigente vorrei
@@ -776,7 +778,7 @@ development_status:
   # locale rotto) - demandata all'utente post-deploy. Commit lasciato
   # all'utente (richiesta permanente, non fare git commit/push in
   # autonomia).
-  9-42-logoff-torna-alla-home-pubblica: review
+  9-42-logoff-torna-alla-home-pubblica: done
 
   # Story 9.43 aggiunta 2026-09-21 su richiesta esplicita dell'utente
   # ("possibilita' di rimuovere atlete non piu' in societa' o passate in
@@ -785,7 +787,7 @@ development_status:
   # reversibile, mai cancellazione fisica (relazioni dell'Atleta quasi tutte
   # onDelete Cascade). 5 decisioni aperte elencate nella story, da chiudere
   # con l'utente prima dello sviluppo. Vedi epics.md#Story 9.43.
-  9-43-rimozione-atlete-non-piu-in-societa: review
+  9-43-rimozione-atlete-non-piu-in-societa: done
 
   # Story 9.44 aggiunta 2026-09-24 su richiesta esplicita dell'utente:
   # partite della settimana del proprio Gruppo in evidenza sulla home
@@ -796,7 +798,7 @@ development_status:
   # proprio Gruppo" gia' scritto in /app/partite/page.tsx). 5 decisioni
   # aperte, inclusa se includere anche il Genitore (non nominato dalla
   # richiesta letterale). Vedi epics.md#Story 9.44.
-  9-44-partite-settimana-in-evidenza-home: review
+  9-44-partite-settimana-in-evidenza-home: done
 
   # Story 9.45 aggiunta e implementata 2026-09-29 su richiesta esplicita
   # dell'utente: modifica dei dati anagrafici (Nome, Data di nascita, CF,
@@ -813,7 +815,17 @@ development_status:
   # e per stato iscrizione"): intestazioni ordinabili lato client, modello
   # tabella incontri del torneo (Story 20.24). Vedi
   # spec-9-46-ordinamento-conferma-iscrizioni.md.
-  9-46-ordinamento-conferma-iscrizioni: review
+  9-46-ordinamento-conferma-iscrizioni: done
+
+  # Story 9.47 aggiunta 2026-10-14 su richiesta dell'utente ("nella sezione
+  # tesseramenti vorrei poter ordinare la lista per intestazione della
+  # colonna"): mirror della 9.46 su /app/conferma-tesseramenti. Ordinabili
+  # Nome, Stato Iscrizione e ogni colonna Federazione (Codice Fiscale
+  # escluso); le colonne Federazione ordinano sui tesseramenti salvati, non
+  # sulle caselle spuntate. Funzione pura lib/ordina-righe-tesseramento.ts
+  # + test, test del componente, guida in-app aggiornata. Nessuna
+  # migrazione, nessuna spec dedicata. Verificata dall'utente 2026-10-15.
+  9-47-ordinamento-conferma-tesseramenti: done
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
@@ -884,7 +896,7 @@ development_status:
   # validate ok. Manuale dal vivo non eseguibile (dev locale rotto) -
   # demandata all'utente post-deploy. Commit lasciato all'utente (incluso
   # epic-10-context.md, nuovo file non tracciato).
-  10-9-raggruppamento-partite-per-gruppo-a-scomparsa: review
+  10-9-raggruppamento-partite-per-gruppo-a-scomparsa: done
 
   # Story 10.10 aggiunta 2026-09-22 su richiesta esplicita dell'utente:
   # analizzare se sia possibile sincronizzare il calendario Partite
@@ -911,7 +923,7 @@ development_status:
   # via bottone, non cron; nuovo campo Partita.modificataManualmente per non
   # sovrascrivere una correzione gia' fatta da aggiornaPartita, Story 10.4).
   # NESSUNA IMPLEMENTAZIONE ANCORA. Vedi epics.md#Story 10.11.
-  10-11-sincronizzazione-partite-campionato-fipav: review
+  10-11-sincronizzazione-partite-campionato-fipav: done
 
   # Story 10.12 aggiunta 2026-09-24, seguito della 10.11: l'utente ha chiesto
   # se la sincronizzazione FIPAV sia sempre manuale o esista un cron - solo
@@ -925,7 +937,7 @@ development_status:
   # ha la Fase 6 (Cron Trigger di quel primo cron) marcata incompleta - da
   # verificare con l'utente se e' mai stata completata. 5 decisioni aperte.
   # Vedi epics.md#Story 10.12.
-  10-12-sincronizzazione-fipav-cron: review
+  10-12-sincronizzazione-fipav-cron: done
 
   # Epic 11 (Bug di Produzione) inserito il 2026-07-27 su richiesta dell'utente:
   # elenco APERTO di difetti reali osservati in produzione (log di errore,
@@ -1413,7 +1425,7 @@ development_status:
   # epics.md corretta. Verifica: 1803 test verdi, tsc/lint/build
   # puliti. Nessuna verifica manuale (dev locale rotto). Vedi Spec
   # Change Log in spec-18-24-squadre-pubblica-atlete-numero-blocchi.md.
-  18-24-squadre-pubblica-atlete-numero-blocchi: review
+  18-24-squadre-pubblica-atlete-numero-blocchi: done
 
   # Story 18.25 aggiunta 2026-09-01, richiesta esplicita dell'utente:
   # "nella sezione squadre vorrei venisse allineato in centro" (messaggio
@@ -1422,7 +1434,7 @@ development_status:
   # margin:0 auto su .main), SOLO su /squadre - /calendario resta piena
   # larghezza (nessun retrofit, stessa decisione gia' presa in Story 20.14
   # per quella pagina). Vedi epics.md#Story 18.25.
-  18-25-contenuto-centrato-squadre-pubblica: review
+  18-25-contenuto-centrato-squadre-pubblica: done
 
   # Story 18.26 (BUG) aggiunta 2026-09-01, segnalata dall'utente da Supabase:
   # "null value in column 'accessToken' of relation
@@ -1498,7 +1510,7 @@ development_status:
   # tsc/lint puliti, build riuscita, prisma validate ok (nessuna
   # migrazione). Manuale dal vivo non eseguibile (dev locale rotto) -
   # demandata all'utente post-deploy. Commit lasciato all'utente.
-  18-27-scheda-gruppo-larghezza-tripla: review
+  18-27-scheda-gruppo-larghezza-tripla: done
 
   # Story 18.28 aggiunta su richiesta esplicita dell'utente 2026-09-09:
   # "nella parte del footer vorrei vedere allineati per riga il copyright,
@@ -1506,7 +1518,7 @@ development_status:
   # Polisportiva/icone social raggruppati in un nuovo contenitore flex-row
   # (.rigaPrincipale, FooterPubblico.tsx/module.css), "Preferenze cookie"
   # invariato sotto. Vedi spec-18-28-footer-riga-allineata.md.
-  18-28-footer-riga-allineata: review
+  18-28-footer-riga-allineata: done
 
   # Story 18.29 aggiunta nella stessa richiesta: "aggiungerei anche il link
   # a instagram con la relativa configurazione". Mirror esatto del
@@ -1518,7 +1530,7 @@ development_status:
   # commento ambiguo su urlSitoPolisportiva, gruppo accessibile per le
   # icone social nel footer). 2067/2067 test verdi, tsc/lint/build/prisma
   # validate puliti. Vedi spec-18-29-link-instagram-configurabile.md.
-  18-29-link-instagram-configurabile: review
+  18-29-link-instagram-configurabile: done
 
   # Story 18.30 aggiunta su richiesta esplicita dell'utente 2026-09-09:
   # "sistema le icone di facebook e di istagram con icone ufficiali dei
@@ -1531,7 +1543,7 @@ development_status:
   # diverso; attribuzione di licenza aggiunta, mancante inizialmente).
   # 2073/2073 test verdi, tsc/lint/build puliti. Vedi
   # spec-18-30-icone-social-ufficiali.md.
-  18-30-icone-social-ufficiali: review
+  18-30-icone-social-ufficiali: done
 
   # Story 19.16 aggiunta su richiesta esplicita dell'utente 2026-09-11:
   # "serve da profilo admin poter abilitare alla visualizzazione su sito
@@ -1546,7 +1558,7 @@ development_status:
   # irrilevanti - nessuna correzione applicata. 2080/2080 test verdi,
   # tsc/lint/build/prisma validate puliti. Vedi
   # spec-19-16-visibilita-pubblica-gruppi.md.
-  19-16-visibilita-pubblica-gruppi: review
+  19-16-visibilita-pubblica-gruppi: done
 
   # Story 19.17 aggiunta 2026-10-02 su richiesta dell'utente ("sezione
   # classifiche vorrei decidere l'ordine di visualizzazione"): /classifiche
@@ -1554,7 +1566,7 @@ development_status:
   # Campionato.classificaVisibile con interruttore nella stessa pagina
   # (ADMIN, SITE_MANAGER) per nascondere la classifica a campionato finito.
   # Vedi spec-19-17-ordine-visibilita-classifiche.md.
-  19-17-ordine-visibilita-classifiche: review
+  19-17-ordine-visibilita-classifiche: done
 
   # Story 18.31 aggiunta su richiesta esplicita dell'utente 2026-09-11:
   # "per il calendario delle partite sito statica sposta piu' a destra
@@ -1567,7 +1579,7 @@ development_status:
   # (testo data/ora/palestra) spostato di altri 50px. Solo CSS, nessuna
   # review a 3 livelli (blast radius minimo). tsc/lint/2080 test puliti.
   # Vedi spec-18-31-calendario-card-larghezza-testo.md.
-  18-31-calendario-card-larghezza-testo: review
+  18-31-calendario-card-larghezza-testo: done
 
   # Story 18.32 aggiunta 2026-09-24 su richiesta esplicita dell'utente:
   # vista mensile "stile Google Calendar" per /calendario, con checkbox per
@@ -1581,7 +1593,7 @@ development_status:
   # griglia tra le dipendenze. 6 decisioni aperte, incluse cosa conta come
   # "un calendario" da spuntare e dove vive la vista. Vedi epics.md#Story
   # 18.32.
-  18-32-calendario-vista-mensile-google-style: review
+  18-32-calendario-vista-mensile-google-style: done
 
   # Story 18.33 aggiunta 2026-09-27 su richiesta esplicita dell'utente:
   # "vorrei una sezione con risultati e classifiche sempre recuperate dalla
@@ -1597,7 +1609,7 @@ development_status:
   # di gare). 5 decisioni aperte, incluse dove vive la classifica sul
   # portale FIPAV e se il fetch live vada mitigato con una cache breve. Vedi
   # epics.md#Story 18.33.
-  18-33-risultati-classifiche-live-fipav-home: review
+  18-33-risultati-classifiche-live-fipav-home: done
 
   # Story 18.34 aggiunta 2026-09-28 su richiesta esplicita dell'utente:
   # "vorrei che le classifiche siano spostate su un nuovo menu
@@ -1610,7 +1622,7 @@ development_status:
   # (20260825010000). 5 decisioni aperte, incluso se la sezione risultati
   # (Story 18.33, distinta dalla classifica) resti in home o si sposti
   # anch'essa. Vedi epics.md#Story 18.34.
-  18-34-pagina-classifiche-dedicata: review
+  18-34-pagina-classifiche-dedicata: done
 
   # Story 18.35 aggiunta 2026-09-30 su richiesta esplicita dell'utente: stile
   # "Match Week" (ux-designs/stile.jpg) per le partite del sito pubblico -
@@ -1618,7 +1630,7 @@ development_status:
   # settimana, Risultati della settimana scorsa). Parte Classifiche separata
   # su scelta dell'utente, annotata in deferred-work.md. Vedi
   # spec-18-35-riga-partita-match-week.md.
-  18-35-riga-partita-match-week: review
+  18-35-riga-partita-match-week: done
 
   # Story 18.36 aggiunta 2026-10-02 (voce di deferred-work.md rimandata
   # dalla 18.35 su scelta dell'utente): /classifiche in stile Match Week -
@@ -1626,7 +1638,7 @@ development_status:
   # in piccolo, punti a contorno), sfondo = colore Campionato, nostra
   # squadra distinta (dedotta dai risultati FIPAV, nessun nuovo campo).
   # Vedi spec-18-36-classifiche-match-week.md.
-  18-36-classifiche-match-week: review
+  18-36-classifiche-match-week: done
 
   # Story 18.37 aggiunta 2026-10-02 su richiesta dell'utente ("applicami
   # anche lo stesso stile delle partite alla sezione squadre"): /squadre
@@ -1634,7 +1646,7 @@ development_status:
   # obliqua e filo bianco, numero di maglia nel quadratino rosso; foto di
   # squadra mai tagliata (rinegoziato 2026-10-03 dopo l'anteprima). Vedi
   # spec-18-37-squadre-match-week.md.
-  18-37-squadre-match-week: review
+  18-37-squadre-match-week: done
 
   # Story 20.28 aggiunta su richiesta esplicita dell'utente 2026-09-12: "nella
   # sezione sito statico non vedo gli slot assegnati sui tabelloni delle
@@ -1650,7 +1662,7 @@ development_status:
   # lib/torneo.ts, trovaSlotPrenotatoInMemoria, 5 nuovi test). 2085/2085 test
   # verdi, tsc/lint/build puliti. Vedi
   # spec-20-28-prenotazione-slot-visibile-pubblico.md.
-  20-28-prenotazione-slot-visibile-pubblico: review
+  20-28-prenotazione-slot-visibile-pubblico: done
 
   # Epic 19 (Ruolo Site Manager per la gestione del sito pubblico) aperto il
   # 2026-08-14 su richiesta esplicita dell'utente - poi scomposta in 8 story
@@ -1666,7 +1678,7 @@ development_status:
   # (/registrati permette l'auto-registrazione come ADMIN senza alcun
   # controllo di autorizzazione, ora esteso anche a SITE_MANAGER tramite lo
   # stesso RUOLI_VALIDI condiviso). 1240/1240 test Vitest, tsc pulito.
-  epic-19: in-progress
+  epic-19: done
   19-1-ruolo-site-manager-contatti-pubblici: done
   19-2-site-manager-logo-nome-settore: done
   19-3-site-manager-sponsor: done
@@ -1820,7 +1832,7 @@ development_status:
   # punti tecnici ancora aperti (meccanismo drag-and-drop, allowlist
   # sicurezza embed, struttura Colonne/Pulsante) da chiudere prima di
   # create-story. Nessuna implementazione ancora.
-  19-14-editor-blocchi-pagine-pubbliche: review
+  19-14-editor-blocchi-pagine-pubbliche: done
 
   # Story 19.15 aggiunta 2026-08-24 su richiesta esplicita dell'utente, nel
   # contesto della Story 18.24: campo "ordine" su Gruppo (mirror
@@ -1843,7 +1855,7 @@ development_status:
   # per categoria - competenza di 18.24). Riverificato: 118 file/1689 test
   # verdi, tsc pulito, lint 0 errori, build riuscita (/app/ordine-squadre
   # registrata).
-  19-15-ordinamento-squadre-pubblica: review
+  19-15-ordinamento-squadre-pubblica: done
 
   # Epic 20 (Torneo Memorial) aggiunta il 2026-08-19 su richiesta esplicita
   # dell'utente. Regolamento punteggi (3/2/1/0, classifica per punti con set
@@ -1867,10 +1879,10 @@ development_status:
   # Epic 20 (Torneo Memorial) completa 2026-08-24.
   epic-20: done
 
-  20-1-edizione-categorie-torneo: review
-  20-2-squadre-partecipanti-gironi: review
-  20-3-risultati-classifica-gironi: review
-  20-4-tabellone-semifinali-finali: review
+  20-1-edizione-categorie-torneo: done
+  20-2-squadre-partecipanti-gironi: done
+  20-3-risultati-classifica-gironi: done
+  20-4-tabellone-semifinali-finali: done
   # Story 20.5 chiusa 2026-08-24. Bucket pubblico "volantino-torneo"
   # (mirror per-entita' di foto-squadra.ts), caricaVolantinoTorneoAction,
   # VolantinoTorneoForm.tsx, sezione "Volantino" su [edizioneId]/page.tsx.
@@ -1882,7 +1894,7 @@ development_status:
   # Storage orfano su cancellazione Edizione, race TOCTOU verifica/upload,
   # cache-busting basato su timestamp). Riverificato: 116 file/1672 test
   # verdi, tsc pulito, lint 0 errori, build riuscita.
-  20-5-immagine-sfondo-torneo: review
+  20-5-immagine-sfondo-torneo: done
   # Story 20.6 chiusa 2026-08-24 - ULTIMA story dell'Epic 20 (Torneo
   # Memorial completo: 20.1-20.6 tutte chiuse). Nuova pagina pubblica
   # top-level /torneo (mirror app/calendario/page.tsx), sola lettura,
@@ -1916,7 +1928,7 @@ development_status:
   # "/torneo" a PUBLIC_ROUTES + test dedicato in route-decision.test.ts
   # (mirror del test Story 18.7, ma qui la pagina pubblica esiste gia'
   # dietro il path). Verificato: 1853 test verdi, tsc pulito.
-  20-6-sezione-pubblica-torneo: review
+  20-6-sezione-pubblica-torneo: done
 
   # Story 20.7 aggiunta 2026-08-25 su richiesta esplicita dell'utente:
   # campo Nome per EdizioneTorneo, oltre all'Anno. Obbligatorio (chiarito
@@ -1934,7 +1946,7 @@ development_status:
   # classe gia' accettata nell'epica, trim non copre whitespace Unicode -
   # limite preesistente). Riverificato: 118 file/1722 test verdi, tsc
   # pulito, lint 0 errori, build riuscita, prisma validate ok.
-  20-7-nome-edizione-torneo: review
+  20-7-nome-edizione-torneo: done
 
   # Story 20.8 chiusa 2026-08-25 su richiesta esplicita dell'utente (bloccato
   # nel cancellare una Categoria di test perche' le sue partite non erano mai
@@ -1950,7 +1962,7 @@ development_status:
   # - stessa classe di rischio gia' accettata nell'epica, resto minore).
   # Riverificato: 118 file/1731 test verdi, tsc pulito, lint 0 errori,
   # build riuscita.
-  20-8-cancellazione-partite-categoria: review
+  20-8-cancellazione-partite-categoria: done
 
   # Story 20.9 aggiunta 2026-08-25 su richiesta esplicita dell'utente,
   # risolta in sessione di party mode (Mary/John/Sally/Winston/Amelia)
@@ -1987,7 +1999,7 @@ development_status:
   # verifica manuale in ambiente locale (dev locale rotto, Prisma
   # WASM + Windows). Vedi Spec Change Log in
   # spec-20-9-slot-orari-palestre-torneo.md.
-  20-9-slot-orari-palestre-torneo: review
+  20-9-slot-orari-palestre-torneo: done
 
   # Story 20.10 aggiunta 2026-08-25 su richiesta esplicita dell'utente
   # ("allinea il layout del sito esterno Torneo al resto delle pagine,
@@ -2012,7 +2024,7 @@ development_status:
   # puliti. Nessuna verifica visiva possibile (pagina mai deployata,
   # dev locale rotto). Vedi Spec Change Log in
   # spec-20-10-layout-pubblico-torneo-allineamento.md.
-  20-10-layout-pubblico-torneo-allineamento: review
+  20-10-layout-pubblico-torneo-allineamento: done
 
   # Story 20.11 aggiunta 2026-08-25 su richiesta esplicita dell'utente,
   # arrivata mentre la 20.10 era in corso ("aggiungere nella
@@ -2049,7 +2061,7 @@ development_status:
   # patch review), tsc/lint/build/prisma validate puliti. Nessuna
   # verifica manuale (Epic 20 mai deployata, dev locale rotto). Vedi
   # Spec Change Log in spec-20-11-numero-progressivo-gare-torneo.md.
-  20-11-numero-progressivo-gare-torneo: review
+  20-11-numero-progressivo-gare-torneo: done
 
   # Story 20.12 avviata 2026-08-25 su richiesta esplicita dell'utente
   # ("gli stessi slot per tutte le palestre per la parte a gironi"),
@@ -2069,7 +2081,7 @@ development_status:
   # puliti. Nessuna verifica manuale (Epic 20 mai deployata, dev
   # locale rotto). Vedi Spec Change Log in
   # spec-20-12-slot-girone-tutte-palestre.md.
-  20-12-slot-girone-tutte-palestre: review
+  20-12-slot-girone-tutte-palestre: done
 
   # Story 20.13 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # possibilita' di precaricare, in una sezione dedicata, il nome delle
@@ -2081,7 +2093,7 @@ development_status:
   # la "sezione dedicata" (nuovo form nella pagina admin /torneo esistente
   # ipotizzato come piu' naturale, da confermare con l'utente). Solo la
   # story scritta ora, nessuna implementazione. Status: backlog.
-  20-13-nome-settimane-torneo: review
+  20-13-nome-settimane-torneo: done
 
   # Story 20.14 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "non mi piace la visualizzazione terrei lo sfondo come le altre
@@ -2115,7 +2127,7 @@ development_status:
   # puliti. Nessuna verifica manuale dal vivo (Epic 20 mai deployata, dev
   # locale rotto) - demandata esplicitamente all'utente post-deploy (AC #3).
   # Vedi Spec Change Log in spec-20-14-contenuti-centrati-torneo-pubblico.md.
-  20-14-contenuti-centrati-torneo-pubblico: review
+  20-14-contenuti-centrati-torneo-pubblico: done
 
   # Story 20.15 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "i gironi in visualizzazione li vorrei sotto forma tabellare con le
@@ -2153,7 +2165,7 @@ development_status:
   # verifica manuale dal vivo (Epic 20 mai deployata, dev locale rotto) -
   # demandata esplicitamente all'utente post-deploy. Vedi Spec Change Log
   # in spec-20-15-vista-tabellare-squadre-gironi.md.
-  20-15-vista-tabellare-squadre-gironi: review
+  20-15-vista-tabellare-squadre-gironi: done
 
   # Story 20.16 aggiunta su richiesta esplicita dell'utente (2026-08-25):
   # "aggiungi anche i punti in classifica sommando i punti fatti nei vari
@@ -2197,7 +2209,7 @@ development_status:
   # puliti. Nessuna verifica manuale dal vivo (Epic 20 mai deployata, dev
   # locale rotto) - demandata esplicitamente all'utente post-deploy. Vedi
   # Spec Change Log in spec-20-16-quoziente-set-punti-classifica-girone.md.
-  20-16-quoziente-set-punti-classifica-girone: review
+  20-16-quoziente-set-punti-classifica-girone: done
 
   # Story 20.17 aggiunta E chiusa 2026-08-28, richiesta esplicita
   # dell'utente dopo verifica dal vivo del deploy ("mi serve poi modificare
@@ -2222,7 +2234,7 @@ development_status:
   # pura di ~15 righe + 2 punti di applicazione). Nessuna verifica manuale
   # dal vivo del NUOVO comportamento (non ancora deployato) - demandata
   # all'utente dopo il prossimo deploy.
-  20-17-sfondo-torneo-e-ordinamento-slot: review
+  20-17-sfondo-torneo-e-ordinamento-slot: done
 
   # Story 20.18 aggiunta 2026-08-30, richiesta esplicita dell'utente: "per
   # le palestre in fase di generazione degli slot, bisogna aggiugere i
@@ -2255,7 +2267,7 @@ development_status:
   # 9.40), tsc/lint/build/prisma validate puliti. Nessuna verifica manuale
   # dal vivo (ambiente locale rotto, Epic 20 mai deployata) - demandata
   # all'utente dopo il prossimo deploy.
-  20-18-campi-palestre-generazione-blocco-slot: review
+  20-18-campi-palestre-generazione-blocco-slot: done
 
   # Story 20.19 aggiunta 2026-08-31, richiesta esplicita dell'utente: "vorrei
   # avere in visualizzazione oltre che alla forma grafica delle partite un
@@ -2269,7 +2281,7 @@ development_status:
   # formattaRisultatoPartitaTorneo gia' letti da app/torneo/page.tsx. Vedi
   # epics.md#Story 20.19. NESSUNA IMPLEMENTAZIONE ANCORA - solo la story in
   # questo giro.
-  20-19-vista-tabellare-tutti-incontri-torneo: review
+  20-19-vista-tabellare-tutti-incontri-torneo: done
 
   # Epic 21 (Ottimizzazione database) aperto 2026-09-01, richiesta esplicita
   # dell'utente: "creami un'epica per ottimizzazione database, verificare
