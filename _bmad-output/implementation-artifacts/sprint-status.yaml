@@ -1,3 +1,5 @@
+# last_updated: 2026-10-15 (Epic 27 Iscrizione online tramite portale aperto: 6 story in backlog, divise in party mode. Epic 24 aggiornato in epics.md: la parte modulo passa al 27.)
+# last_updated: 2026-10-15 (10-10-sincronizzazione-calendario-fipav-fattibilita: backlog -> done su decisione dell'utente - studio di fattibilita' superato dalle Story 10.11/10.12 gia' implementate e verificate.)
 # last_updated: 2026-10-15 (Story 9.47 ordinamento /app/conferma-tesseramenti registrata direttamente done: implementata nella sessione del 2026-10-14, verificata dall'utente.)
 # last_updated: 2026-10-15 (Chiusura in blocco su conferma dell'utente: tutte le storie in review verificate dal vivo in produzione -> done (52 storie, epic 2/4/9/10/18/19/20). epic-4 e epic-19: in-progress -> done. Epic 9/11/17/21 restano in-progress (elenchi aperti). 10-10 fattibilita' FIPAV resta backlog, superata da 10-11/10-12.)
 # last_updated: 2026-10-13 (Epic 26 chiuso: deploy in produzione eseguito dall'utente con le migrazioni 20261012000000_add_federazioni e 20261013000000_tesseramento_federazioni, modifiche committate (810034e). 26-1-configurazione-federazioni: review -> done, 26-2-tesseramento-per-federazione-tabella-unica: review -> done, epic-26: in-progress -> done.)
@@ -914,7 +916,7 @@ development_status:
   # aperte elencate nella story, incluse struttura HTML reale non ancora
   # verificata riga per riga e stabilita' dei parametri della URL fra una
   # stagione e l'altra. Vedi epics.md#Story 10.10.
-  10-10-sincronizzazione-calendario-fipav-fattibilita: backlog
+  10-10-sincronizzazione-calendario-fipav-fattibilita: done
 
   # Story 10.11 aggiunta 2026-09-23, seguito della 10.10: l'utente ha scelto
   # la fonte HTML di fipavtreuno.net (non il feed ICS di portalefipav.net).
@@ -2341,3 +2343,17 @@ development_status:
   epic-26: done
   26-1-configurazione-federazioni: done
   26-2-tesseramento-per-federazione-tabella-unica: done
+
+  # Epic 27 (Iscrizione online tramite portale) aperto 2026-10-15, story
+  # divise in party mode: domanda online precompilata, PDF generato nel
+  # browser, upload del modulo firmato, verifica Segreteria, nuovo atleta in
+  # registrazione (in attesa). Ordine di sviluppo 27.1 -> 27.6. Consenso
+  # immagini rimandato. Assorbe la parte modulo dell'Epic 24. Vedi
+  # epics.md#Epic 27.
+  epic-27: backlog
+  27-1-anagrafica-cittadinanza-genitori-tutori: backlog
+  27-2-modulo-iscrizione-pdf-precompilato: backlog
+  27-3-domanda-iscrizione-online-nuova-stagione: backlog
+  27-4-caricamento-modulo-firmato: backlog
+  27-5-verifica-domanda-segreteria: backlog
+  27-6-nuovo-atleta-in-registrazione: backlog

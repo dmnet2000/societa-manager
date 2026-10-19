@@ -3978,6 +3978,8 @@ so that posso capire l'interesse reale verso il sito senza dover interrogare dir
 - *Invio del modulo caricato via email alla Segreteria.*
 - *Nella sezione Iscrizioni, condivisione di altre informazioni utili (quote associative, IBAN per il pagamento, ecc.).*
 
+*Aggiornamento 2026-10-15: la parte "modulo prevalorizzato → firma → upload" è passata all'Epic 27 (Iscrizione online tramite portale). Qui restano invio via email alla Segreteria, quote e IBAN.*
+
 ## Epic 25: Gestione gara del Torneo stile "Referto Elettronico" — analisi di fattibilità
 
 *(Aperto 2026-09-22, richiesta esplicita dell'utente: "analizzare se è possibile creare per il torneo una sorta di applicazione simile al referto elettronico attualmente usato da tutti nella quale caricarsi le varie gare e poi gestire la gara come è fatto dal referto elettronico." Elenco APERTO come Epic 9/11/17/18/21/23/24 — SOLO analisi di fattibilità in questo giro, nessuna story con Acceptance Criteria ancora, nessuna implementazione. Ambito: il Torneo Memorial (Epic 20), non i Campionati di stagione (Epic 10, dove le partite sono importate già disputate da un file federale — scenario diverso, non toccato da questa epica.)*
@@ -4094,3 +4096,141 @@ so that posso confermare nuovi tesseramenti su una o più federazioni e corregge
 15. **And** la tabella resta leggibile su mobile (scroll orizzontale già presente in `.scrollWrapper`, touch target 44px sui checkbox)
 16. **And** guida in-app di "Conferma tesseramenti" aggiornata (conferma multi-federazione, modifica, rimozione, conferma della rimozione totale)
 17. **And** test Vitest: Server Action (aggiunta, rimozione, sostituzione, rimozione totale con e senza conferma, solo righe modificate scritte, stagione precedente intatta, rifiuto Federazione inattiva/inesistente, guard Ruoli) + test unitari di `lib/tesseramento.ts` (incluso: array vuoto ⇒ riga eliminata)
+
+## Epic 27: Iscrizione online tramite portale
+
+*(Aperto 2026-10-15, richiesta esplicita dell'utente - SOLO story scritte, nessuna implementazione ora: "serve prevedere per la fase di iscrizione in apertura del prossimo anno agonistico l'iscrizione on line tramite portale: in docs trovi ModuloIscrizione di esempio dimmi i campi che mancherebbero da inserire in atleta. il modulo andrebbe generato così come lo vedi nel pdf firmato dal genitore/atleta se maggiorenne e riuploadato. prefilla i campi nella form di iscrizione con i dati che ci sono già a disposiuzione e poi salva i dati mancanti. nel caso di un nuovo Atleta che non risulta a db con il codice fiscale, in fase di registrazione va subito proposto il modulo di iscrizione da inoltrare." Divisione in story fatta in party mode lo stesso giorno. Assorbe la parte "modulo prevalorizzato → firma → upload" dell'Epic 24, che resta aperto per invio alla Segreteria via email, quote e IBAN.)*
+
+**Punto di partenza reale (verificato nel codice 2026-10-15):** modello di riferimento `docs/ModuloIscrizione.pdf` (Polisportiva Mogliano Veneto A.S.D., 2 pagine). `Atleta` (`prisma/schema.prisma`) copre già: `nome` (cognome e nome in un unico campo), `codiceFiscale`, `luogoNascita`, `dataNascita`, `indirizzo`, `cap`, `localitaResidenza`, `provinciaResidenza`, `email`, `cellulare`. `Utente` ha solo `email`: nessuna anagrafica del genitore esiste. Il collegamento Utente↔Atleta è `GenitoreAtleta` (usato anche per l'Atleta che si registra per sé, Story 2.7). `Iscrizione` è una riga per Atleta+stagione con `attiva` (Story 1.8) e `confermataIl`: oggi la crea solo la Segreteria in `/app/conferma-iscrizioni`. `/registrati` (`app/(onboarding-import)/registrati/actions.ts`) blocca la registrazione Genitore/Atleta se il Codice Fiscale non è a sistema ("Nessuna Atleta trovata…"). I file privati (certificati medici) stanno in un bucket Supabase Storage privato con `filePath` sul record; esiste già un pattern di stato `IN_ATTESA`/`CONFERMATO` (`StatoCertificato`).
+
+**Campi del modulo mancanti a sistema:**
+- **Atleta:** `cittadinanza`.
+- **Genitore/Tutore (fino a 2 per Atleta minorenne), entità nuova:** cognome e nome, codice fiscale, luogo e data di nascita, residenza, e-mail, telefono, "intestatario ricevuta" (uno solo dei due). Il secondo genitore spesso non ha un account: l'entità non è `Utente`, ma è collegabile a un `Utente` quando esiste.
+- **Per stagione (legati alla domanda di iscrizione, non ad Atleta):** data della domanda, consenso al trattamento dei dati (obbligatorio), autorizzazione all'uso dell'immagine (Autorizza / Non autorizza), accettazione del Patto Educativo di Corresponsabilità, dichiarazione sul certificato medico, PDF firmato caricato, stato della domanda.
+
+**Decisioni (chiuse con l'utente 2026-10-15):**
+- **Sezione SARS-CoV-2 rimossa** dal modulo generato.
+- **"Cod: 15966" rimosso** dal modulo generato (significato non noto).
+- **Maggiorenne:** firma da sé, la sezione genitori non compare né nel form né nel PDF.
+- **Intestatario ricevuta:** mantenuto, come semplice scelta tra i genitori indicati (nessuna gestione quote in questo epic - Epic 24).
+- **Nuovo Atleta in registrazione:** il Codice Fiscale non trovato non blocca più: si apre subito la domanda di iscrizione, si crea l'Atleta **in attesa** e l'utente entra nel portale con l'iscrizione **in attesa**.
+- **Effetto del "Non autorizza" sulle immagini** (foto squadre, sito pubblico, fotogallery): **rimandato** a una story futura, fuori da questo epic. In questo epic il consenso viene solo raccolto, salvato e mostrato alla Segreteria.
+
+**Decisioni tecniche del party (da confermare in create-story):**
+- **Atleta "in attesa" sulla tabella `Atleta`** (non una tabella di appoggio separata): il genitore deve vedere subito l'atleta nel portale. Vincolo obbligatorio: un'Atleta in attesa non compare **da nessuna parte** tranne `/app/conferma-iscrizioni` e le pagine del genitore/atleta collegato. Il filtro sta nel punto unico di lettura `lib/db-rls/atleta.ts` (stesso pattern di `rimossaIl`, Story 9.43) ed è coperto da un test che fallisce se un elenco la restituisce.
+- **Il PDF è la prova:** i dati inseriti online sono "dichiarati", il documento valido è il PDF firmato caricato. Archiviato in un bucket privato come i certificati medici.
+- **PDF generato nel browser** (es. `pdf-lib` lato client), non sul Worker: niente peso aggiunto al bundle del Worker. Da validare subito (Story 27.2).
+- **RLS:** ogni nuova tabella in `ENABLE ROW LEVEL SECURITY` + `REVOKE` esplicito (regola permanente dal 2026-08-04).
+- **Guida in-app:** ogni story aggiorna `lib/guida/contenuti.ts` per le pagine toccate (regola permanente Epic 17).
+
+**Ordine di sviluppo:** 27.1 → 27.2 → 27.3 → 27.4 → 27.5 → 27.6. La 27.6 (nuovo atleta in registrazione) va per ultima: un'Atleta in attesa senza la verifica della Segreteria (27.5) sarebbe un vicolo cieco in produzione.
+
+### Story 27.1: Anagrafica completa - cittadinanza e Genitori/Tutori
+
+As a Segreteria,
+I want che a sistema ci siano tutti i dati anagrafici richiesti dal modulo di iscrizione, compresi quelli dei genitori,
+so that il modulo possa essere precompilato e non vada più ricopiato a mano dalla carta.
+
+**Contesto tecnico:** campo `cittadinanza String?` su `Atleta`; nuovo model per Genitore/Tutore (es. `TutoreAtleta`: `atletaId`, `posizione` 1|2, cognome e nome, codice fiscale, luogo/data di nascita, residenza, email, telefono, `intestatarioRicevuta`, `utenteId` opzionale) + migrazione con RLS. Modifica dalla scheda Atleta già esistente (`ModificaDatiAtletaForm.tsx`, Story 9.45).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin o Segreteria **When** modifico i dati anagrafici di un'Atleta **Then** posso indicare la cittadinanza
+2. **And** per un'Atleta minorenne posso inserire, modificare e togliere fino a 2 Genitori/Tutori con tutti i campi del modulo
+3. **And** al massimo un Genitore/Tutore per Atleta è "intestatario ricevuta"
+4. **And** il codice fiscale del Genitore/Tutore è validato con la stessa regola già usata per l'Atleta
+5. **And** un Genitore/Tutore può essere collegato all'account (`Utente`) del genitore, se esiste - non è obbligatorio
+6. **And** le nuove tabelle hanno RLS abilitata e nessun privilegio per `anon`/`authenticated` oltre a quanto serve
+7. **And** guida in-app aggiornata, test Vitest su validazione e Server Action
+
+### Story 27.2: Modulo di iscrizione in PDF precompilato
+
+As a Genitore (o Atleta maggiorenne),
+I want scaricare il modulo di iscrizione già compilato con i miei dati,
+so that devo solo firmarlo.
+
+**Contesto tecnico:** prima story da sviluppare dopo la 27.1, anche come verifica di fattibilità: generazione **nel browser** (es. `pdf-lib`) di un PDF che riproduce `docs/ModuloIscrizione.pdf` (intestazione e logo della società, "Domanda di iscrizione", sezioni Consenso dati, Autorizzazione immagine, Patto educativo, Certificato medico). Funzione di composizione separata e testabile.
+
+**Acceptance Criteria:**
+
+1. **Given** i dati di una domanda di iscrizione **When** genero il modulo **Then** ottengo un PDF con lo stesso layout del modello, compilato con i dati dell'Atleta e dei Genitori/Tutori
+2. **And** la sezione SARS-CoV-2 e il "Cod:" non compaiono
+3. **And** le scelte fatte online sono riportate (Autorizza / Non autorizza immagini, intestatario ricevuta)
+4. **And** per un'Atleta maggiorenne la sezione Genitori/Tutori non compare e le firme sono dell'Atleta
+5. **And** restano vuoti solo gli spazi per data e firma
+6. **And** la generazione avviene nel browser: nessuna libreria PDF aggiunta al bundle del Worker
+7. **And** test Vitest sulla funzione di composizione (campi presenti, maggiorenne vs minorenne, sezioni rimosse)
+
+### Story 27.3: Domanda di iscrizione online per la nuova stagione
+
+As a Genitore (o Atleta maggiorenne),
+I want compilare online la domanda di iscrizione per la nuova stagione partendo dai dati già a sistema,
+so that inserisco solo quello che manca e la Segreteria riceve dati completi.
+
+**Contesto tecnico:** nuova entità per la domanda di stagione (es. `DomandaIscrizione`: Atleta, Anno Agonistico, consensi, data, stato, `filePath` del PDF firmato) oppure campi su `Iscrizione` - scelta in create-story. L'Iscrizione "in attesa" deve restare distinguibile da quella confermata dalla Segreteria. Serve un'apertura delle iscrizioni online per una stagione (chi la apre, per quale Anno Agonistico, anche se non ancora creato - oggi l'Anno Agonistico nasce al primo salvataggio).
+
+**Acceptance Criteria:**
+
+1. **Given** le iscrizioni online sono aperte per la prossima stagione **When** un Genitore apre la pagina della propria Atleta **Then** vede l'invito a compilare la domanda di iscrizione
+2. **And** il form è precompilato con tutti i dati già a sistema (Atleta e Genitori/Tutori)
+3. **And** posso completare o correggere i dati mancanti e salvarli: vengono scritti sull'anagrafica (Atleta, Genitori/Tutori)
+4. **And** devo dare il consenso al trattamento dei dati (obbligatorio, senza non si procede), scegliere Autorizza / Non autorizza per le immagini, accettare il Patto Educativo e la dichiarazione sul certificato medico
+5. **And** per un'Atleta maggiorenne la sezione Genitori/Tutori non compare
+6. **And** a domanda inviata l'iscrizione della stagione risulta "in attesa" e posso scaricare il PDF (Story 27.2)
+7. **And** con le iscrizioni online chiuse la domanda non è disponibile
+8. **And** un Genitore può compilare la domanda solo per le Atlete a cui è collegato (controllo lato server, non solo nascosto in UI)
+9. **And** guida in-app aggiornata, test Vitest su Server Action (validazione, consenso obbligatorio, autorizzazioni)
+
+### Story 27.4: Caricamento del modulo firmato
+
+As a Genitore (o Atleta maggiorenne),
+I want caricare il modulo firmato (scansione o foto),
+so that la Segreteria possa verificarlo senza ricevere la carta.
+
+**Contesto tecnico:** mirror del caricamento certificati medici (bucket privato, `filePath`, notifica a chi deve verificare - vedi Story 4.7).
+
+**Acceptance Criteria:**
+
+1. **Given** ho inviato la domanda di iscrizione **When** carico il modulo firmato (PDF o immagine) **Then** il file viene archiviato in modo privato e collegato alla domanda
+2. **And** posso sostituirlo finché la Segreteria non ha confermato l'iscrizione
+3. **And** formato e dimensione massima sono controllati lato server, con messaggio chiaro
+4. **And** il file è visibile solo a me (Genitore/Atleta collegata) e alla Segreteria/Admin
+5. **And** la Segreteria riceve una notifica di nuovo modulo caricato
+6. **And** guida in-app aggiornata, test Vitest su validazione e permessi
+
+### Story 27.5: Verifica della domanda da parte della Segreteria
+
+As a Segreteria,
+I want vedere in Conferma Iscrizioni le domande online con i dati dichiarati e il modulo firmato,
+so that posso confermare l'iscrizione o rimandarla indietro.
+
+**Contesto tecnico:** estensione di `/app/conferma-iscrizioni` (`IscrizioniElenco.tsx`, ordinamento Story 9.46 da mantenere).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Segreteria **When** apro Conferma Iscrizioni **Then** distinguo le domande online in attesa (con o senza modulo firmato caricato)
+2. **And** posso aprire i dati dichiarati, i consensi e il modulo firmato
+3. **And** confermando, l'iscrizione diventa confermata; se l'Atleta era "in attesa" (nuova, Story 27.6) diventa un'Atleta a tutti gli effetti
+4. **And** posso rimandare indietro la domanda con una nota: il Genitore la vede e può correggere e ricaricare
+5. **And** un'Atleta in attesa non compare in nessun altro elenco dell'app (gruppi, presenze, tesseramenti, sito pubblico) - test dedicato sul punto unico di lettura
+6. **And** guida in-app aggiornata, test Vitest su conferma e rimando
+
+### Story 27.6: Nuovo Atleta in fase di registrazione
+
+As a Genitore (o Atleta maggiorenne) di un'Atleta non ancora a sistema,
+I want che la registrazione mi porti subito alla domanda di iscrizione,
+so that posso iscriverla online senza dover passare prima dalla Segreteria.
+
+**Contesto tecnico:** oggi `/registrati` restituisce "Nessuna Atleta trovata con questo Codice Fiscale". Va per ultima (vedi Ordine di sviluppo).
+
+**Acceptance Criteria:**
+
+1. **Given** mi registro come Genitore o Atleta **When** il Codice Fiscale non è a sistema **Then** non ricevo un errore ma mi viene proposta subito la domanda di iscrizione per un nuovo Atleta
+2. **And** i dati anagrafici inseriti creano un'Atleta **in attesa**, collegata al mio account
+3. **And** entro nel portale con l'iscrizione "in attesa" e posso scaricare e caricare il modulo (Story 27.2 e 27.4)
+4. **And** un Codice Fiscale già a sistema continua ad agganciare l'Atleta esistente come oggi
+5. **And** chi si registra non può creare Atlete in attesa all'infinito: limite e controllo lato server da definire in create-story
+6. **And** l'Atleta in attesa non compare negli elenchi dell'app finché la Segreteria non conferma (Story 27.5)
+7. **And** guida in-app aggiornata, test Vitest sui due rami (CF trovato / non trovato)
+
+**Rimandato (fuori epic):** effetto del consenso immagini "Non autorizza" su foto squadre, sito pubblico e fotogallery - decisione utente 2026-10-15, da riprendere quando si chiariscono le regole operative della società.
