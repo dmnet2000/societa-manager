@@ -34,6 +34,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     corpo: [
       "In questa sezione trovi i Banner pubblicitari e le Convenzioni attive della società, con immagine e descrizione.",
@@ -164,6 +165,18 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       // lettura su tutto il resto della pagina (creazione/modifica Gruppi,
       // assegnazione Allenatori/Atlete).
       "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica sui Gruppi - per quello serve il Ruolo Admin o Dirigente. Un'unica eccezione: puoi comunque correggere i dati anagrafici di un'Atleta con \"Modifica\", accanto al suo nome.",
+    ],
+  },
+  {
+    // Ruolo Direttore Tecnico: mirror di ruoliAmmessi per
+    // /app/composizione-gruppi in route-guard.ts.
+    rotta: "/app/composizione-gruppi",
+    titolo: "Composizione gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRETTORE_TECNICO"],
+    corpo: [
+      "Qui vedi tutti i Gruppi della stagione corrente, ciascuno con l'elenco delle sue Atlete in ordine alfabetico.",
+      "Accanto a ogni Atleta trovi se è iscritta alla stagione (\"Iscritta\" o \"Non iscritta\") e se è tesserata, con la sigla di ogni Federazione con cui è tesserata, oppure \"Non tesserata\". In testa a ogni Gruppo c'è il riepilogo: quante Atlete, quante iscritte, quante tesserate.",
+      "La pagina è in sola lettura: l'assegnazione delle Atlete ai Gruppi e la conferma di iscrizioni e tesseramenti restano compiti di Admin e Dirigenza, dalle rispettive pagine.",
     ],
   },
   {
@@ -438,7 +451,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Un utente disattivato non può più accedere all'app, ma i suoi dati storici (es. presenze registrate) restano invariati.",
       "Se un Utente ha sbagliato a digitare l'email in fase di registrazione e non ha mai confermato l'account, compare qui il campo \"Correggi email\": corregge l'indirizzo e reinvia subito un nuovo link di conferma. Disponibile solo finché l'Utente non ha mai confermato l'account.",
       "\"Correggi email\" rifiuta sempre un bersaglio con Ruolo Admin (usa un altro account per correggere quello), e rifiuta anche se il nuovo indirizzo è già in uso da un altro Utente.",
-      "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin e Site Manager restano soggetti all'attivazione manuale da questa pagina.",
+      "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin, Site Manager e Direttore tecnico restano soggetti all'attivazione manuale da questa pagina. Il Ruolo Direttore tecnico, che dà accesso in sola lettura alla pagina Composizione gruppi, si assegna da qui.",
       "Un Genitore già registrato può risultare collegato a una sola figlia/o (il Codice Fiscale inserito in registrazione ne aggancia solo una): per ogni Utente con Ruolo Genitore trovi qui la colonna \"Figli collegati\", con l'elenco delle Atlete già agganciate e un campo per collegarne un'altra inserendo il suo Codice Fiscale. Un Codice Fiscale già collegato a questo stesso Genitore restituisce un errore esplicito, nessun duplicato; nessuna funzione per rimuovere un aggancio esistente.",
     ],
   },

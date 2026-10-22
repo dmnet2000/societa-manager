@@ -166,6 +166,49 @@ describe("getRouteDecision", () => {
     });
   });
 
+  // Ruolo Direttore Tecnico: /app/composizione-gruppi solo ADMIN e
+  // DIRETTORE_TECNICO, che resta fuori dalle pagine di gestione.
+  it.each(["ADMIN", "DIRETTORE_TECNICO"] as const)(
+    "allows %s on /app/composizione-gruppi",
+    async (ruolo) => {
+      expect(await getRouteDecision("/app/composizione-gruppi", true, [ruolo])).toEqual({
+        action: "allow",
+      });
+    }
+  );
+
+  it.each(["DIRIGENTE", "SEGRETERIA", "ALLENATORE", "ATLETA", "GENITORE", "SITE_MANAGER"] as const)(
+    "redirects %s away from /app/composizione-gruppi",
+    async (ruolo) => {
+      expect(await getRouteDecision("/app/composizione-gruppi", true, [ruolo])).toEqual({
+        action: "redirect",
+        location: "/app/non-autorizzato",
+      });
+    }
+  );
+
+  it.each([
+    "/app/gruppi",
+    "/app/admin",
+    "/app/conferma-iscrizioni",
+    "/app/conferma-tesseramenti",
+    "/app/precaricamento-ruoli",
+  ])("redirects Direttore Tecnico away from %s (gestione, perimetro invariato)", async (rotta) => {
+    expect(await getRouteDecision(rotta, true, ["DIRETTORE_TECNICO"])).toEqual({
+      action: "redirect",
+      location: "/app/non-autorizzato",
+    });
+  });
+
+  it.each(["/app/guida", "/app/sponsor"])(
+    "allows Direttore Tecnico on %s (rotte per tutti i Ruoli)",
+    async (rotta) => {
+      expect(await getRouteDecision(rotta, true, ["DIRETTORE_TECNICO"])).toEqual({
+        action: "allow",
+      });
+    }
+  );
+
   it("matches nested paths under a protected prefix", async () => {
     expect(await getRouteDecision("/app/admin/utenti", true, [])).toEqual({
       action: "redirect",

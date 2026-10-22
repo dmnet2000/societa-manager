@@ -1258,3 +1258,6 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: none
   summary: stile Match Week su /squadre - sfondo blu Match Week su tutta la pagina, titoli (categoria e nome squadra) su fascia obliqua, numero maglia delle atlete nel quadratino rosso #C8102E, card squadra con sagoma obliqua e filo bianco (decisioni utente 2026-10-02).
   evidence: richiesto durante la Story 19.17 (ordine/visibilita' classifiche), obiettivo indipendente; l'utente ha scelto di farlo subito dopo la 19.17 come Story 18.37.
+- source_spec: `_bmad-output/implementation-artifacts/spec-direttore-tecnico-composizione-gruppi.md`
+  summary: nessun test automatico verifica che le policy RLS "direttore_tecnico_select" su atlete/iscrizioni restituiscano davvero righe a un JWT con solo DIRETTORE_TECNICO - una policy mancante o sbagliata mostrerebbe Gruppi tutti vuoti senza far fallire la suite.
+  evidence: review (Verification Gap); i test db-rls usano un client Supabase finto, il progetto non ha un harness RLS - stessa classe di problema gia' registrata per la Story 27.1.

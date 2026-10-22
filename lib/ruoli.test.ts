@@ -39,4 +39,8 @@ describe("parseRuoli", () => {
   it("accepts SITE_MANAGER (Story 19.1)", () => {
     expect(parseRuoli(["SITE_MANAGER"])).toEqual(["SITE_MANAGER"]);
   });
+
+  it("accepts DIRETTORE_TECNICO", () => {
+    expect(parseRuoli(["DIRETTORE_TECNICO"])).toEqual(["DIRETTORE_TECNICO"]);
+  });
 });

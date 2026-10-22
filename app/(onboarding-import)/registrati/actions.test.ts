@@ -1149,6 +1149,34 @@ describe("registrati", () => {
       );
     });
 
+    // Ruolo Direttore Tecnico: non selezionabile in /registrati, ma un POST
+    // costruito a mano lo accetta (RUOLI_VALIDI) - deve finire nello stesso
+    // gate dei Ruoli sensibili, mai attivo senza conferma Admin.
+    it("creates a self-registered DIRETTORE_TECNICO as attivo:false and notifies active Admins", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-dt"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-dt" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+      elencaEmailPerRuoloMock.mockResolvedValue(["admin1@example.com"]);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "nuovo-dt@example.com",
+          password: "pw123456",
+          ruoli: ["DIRETTORE_TECNICO"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+      expect(inviaEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({ oggetto: "Nuova registrazione da confermare" })
+      );
+    });
+
     it("gates a self-registered ADMIN exactly like any other Ruolo sensibile when an active Admin already exists (no exception)", async () => {
       generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-3"));
       utenteCreateMock.mockResolvedValue({ id: "utente-gate-3" });

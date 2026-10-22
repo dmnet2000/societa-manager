@@ -82,6 +82,20 @@ describe("filtraVociNavigazione", () => {
     expect(href).not.toContain("/app/admin");
   });
 
+  // Ruolo Direttore Tecnico: solo Composizione gruppi piu' le rotte per
+  // tutti i Ruoli (Sponsor, dentro "Gestione sito", e Guida).
+  it("un Direttore Tecnico vede solo Composizione gruppi, Sponsor e Guida", () => {
+    expect(filtraVociNavigazione(["DIRETTORE_TECNICO"])).toEqual([
+      { tipo: "voce", href: "/app/composizione-gruppi", label: "Composizione gruppi" },
+      {
+        tipo: "gruppo",
+        label: "Gestione sito",
+        figlie: [{ href: "/app/sponsor", label: "Sponsor" }],
+      },
+      { tipo: "voce", href: "/app/guida", label: "Guida" },
+    ]);
+  });
+
   it("un Admin vede tutte le voci Admin-ammesse", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(
@@ -553,6 +567,7 @@ describe("filtraVociNavigazione", () => {
         ],
       },
       { tipo: "voce", href: "/app/gruppi", label: "Gruppi" },
+      { tipo: "voce", href: "/app/composizione-gruppi", label: "Composizione gruppi" },
       {
         tipo: "gruppo",
         label: "Gestione sito",

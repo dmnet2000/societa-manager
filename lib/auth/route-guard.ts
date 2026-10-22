@@ -234,6 +234,14 @@ export const PROTECTED_ROUTES: {
     navLabel: "Gruppi",
   },
   {
+    // Ruolo Direttore Tecnico: composizione di tutti i Gruppi della
+    // stagione con stato Iscrizione/Tesseramento, in sola lettura - pagina
+    // separata da /app/gruppi (gestione), il cui perimetro resta invariato.
+    prefix: "/app/composizione-gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRETTORE_TECNICO"],
+    navLabel: "Composizione gruppi",
+  },
+  {
     prefix: "/app/i-miei-gruppi",
     ruoliAmmessi: ["ALLENATORE"],
     navLabel: "I miei Gruppi",
@@ -352,6 +360,7 @@ export const PROTECTED_ROUTES: {
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     navLabel: "Sponsor",
     // Story 19.4: seconda figlia del gruppo "Gestione sito" (vedi
@@ -456,6 +465,7 @@ export const PROTECTED_ROUTES: {
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     navLabel: "Guida",
   },

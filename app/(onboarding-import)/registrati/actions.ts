@@ -42,6 +42,7 @@ const ETICHETTA_RUOLO: Record<Ruolo, string> = {
   DIRIGENTE: "Dirigente",
   ADMIN: "Admin",
   SITE_MANAGER: "Site manager",
+  DIRETTORE_TECNICO: "Direttore tecnico",
 };
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
