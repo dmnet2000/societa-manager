@@ -10,6 +10,13 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
 import { creaAtleta, aggiornaAtleta } from "@/lib/db-rls/atleta";
+import {
+  salvaTutoriAtleta,
+  POSIZIONI_TUTORE,
+  type SlotTutore,
+} from "@/lib/db-rls/tutore-atleta";
+import { isMinorenne } from "@/lib/eta";
+import { parseDataIsoValida } from "@/lib/parse-data-iso";
 import { creaNotifica } from "@/lib/db-rls/notifica";
 import { isCodiceFiscaleValido } from "@/lib/matching-codice-fiscale/valida-codice-fiscale";
 import { estraiSessoDaCodiceFiscale } from "@/lib/matching-codice-fiscale/estrai-sesso-da-codice-fiscale";
@@ -826,6 +833,8 @@ export async function aggiornaDatiAtletaAction(
     .toUpperCase();
   const email = String(formData.get("email") ?? "").trim();
   const cellulare = String(formData.get("cellulare") ?? "").trim();
+  // Story 27.1: testo libero salvato cosi' com'e' (trim), vuoto -> null.
+  const cittadinanza = String(formData.get("cittadinanza") ?? "").trim();
 
   if (!atletaId) {
     return { error: { code: "VALIDATION", message: "Atleta non specificata." } };
@@ -941,6 +950,7 @@ export async function aggiornaDatiAtletaAction(
       dataNascita,
       email: email || null,
       cellulare: cellulare || null,
+      cittadinanza: cittadinanza || null,
       dataPrimoTesseramento: atletaAttuale.dataPrimoTesseramento
         ? new Date(atletaAttuale.dataPrimoTesseramento)
         : null,
@@ -959,6 +969,223 @@ export async function aggiornaDatiAtletaAction(
   // dall'Allenatore). Anche se questa action e' chiamabile solo da
   // ADMIN/SEGRETERIA, un Allenatore con /i-miei-gruppi aperta in un'altra
   // tab vedrebbe altrimenti dati anagrafici stantii dopo una correzione.
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/i-miei-gruppi");
+  return { success: true };
+}
+
+// Story 27.1: formato email di base (qualcosa@dominio.tld) - nessuna
+// verifica di esistenza, solo un argine contro errori di battitura evidenti.
+const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function campoTutore(formData: FormData, posizione: number, campo: string): string {
+  return String(formData.get(`tutore${posizione}_${campo}`) ?? "").trim();
+}
+
+function erroreValidazione(message: string): GruppoActionState {
+  return { error: { code: "VALIDATION", message } };
+}
+
+const ERRORE_SALVATAGGIO_TUTORI: GruppoActionState = {
+  error: {
+    code: "INTERNAL",
+    message: "Impossibile salvare i Genitori/Tutori. Riprova.",
+  },
+};
+
+// Story 27.1: Genitori/Tutori (max 2) di un'Atleta minorenne, come nel
+// modulo di iscrizione. Stesso perimetro ADMIN/SEGRETERIA di
+// aggiornaDatiAtletaAction sopra. Uno slot con "Cognome e Nome" vuoto e'
+// uno slot vuoto: la riga eventualmente salvata in quella posizione viene
+// eliminata (gli altri campi dello slot sono ignorati). L'intestatario della
+// ricevuta arriva come campo "intestatarioRicevuta" (radio "1"/"2", vuoto =
+// nessuno): piu' valori distinti = richiesta manipolata, rifiutata.
+// Un'Atleta maggiorenne (es. compiuti 18 anni dopo l'inserimento) accetta
+// solo un invio con tutti gli slot vuoti: sola rimozione dei dati rimasti.
+// Normalizzazione coerente con Atleta: nome, CF e provincia in maiuscolo,
+// email in minuscolo. Ogni validazione avviene prima di qualunque
+// scrittura: nessun salvataggio parziale per errori di input.
+export async function salvaTutoriAtletaAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "SEGRETERIA"]);
+  if (forbidden) return forbidden;
+
+  const atletaId = String(formData.get("atletaId") ?? "");
+  if (!atletaId) {
+    return erroreValidazione("Atleta non specificata.");
+  }
+
+  const intestatari = new Set(
+    formData
+      .getAll("intestatarioRicevuta")
+      .map((v) => String(v).trim())
+      .filter((v) => v !== "")
+  );
+  if (intestatari.size > 1) {
+    return erroreValidazione("È possibile indicare un solo intestatario ricevuta.");
+  }
+  const intestatario = [...intestatari][0];
+  if (intestatario !== undefined && intestatario !== "1" && intestatario !== "2") {
+    return erroreValidazione("Intestatario ricevuta non valido.");
+  }
+
+  const adesso = new Date();
+  const slot: SlotTutore[] = [];
+  for (const posizione of POSIZIONI_TUTORE) {
+    const nome = campoTutore(formData, posizione, "nome").toUpperCase();
+    if (!nome) {
+      slot.push({ posizione, dati: null });
+      continue;
+    }
+
+    const codiceFiscale = campoTutore(formData, posizione, "codiceFiscale").toUpperCase();
+    if (!codiceFiscale) {
+      return erroreValidazione(
+        `Il codice fiscale del Genitore/Tutore ${posizione} è obbligatorio.`
+      );
+    }
+    if (!isCodiceFiscaleValido(codiceFiscale)) {
+      return erroreValidazione(`Codice fiscale del Genitore/Tutore ${posizione} non valido.`);
+    }
+
+    const dataNascitaGrezza = campoTutore(formData, posizione, "dataNascita");
+    let dataNascita: Date | null = null;
+    if (dataNascitaGrezza) {
+      dataNascita = parseDataIsoValida(dataNascitaGrezza);
+      if (!dataNascita) {
+        return erroreValidazione(
+          `Data di nascita del Genitore/Tutore ${posizione} non valida.`
+        );
+      }
+      if (dataNascita.getTime() > adesso.getTime()) {
+        return erroreValidazione(
+          `La data di nascita del Genitore/Tutore ${posizione} non può essere futura.`
+        );
+      }
+    }
+
+    const email = campoTutore(formData, posizione, "email").toLowerCase();
+    if (email && !FORMATO_EMAIL.test(email)) {
+      return erroreValidazione(`Email del Genitore/Tutore ${posizione} non valida.`);
+    }
+
+    slot.push({
+      posizione,
+      dati: {
+        nome,
+        codiceFiscale,
+        luogoNascita: campoTutore(formData, posizione, "luogoNascita") || null,
+        dataNascita,
+        indirizzo: campoTutore(formData, posizione, "indirizzo") || null,
+        cap: campoTutore(formData, posizione, "cap") || null,
+        localitaResidenza: campoTutore(formData, posizione, "localitaResidenza") || null,
+        provinciaResidenza:
+          campoTutore(formData, posizione, "provinciaResidenza").toUpperCase() || null,
+        email: email || null,
+        telefono: campoTutore(formData, posizione, "telefono") || null,
+        intestatarioRicevuta: intestatario === String(posizione),
+        utenteId: campoTutore(formData, posizione, "utenteId") || null,
+      },
+    });
+  }
+
+  const compilati = slot.flatMap((s) => (s.dati ? [{ posizione: s.posizione, dati: s.dati }] : []));
+
+  if (
+    intestatario !== undefined &&
+    !compilati.some((s) => String(s.posizione) === intestatario)
+  ) {
+    return erroreValidazione(
+      "L'intestatario ricevuta deve essere un Genitore/Tutore compilato."
+    );
+  }
+
+  if (compilati.length === 2) {
+    const [primo, secondo] = compilati;
+    if (primo.dati.codiceFiscale === secondo.dati.codiceFiscale) {
+      return erroreValidazione(
+        "I due Genitori/Tutori non possono avere lo stesso codice fiscale."
+      );
+    }
+    if (primo.dati.utenteId && primo.dati.utenteId === secondo.dati.utenteId) {
+      return erroreValidazione(
+        "Lo stesso account non può essere collegato a entrambi i Genitori/Tutori."
+      );
+    }
+  }
+
+  const supabase = await createClient();
+
+  // Controllo minorenne lato server (non solo UI): legge dataNascita
+  // dell'Atleta via RLS, stessa lettura di aggiornaDatiAtletaAction sopra,
+  // insieme al CF (un tutore non puo' avere quello dell'Atleta stessa) e a
+  // rimossaIl (un'Atleta archiviata non si modifica).
+  let atleta: { dataNascita: string; codiceFiscale: string; rimossaIl: string | null } | null;
+  try {
+    const { data, error } = await supabase
+      .from("atlete")
+      .select("dataNascita, codiceFiscale, rimossaIl")
+      .eq("id", atletaId)
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    atleta = data;
+  } catch (err) {
+    console.error(err);
+    return ERRORE_SALVATAGGIO_TUTORI;
+  }
+  if (!atleta || atleta.rimossaIl) {
+    return erroreValidazione("Atleta non trovata.");
+  }
+  if (!isMinorenne(atleta.dataNascita, adesso) && compilati.length > 0) {
+    return erroreValidazione(
+      "I Genitori/Tutori si indicano solo per un'Atleta minorenne: per un'Atleta maggiorenne è possibile solo rimuoverli."
+    );
+  }
+  const codiceFiscaleAtleta = atleta.codiceFiscale.toUpperCase();
+  for (const s of compilati) {
+    if (s.dati.codiceFiscale === codiceFiscaleAtleta) {
+      return erroreValidazione(
+        `Il codice fiscale del Genitore/Tutore ${s.posizione} coincide con quello dell'Atleta.`
+      );
+    }
+  }
+
+  // L'account collegato deve essere uno degli Utenti Genitore gia'
+  // agganciati a questa Atleta (GenitoreAtleta, mai l'auto-aggancio
+  // dell'Atleta a se stessa) - GenitoreAtleta non e' RLS (AD-9), Prisma
+  // diretto come altrove in questo file.
+  if (compilati.some((s) => s.dati.utenteId)) {
+    let utentiAmmessi: Set<string>;
+    try {
+      const righe = await prisma.genitoreAtleta.findMany({
+        where: { atletaId, autoAggancio: false },
+        select: { utenteId: true },
+      });
+      utentiAmmessi = new Set(righe.map((r) => r.utenteId));
+    } catch (err) {
+      console.error(err);
+      return ERRORE_SALVATAGGIO_TUTORI;
+    }
+    for (const s of compilati) {
+      if (s.dati.utenteId && !utentiAmmessi.has(s.dati.utenteId)) {
+        return erroreValidazione(
+          `L'account collegato al Genitore/Tutore ${s.posizione} non è un Genitore di questa Atleta.`
+        );
+      }
+    }
+  }
+
+  try {
+    await salvaTutoriAtleta(supabase, atletaId, slot);
+  } catch (err) {
+    console.error(err);
+    return ERRORE_SALVATAGGIO_TUTORI;
+  }
+
   revalidatePath("/app/gruppi");
   revalidatePath("/app/i-miei-gruppi");
   return { success: true };

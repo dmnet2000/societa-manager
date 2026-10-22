@@ -1258,3 +1258,10 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: none
   summary: stile Match Week su /squadre - sfondo blu Match Week su tutta la pagina, titoli (categoria e nome squadra) su fascia obliqua, numero maglia delle atlete nel quadratino rosso #C8102E, card squadra con sagoma obliqua e filo bianco (decisioni utente 2026-10-02).
   evidence: richiesto durante la Story 19.17 (ordine/visibilita' classifiche), obiettivo indipendente; l'utente ha scelto di farlo subito dopo la 19.17 come Story 18.37.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-27-1-anagrafica-cittadinanza-genitori-tutori.md`
+  summary: salvaTutoriAtleta esegue delete, reset intestatario e scritture senza transazione - un errore a meta' lascia l'Atleta senza intestatario o con scritture parziali, e due salvataggi concorrenti sulla stessa posizione falliscono con INTERNAL sull'indice unico.
+  evidence: review Story 27.1 (Edge Case Hunter + Blind Hunter); PostgREST non offre transazioni multi-statement, servirebbe una funzione SQL/RPC.
+- source_spec: `_bmad-output/implementation-artifacts/spec-27-1-anagrafica-cittadinanza-genitori-tutori.md`
+  summary: nessun test automatico verifica le policy RLS delle tabelle (tutori_atleta incluso) con JWT reali per ruolo - un errore di policy passerebbe tutta la suite.
+  evidence: review Story 27.1 (Verification Gap); il progetto non ha un harness di test RLS, tutti i test db-rls usano un client Supabase finto. Stessa classe di problema delle 17 tabelle esposte del 2026-08-04.

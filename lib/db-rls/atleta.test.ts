@@ -171,7 +171,7 @@ describe("elencaAtlete", () => {
 
     expect(fromMock).toHaveBeenCalledWith("atlete");
     expect(elencoSelectMock).toHaveBeenCalledWith(
-      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare"
+      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare, cittadinanza"
     );
     // Story 9.43: default (nessuna opzione) -> esclude le rimosse.
     expect(isMock).toHaveBeenCalledWith("rimossaIl", null);

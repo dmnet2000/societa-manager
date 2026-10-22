@@ -156,14 +156,16 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       // Admin e Segreteria (mai Dirigente/Allenatore): correggere Nome/Data
       // di nascita/Codice Fiscale/Email/Cellulare e' materia amministrativa,
       // non di conduzione tecnica del Gruppo.
-      "Puoi correggere Nome, Data di nascita, Codice Fiscale, Email e Cellulare di un'Atleta già censita con \"Modifica\", accanto al suo nome - i dati esclusivi dell'import federale (luogo di nascita, indirizzo, categoria, matricola...) non sono modificabili da qui. Disponibile solo per Admin e Segreteria.",
+      "Puoi correggere Nome, Data di nascita, Codice Fiscale, Email, Cellulare e Cittadinanza di un'Atleta già censita con \"Modifica\", accanto al suo nome - i dati esclusivi dell'import federale (luogo di nascita, indirizzo, categoria, matricola...) non sono modificabili da qui. Disponibile solo per Admin e Segreteria.",
+      // Story 27.1: Genitori/Tutori richiesti dal modulo di iscrizione.
+      "Per un'Atleta minorenne trovi anche \"Genitori\", accanto a \"Modifica\": indichi fino a 2 Genitori/Tutori (Cognome e Nome e Codice Fiscale obbligatori, poi luogo e data di nascita, residenza, email e telefono), scegli al massimo uno dei due come intestatario della ricevuta e, se il Genitore ha già un account collegato all'Atleta, puoi associarlo. Lascia vuoto Cognome e Nome per togliere un Genitore/Tutore. Per un'Atleta maggiorenne il pulsante compare solo se ha ancora Genitori/Tutori salvati (ad esempio perché ha compiuto 18 anni dopo l'inserimento): in quel caso puoi vederli e rimuoverli, ma non modificarli. Disponibile solo per Admin e Segreteria.",
       "I Gruppi creati qui sono poi selezionabili quando si crea uno Slot (orario) in /app/slot.",
       // Story 9.45 (review fix): questa riga era diventata falsa per
       // Segreteria - da questa storia può correggere i dati anagrafici di
       // un'Atleta (unica eccezione alla sola lettura), pur restando in sola
       // lettura su tutto il resto della pagina (creazione/modifica Gruppi,
       // assegnazione Allenatori/Atlete).
-      "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica sui Gruppi - per quello serve il Ruolo Admin o Dirigente. Un'unica eccezione: puoi comunque correggere i dati anagrafici di un'Atleta con \"Modifica\", accanto al suo nome.",
+      "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica sui Gruppi - per quello serve il Ruolo Admin o Dirigente. Un'unica eccezione: puoi comunque correggere i dati anagrafici di un'Atleta con \"Modifica\" e, per un'Atleta minorenne, i suoi Genitori/Tutori con \"Genitori\", accanto al suo nome.",
     ],
   },
   {

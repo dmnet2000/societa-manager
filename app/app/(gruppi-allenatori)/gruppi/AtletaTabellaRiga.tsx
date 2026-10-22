@@ -7,6 +7,8 @@ import {
   ModificaDatiAtletaForm,
   type DatiAnagraficiAtleta,
 } from "./ModificaDatiAtletaForm";
+import { GenitoriTutoriForm } from "./GenitoriTutoriForm";
+import type { DatiGenitoriTutori } from "./genitori-tutori-per-atleta";
 import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
 import styles from "./gruppi.module.css";
 
@@ -34,6 +36,10 @@ export type AtletaConStato = Atleta & {
   // AtletaAssegnata.tsx, usato anche da /i-miei-gruppi che non ammette
   // questa modifica). Assente per default -> /i-miei-gruppi invariato.
   datiAnagrafici?: DatiAnagraficiAtleta;
+  // Story 27.1: valorizzato da gruppi/page.tsx solo per ADMIN/SEGRETERIA e
+  // solo per Atlete minorenni (o maggiorenni con Genitori/Tutori ancora
+  // salvati, sola rimozione) - assente -> nessun pulsante "Genitori".
+  genitoriTutori?: DatiGenitoriTutori;
 };
 
 // Richiesta utente 2026-08-06 (estensione Story 9.33): nome completo
@@ -100,6 +106,17 @@ export function AtletaTabellaRiga({
           />
         ) : (
           atleta.nome
+        )}
+        {puoModificare && atleta.genitoriTutori && (
+          <>
+            {" "}
+            <GenitoriTutoriForm
+              atletaId={atleta.id}
+              nome={atleta.nome}
+              dati={atleta.genitoriTutori}
+              idPrefisso={gruppoId}
+            />
+          </>
         )}
       </td>
       <td>

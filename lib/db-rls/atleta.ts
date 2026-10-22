@@ -26,6 +26,10 @@ export type DatiAtletaIdentitari = {
   // l'import federale (Onboarding-Import), che non li fornisce.
   email?: string | null;
   cellulare?: string | null;
+  // Story 27.1: opzionale come email/cellulare - omessa (undefined) dallo
+  // spread di serializza() sotto la colonna resta intatta, quindi il
+  // re-import federale (che non la fornisce) non la azzera mai.
+  cittadinanza?: string | null;
 };
 
 function serializza(dati: DatiAtletaIdentitari) {
@@ -88,6 +92,8 @@ export type AtletaElenco = {
   dataNascita: string;
   email: string | null;
   cellulare: string | null;
+  // Story 27.1: pre-compilazione di ModificaDatiAtletaForm.
+  cittadinanza: string | null;
   // Story 9.43: sempre selezionati (anche quando includiRimosse e' false,
   // nel qual caso valgono sempre null per una riga restituita) - un'unica
   // query resta la sola fonte di verita' del filtro (Design Notes
@@ -122,7 +128,7 @@ export async function elencaAtlete(
   let query = supabase
     .from("atlete")
     .select(
-      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare"
+      "id, nome, codiceFiscale, categoria, rimossaIl, motivoRimozione, notaRimozione, dataNascita, email, cellulare, cittadinanza"
     );
 
   if (!opzioni?.includiRimosse) {

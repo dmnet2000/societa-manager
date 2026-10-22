@@ -48,6 +48,9 @@ model Utente {
   // Story 9.41: lista (non "?") - un Utente puo' agganciare piu' righe di
   // PrecaricamentoRuolo (una per Ruolo bloccato, es. Segreteria+Dirigente).
   precaricamentiRuolo PrecaricamentoRuolo[]
+  // Story 27.1: back-relation di TutoreAtleta.utenteId (collegamento
+  // opzionale del Genitore/Tutore a un account esistente).
+  tutoriAtleta        TutoreAtleta[]
 
   @@map("utenti")
 }
@@ -121,6 +124,10 @@ model Atleta {
   // (import federale, Story 1.2, non li fornisce).
   email                 String?
   cellulare             String?
+  // Story 27.1: richiesta dal modulo di iscrizione (docs/ModuloIscrizione.pdf),
+  // testo libero (es. "italiana"). Mai fornita dall'import federale: omessa
+  // dal suo oggetto di aggiornamento, quindi un re-import non la azzera.
+  cittadinanza          String?
   // Story 9.43: archiviazione reversibile - "uscita definitiva" dalla
   // società (non-cancellazione fisica, mai un DELETE: vedi i vincoli
   // onDelete Cascade sotto, che porterebbero via lo storico). Tutti e tre
@@ -142,6 +149,7 @@ model Atleta {
   presenze              Presenza[]
   notifiche             Notifica[]
   misurazioni           MisurazioneAtleta[]
+  tutori                TutoreAtleta[]
 
   // Story 21.1 (Epic 21, Ottimizzazione database): indice btree segnalato
   // dall'Advisor Supabase (84.97% di miglioramento stimato) - lib/db-rls/atleta.ts
@@ -162,6 +170,42 @@ model Atleta {
   // produzione a questo punto della story.
   @@index([rimossaIl])
   @@map("atlete")
+}
+
+// Story 27.1 (Epic 27): Genitore/Tutore dell'Atleta minorenne come richiesto
+// dal modulo di iscrizione - al massimo 2 per Atleta (posizione 1|2, CHECK in
+// SQL), al massimo un intestatarioRicevuta per Atleta (indice unico parziale
+// in SQL, non esprimibile in Prisma). NON e' un Utente: il secondo genitore
+// spesso non ha account; utenteId lo collega opzionalmente a uno esistente
+// (il collegamento Utente<->Atleta resta GenitoreAtleta). Protetta da RLS
+// (ADMIN/SEGRETERIA scrivono, DIRIGENTE legge - mirror di "atlete"): letta e
+// scritta a runtime solo via lib/db-rls/tutore-atleta.ts, mai Prisma diretto.
+// "nome" unico "Cognome Nome" come Atleta.nome. codiceFiscale non univoco:
+// lo stesso genitore puo' comparire su due figlie (righe distinte).
+model TutoreAtleta {
+  id                   String   @id @default(uuid())
+  atletaId             String
+  atleta               Atleta   @relation(fields: [atletaId], references: [id], onDelete: Cascade)
+  posizione            Int
+  nome                 String
+  codiceFiscale        String
+  luogoNascita         String?
+  dataNascita          DateTime?
+  indirizzo            String?
+  cap                  String?
+  localitaResidenza    String?
+  provinciaResidenza   String?
+  email                String?
+  telefono             String?
+  intestatarioRicevuta Boolean  @default(false)
+  utenteId             String?
+  utente               Utente?  @relation(fields: [utenteId], references: [id], onDelete: SetNull)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([atletaId, posizione])
+  @@index([utenteId])
+  @@map("tutori_atleta")
 }
 
 // Story 6.1 (FR-24): protetta da RLS (dato personale nel tempo) - bind-list

@@ -2350,8 +2350,8 @@ development_status:
   # registrazione (in attesa). Ordine di sviluppo 27.1 -> 27.6. Consenso
   # immagini rimandato. Assorbe la parte modulo dell'Epic 24. Vedi
   # epics.md#Epic 27.
-  epic-27: backlog
-  27-1-anagrafica-cittadinanza-genitori-tutori: backlog
+  epic-27: in-progress
+  27-1-anagrafica-cittadinanza-genitori-tutori: done
   27-2-modulo-iscrizione-pdf-precompilato: backlog
   27-3-domanda-iscrizione-online-nuova-stagione: backlog
   27-4-caricamento-modulo-firmato: backlog

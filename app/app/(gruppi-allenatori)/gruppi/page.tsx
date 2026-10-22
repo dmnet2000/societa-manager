@@ -3,6 +3,7 @@ import { etichetteTesseramentoPerAtleta } from "@/lib/tesseramento";
 import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
+import { elencaTutori } from "@/lib/db-rls/tutore-atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
 import { elencaIscrizioniPerAnno } from "@/lib/db-rls/iscrizione";
 import { calcolaAtleteConCertificatoInScadenza } from "@/lib/certificato-in-scadenza-per-atleta";
@@ -17,6 +18,11 @@ import {
   ModificaDatiAtletaForm,
   type DatiAnagraficiAtleta,
 } from "./ModificaDatiAtletaForm";
+import { GenitoriTutoriForm } from "./GenitoriTutoriForm";
+import {
+  costruisciGenitoriTutoriPerAtleta,
+  type DatiGenitoriTutori,
+} from "./genitori-tutori-per-atleta";
 import styles from "./gruppi.module.css";
 
 // Dati mutabili in tempo reale (creazione Gruppo/assegnazione Allenatori
@@ -99,6 +105,8 @@ export default async function GruppiPage() {
     iscrizioni,
     tesseramenti,
     gruppiConFoto,
+    tutori,
+    genitoriCollegati,
   ] = await Promise.all([
       annoCorrente
         ? prisma.gruppo.findMany({
@@ -154,6 +162,17 @@ export default async function GruppiPage() {
       // Story 2.10: saltata nel ramo di sola lettura Segreteria - quel ramo
       // non mostra la foto squadra.
       soloVisualizzazione ? Promise.resolve(new Map<string, string | null>()) : elencaGruppiConFoto(supabase),
+      // Story 27.1: Genitori/Tutori (tabella RLS, solo via lib/db-rls/) e
+      // Utenti Genitore collegati (GenitoreAtleta + email Utente, non RLS -
+      // AD-9) per il form "Genitori" - letti solo per chi puo' modificarli.
+      puoModificareAtleta ? elencaTutori(supabase) : Promise.resolve([]),
+      puoModificareAtleta
+        ? prisma.genitoreAtleta.findMany({
+            where: { autoAggancio: false },
+            select: { atletaId: true, utenteId: true, utente: { select: { email: true } } },
+            orderBy: { utente: { email: "asc" } },
+          })
+        : Promise.resolve([]),
     ]);
 
   // Mappa costruita lato server per abbinare le Atlete (lette via RLS) alle
@@ -188,9 +207,18 @@ export default async function GruppiPage() {
             codiceFiscale: a.codiceFiscale,
             email: a.email,
             cellulare: a.cellulare,
+            cittadinanza: a.cittadinanza,
           },
         ])
       )
+    : new Map();
+
+  // Story 27.1: dati del form "Genitori" - voce solo per Atlete minorenni
+  // (o maggiorenni con Genitori/Tutori ancora salvati, sola rimozione);
+  // assenza = nessun pulsante, in entrambi i rami sotto.
+  // salvaTutoriAtletaAction ripete il controllo lato server.
+  const genitoriTutoriPerId: Map<string, DatiGenitoriTutori> = puoModificareAtleta
+    ? costruisciGenitoriTutoriPerAtleta(atlete, tutori, genitoriCollegati, new Date())
     : new Map();
 
   // Richiesta utente 2026-08-07: Set invece di Map - qui serve solo
@@ -266,6 +294,7 @@ export default async function GruppiPage() {
                             <tbody>
                               {atlete.map((atleta) => {
                                 const dati = datiAnagraficiPerId.get(atleta.id);
+                                const genitoriTutori = genitoriTutoriPerId.get(atleta.id);
                                 return (
                                   <tr key={atleta.id}>
                                     <td>
@@ -277,6 +306,17 @@ export default async function GruppiPage() {
                                         />
                                       ) : (
                                         atleta.nome
+                                      )}
+                                      {puoModificareAtleta && genitoriTutori && (
+                                        <>
+                                          {" "}
+                                          <GenitoriTutoriForm
+                                            atletaId={atleta.id}
+                                            nome={atleta.nome}
+                                            dati={genitoriTutori}
+                                            idPrefisso={gruppo.id}
+                                          />
+                                        </>
                                       )}
                                     </td>
                                   </tr>
@@ -354,6 +394,8 @@ export default async function GruppiPage() {
                     // SEGRETERIA) - AtletaTabellaRiga.tsx mostra il testo
                     // semplice in quel caso, mai il form.
                     datiAnagrafici: datiAnagraficiPerId.get(atleta.id),
+                    // Story 27.1: solo minorenni, solo ADMIN/SEGRETERIA.
+                    genitoriTutori: genitoriTutoriPerId.get(atleta.id),
                   }))
                   .sort((a, b) => a.nome.localeCompare(b.nome));
 
