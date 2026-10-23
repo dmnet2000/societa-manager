@@ -4,6 +4,7 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoAllenatoreForm } from "./NuovoAllenatoreForm";
 import { AllenatoreRow } from "./AllenatoreRow";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./precaricamento-allenatori.module.css";
 
 // Story 9.9: la pagina passa da Client Component (solo form) a Server
@@ -49,22 +50,28 @@ export default async function PrecaricamentoAllenatoriPage() {
           // senza questo wrapper la tabella romperebbe il layout invece di
           // scorrere orizzontalmente solo al suo interno.
           <div className={styles.tabellaScroll}>
-            <table className={styles.tabella}>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Cognome</th>
-                  <th>Codice Fiscale</th>
-                  <th>Stato</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allenatori.map((allenatore) => (
-                  <AllenatoreRow key={allenatore.id} allenatore={allenatore} />
-                ))}
-              </tbody>
-            </table>
+            <TabellaOrdinabile
+              className={styles.tabella}
+              colonne={[
+                { etichetta: "Nome" },
+                { etichetta: "Cognome" },
+                { etichetta: "Codice Fiscale" },
+                { etichetta: "Stato" },
+                { etichetta: "Azioni", ordinabile: false },
+              ]}
+              righe={allenatori.map((allenatore) => ({
+                chiave: allenatore.id,
+                // Stato: stesso testo di AllenatoreRow.
+                valori: [
+                  allenatore.nome,
+                  allenatore.cognome,
+                  allenatore.codiceFiscale,
+                  allenatore.utenteId ? "Registrato" : "Precaricato",
+                  null,
+                ],
+                riga: <AllenatoreRow allenatore={allenatore} />,
+              }))}
+            />
           </div>
         )}
       </section>

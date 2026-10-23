@@ -5,6 +5,8 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoSlotForm } from "./NuovoSlotForm";
 import { SlotRow } from "./SlotRow";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
+import { indiceGiorno } from "@/lib/giorno-settimana";
 import styles from "./slot.module.css";
 
 // Dati mutabili in tempo reale (creazione Slot tramite Server Action sulla
@@ -73,22 +75,27 @@ export default async function SlotPage() {
         {slot.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuno Slot inserito.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Giorno</th>
-                <th>Orario</th>
-                <th>Campo</th>
-                <th>Gruppo</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slot.map((s) => (
-                <SlotRow key={s.id} slot={s} campi={campi} gruppi={gruppi} />
-              ))}
-            </tbody>
-          </table>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Giorno" },
+              { etichetta: "Orario" },
+              { etichetta: "Campo" },
+              { etichetta: "Gruppo" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={slot.map((s) => ({
+              chiave: s.id,
+              valori: [
+                indiceGiorno(s.giorno),
+                s.oraInizio,
+                `${s.campo.palestra.nome} - ${s.campo.nome}`,
+                s.gruppo.nome,
+                null,
+              ],
+              riga: <SlotRow slot={s} campi={campi} gruppi={gruppi} />,
+            }))}
+          />
         )}
       </section>
     </main>

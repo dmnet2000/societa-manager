@@ -4,6 +4,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { DescrizioneStaffForm } from "./DescrizioneStaffForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../gruppi/gruppi.module.css";
 
 // Story 19.12 (Epic 19, Ruolo Site Manager): vista scoped
@@ -57,17 +58,22 @@ export default async function StaffDescrizioniPage() {
       <section className={styles.sezione}>
         <h2>Elenco Allenatori</h2>
         <div className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Gruppi</th>
-                <th>Descrizione e ruoli aggiuntivi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allenatori.map((allenatore) => (
-                <tr key={allenatore.id}>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Gruppi" },
+              { etichetta: "Descrizione e ruoli aggiuntivi", ordinabile: false },
+            ]}
+            righe={allenatori.map((allenatore) => ({
+              chiave: allenatore.id,
+              valori: [
+                `${allenatore.nome} ${allenatore.cognome}`,
+                allenatore.gruppi.map(({ gruppo }) => gruppo.nome).join(", "),
+                null,
+              ],
+              riga: (
+                <tr>
                   <td>
                     {allenatore.nome} {allenatore.cognome}
                   </td>
@@ -87,9 +93,9 @@ export default async function StaffDescrizioniPage() {
                     />
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              ),
+            }))}
+          />
         </div>
       </section>
     </main>

@@ -5,6 +5,7 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoPrecaricamentoRuoloForm } from "./NuovoPrecaricamentoRuoloForm";
 import { PrecaricamentoRuoloRow } from "./PrecaricamentoRuoloRow";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./precaricamento-ruoli.module.css";
 
 // Story 9.41: mirror strutturale di /app/precaricamento-allenatori
@@ -65,21 +66,27 @@ export default async function PrecaricamentoRuoliPage() {
           <p className={styles.messaggioVuoto}>Nessuna email precaricata.</p>
         ) : (
           <div className={styles.tabellaScroll}>
-            <table className={styles.tabella}>
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th>Ruoli</th>
-                  <th>Stato</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gruppi.map((gruppo) => (
-                  <PrecaricamentoRuoloRow key={gruppo.email} voce={gruppo} />
-                ))}
-              </tbody>
-            </table>
+            <TabellaOrdinabile
+              className={styles.tabella}
+              colonne={[
+                { etichetta: "Email" },
+                { etichetta: "Ruoli" },
+                { etichetta: "Stato" },
+                { etichetta: "Azioni", ordinabile: false },
+              ]}
+              righe={gruppi.map((gruppo) => ({
+                chiave: gruppo.email,
+                // Ruoli/Stato: stesso ordine del testo di PrecaricamentoRuoloRow
+                // (etichette = nome del Ruolo con la sola iniziale maiuscola).
+                valori: [
+                  gruppo.email,
+                  gruppo.ruoli.join(", "),
+                  gruppo.utenteId ? "Registrata" : "Precaricata",
+                  null,
+                ],
+                riga: <PrecaricamentoRuoloRow voce={gruppo} />,
+              }))}
+            />
           </div>
         )}
       </section>

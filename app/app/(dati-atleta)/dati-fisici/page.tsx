@@ -11,6 +11,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { MisurazioneForm } from "./MisurazioneForm";
 import { GraficoMisurazione } from "./GraficoMisurazione";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./dati-fisici.module.css";
 
 // Dati potenzialmente diversi ad ogni visita (nuove misurazioni inserite) -
@@ -61,26 +62,27 @@ async function SezioneMisurazioni({
         <p className={styles.messaggioVuoto}>Nessuna misurazione registrata.</p>
       ) : (
         <div className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Tipo</th>
-                <th>Valore</th>
-                <th>Unità di misura</th>
-              </tr>
-            </thead>
-            <tbody>
-              {misurazioni.map((m) => (
-                <tr key={m.id}>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Data" },
+              { etichetta: "Tipo" },
+              { etichetta: "Valore" },
+              { etichetta: "Unità di misura" },
+            ]}
+            righe={misurazioni.map((m) => ({
+              chiave: m.id,
+              valori: [m.data, m.tipo, m.valore, m.unitaMisura],
+              riga: (
+                <tr>
                   <td>{m.data}</td>
                   <td>{m.tipo}</td>
                   <td>{m.valore}</td>
                   <td>{m.unitaMisura}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              ),
+            }))}
+          />
         </div>
       )}
     </>

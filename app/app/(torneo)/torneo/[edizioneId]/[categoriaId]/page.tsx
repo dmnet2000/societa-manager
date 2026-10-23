@@ -11,6 +11,7 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovaSquadraTorneoForm } from "./NuovaSquadraTorneoForm";
 import { SquadraTorneoRow } from "./SquadraTorneoRow";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../../torneo.module.css";
 
 // Story 20.2 (Epic 20, Torneo Memorial): mirror di
@@ -91,22 +92,27 @@ export default async function CategoriaTorneoPage({
         {squadre.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuna Squadra iscritta.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Girone</th>
-                <th>Referente</th>
-                <th>Contatto</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {squadre.map((squadra) => (
-                <SquadraTorneoRow key={squadra.id} squadra={squadra} />
-              ))}
-            </tbody>
-          </table>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Girone" },
+              { etichetta: "Referente" },
+              { etichetta: "Contatto" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={squadre.map((squadra) => ({
+              chiave: squadra.id,
+              valori: [
+                squadra.nome,
+                squadra.girone,
+                squadra.referente,
+                squadra.contatto,
+                null,
+              ],
+              riga: <SquadraTorneoRow squadra={squadra} />,
+            }))}
+          />
         )}
       </section>
     </main>

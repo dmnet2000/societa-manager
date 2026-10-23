@@ -9,7 +9,8 @@ import {
   leggiPresenzeGriglia,
   leggiStoricoPresenzePerAtleta,
 } from "@/lib/db-rls/presenza";
-import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import { ETICHETTA_GIORNO, indiceGiorno } from "@/lib/giorno-settimana";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import { giorniDelMese, meseCorrente } from "@/lib/mese-calendario";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
@@ -81,19 +82,26 @@ async function StoricoTable({
         </p>
       )}
       <div className={styles.scrollWrapper}>
-        <table className={styles.tabella}>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Giorno</th>
-              <th>Orario</th>
-              <th>Gruppo</th>
-              <th>Presenza</th>
-            </tr>
-          </thead>
-          <tbody>
-            {righeVisibili.map(({ riga, slot }) => (
-              <tr key={riga.id}>
+        <TabellaOrdinabile
+          className={styles.tabella}
+          colonne={[
+            { etichetta: "Data" },
+            { etichetta: "Giorno" },
+            { etichetta: "Orario" },
+            { etichetta: "Gruppo" },
+            { etichetta: "Presenza" },
+          ]}
+          righe={righeVisibili.map(({ riga, slot }) => ({
+            chiave: riga.id,
+            valori: [
+              riga.data,
+              indiceGiorno(slot.giorno),
+              slot.oraInizio,
+              slot.gruppo.nome,
+              riga.presente ? "Presente" : "Assente",
+            ],
+            riga: (
+              <tr>
                 <td>{riga.data}</td>
                 <td>{ETICHETTA_GIORNO[slot.giorno]}</td>
                 <td>
@@ -102,9 +110,9 @@ async function StoricoTable({
                 <td>{slot.gruppo.nome}</td>
                 <td>{riga.presente ? "Presente" : "Assente"}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            ),
+          }))}
+        />
       </div>
     </>
   );

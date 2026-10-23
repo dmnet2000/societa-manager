@@ -7,18 +7,28 @@ import { RimuoviAtletaForm } from "./RimuoviAtletaForm";
 import styles from "./conferma-iscrizioni.module.css";
 
 type Stato =
-  | { iscritta: true; iscrizioneId: string | null }
+  | { iscritta: true; iscrizioneId: string | null; confermataIl: string | null }
   | { iscritta: false };
+
+// Data di conferma in formato italiano, sul fuso di Roma (una conferma alle
+// 00:30 ora italiana e' ancora il giorno prima in UTC).
+function formattaDataConferma(confermataIl: string): string {
+  return new Date(confermataIl).toLocaleDateString("it-IT", {
+    timeZone: "Europe/Rome",
+  });
+}
 
 export function IscrizioneRow({
   atleta,
   iscrizioneId,
+  confermataIl,
   puoConfermare,
   gruppi,
   nascosta = false,
 }: {
   atleta: AtletaElenco;
   iscrizioneId: string | null;
+  confermataIl: string | null;
   puoConfermare: boolean;
   // Story 1.9: nomi dei Gruppi assegnati per la stagione corrente (sola
   // visualizzazione, l'assegnazione resta gestita da /app/gruppi).
@@ -29,7 +39,9 @@ export function IscrizioneRow({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [stato, setStato] = useState<Stato>(
-    iscrizioneId ? { iscritta: true, iscrizioneId } : { iscritta: false }
+    iscrizioneId
+      ? { iscritta: true, iscrizioneId, confermataIl }
+      : { iscritta: false }
   );
   const [isPending, startTransition] = useTransition();
 
@@ -46,7 +58,13 @@ export function IscrizioneRow({
         // bottone "Escludi" compare solo dopo un ricaricamento della pagina
         // (revalidatePath aggiorna i dati, non l'istanza gia' montata di
         // questo componente). Limite noto, documentato nelle Dev Notes.
-        setStato({ iscritta: true, iscrizioneId: null });
+        // La data mostrata e' quella odierna, la stessa che il server ha
+        // appena registrato come confermataIl.
+        setStato({
+          iscritta: true,
+          iscrizioneId: null,
+          confermataIl: new Date().toISOString(),
+        });
       } catch {
         setError("Impossibile confermare l'iscrizione. Riprova.");
       }
@@ -80,7 +98,9 @@ export function IscrizioneRow({
         <div className={styles.stato}>
           {stato.iscritta ? (
             <>
-              Iscritta
+              {stato.confermataIl
+                ? `Iscritta il ${formattaDataConferma(stato.confermataIl)}`
+                : "Iscritta"}
               {iscrizioneIdCorrente && (
                 <button
                   disabled={isPending}

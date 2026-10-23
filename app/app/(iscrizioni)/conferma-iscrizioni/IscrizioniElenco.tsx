@@ -18,6 +18,8 @@ import styles from "./conferma-iscrizioni.module.css";
 export type RigaIscrizione = {
   atleta: AtletaElenco;
   iscrizioneId: string | null;
+  // Data di conferma dell'Iscrizione corrente (null se non iscritta).
+  confermataIl: string | null;
   gruppi: string[];
 };
 
@@ -142,6 +144,7 @@ export function IscrizioniElenco({
                 key={riga.atleta.id}
                 atleta={riga.atleta}
                 iscrizioneId={riga.iscrizioneId}
+                confermataIl={riga.confermataIl}
                 puoConfermare={puoConfermare}
                 gruppi={riga.gruppi}
                 nascosta={!corrispondeRicercaAtleta(riga.atleta, ricerca)}

@@ -6,6 +6,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { FotoSquadraForm } from "../gruppi/FotoSquadraForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../gruppi/gruppi.module.css";
 
 // Story 19.4 (Epic 19, Ruolo Site Manager): vista scoped SITE_MANAGER-only,
@@ -52,20 +53,21 @@ export default async function FotoSquadrePage() {
       <section className={styles.sezione}>
         <h2>Elenco Gruppi</h2>
         <div className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Foto squadra</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gruppi.map((gruppo) => {
-                const fotoAggiornataIl = gruppiConFoto.get(gruppo.id) ?? null;
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Categoria" },
+              { etichetta: "Foto squadra", ordinabile: false },
+            ]}
+            righe={gruppi.map((gruppo) => {
+              const fotoAggiornataIl = gruppiConFoto.get(gruppo.id) ?? null;
 
-                return (
-                  <tr key={gruppo.id}>
+              return {
+                chiave: gruppo.id,
+                valori: [gruppo.nome, gruppo.categoria, null],
+                riga: (
+                  <tr>
                     <td>{gruppo.nome}</td>
                     <td>{gruppo.categoria}</td>
                     <td>
@@ -78,10 +80,10 @@ export default async function FotoSquadrePage() {
                       />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ),
+              };
+            })}
+          />
         </div>
       </section>
     </main>

@@ -23,6 +23,7 @@ import { GeneraTabelloneForm } from "./GeneraTabelloneForm";
 import { PrenotaSlotIpoteticoForm } from "./PrenotaSlotIpoteticoForm";
 import { RisultatoPartitaTorneoForm } from "../risultati/RisultatoPartitaTorneoForm";
 import type { FaseTorneo, TabelloneTorneo } from "@prisma/client";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../../../torneo.module.css";
 
 // Story 20.4 (Epic 20, Torneo Memorial): mirror di
@@ -426,22 +427,20 @@ export default async function TabelloneTorneoPage({
                 tabellone.
               </p>
             ) : (
-              <table className={styles.tabella}>
-                <thead>
-                  <tr>
-                    <th>Posizione</th>
-                    <th>Squadra</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classificaFinale.map((riga) => (
-                    <tr key={riga.squadra.id}>
+              <TabellaOrdinabile
+                className={styles.tabella}
+                colonne={[{ etichetta: "Posizione" }, { etichetta: "Squadra" }]}
+                righe={classificaFinale.map((riga) => ({
+                  chiave: riga.squadra.id,
+                  valori: [riga.posizione, riga.squadra.nome],
+                  riga: (
+                    <tr>
                       <td>{riga.posizione}°</td>
                       <td>{riga.squadra.nome}</td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  ),
+                }))}
+              />
             )}
           </section>
         </>

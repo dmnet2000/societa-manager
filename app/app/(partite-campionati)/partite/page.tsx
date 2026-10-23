@@ -10,6 +10,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { PartitaRow } from "./PartitaRow";
 import { TabellaPartiteGruppo } from "./TabellaPartiteGruppo";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./partite.module.css";
 
 // Un import riuscito su /campionati (Story 10.2, importaGare) revalida solo
@@ -25,6 +26,56 @@ export const dynamic = "force-dynamic";
 // implementazione indipendente dello stesso parsing.
 function formattaData(data: string): string {
   return parseDataUtc(data).toLocaleDateString("it-IT", { timeZone: "UTC" });
+}
+
+// AC #4: riga statica di sola lettura, nessuna colonna Azioni - nessun
+// Client Component/useActionState per un Ruolo che non puo' mai inviare
+// nulla, stesso principio di SlotTable.tsx vs SlotRow.tsx.
+function RigaPartitaSolaLettura({
+  partita,
+}: {
+  partita: {
+    data: string;
+    ora: string;
+    squadraCasa: string;
+    squadraOspite: string;
+    impianto: string | null;
+    indirizzoImpianto: string | null;
+    gruppo: { nome: string };
+    campionato: { nome: string };
+  };
+}) {
+  const linkNaviga = costruisciLinkNaviga({
+    indirizzo: partita.indirizzoImpianto,
+  });
+  return (
+    <tr>
+      <td>{formattaData(partita.data)}</td>
+      <td>{partita.ora}</td>
+      <td>
+        {partita.squadraCasa} - {partita.squadraOspite}
+      </td>
+      <td>
+        {partita.impianto}
+        {linkNaviga && (
+          <>
+            {" "}
+            <a
+              className={styles.linkNaviga}
+              href={linkNaviga}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
+            >
+              Naviga
+            </a>
+          </>
+        )}
+      </td>
+      <td>{partita.gruppo.nome}</td>
+      <td>{partita.campionato.nome}</td>
+    </tr>
+  );
 }
 
 export default async function PartitePage({
@@ -220,78 +271,49 @@ export default async function PartitePage({
             </p>
           ) : (
             <div className={styles.scrollWrapper}>
-              <table className={styles.tabella}>
-                <thead>
-                  <tr>
-                    <th>Giorno</th>
-                    <th>Ora</th>
-                    <th>Squadre</th>
-                    <th>Luogo</th>
-                    <th>Gruppo</th>
-                    <th>Campionato</th>
-                    {puoModificare && <th>Azioni</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {settimana.partite.map((partita) => {
-                    if (puoModificare) {
-                      return (
-                        <PartitaRow
-                          key={partita.id}
-                          partita={{
-                            id: partita.id,
-                            data: partita.data,
-                            dataFormattata: formattaData(partita.data),
-                            ora: partita.ora,
-                            impianto: partita.impianto,
-                            indirizzoImpianto: partita.indirizzoImpianto,
-                            squadraCasa: partita.squadraCasa,
-                            squadraOspite: partita.squadraOspite,
-                            gruppoNome: partita.gruppo.nome,
-                            campionatoNome: partita.campionato.nome,
-                          }}
-                        />
-                      );
-                    }
-
-                    // AC #4: riga statica di sola lettura, nessuna colonna
-                    // Azioni - nessun Client Component/useActionState per un
-                    // Ruolo che non puo' mai inviare nulla, stesso principio
-                    // di SlotTable.tsx vs SlotRow.tsx.
-                    const linkNaviga = costruisciLinkNaviga({
-                      indirizzo: partita.indirizzoImpianto,
-                    });
-                    return (
-                      <tr key={partita.id}>
-                        <td>{formattaData(partita.data)}</td>
-                        <td>{partita.ora}</td>
-                        <td>
-                          {partita.squadraCasa} - {partita.squadraOspite}
-                        </td>
-                        <td>
-                          {partita.impianto}
-                          {linkNaviga && (
-                            <>
-                              {" "}
-                              <a
-                                className={styles.linkNaviga}
-                                href={linkNaviga}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Naviga verso ${partita.impianto ?? "il luogo della partita"}`}
-                              >
-                                Naviga
-                              </a>
-                            </>
-                          )}
-                        </td>
-                        <td>{partita.gruppo.nome}</td>
-                        <td>{partita.campionato.nome}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <TabellaOrdinabile
+                className={styles.tabella}
+                colonne={[
+                  { etichetta: "Giorno" },
+                  { etichetta: "Ora" },
+                  { etichetta: "Squadre" },
+                  { etichetta: "Luogo" },
+                  { etichetta: "Gruppo" },
+                  { etichetta: "Campionato" },
+                  ...(puoModificare ? [{ etichetta: "Azioni", ordinabile: false }] : []),
+                ]}
+                righe={settimana.partite.map((partita) => ({
+                  chiave: partita.id,
+                  // Giorno: data ISO con l'ora come spareggio (cronologico).
+                  valori: [
+                    `${partita.data} ${partita.ora}`,
+                    partita.ora,
+                    `${partita.squadraCasa} - ${partita.squadraOspite}`,
+                    partita.impianto,
+                    partita.gruppo.nome,
+                    partita.campionato.nome,
+                    null,
+                  ],
+                  riga: puoModificare ? (
+                    <PartitaRow
+                      partita={{
+                        id: partita.id,
+                        data: partita.data,
+                        dataFormattata: formattaData(partita.data),
+                        ora: partita.ora,
+                        impianto: partita.impianto,
+                        indirizzoImpianto: partita.indirizzoImpianto,
+                        squadraCasa: partita.squadraCasa,
+                        squadraOspite: partita.squadraOspite,
+                        gruppoNome: partita.gruppo.nome,
+                        campionatoNome: partita.campionato.nome,
+                      }}
+                    />
+                  ) : (
+                    <RigaPartitaSolaLettura partita={partita} />
+                  ),
+                }))}
+              />
             </div>
           )}
         </section>

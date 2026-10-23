@@ -3,7 +3,13 @@
 import { useActionState, useEffect, useRef } from "react";
 import { assegnaAtleta, creaEAssegnaAtleta } from "../gruppi/actions";
 import type { Atleta } from "../gruppi/AtletaAssegnata";
-import { AtletaTabellaRiga, type AtletaConStato } from "../gruppi/AtletaTabellaRiga";
+import {
+  AtletaTabellaRiga,
+  COLONNE_TABELLA_ATLETE,
+  valoriOrdinamentoAtleta,
+  type AtletaConStato,
+} from "../gruppi/AtletaTabellaRiga";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import { FotoSquadraForm } from "../gruppi/FotoSquadraForm";
 import styles from "./i-miei-gruppi.module.css";
 
@@ -78,28 +84,21 @@ export function MioGruppoCard({
         <p className={styles.nessunaAtleta}>Nessuna Atleta assegnata.</p>
       ) : (
         <div className={styles.scrollAtlete}>
-          <table className={styles.tabellaAtlete}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Numero</th>
-                <th>Certificato</th>
-                <th>Iscrizione</th>
-                <th>Tesseramento</th>
-                <th>Rimuovi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {atlete.map((atleta) => (
+          <TabellaOrdinabile
+            className={styles.tabellaAtlete}
+            colonne={COLONNE_TABELLA_ATLETE}
+            righe={atlete.map((atleta) => ({
+              chiave: atleta.id,
+              valori: valoriOrdinamentoAtleta(atleta),
+              riga: (
                 <AtletaTabellaRiga
-                  key={atleta.id}
                   gruppoId={gruppo.id}
                   gruppoNome={gruppo.nome}
                   atleta={atleta}
                 />
-              ))}
-            </tbody>
-          </table>
+              ),
+            }))}
+          />
         </div>
       )}
       <form

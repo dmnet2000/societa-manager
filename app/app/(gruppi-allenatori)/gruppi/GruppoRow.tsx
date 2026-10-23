@@ -8,7 +8,13 @@ import {
   creaEAssegnaAtleta,
 } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
-import { AtletaTabellaRiga, type AtletaConStato } from "./AtletaTabellaRiga";
+import {
+  AtletaTabellaRiga,
+  COLONNE_TABELLA_ATLETE,
+  valoriOrdinamentoAtleta,
+  type AtletaConStato,
+} from "./AtletaTabellaRiga";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
 import { FotoSquadraForm } from "./FotoSquadraForm";
 import styles from "./gruppi.module.css";
@@ -351,29 +357,22 @@ export function GruppoRow({
           )}
 
           {gruppo.atlete.length > 0 && (
-            <table className={styles.tabellaAtlete}>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Numero</th>
-                  <th>Certificato</th>
-                  <th>Iscrizione</th>
-                  <th>Tesseramento</th>
-                  <th>Rimuovi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gruppo.atlete.map((atleta) => (
+            <TabellaOrdinabile
+              className={styles.tabellaAtlete}
+              colonne={COLONNE_TABELLA_ATLETE}
+              righe={gruppo.atlete.map((atleta) => ({
+                chiave: atleta.id,
+                valori: valoriOrdinamentoAtleta(atleta),
+                riga: (
                   <AtletaTabellaRiga
-                    key={atleta.id}
                     gruppoId={gruppo.id}
                     gruppoNome={gruppo.nome}
                     atleta={atleta}
                     puoModificare={puoModificareAtleta}
                   />
-                ))}
-              </tbody>
-            </table>
+                ),
+              }))}
+            />
           )}
         </td>
       </tr>

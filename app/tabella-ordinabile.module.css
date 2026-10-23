@@ -1,0 +1,53 @@
+/* Intestazione ordinabile condivisa (TabellaOrdinabile.tsx) - mirror di
+   .thOrdinabile/.bottoneOrdinamento in conferma-iscrizioni.module.css: il
+   padding passa dal <th> al bottone, che riempie la cella ed eredita
+   tipografia/colore/uppercase del th della tabella ospite. Selettore con
+   specificita' alta (table thead th.x) per vincere sul padding definito dai
+   moduli CSS delle singole pagine (es. ".tabella th"), il cui ordine di
+   caricamento rispetto a questo modulo non e' garantito. */
+table thead th.thOrdinabile {
+  padding: 0;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* min-height 44px = touch target minimo. */
+.bottoneOrdinamento {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .bottoneOrdinamento:hover {
+    background: var(--color-border);
+  }
+}
+
+.bottoneOrdinamento:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.frecciaOrdinamento {
+  font-size: 0.75em;
+}
+
+/* Indicatore discreto sulle colonne non ancora ordinate: segnala che
+   l'intestazione e' cliccabile anche senza hover (touch). */
+.frecciaInattiva {
+  font-size: 0.75em;
+  opacity: 0.4;
+}

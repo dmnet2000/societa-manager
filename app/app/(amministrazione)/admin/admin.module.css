@@ -251,31 +251,3 @@
   flex-wrap: wrap;
 }
 
-/* Story 9.40: barra dei 2 pulsanti di ordinamento ("Ruolo"/"Stato") sopra la
-   tabella Utenti - mirror di .headerConfermati/.bottoneOrdina di
-   conferma-certificati.module.css (Story 9.25), adattata ai token gia' in
-   uso in questo file. Allineata a sinistra (non a destra come
-   .headerConfermati): qui sopra un'intera tabella multi-colonna, non sopra
-   una singola colonna badge. */
-.barraOrdinamento {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-
-.bottoneOrdina {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.bottoneOrdina:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}

@@ -5,6 +5,8 @@ import {
   eNostraSquadra,
   type ClassificaVista,
 } from "@/lib/sincronizza-gare-fipav/vista-home-live";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
+import type { ValoreOrdinamento } from "@/lib/ordina-tabella";
 import styles from "./classifiche.module.css";
 
 // Story 18.36: una classifica di /classifiche in stile Match Week. Dopo
@@ -28,6 +30,15 @@ const COLONNE: { campo: keyof RigaClassificaFipav; sigla: string; nome: string }
   { campo: "quozientePunti", sigla: "QP", nome: "Quoziente Punti" },
   { campo: "penalizzazione", sigla: "Penal.", nome: "Penalizzazione" },
 ];
+
+// I valori del portale sono testo ("12", "1,250", "—"): ordinati come
+// numeri quando lo sono (virgola decimale italiana), altrimenti come testo.
+function valoreNumericoOTesto(testo: string | null | undefined): ValoreOrdinamento {
+  const pulito = testoOppureNull(testo);
+  if (pulito === null) return null;
+  const numero = Number(pulito.replace(",", "."));
+  return Number.isFinite(numero) ? numero : pulito;
+}
 
 export function ClassificaMatchWeek({ classifica }: { classifica: ClassificaVista }) {
   const idTitolo = `classifica-${classifica.campionatoId}`;
@@ -61,33 +72,33 @@ export function ClassificaMatchWeek({ classifica }: { classifica: ClassificaVist
         role="region"
         aria-label={`Tabella ${titolo}`}
       >
-        <table className={styles.tabellaClassifica}>
-          <caption className={styles.srOnly}>Classifica {titolo}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Pos.</th>
-              <th scope="col">Squadra</th>
-              <th scope="col" className={styles.colonnaPunti}>
-                Punti
-              </th>
-              {COLONNE.map(({ campo, sigla, nome }) => (
-                <th scope="col" key={campo}>
-                  <abbr title={nome}>{sigla}</abbr>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {classifica.righe.map((riga, indice) => {
-              const nostra = indice === indiceNostra;
-              // Posizione/squadra obbligatorie nel parser, ma una stringa di
-              // soli spazi resta possibile: mai un quadratino vuoto.
-              const posizione = testoOppureNull(riga.posizione) ?? "—";
-              return (
-                <tr
-                  key={`${classifica.campionatoId}-${riga.posizione}-${indice}`}
-                  className={nostra ? styles.rigaNostra : undefined}
-                >
+        <TabellaOrdinabile
+          className={styles.tabellaClassifica}
+          didascalia={<caption className={styles.srOnly}>Classifica {titolo}</caption>}
+          colonne={[
+            { etichetta: "Posizione", contenuto: "Pos." },
+            { etichetta: "Squadra" },
+            { etichetta: "Punti", className: styles.colonnaPunti },
+            ...COLONNE.map(({ sigla, nome }) => ({
+              etichetta: nome,
+              contenuto: <abbr title={nome}>{sigla}</abbr>,
+            })),
+          ]}
+          righe={classifica.righe.map((riga, indice) => {
+            const nostra = indice === indiceNostra;
+            // Posizione/squadra obbligatorie nel parser, ma una stringa di
+            // soli spazi resta possibile: mai un quadratino vuoto.
+            const posizione = testoOppureNull(riga.posizione) ?? "—";
+            return {
+              chiave: `${classifica.campionatoId}-${riga.posizione}-${indice}`,
+              valori: [
+                valoreNumericoOTesto(riga.posizione),
+                testoOppureNull(riga.squadra),
+                valoreNumericoOTesto(riga.punti),
+                ...COLONNE.map(({ campo }) => valoreNumericoOTesto(riga[campo])),
+              ],
+              riga: (
+                <tr className={nostra ? styles.rigaNostra : undefined}>
                   <td>
                     <span className={styles.posizione}>{posizione}</span>
                   </td>
@@ -100,10 +111,10 @@ export function ClassificaMatchWeek({ classifica }: { classifica: ClassificaVist
                     <td key={campo}>{testoOppureNull(riga[campo]) ?? "—"}</td>
                   ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ),
+            };
+          })}
+        />
       </div>
     </section>
   );

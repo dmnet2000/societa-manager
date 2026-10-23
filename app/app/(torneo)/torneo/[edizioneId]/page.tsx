@@ -10,6 +10,7 @@ import { NuovaCategoriaTorneoForm } from "../NuovaCategoriaTorneoForm";
 import { CategoriaTorneoRow } from "../CategoriaTorneoRow";
 import { VolantinoTorneoForm } from "./VolantinoTorneoForm";
 import { NomiSettimaneTorneoForm } from "./NomiSettimaneTorneoForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../torneo.module.css";
 
 // Story 20.1 (Epic 20, Torneo Memorial): mirror di
@@ -117,21 +118,22 @@ export default async function EdizioneTorneoPage({
         {categorie.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuna Categoria inserita.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Settimana</th>
-                <th>Numero massimo squadre</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categorie.map((categoria) => (
-                <CategoriaTorneoRow key={categoria.id} categoria={categoria} edizione={edizione} />
-              ))}
-            </tbody>
-          </table>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Settimana" },
+              { etichetta: "Numero massimo squadre" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={categorie.map((categoria) => ({
+              chiave: categoria.id,
+              // Settimana: valore dell'enum (SETTIMANA_1 < SETTIMANA_2), non
+              // il nome personalizzato mostrato - ordine cronologico.
+              valori: [categoria.nome, categoria.settimana, categoria.numeroMassimoSquadre, null],
+              riga: <CategoriaTorneoRow categoria={categoria} edizione={edizione} />,
+            }))}
+          />
         )}
       </section>
     </main>
