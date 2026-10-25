@@ -182,6 +182,15 @@ export const PROTECTED_ROUTES: {
     gruppo: "Atleti",
   },
   {
+    // Story 28.4 (Epic 28): export completo per Atleta + i tre export di
+    // sezione, solo Admin (decisione utente 2026-10-25). Ultima figlia del
+    // gruppo "Atleti".
+    prefix: "/app/export-dati",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Export dati",
+    gruppo: "Atleti",
+  },
+  {
     // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
     // introdotto come infrastruttura pura da Story 15.1 - raggruppa con
     // /palestre sotto la voce di menu "Orari/Palestre". Nessun cambio a

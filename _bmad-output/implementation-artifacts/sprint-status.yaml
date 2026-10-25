@@ -1,3 +1,4 @@
+# last_updated: 2026-10-25 (Story 28.4 implementata: nuova pagina /app/export-dati (solo Admin, ultima voce del gruppo Atleti) con Export completo + link ai tre export di sezione; rotta /app/export-dati/export, anagrafica da elencaAnagraficaAtleteExport (RLS, rimosse escluse); stato certificato/iscrizione/tesseramento dalle stesse funzioni delle 28.1-28.3 con test di coerenza. Guida aggiornata. backlog -> review. Epic 28: tutte le story in review.)
 # last_updated: 2026-10-25 (Story 28.3 implementata: export Tesseramenti su /app/conferma-tesseramenti/export (solo Admin/Dirigente), colonne Federazione da colonneTesseramento come in pagina, Tesseramento letto solo via lib/tesseramento.ts (grep pulito). Guida aggiornata. backlog -> review.)
 # last_updated: 2026-10-25 (Story 28.2 implementata: export Iscrizioni su /app/conferma-iscrizioni/export, riusa writer e pulsante della 28.1; data iscrizione riportata al giorno sul fuso di Roma come in pagina (giornoRomaDaIso). Guida aggiornata. backlog -> review.)
 # last_updated: 2026-10-25 (Story 28.1 implementata: writer .xlsx senza dipendenze (lib/export-xlsx.ts, zip stored scritto a mano), export Certificati su /app/conferma-certificati/export, pulsante condiviso app/PulsanteEsportaExcel.tsx, guida aggiornata. File validato con openpyxl; da aprire in Excel/LibreOffice dal vivo dopo il deploy. backlog -> review.)
@@ -2373,4 +2374,4 @@ development_status:
   28-1-export-certificati-writer-excel: review
   28-2-export-iscrizioni: review
   28-3-export-tesseramenti: review
-  28-4-export-complessivo-admin: backlog
+  28-4-export-complessivo-admin: review

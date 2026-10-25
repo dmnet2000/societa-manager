@@ -138,6 +138,46 @@ export async function elencaAtlete(
   return data ?? [];
 }
 
+export type AtletaAnagraficaExport = {
+  id: string;
+  nome: string;
+  codiceFiscale: string;
+  sesso: "M" | "F";
+  dataNascita: string;
+  luogoNascita: string | null;
+  provinciaNascita: string | null;
+  indirizzo: string | null;
+  cap: string | null;
+  localitaResidenza: string | null;
+  provinciaResidenza: string | null;
+  email: string | null;
+  cellulare: string | null;
+  categoria: string | null;
+  matricola: string | null;
+};
+
+// Story 28.4 (Epic 28): anagrafica completa per l'export complessivo
+// (solo Admin) - lettura dedicata invece di allargare il select di
+// elencaAtlete, usata da ~18 pagine che non hanno bisogno di indirizzo e
+// luogo di nascita. Stessa RLS e stessa esclusione delle Atlete rimosse.
+export async function elencaAnagraficaAtleteExport(
+  supabase: SupabaseClient
+): Promise<AtletaAnagraficaExport[]> {
+  const { data, error } = await supabase
+    .from("atlete")
+    .select(
+      "id, nome, codiceFiscale, sesso, dataNascita, luogoNascita, provinciaNascita, indirizzo, cap, localitaResidenza, provinciaResidenza, email, cellulare, categoria, matricola"
+    )
+    .is("rimossaIl", null)
+    .order("nome", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 export type AtletaPubblica = {
   id: string;
   nome: string;

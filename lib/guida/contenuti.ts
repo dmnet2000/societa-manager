@@ -129,6 +129,17 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "\"Elimina\" cancella definitivamente una federazione e chiede conferma prima di procedere. Una federazione già usata in un tesseramento non può essere eliminata: in quel caso disattivala.",
     ],
   },
+  {
+    rotta: "/app/export-dati",
+    titolo: "Export dati",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui scarichi in Excel i dati delle Atlete della stagione corrente - solo l'Admin vede questa pagina.",
+      "\"Export completo\" crea un unico file con una riga per ogni Atleta (escluse quelle rimosse), in ordine di nome: anagrafica (codice fiscale, sesso, data e luogo di nascita, indirizzo, email, cellulare, categoria, matricola), Gruppo, stato e scadenza del Certificato medico, iscrizione con la data, tesseramento con le sigle delle federazioni.",
+      "Stato del Certificato, iscrizione e tesseramento sono calcolati esattamente come negli export delle pagine Conferma certificati, Conferma iscrizioni e Conferma tesseramenti, che trovi anche qui sotto \"Export per sezione\".",
+      "I file contengono dati personali, anche di minori: conservali con cura e non inoltrarli a chi non ne ha bisogno.",
+    ],
+  },
   // Orari/Palestre.
   {
     rotta: "/app/orari",

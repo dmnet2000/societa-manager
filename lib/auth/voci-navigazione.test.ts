@@ -239,9 +239,10 @@ describe("filtraVociNavigazione", () => {
         "/app/conferma-certificati",
         "/app/conferma-tesseramenti",
         "/app/federazioni",
+        "/app/export-dati",
       ])
     );
-    expect(atleti).toHaveLength(5);
+    expect(atleti).toHaveLength(6);
 
     expect(accounting.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
@@ -386,9 +387,14 @@ describe("filtraVociNavigazione", () => {
   // Story 15.3 (AC #1): Admin e Dirigente hanno accesso a tutte e quattro le
   // rotte - il gruppo "Atleti" mostra tutte e quattro le figlie, nell'ordine
   // di dichiarazione del Task 1.
-  it.each(["ADMIN", "DIRIGENTE"] as const)(
-    "%s vede il gruppo Atleti con tutte e quattro le figlie, in ordine",
-    (ruolo) => {
+  // Story 28.4: /app/export-dati e' solo Admin - sesta figlia per l'Admin,
+  // assente per il Dirigente.
+  it.each([
+    ["ADMIN", ["/app/export-dati"]],
+    ["DIRIGENTE", []],
+  ] as const)(
+    "%s vede il gruppo Atleti con tutte le sue figlie, in ordine",
+    (ruolo, soloAdmin) => {
       const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Atleti");
       expect(gruppo).toBeDefined();
       expect(gruppo?.figlie).toEqual([
@@ -397,6 +403,7 @@ describe("filtraVociNavigazione", () => {
         { href: "/app/conferma-certificati", label: "Conferma certificati" },
         { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
         { href: "/app/federazioni", label: "Federazioni" },
+        ...soloAdmin.map((href) => ({ href, label: "Export dati" })),
       ]);
     }
   );
@@ -422,6 +429,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
       { href: "/app/federazioni", label: "Federazioni" },
+      { href: "/app/export-dati", label: "Export dati" },
     ]);
   });
 
@@ -490,6 +498,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
       { href: "/app/federazioni", label: "Federazioni" },
+      { href: "/app/export-dati", label: "Export dati" },
     ]);
   });
 
@@ -556,6 +565,7 @@ describe("filtraVociNavigazione", () => {
           { href: "/app/conferma-certificati", label: "Conferma certificati" },
           { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
           { href: "/app/federazioni", label: "Federazioni" },
+          { href: "/app/export-dati", label: "Export dati" },
         ],
       },
       {

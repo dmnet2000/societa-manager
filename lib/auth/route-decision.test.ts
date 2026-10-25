@@ -209,6 +209,25 @@ describe("getRouteDecision", () => {
     }
   );
 
+  // Story 28.4: /app/export-dati (e la sua rotta di download) solo ADMIN.
+  it("allows ADMIN on /app/export-dati and its download route", async () => {
+    for (const rotta of ["/app/export-dati", "/app/export-dati/export"]) {
+      expect(await getRouteDecision(rotta, true, ["ADMIN"])).toEqual({ action: "allow" });
+    }
+  });
+
+  it.each(["DIRIGENTE", "SEGRETERIA", "ALLENATORE", "ATLETA", "GENITORE", "SITE_MANAGER", "DIRETTORE_TECNICO"] as const)(
+    "redirects %s away from /app/export-dati and its download route",
+    async (ruolo) => {
+      for (const rotta of ["/app/export-dati", "/app/export-dati/export"]) {
+        expect(await getRouteDecision(rotta, true, [ruolo])).toEqual({
+          action: "redirect",
+          location: "/app/non-autorizzato",
+        });
+      }
+    }
+  );
+
   it("matches nested paths under a protected prefix", async () => {
     expect(await getRouteDecision("/app/admin/utenti", true, [])).toEqual({
       action: "redirect",
