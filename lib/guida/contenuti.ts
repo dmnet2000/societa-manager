@@ -114,6 +114,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Una federazione disattivata compare solo se qualche Atleta vi è ancora tesserata in questa stagione: puoi togliere la casella, ma non aggiungerla a nuove Atlete.",
       "Le modifiche riguardano solo la stagione corrente: i tesseramenti delle stagioni passate non vengono toccati.",
       "Il Tesseramento è indipendente dall'Iscrizione: puoi tesserare anche un'Atleta non ancora iscritta.",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, Gruppo, se è iscritta, se è tesserata e una colonna per ogni federazione della tabella, con \"Sì\" dove l'Atleta è tesserata. Il file riporta i tesseramenti salvati: le caselle spuntate e non ancora salvate non ci sono, e l'ordinamento a schermo non cambia il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {

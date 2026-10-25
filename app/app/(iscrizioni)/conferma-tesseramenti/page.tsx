@@ -7,6 +7,7 @@ import { colonneTesseramento, federazioniPerAtleta } from "@/lib/tesseramento";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { PulsanteEsportaExcel } from "@/app/PulsanteEsportaExcel";
 import { ConfermaTesseramentiForm } from "./ConfermaTesseramentiForm";
 
 // Dati mutabili in tempo reale (salvataggi via Server Action sulla stessa
@@ -53,6 +54,9 @@ export default async function ConfermaTesseramentiPage() {
         titolo="Conferma Tesseramenti"
         contenuto={contenutoPerRotta("/app/conferma-tesseramenti", ruoli)}
       />
+
+      <PulsanteEsportaExcel href="/app/conferma-tesseramenti/export" />
+
       <ConfermaTesseramentiForm
         colonne={colonne}
         atlete={atlete.map((atleta) => ({
