@@ -1,3 +1,6 @@
+# last_updated: 2026-10-25 (Story 28.2 implementata: export Iscrizioni su /app/conferma-iscrizioni/export, riusa writer e pulsante della 28.1; data iscrizione riportata al giorno sul fuso di Roma come in pagina (giornoRomaDaIso). Guida aggiornata. backlog -> review.)
+# last_updated: 2026-10-25 (Story 28.1 implementata: writer .xlsx senza dipendenze (lib/export-xlsx.ts, zip stored scritto a mano), export Certificati su /app/conferma-certificati/export, pulsante condiviso app/PulsanteEsportaExcel.tsx, guida aggiornata. File validato con openpyxl; da aprire in Excel/LibreOffice dal vivo dopo il deploy. backlog -> review.)
+# last_updated: 2026-10-25 (Epic 28 Export dati aperto: 4 story in backlog, decisioni chiuse con l'utente.)
 # last_updated: 2026-10-15 (Epic 27 Iscrizione online tramite portale aperto: 6 story in backlog, divise in party mode. Epic 24 aggiornato in epics.md: la parte modulo passa al 27.)
 # last_updated: 2026-10-15 (10-10-sincronizzazione-calendario-fipav-fattibilita: backlog -> done su decisione dell'utente - studio di fattibilita' superato dalle Story 10.11/10.12 gia' implementate e verificate.)
 # last_updated: 2026-10-15 (Story 9.47 ordinamento /app/conferma-tesseramenti registrata direttamente done: implementata nella sessione del 2026-10-14, verificata dall'utente.)
@@ -2357,3 +2360,16 @@ development_status:
   27-4-caricamento-modulo-firmato: backlog
   27-5-verifica-domanda-segreteria: backlog
   27-6-nuovo-atleta-in-registrazione: backlog
+
+  # Epic 28 (Export dati Certificati, Iscrizioni, Tesseramenti) aperto
+  # 2026-10-25, richiesta esplicita dell'utente. Solo story scritte, nessuna
+  # implementazione. Decisioni chiuse con l'utente: formato .xlsx; export di
+  # sezione con gli stessi ruoli della pagina, export complessivo solo Admin;
+  # complessivo = una riga per Atleta; sempre tutte le Atlete dell'anno
+  # corrente (no filtri a schermo). Ordine 28.1 -> 28.4. Vedi
+  # epics.md#Epic 28.
+  epic-28: in-progress
+  28-1-export-certificati-writer-excel: review
+  28-2-export-iscrizioni: review
+  28-3-export-tesseramenti: backlog
+  28-4-export-complessivo-admin: backlog

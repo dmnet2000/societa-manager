@@ -6,6 +6,7 @@ import { categorizzaStatoCertificato } from "@/app/app/(amministrazione)/vista-d
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { PulsanteEsportaExcel } from "@/app/PulsanteEsportaExcel";
 import { CertificatiElenco } from "./CertificatiElenco";
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
@@ -75,6 +76,8 @@ export default async function ConfermaCertificatiPage() {
         titolo="Conferma Certificati Medici"
         contenuto={contenutoPerRotta("/app/conferma-certificati", ruoli)}
       />
+
+      <PulsanteEsportaExcel href="/app/conferma-certificati/export" />
 
       <CertificatiElenco
         puoModificare={puoModificareCertificatiConfermati}

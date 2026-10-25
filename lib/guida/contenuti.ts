@@ -85,6 +85,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Se sei Admin ricevi una mail ogni volta che la Segreteria conferma una nuova iscrizione, con nome dell'Atleta, Gruppo, data della conferma e un link a questa pagina - utile per sapere chi tesserare o aggiungere a un Gruppo.",
       "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",
       "\"Escludi\" e \"Rimuovi dalla società\" non sono la stessa cosa: \"Escludi\" toglie l'iscrizione solo per la stagione corrente, l'Atleta resta nell'anagrafica e puoi riconfermarla in seguito. \"Rimuovi dalla società\" (Segreteria, Admin o Dirigente) è definitiva - l'Atleta sparisce da tutti gli elenchi operativi e dal sito pubblico finché non la ripristini dalla sezione \"Atlete rimosse\" in fondo a questa pagina, mantenendo comunque tutto lo storico (presenze, certificati, tesseramenti).",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, categoria, Gruppo, se è iscritta e la data dell'iscrizione, email e cellulare. La ricerca e l'ordinamento a schermo non cambiano il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {
@@ -97,6 +98,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
       "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
       "Se sei Admin ricevi una mail ogni volta che viene caricato un nuovo Certificato, con nome dell'Atleta, Gruppo, data/ora del caricamento e un link a questa pagina - il file non è allegato, per vederlo devi accedere all'app. Se il tuo indirizzo coincide con l'email della Segreteria ricevi una sola mail, quella della Segreteria.",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, Gruppo, stato del Certificato (Da confermare, In regola, In scadenza, Scaduto, Senza certificato), date di validità e se il file è stato caricato. La ricerca a schermo non filtra il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {

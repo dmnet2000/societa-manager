@@ -6,6 +6,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { PulsanteEsportaExcel } from "@/app/PulsanteEsportaExcel";
 import { IscrizioniElenco } from "./IscrizioniElenco";
 
 // Dati mutabili in tempo reale (conferme via Server Action sulla stessa
@@ -94,6 +95,9 @@ export default async function ConfermaIscrizioniPage() {
         titolo="Conferma Iscrizioni"
         contenuto={contenutoPerRotta("/app/conferma-iscrizioni", ruoli)}
       />
+
+      <PulsanteEsportaExcel href="/app/conferma-iscrizioni/export" />
+
       <IscrizioniElenco
         puoConfermare={puoConfermare}
         righe={atleteAttive.map((atleta) => ({

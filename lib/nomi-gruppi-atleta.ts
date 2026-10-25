@@ -26,3 +26,30 @@ export async function elencaNomiGruppiAtletaCorrenti(
 
   return righe.map((riga) => riga.gruppo.nome);
 }
+
+// Story 28.1 (Export dati): stessa lettura di elencaNomiGruppiAtletaCorrenti
+// ma per tutte le Atlete in una sola query - atletaId -> nomi dei Gruppi
+// della stagione corrente, in ordine alfabetico. Un'Atleta senza Gruppo non
+// compare nella mappa.
+export async function elencaNomiGruppiPerAtletaCorrenti(
+  oggi: Date = new Date()
+): Promise<Map<string, string[]>> {
+  const annoAgonistico = await trovaAnnoAgonisticoCorrente(oggi);
+  const nomiPerAtleta = new Map<string, string[]>();
+  if (!annoAgonistico) {
+    return nomiPerAtleta;
+  }
+
+  const righe = await prisma.gruppoAtleta.findMany({
+    where: { annoAgonisticoId: annoAgonistico.id },
+    select: { atletaId: true, gruppo: { select: { nome: true } } },
+    orderBy: { gruppo: { nome: "asc" } },
+  });
+
+  for (const riga of righe) {
+    const nomi = nomiPerAtleta.get(riga.atletaId) ?? [];
+    nomi.push(riga.gruppo.nome);
+    nomiPerAtleta.set(riga.atletaId, nomi);
+  }
+  return nomiPerAtleta;
+}

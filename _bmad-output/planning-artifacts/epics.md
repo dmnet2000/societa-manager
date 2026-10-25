@@ -4234,3 +4234,102 @@ so that posso iscriverla online senza dover passare prima dalla Segreteria.
 7. **And** guida in-app aggiornata, test Vitest sui due rami (CF trovato / non trovato)
 
 **Rimandato (fuori epic):** effetto del consenso immagini "Non autorizza" su foto squadre, sito pubblico e fotogallery - decisione utente 2026-10-15, da riprendere quando si chiariscono le regole operative della società.
+
+## Epic 28: Export dati Certificati, Iscrizioni, Tesseramenti
+
+*(Aperto 2026-10-25, richiesta esplicita dell'utente - SOLO story scritte, nessuna implementazione ora: "funzioni di export dati nelle funzioni: certificati, iscrizioni, tesseramenti + export complessivo." Decisioni chiuse con l'utente lo stesso giorno, vedi sotto.)*
+
+**Punto di partenza reale (verificato nel codice 2026-10-25):** nessuna funzione di export esiste nell'app e nessuna libreria Excel/CSV/zip è tra le dipendenze (`package.json`). Le tre pagine sorgente:
+- `/app/conferma-certificati` (Admin/Dirigente/Segreteria): `elencaAtlete` + `elencaCertificati` (`lib/db-rls/`, RLS), stato calcolato con `categorizzaStatoCertificato` (`vista-dirigente/categorizza-stato-certificato.ts`), righe divise in "da confermare" e "confermati".
+- `/app/conferma-iscrizioni` (Admin/Dirigente/Segreteria): `Iscrizione` per Atleta+stagione con `confermataIl` (data di iscrizione mostrata come "Iscritta il", 2026-10-25), gruppi correnti dell'Atleta.
+- `/app/conferma-tesseramenti` (Admin/Dirigente, Segreteria esclusa - Epic 13): `Tesseramento.federazioneIds`, letto **solo** tramite `lib/tesseramento.ts` (vincolo permanente Epic 26).
+
+`elencaAtlete` esclude per default le Atlete rimosse (`rimossaIl`, Story 9.43). L'app gira su Cloudflare Workers (OpenNext): il peso del bundle del Worker conta (vedi Story 27.2, PDF generato nel browser per lo stesso motivo).
+
+**Decisioni (chiuse con l'utente 2026-10-25):**
+- **Formato: Excel `.xlsx`** (non CSV): si apre direttamente in Excel con date e colonne corrette.
+- **Permessi: chi vede la pagina può esportarne i dati.** L'export Certificati/Iscrizioni è disponibile ad Admin/Dirigente/Segreteria, l'export Tesseramenti ad Admin/Dirigente - sempre gli stessi `ruoliAmmessi` della pagina in `lib/auth/route-guard.ts`, ricontrollati lato server sulla rotta di download (non solo pulsante nascosto). **L'export complessivo è solo Admin.**
+- **Export complessivo: una riga per Atleta** con anagrafica + Gruppo + stato e scadenza certificato + iscrizione e data + tesseramento e federazioni - il quadro completo della stagione in un solo foglio.
+- **Contenuto: sempre tutte le Atlete dell'anno agonistico corrente** (escluse le rimosse), indipendente da filtri e ordinamento a schermo. Ordine del file: per nome Atleta.
+
+**Decisioni tecniche (da confermare in create-story della 28.1):**
+- **Generazione lato server in una Route Handler `GET`** per ogni export (es. `/app/conferma-certificati/export`), così permessi e RLS restano quelli della pagina e il file arriva con `Content-Disposition: attachment`. Header `Cache-Control: no-store` (dati personali, anche di minori).
+- **Writer `.xlsx` minimale in `lib/export-xlsx.ts`** (SpreadsheetML scritto a mano + zip con una libreria leggera, es. `fflate`), non `exceljs`/SheetJS: peso nel bundle del Worker trascurabile. Da validare subito nella 28.1 aprendo il file in Excel e LibreOffice.
+- **Celle testo sempre come stringhe (`inlineStr`), mai formule**: un nome che inizia con `=`, `+`, `-`, `@` non diventa una formula (formula injection). Date come vere date Excel (formato `gg/mm/aaaa`), numeri come numeri.
+- **Composizione dei dati separata dal formato**: per ogni export una funzione pura "righe → colonne" testabile senza generare il file, riusata dall'export complessivo.
+- **Nome file**: `<sezione>-<anno agonistico>.xlsx` (es. `certificati-2026-2027.xlsx`, `export-completo-2026-2027.xlsx`).
+- **Guida in-app**: ogni story aggiorna `lib/guida/contenuti.ts` per le pagine toccate (regola permanente Epic 17), con un richiamo alla riservatezza del file scaricato.
+
+**Ordine di sviluppo:** 28.1 → 28.2 → 28.3 → 28.4. La 28.1 crea il writer e lo valida; la 28.4 riusa le composizioni delle tre precedenti.
+
+### Story 28.1: Export Certificati medici (e writer Excel condiviso)
+
+As a Admin/Dirigente/Segreteria,
+I want scaricare in Excel l'elenco dei certificati medici di tutte le Atlete,
+so that posso controllare scadenze e mancanti fuori dall'app o inoltrarli a chi li deve sollecitare.
+
+**Contesto tecnico:** crea `lib/export-xlsx.ts` (writer condiviso, vedi decisioni tecniche) e la Route Handler di `/app/conferma-certificati`. Pulsante "Esporta Excel" in testa alla pagina (link di download, touch target 44px).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin, Dirigente o Segreteria **When** clicco "Esporta Excel" su Conferma certificati **Then** scarico `certificati-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Gruppo/i, Stato (Da confermare / In regola / In scadenza / Scaduto / Senza certificato - stesse etichette e stessa logica della pagina), Inizio validità, Fine validità, Mesi di validità, File caricato (Sì/No)
+3. **And** le date sono vere date Excel, le celle testo non vengono mai interpretate come formule
+4. **And** il file si apre senza avvisi in Excel e LibreOffice
+5. **And** un Ruolo non ammesso alla pagina riceve un rifiuto dalla rotta di download (403/redirect), anche chiamandola direttamente
+6. **And** la risposta ha `Cache-Control: no-store`
+7. **And** guida in-app di "Conferma certificati" aggiornata
+8. **And** test Vitest: writer (struttura del file, escape XML, stringhe che iniziano con `=`, date, celle vuote), composizione delle righe, guard Ruoli della rotta
+
+### Story 28.2: Export Iscrizioni
+
+As a Admin/Dirigente/Segreteria,
+I want scaricare in Excel l'elenco delle iscrizioni della stagione con la data di iscrizione,
+so that so chi è iscritta, da quando, e chi manca ancora.
+
+**Contesto tecnico:** Route Handler su `/app/conferma-iscrizioni`, riuso di `lib/export-xlsx.ts`. Data di iscrizione = `Iscrizione.confermataIl`.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin, Dirigente o Segreteria **When** clicco "Esporta Excel" su Conferma iscrizioni **Then** scarico `iscrizioni-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Categoria, Gruppo/i, Iscritta (Sì/No), Data iscrizione, Email, Cellulare
+3. **And** sono considerate solo le Iscrizioni attive dell'Anno Agonistico corrente
+4. **And** permessi, `no-store` e formato come nella Story 28.1
+5. **And** guida in-app di "Conferma iscrizioni" aggiornata
+6. **And** test Vitest su composizione delle righe e guard Ruoli
+
+### Story 28.3: Export Tesseramenti
+
+As a Admin/Dirigente,
+I want scaricare in Excel lo stato dei tesseramenti per federazione,
+so that ho l'elenco da usare con le federazioni e vedo chi non è ancora tesserata.
+
+**Contesto tecnico:** Route Handler su `/app/conferma-tesseramenti`. Lettura del Tesseramento **solo** tramite `lib/tesseramento.ts` (vincolo Epic 26: nessun `prisma.tesseramento`/`federazioneIds` fuori da quel modulo).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin o Dirigente **When** clicco "Esporta Excel" su Conferma tesseramenti **Then** scarico `tesseramenti-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Gruppo/i, Iscritta (Sì/No), Tesserata (Sì/No), poi una colonna per ogni Federazione (stesse colonne e stesso ordine della pagina, comprese le disattivate ancora in uso) con "Sì" dove l'Atleta è tesserata
+3. **And** la Segreteria (esclusa dalla pagina) riceve un rifiuto dalla rotta di download
+4. **And** nessun accesso al Tesseramento fuori da `lib/tesseramento.ts` (grep)
+5. **And** permessi, `no-store` e formato come nella Story 28.1
+6. **And** guida in-app di "Conferma tesseramenti" aggiornata
+7. **And** test Vitest su composizione delle righe (colonne federazione dinamiche) e guard Ruoli
+
+### Story 28.4: Export complessivo per Atleta (solo Admin)
+
+As a Admin,
+I want scaricare un unico file Excel con una riga per Atleta e tutti i suoi dati della stagione,
+so that ho il quadro completo (anagrafica, gruppo, certificato, iscrizione, tesseramento) in un solo posto.
+
+**Contesto tecnico:** riusa le composizioni delle Story 28.1-28.3 (nessuna logica di stato duplicata). Il pulsante sta in una pagina visibile solo all'Admin - proposta: nuova voce "Export dati" nel gruppo "Atleti" del menu (`ruoliAmmessi: ["ADMIN"]`) che raccoglie anche i tre export di sezione; scelta finale in create-story.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin **When** clicco "Export completo" **Then** scarico `export-completo-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: anagrafica (Atleta, Codice fiscale, Sesso, Data e luogo di nascita, Indirizzo, CAP, Località, Provincia, Email, Cellulare, Categoria, Matricola), Gruppo/i, Stato certificato, Fine validità certificato, Iscritta, Data iscrizione, Tesserata, Federazioni (sigle separate da virgola)
+3. **And** stato certificato, iscrizione e tesseramento coincidono con quelli dei singoli export (stessa funzione di composizione, test che lo verifica)
+4. **And** un Ruolo diverso da Admin riceve un rifiuto dalla rotta di download e non vede il pulsante
+5. **And** `no-store` e formato come nella Story 28.1
+6. **And** guida in-app aggiornata (nuova pagina o voce)
+7. **And** test Vitest su composizione e guard Ruoli

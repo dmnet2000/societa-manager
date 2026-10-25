@@ -51,3 +51,38 @@ describe("elencaNomiGruppiAtletaCorrenti", () => {
     expect(gruppoAtletaFindManyMock).not.toHaveBeenCalled();
   });
 });
+
+const { elencaNomiGruppiPerAtletaCorrenti } = await import("./nomi-gruppi-atleta");
+
+describe("elencaNomiGruppiPerAtletaCorrenti", () => {
+  beforeEach(() => {
+    gruppoAtletaFindManyMock.mockReset();
+    trovaAnnoAgonisticoCorrenteMock.mockReset();
+  });
+
+  it("raggruppa i nomi dei Gruppi della stagione corrente per Atleta (Story 28.1)", async () => {
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      { atletaId: "a1", gruppo: { nome: "Under 14" } },
+      { atletaId: "a2", gruppo: { nome: "Under 14" } },
+      { atletaId: "a1", gruppo: { nome: "Under 16" } },
+    ]);
+
+    const mappa = await elencaNomiGruppiPerAtletaCorrenti();
+
+    expect(mappa.get("a1")).toEqual(["Under 14", "Under 16"]);
+    expect(mappa.get("a2")).toEqual(["Under 14"]);
+    expect(gruppoAtletaFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { annoAgonisticoId: "anno-1" } })
+    );
+  });
+
+  it("senza Anno Agonistico corrente restituisce una mappa vuota senza interrogare i Gruppi", async () => {
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(null);
+
+    const mappa = await elencaNomiGruppiPerAtletaCorrenti();
+
+    expect(mappa.size).toBe(0);
+    expect(gruppoAtletaFindManyMock).not.toHaveBeenCalled();
+  });
+});
