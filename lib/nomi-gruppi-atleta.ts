@@ -43,13 +43,18 @@ export async function elencaNomiGruppiPerAtletaCorrenti(
   const righe = await prisma.gruppoAtleta.findMany({
     where: { annoAgonisticoId: annoAgonistico.id },
     select: { atletaId: true, gruppo: { select: { nome: true } } },
-    orderBy: { gruppo: { nome: "asc" } },
   });
 
   for (const riga of righe) {
     const nomi = nomiPerAtleta.get(riga.atletaId) ?? [];
     nomi.push(riga.gruppo.nome);
     nomiPerAtleta.set(riga.atletaId, nomi);
+  }
+  // Review fix (code review Epic 28): ordinati qui con localeCompare, come
+  // /app/conferma-iscrizioni, non con l'ORDER BY del database (la
+  // collation di Postgres puo' ordinare diversamente maiuscole e accenti).
+  for (const nomi of nomiPerAtleta.values()) {
+    nomi.sort((a, b) => a.localeCompare(b));
   }
   return nomiPerAtleta;
 }

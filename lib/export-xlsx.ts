@@ -47,7 +47,7 @@ export function serialeDataExcel(data: Date): number {
 // ritorno carrello restano) e fa l'escape dei caratteri speciali.
 export function escapeXml(testo: string): string {
   return testo
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -83,15 +83,17 @@ function lunghezzaVisibile(valore: CellaXlsx): number {
 }
 
 function foglioXml(foglio: FoglioXlsx): string {
-  const numeroColonne = Math.max(
-    foglio.intestazioni.length,
-    ...foglio.righe.map((riga) => riga.length)
+  // reduce e non Math.max(...righe): lo spread passa un argomento per riga
+  // e con decine di migliaia di righe supera il limite dello stack.
+  const numeroColonne = foglio.righe.reduce(
+    (massimo, riga) => Math.max(massimo, riga.length),
+    foglio.intestazioni.length
   );
 
   const larghezze = Array.from({ length: numeroColonne }, (_, colonna) => {
-    const massima = Math.max(
-      lunghezzaVisibile(foglio.intestazioni[colonna]),
-      ...foglio.righe.map((riga) => lunghezzaVisibile(riga[colonna]))
+    const massima = foglio.righe.reduce(
+      (massimo, riga) => Math.max(massimo, lunghezzaVisibile(riga[colonna])),
+      lunghezzaVisibile(foglio.intestazioni[colonna])
     );
     return Math.min(Math.max(massima + 2, 8), 60);
   });

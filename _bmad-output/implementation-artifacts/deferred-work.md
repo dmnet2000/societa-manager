@@ -1261,3 +1261,9 @@ Il rischio già loggato più sotto ("`isomorphic-dompurify` (basata su jsdom lat
 - source_spec: `_bmad-output/implementation-artifacts/spec-direttore-tecnico-composizione-gruppi.md`
   summary: nessun test automatico verifica che le policy RLS "direttore_tecnico_select" su atlete/iscrizioni restituiscano davvero righe a un JWT con solo DIRETTORE_TECNICO - una policy mancante o sbagliata mostrerebbe Gruppi tutti vuoti senza far fallire la suite.
   evidence: review (Verification Gap); i test db-rls usano un client Supabase finto, il progetto non ha un harness RLS - stessa classe di problema gia' registrata per la Story 27.1.
+- source_spec: `_bmad-output/planning-artifacts/epics.md#Epic 28`
+  summary: nessun log di audit sui download degli export (chi scarica quale file e quando), pur trattandosi di dati personali anche di minori - nell'export completo anche indirizzi e contatti. Nuovo requisito (GDPR/accountability) da decidere con l'utente, non un difetto del codice.
+  evidence: code review Epic 28 (2026-10-25, Blind Hunter); le Route Handler di export registrano solo gli errori (console.error).
+- source_spec: `_bmad-output/planning-artifacts/epics.md#Epic 28`
+  summary: boilerplate duplicato nelle 4 Route Handler di export (try/catch con 500, calcolo di annoInizio, ramo senza Anno Agonistico) e Anno Agonistico letto due volte per richiesta (rotta + elencaNomiGruppiPerAtletaCorrenti). Innocuo oggi, da raccogliere in un helper se arriva un quinto export.
+  evidence: code review Epic 28 (2026-10-25, Blind Hunter); stesso oggi e stesso intervallo nelle due letture, risultato identico.

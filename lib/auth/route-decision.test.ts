@@ -228,6 +228,22 @@ describe("getRouteDecision", () => {
     }
   );
 
+  // Review fix (code review Epic 28): le rotte /export di sezione ereditano
+  // dal prefisso della pagina gli stessi Ruoli - Segreteria ammessa su
+  // certificati/iscrizioni, esclusa dai tesseramenti (Story 13.1).
+  it.each(["/app/conferma-certificati/export", "/app/conferma-iscrizioni/export"])(
+    "allows SEGRETERIA on %s",
+    async (rotta) => {
+      expect(await getRouteDecision(rotta, true, ["SEGRETERIA"])).toEqual({ action: "allow" });
+    }
+  );
+
+  it("redirects SEGRETERIA away from /app/conferma-tesseramenti/export", async () => {
+    expect(
+      await getRouteDecision("/app/conferma-tesseramenti/export", true, ["SEGRETERIA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
+  });
+
   it("matches nested paths under a protected prefix", async () => {
     expect(await getRouteDecision("/app/admin/utenti", true, [])).toEqual({
       action: "redirect",

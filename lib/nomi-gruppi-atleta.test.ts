@@ -77,6 +77,21 @@ describe("elencaNomiGruppiPerAtletaCorrenti", () => {
     );
   });
 
+  // Review fix (code review Epic 28): ordine alfabetico in memoria, come
+  // /app/conferma-iscrizioni, indipendente dall'ordine delle righe.
+  it("ordina i nomi dei Gruppi di ogni Atleta con localeCompare, qualunque sia l'ordine delle righe", async () => {
+    trovaAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    gruppoAtletaFindManyMock.mockResolvedValue([
+      { atletaId: "a1", gruppo: { nome: "Under 16" } },
+      { atletaId: "a1", gruppo: { nome: "amatori" } },
+      { atletaId: "a1", gruppo: { nome: "Under 14" } },
+    ]);
+
+    const mappa = await elencaNomiGruppiPerAtletaCorrenti();
+
+    expect(mappa.get("a1")).toEqual(["amatori", "Under 14", "Under 16"]);
+  });
+
   it("senza Anno Agonistico corrente restituisce una mappa vuota senza interrogare i Gruppi", async () => {
     trovaAnnoAgonisticoCorrenteMock.mockResolvedValue(null);
 

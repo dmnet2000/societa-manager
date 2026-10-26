@@ -38,6 +38,7 @@ const {
   elencaAtletePerIds,
   segnaAtletaRimossa,
   annullaRimozioneAtleta,
+  elencaAnagraficaAtleteExport,
 } = await import("./atleta");
 
 const datiEsempio = {
@@ -200,6 +201,37 @@ describe("elencaAtlete", () => {
 // privacy piu' critico di questa storia (mai codiceFiscale/categoria su
 // una pagina pubblica), quindi verificato esplicitamente qui e non solo
 // per lettura del codice sorgente.
+// Review fix (code review Epic 28): lettura dell'export completo (solo
+// Admin) - stesso controllo delle letture sorelle sul filtro delle Atlete
+// rimosse, che qui proteggerebbe anche indirizzi e contatti.
+describe("elencaAnagraficaAtleteExport", () => {
+  beforeEach(() => {
+    fromMock.mockClear();
+    elencoSelectMock.mockClear();
+    isMock.mockClear();
+    orderMock.mockReset();
+  });
+
+  it("legge l'anagrafica completa delle sole Atlete non rimosse, in ordine di nome (Story 28.4)", async () => {
+    orderMock.mockResolvedValue({ data: [], error: null });
+
+    await elencaAnagraficaAtleteExport(supabase);
+
+    expect(fromMock).toHaveBeenCalledWith("atlete");
+    expect(elencoSelectMock).toHaveBeenCalledWith(
+      "id, nome, codiceFiscale, sesso, dataNascita, luogoNascita, provinciaNascita, indirizzo, cap, localitaResidenza, provinciaResidenza, email, cellulare, categoria, matricola"
+    );
+    expect(isMock).toHaveBeenCalledWith("rimossaIl", null);
+    expect(orderMock).toHaveBeenCalledWith("nome", { ascending: true });
+  });
+
+  it("throws when the query fails", async () => {
+    orderMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    await expect(elencaAnagraficaAtleteExport(supabase)).rejects.toThrow("boom");
+  });
+});
+
 describe("elencaAtletePubbliche", () => {
   beforeEach(() => {
     fromMock.mockClear();

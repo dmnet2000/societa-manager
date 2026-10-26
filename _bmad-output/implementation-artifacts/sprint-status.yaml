@@ -1,3 +1,5 @@
+# last_updated: 2026-10-25 (Code review Epic 28 a 4 livelli (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) sul diff 3fb0e8d..5ec4bb6: 7 patch applicati (pulsante senza attributo download, ordine Gruppi in memoria, reduce al posto di Math.max spread, escape U+FFFE/FFFF, 3 test aggiunti), 2 defer in deferred-work.md, 19 scartati. Story restano done.)
+# last_updated: 2026-10-25 (Epic 28 chiuso: Story 28.1-28.4 review -> done, verificate dall'utente dal vivo dopo il deploy (file aperti, export funzionanti).)
 # last_updated: 2026-10-25 (Story 28.4 implementata: nuova pagina /app/export-dati (solo Admin, ultima voce del gruppo Atleti) con Export completo + link ai tre export di sezione; rotta /app/export-dati/export, anagrafica da elencaAnagraficaAtleteExport (RLS, rimosse escluse); stato certificato/iscrizione/tesseramento dalle stesse funzioni delle 28.1-28.3 con test di coerenza. Guida aggiornata. backlog -> review. Epic 28: tutte le story in review.)
 # last_updated: 2026-10-25 (Story 28.3 implementata: export Tesseramenti su /app/conferma-tesseramenti/export (solo Admin/Dirigente), colonne Federazione da colonneTesseramento come in pagina, Tesseramento letto solo via lib/tesseramento.ts (grep pulito). Guida aggiornata. backlog -> review.)
 # last_updated: 2026-10-25 (Story 28.2 implementata: export Iscrizioni su /app/conferma-iscrizioni/export, riusa writer e pulsante della 28.1; data iscrizione riportata al giorno sul fuso di Roma come in pagina (giornoRomaDaIso). Guida aggiornata. backlog -> review.)
@@ -2370,8 +2372,8 @@ development_status:
   # complessivo = una riga per Atleta; sempre tutte le Atlete dell'anno
   # corrente (no filtri a schermo). Ordine 28.1 -> 28.4. Vedi
   # epics.md#Epic 28.
-  epic-28: in-progress
-  28-1-export-certificati-writer-excel: review
-  28-2-export-iscrizioni: review
-  28-3-export-tesseramenti: review
-  28-4-export-complessivo-admin: review
+  epic-28: done
+  28-1-export-certificati-writer-excel: done
+  28-2-export-iscrizioni: done
+  28-3-export-tesseramenti: done
+  28-4-export-complessivo-admin: done
