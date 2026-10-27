@@ -655,6 +655,26 @@ describe("getRouteDecision", () => {
     });
   });
 
+  it("allows any Route Handler under /api/tablet/v1/ regardless of session (Story 2.1 referto): l'app tablet non e' un browser, il JWT e' verificato dal Route Handler", async () => {
+    expect(await getRouteDecision("/api/tablet/v1/gare", false, [])).toEqual({
+      action: "allow",
+    });
+    expect(
+      await getRouteDecision("/api/tablet/v1/gare", true, ["ATLETA"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("does NOT exempt /api/tablet without the versioned prefix (Story 2.1 referto)", async () => {
+    expect(await getRouteDecision("/api/tablet", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+    expect(await getRouteDecision("/api/tablet/v2/gare", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+  });
+
   it("allows /api/health regardless of session (2026-07-25): endpoint di diagnostica, deve restare raggiungibile anche con autenticazione rotta", async () => {
     expect(await getRouteDecision("/api/health", false, [])).toEqual({
       action: "allow",
