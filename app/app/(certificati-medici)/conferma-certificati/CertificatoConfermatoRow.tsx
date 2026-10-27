@@ -6,6 +6,7 @@ import {
   aggiornaCertificatoConfermato,
   ottieniUrlCertificatoConferma,
 } from "./actions";
+import { BadgeTesseramento } from "./BadgeTesseramento";
 import styles from "./conferma-certificati.module.css";
 
 // Story 9.23: stessa mappa gia' presente in ListaConfermati.tsx fino a
@@ -35,6 +36,8 @@ type Props = {
   mesiValidita: number | null | undefined;
   modulo: string | null | undefined;
   filePath: string | null;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
   puoModificare: boolean;
   // Riga esclusa dalla ricerca corrente (CertificatiElenco): nascosta, non
   // smontata, per non perdere lo stato del form di modifica aperto.
@@ -60,6 +63,7 @@ export function CertificatoConfermatoRow({
   mesiValidita,
   modulo,
   filePath,
+  federazioni,
   puoModificare,
   nascosta = false,
 }: Props) {
@@ -101,6 +105,9 @@ export function CertificatoConfermatoRow({
           {dataFineValiditaFormattata
             ? ` — valido fino al ${dataFineValiditaFormattata}`
             : null}
+          <span className={styles.rigaTesseramento}>
+            <BadgeTesseramento federazioni={federazioni} />
+          </span>
         </span>
         {classeBadge && (
           <span className={classeBadge}>{ETICHETTA_BADGE[stato]}</span>

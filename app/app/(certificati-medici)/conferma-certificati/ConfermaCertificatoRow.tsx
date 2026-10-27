@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { confermaCertificato, ottieniUrlCertificatoConferma } from "./actions";
+import { BadgeTesseramento } from "./BadgeTesseramento";
 import styles from "./conferma-certificati.module.css";
 
 type Atleta = {
@@ -20,10 +21,13 @@ export function ConfermaCertificatoRow({
   dataFineValidita = "",
   mesiValidita,
   modulo,
+  federazioni,
   nascosta = false,
 }: {
   atleta: Atleta;
   filePath: string | null;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
   dataInizioValidita?: string;
   dataFineValidita?: string;
   mesiValidita?: number | null;
@@ -40,6 +44,9 @@ export function ConfermaCertificatoRow({
   return (
     <li className={styles.card} hidden={nascosta}>
       <strong className={styles.nomeAtleta}>{atleta.nome}</strong>
+      <span className={styles.rigaTesseramento}>
+        <BadgeTesseramento federazioni={federazioni} />
+      </span>
 
       {filePath && (
         <form action={ottieniUrlCertificatoConferma.bind(null, filePath)}>

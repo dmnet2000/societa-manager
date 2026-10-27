@@ -836,6 +836,18 @@ development_status:
   # migrazione, nessuna spec dedicata. Verificata dall'utente 2026-10-15.
   9-47-ordinamento-conferma-tesseramenti: done
 
+  # Story 9.48 aggiunta 2026-10-27 su richiesta dell'utente ("nella gestione
+  # certificati vorrei vedere anche quando confermo il certificato l'atleta
+  # dove risulta essere tesserata"): badge "Tesserata · FIPAV, CSI" / "Non
+  # tesserata" sotto il nome in /app/conferma-certificati, sia in "Da
+  # confermare" sia in "Confermati". Decisioni utente: visibile a tutti i
+  # Ruoli della pagina, Segreteria compresa (prima pagina in cui la
+  # Segreteria vede il Tesseramento); "Non tesserata" neutro, non danger.
+  # Lettura via etichetteTesseramentoPerAtleta (lib/tesseramento.ts, vincolo
+  # Epic 26). Test del componente, guida in-app aggiornata. Nessuna
+  # migrazione. Da verificare dal vivo dopo il deploy.
+  9-48-tesseramento-in-conferma-certificati: review
+
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
   # Analisi completata e rotta in 5 storie il 2026-07-28 all'avvio dello
