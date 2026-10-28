@@ -1,3 +1,4 @@
+# last_updated: 2026-10-27 (Story 9.48 tesseramento in /app/conferma-certificati: review -> done, verificata dall'utente dal vivo.)
 # last_updated: 2026-10-25 (Code review Epic 28 a 4 livelli (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) sul diff 3fb0e8d..5ec4bb6: 7 patch applicati (pulsante senza attributo download, ordine Gruppi in memoria, reduce al posto di Math.max spread, escape U+FFFE/FFFF, 3 test aggiunti), 2 defer in deferred-work.md, 19 scartati. Story restano done.)
 # last_updated: 2026-10-25 (Epic 28 chiuso: Story 28.1-28.4 review -> done, verificate dall'utente dal vivo dopo il deploy (file aperti, export funzionanti).)
 # last_updated: 2026-10-25 (Story 28.4 implementata: nuova pagina /app/export-dati (solo Admin, ultima voce del gruppo Atleti) con Export completo + link ai tre export di sezione; rotta /app/export-dati/export, anagrafica da elencaAnagraficaAtleteExport (RLS, rimosse escluse); stato certificato/iscrizione/tesseramento dalle stesse funzioni delle 28.1-28.3 con test di coerenza. Guida aggiornata. backlog -> review. Epic 28: tutte le story in review.)
@@ -845,8 +846,8 @@ development_status:
   # Segreteria vede il Tesseramento); "Non tesserata" neutro, non danger.
   # Lettura via etichetteTesseramentoPerAtleta (lib/tesseramento.ts, vincolo
   # Epic 26). Test del componente, guida in-app aggiornata. Nessuna
-  # migrazione. Da verificare dal vivo dopo il deploy.
-  9-48-tesseramento-in-conferma-certificati: review
+  # migrazione. Verificata dall'utente dal vivo 2026-10-27.
+  9-48-tesseramento-in-conferma-certificati: done
 
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
