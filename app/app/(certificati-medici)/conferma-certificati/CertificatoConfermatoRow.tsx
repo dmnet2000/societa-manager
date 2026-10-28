@@ -2,6 +2,7 @@
 
 import { useState, useActionState } from "react";
 import type { StatoCertificatoAggregato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
+import { conCompressioneCertificato } from "@/lib/comprimi-file-certificato";
 import {
   aggiornaCertificatoConfermato,
   ottieniUrlCertificatoConferma,
@@ -44,6 +45,12 @@ type Props = {
   nascosta?: boolean;
 };
 
+// File opzionale ottimizzato nel browser prima dell'invio (fail-soft,
+// vedi lib/comprimi-file-certificato.ts); senza file il FormData e' invariato.
+const aggiornaCertificatoConfermatoCompresso = conCompressioneCertificato(
+  aggiornaCertificatoConfermato
+);
+
 // Story 9.27 (AC #1/#2): estrae il singolo <li> oggi inline in
 // ListaConfermati.tsx (Story 9.25) - ogni riga confermata ha bisogno del
 // proprio inModifica/useActionState indipendente, stesso motivo gia'
@@ -69,7 +76,7 @@ export function CertificatoConfermatoRow({
 }: Props) {
   const [inModifica, setInModifica] = useState(false);
   const [modificaState, modificaAction, modificaPending] = useActionState(
-    aggiornaCertificatoConfermato,
+    aggiornaCertificatoConfermatoCompresso,
     undefined
   );
 

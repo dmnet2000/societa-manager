@@ -143,6 +143,12 @@
   text-align: center;
 }
 
+.aiuto {
+  margin-top: var(--space-2);
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
 .errore {
   margin-top: var(--space-3);
   font-size: 13px;

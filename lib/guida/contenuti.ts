@@ -97,6 +97,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Per trovare un'Atleta usa il campo \"Cerca\" sopra le sezioni: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). La ricerca filtra sia \"Da confermare\" sia \"Confermati\"; se scrivi più parole, l'Atleta deve contenerle tutte.",
       "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
       "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
+      "Quando alleghi o sostituisci una scansione, i file pesanti vengono ottimizzati automaticamente sul tuo dispositivo prima dell'invio: i PDF oltre 1MB vengono ricompressi (il testo del PDF ricompresso non resta selezionabile) e le foto pesanti o molto grandi vengono ridimensionate e salvate in JPG. I PDF firmati digitalmente vengono inviati così come sono, per non invalidare la firma. Se l'ottimizzazione non riesce viene inviato il file originale.",
       "Sotto il nome di ogni Atleta, sia in \"Da confermare\" sia in \"Confermati\", vedi dove è tesserata nella stagione corrente (es. \"Tesserata · FIPAV, CSI\") oppure \"Non tesserata\". È solo un'informazione: i tesseramenti li gestiscono Admin e Dirigente da Conferma tesseramenti.",
       "Se sei Admin ricevi una mail ogni volta che viene caricato un nuovo Certificato, con nome dell'Atleta, Gruppo, data/ora del caricamento e un link a questa pagina - il file non è allegato, per vederlo devi accedere all'app. Se il tuo indirizzo coincide con l'email della Segreteria ricevi una sola mail, quella della Segreteria.",
       "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, Gruppo, stato del Certificato (Da confermare, In regola, In scadenza, Scaduto, Senza certificato), date di validità e se il file è stato caricato. La ricerca a schermo non filtra il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
@@ -345,6 +346,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Se sei Genitore con più figlie, seleziona prima l'Atleta con il menu in alto.",
       "Lo stato mostrato (in regola, in scadenza, scaduto, in attesa di conferma) si aggiorna solo dopo che la Segreteria ha confermato il Certificato caricato.",
       "Se l'Atleta non è più tesserata con la società (rimossa dalla Segreteria), questa pagina mostra un messaggio esplicito al posto del modulo di caricamento - nessuna email viene inviata in questo caso.",
+      "I file pesanti vengono ottimizzati automaticamente sul tuo dispositivo prima dell'invio: i PDF scansionati oltre 1MB vengono ricompressi (il testo non resta selezionabile, ma il Certificato resta leggibile) e le foto pesanti o molto grandi vengono ridimensionate e salvate in JPG. I PDF firmati digitalmente vengono inviati così come sono, per non invalidare la firma. Se l'ottimizzazione non riesce, viene inviato il file originale.",
     ],
   },
   {
