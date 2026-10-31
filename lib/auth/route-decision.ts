@@ -9,6 +9,7 @@ import {
   isPublicRoute,
   isRouteHandlerCron,
   isRouteHandlerHealth,
+  isRouteHandlerTablet,
   matchProtectedRoute,
   rottaRiservata,
   type RouteDecision,
@@ -67,7 +68,8 @@ export async function getRouteDecision(
   if (
     isPublicRoute(pathname) ||
     isRouteHandlerCron(pathname) ||
-    isRouteHandlerHealth(pathname)
+    isRouteHandlerHealth(pathname) ||
+    isRouteHandlerTablet(pathname)
   ) {
     return { action: "allow" };
   }

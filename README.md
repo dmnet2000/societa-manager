@@ -69,7 +69,18 @@ Hosting su **Cloudflare Pages** (piano Free), tramite adapter `@opennextjs/cloud
 - push su `main` → build e deploy automatico in produzione
 - ogni branch/PR → deploy di anteprima automatico (URL temporaneo), usato come test informale prima del merge
 
-Non è previsto un ambiente di staging dedicato (contesto solo-dev): i deploy di anteprima puntano allo stesso progetto Supabase di produzione, a meno di creare in futuro un secondo progetto Supabase per i test. Un solo progetto Supabase e un solo progetto Cloudflare Pages coprono la produzione.
+I deploy di anteprima automatici di branch/PR sono versioni del worker di produzione e usano le sue variabili, quindi il database di produzione: vanno trattati come produzione.
+
+### Ambiente di prova
+
+Dal 2026-10-27 (story 2.1 del referto elettronico tornei) esiste un ambiente di prova separato, usato dall'app tablet in modalità `prova`:
+
+- un **progetto Supabase di prova** (regione EU, piano gratuito), con le stesse migrazioni di `prisma/migrations` applicate con `npx prisma migrate deploy`;
+- il worker **`societa-manager-preview`** (`wrangler.preview.jsonc`), con variabili e segreti propri che puntano **solo** al progetto di prova, buildato e deployato a mano: `npx opennextjs-cloudflare build && npx wrangler deploy --config wrangler.preview.jsonc`.
+
+Il build locale incorpora nel worker i file `.env*` presenti nella cartella: va fatto in una cartella che contiene solo i valori di prova, mai `.env.production`. Procedura completa in [`docs/deploy-produzione.md`](docs/deploy-produzione.md), sezione "Ambiente di prova".
+
+L'API del tablet vive sotto `/api/tablet/v1/`: è esclusa dal redirect del middleware (`isRouteHandlerTablet`) e ogni Route Handler autentica il JWT Bearer con `lib/api-tablet/autenticazione.ts` (401 `NON_AUTENTICATO` nella forma `{ error: { code, message } }`).
 
 ## Struttura del progetto
 

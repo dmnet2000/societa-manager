@@ -616,6 +616,16 @@ export function isRouteHandlerHealth(pathname: string): boolean {
   return pathname === "/api/health";
 }
 
+// Story 2.1 (epic tablet-collegato, referto elettronico tornei): l'API del
+// tablet e' chiamata dall'app Capacitor, non da un browser - non ha cookie
+// di sessione e un redirect HTML a /accedi non ha senso. Ogni Route Handler
+// sotto "/api/tablet/v1/" verifica da se' il JWT Bearer (unico punto:
+// lib/api-tablet/autenticazione.ts) e risponde 401 NON_AUTENTICATO.
+// Limitata al prefisso versionato, stesso principio di isRouteHandlerCron.
+export function isRouteHandlerTablet(pathname: string): boolean {
+  return pathname.startsWith("/api/tablet/v1/");
+}
+
 // Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.
 export function matchProtectedRoute(pathname: string) {
   return PROTECTED_ROUTES.find(

@@ -146,6 +146,43 @@ Il build/deploy tecnico va a buon fine (verificato dopo l'upgrade a Workers Paid
 2. **Attenzione ai deploy di anteprima** (Fase 2, punto 5: ogni branch/PR genera un deploy automatico): se le Variables and Secrets sono condivise a livello di intero progetto Worker (non scoping per ambiente), ogni visita a un URL di anteprima durante test/QA finisce nella STESSA dashboard Web Analytics della produzione, sporcando le statistiche. Se questo diventa un problema reale, valutare un secondo "sito" Web Analytics dedicato all'ambiente di anteprima (token diverso) o l'uso degli Environment separati di Cloudflare Workers Builds (non ancora configurati da questo progetto).
 3. Dopo il deploy, verificare (DevTools → Network, su una pagina pubblica) la richiesta a `static.cloudflareinsights.com/beacon.min.js` - se assente, il token non è stato propagato in fase di build (mai a runtime per una `NEXT_PUBLIC_*`, vedi Fase 5 sopra).
 
+## Ambiente di prova — progetto Supabase di prova + worker `societa-manager-preview` `[ ]`
+
+Nato con la story 2.1 del referto elettronico tornei (2026-10-27): l'app tablet in modalità `prova` chiama `/api/tablet/v1/*` su questo worker. **Mai** collegarlo al database o al progetto Supabase di produzione.
+
+1. **Progetto Supabase di prova**: Dashboard Supabase → nuovo progetto, regione EU, piano gratuito. Raccogliere le stesse variabili della Fase 1 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL` con `sslmode=require`), più un `CRON_SECRET` diverso da quello di produzione.
+2. **Migrazioni**: `DIRECT_URL="<session pooler del progetto di prova, ?sslmode=require>" npx prisma migrate deploy`. Verifica: `npx prisma migrate status` con la stessa `DIRECT_URL` dice che lo schema è aggiornato, e le migrazioni elencate coincidono con le cartelle di `prisma/migrations`; nella dashboard (Table Editor / Authentication → Policies) la RLS risulta attiva sulle stesse tabelle della produzione.
+3. **Utente di prova**: Authentication → Users → Add user → email e password, "Auto confirm". È l'utente con cui si fa il login sul tablet.
+4. **Segreti del worker di preview** (solo valori di prova), uno per uno:
+
+   ```bash
+   npx wrangler secret put NEXT_PUBLIC_SUPABASE_URL --config wrangler.preview.jsonc
+   npx wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --config wrangler.preview.jsonc
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.preview.jsonc
+   npx wrangler secret put DATABASE_URL --config wrangler.preview.jsonc
+   npx wrangler secret put CRON_SECRET --config wrangler.preview.jsonc
+   ```
+
+5. **Build e deploy da Windows** (decisione 2026-10-27; richiede la Modalità sviluppatore, vedi "Limite Windows" in Fase 4).
+
+   ⚠️ **Il build incorpora i file `.env*` della cartella.** `next build` inlinea le `NEXT_PUBLIC_*` lette da `.env`, `.env.production`, `.env.local`; in più `opennextjs-cloudflare build` copia **tutte** le variabili di quei file nel bundle del worker (`.open-next/cloudflare/next-env.mjs`) come valori di riserva per quelle non impostate su Cloudflare. Un build lanciato nella cartella di sviluppo, dove c'è `.env.production`, porterebbe nel worker di preview le chiavi e il database di **produzione**. Quindi il build si fa in un worktree separato che contiene solo i valori di prova:
+
+   ```powershell
+   git worktree add ..\societa-manager-prova <branch>
+   cd ..\societa-manager-prova
+   # .env.production con i SOLI valori di prova (gitignored); nessun .env né .env.local
+   # postinstall lancia `prisma generate`: prisma.config.ts legge DIRECT_URL
+   # (dotenv legge solo .env, che qui non c'è), quindi va impostata nella shell.
+   # Anche questa è la DIRECT_URL del progetto di PROVA, mai quella di produzione.
+   $env:DIRECT_URL="<session pooler del progetto di prova, ?sslmode=require>"
+   npm ci
+   npx opennextjs-cloudflare build
+   npx wrangler deploy --config wrangler.preview.jsonc
+   ```
+
+   Prima del deploy, controllare che `.open-next/cloudflare/next-env.mjs` contenga solo l'URL del progetto di prova.
+6. **Verifica**: `curl -i https://societa-manager-preview.<account>.workers.dev/api/tablet/v1/gare` → `401` con corpo JSON `{"error":{"code":"NON_AUTENTICATO",…}}`, mai un redirect a `/accedi`.
+
 ## Riferimenti
 
 - Architettura completa: `_bmad-output/planning-artifacts/architecture/architecture-societa-manager-2026-07-13/ARCHITECTURE-SPINE.md` (AD-7 Cron, AD-11 Ruoli/Middleware, stack Cloudflare)
