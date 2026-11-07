@@ -234,6 +234,83 @@ describe("aggiornaPartita", () => {
     indirizzoImpianto: "Via Roma 1",
   };
 
+  describe("risultato inserito a mano (Campionati senza link FIPAV)", () => {
+    it("salva risultato normalizzato e parziali per un Campionato senza link FIPAV", async () => {
+      partitaFindUniqueMock.mockResolvedValue({
+        gruppoId: "gruppo-1",
+        campionato: { linkFipav: null },
+      });
+
+      const result = await aggiornaPartita(
+        undefined,
+        buildFormData({ ...campiValidi, risultato: "3-1", parziali: " 25-19 23-25 25-20 25-18 " })
+      );
+
+      expect(partitaUpdateMock).toHaveBeenCalledWith({
+        where: { id: "partita-1" },
+        data: expect.objectContaining({
+          risultato: "3 - 1",
+          parziali: "25-19 23-25 25-20 25-18",
+        }),
+      });
+      expect(result).toEqual({ success: true });
+    });
+
+    it("cancella il risultato quando il campo viene svuotato", async () => {
+      partitaFindUniqueMock.mockResolvedValue({
+        gruppoId: "gruppo-1",
+        campionato: { linkFipav: "" },
+      });
+
+      await aggiornaPartita(
+        undefined,
+        buildFormData({ ...campiValidi, risultato: "", parziali: "" })
+      );
+
+      expect(partitaUpdateMock).toHaveBeenCalledWith({
+        where: { id: "partita-1" },
+        data: expect.objectContaining({ risultato: null, parziali: null }),
+      });
+    });
+
+    it("rifiuta un risultato in formato non valido", async () => {
+      partitaFindUniqueMock.mockResolvedValue({
+        gruppoId: "gruppo-1",
+        campionato: { linkFipav: null },
+      });
+
+      const result = await aggiornaPartita(
+        undefined,
+        buildFormData({ ...campiValidi, risultato: "tre a uno" })
+      );
+
+      expect(result).toEqual({
+        error: { code: "VALIDATION", message: "Formato risultato non valido (es. 3-1)." },
+      });
+      expect(partitaUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it("rifiuta il risultato manuale per un Campionato sincronizzato da FIPAV", async () => {
+      partitaFindUniqueMock.mockResolvedValue({
+        gruppoId: "gruppo-1",
+        campionato: { linkFipav: "https://www.fipavveneto.net/risultati" },
+      });
+
+      const result = await aggiornaPartita(
+        undefined,
+        buildFormData({ ...campiValidi, risultato: "3-0" })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Il risultato di questo Campionato arriva dalla sincronizzazione FIPAV.",
+        },
+      });
+      expect(partitaUpdateMock).not.toHaveBeenCalled();
+    });
+  });
+
   it("returns FORBIDDEN and touches nothing when the caller lacks the required Ruolo", async () => {
     requireRuoloMock.mockResolvedValue({
       error: { code: "FORBIDDEN", message: "Non autorizzato." },

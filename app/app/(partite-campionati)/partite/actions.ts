@@ -16,6 +16,10 @@ export type PartitaActionState =
 // condiviso tra i due moduli per un singolo riuso (Dev Notes).
 const FORMATO_ORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+// Risultato a set (es. "3-1", "3 - 1"), salvato nello stesso formato
+// "3 - 1" scritto dalla sincronizzazione FIPAV.
+const FORMATO_RISULTATO = /^(\d{1,2})\s*-\s*(\d{1,2})$/;
+
 // Story 10.6 (AC #1/#4): cancella una singola Partita - colocata con
 // /partite (suo unico consumatore), a differenza di creaCampionato/importaGare
 // che vivono in campionati/ perche' consumate da /campionati. Stessa
@@ -87,7 +91,7 @@ export async function aggiornaPartita(
 
   const partita = await prisma.partita.findUnique({
     where: { id: partitaId },
-    select: { gruppoId: true },
+    select: { gruppoId: true, campionato: { select: { linkFipav: true } } },
   });
   if (!partita) {
     return { error: { code: "VALIDATION", message: "Partita non trovata." } };
@@ -110,13 +114,48 @@ export async function aggiornaPartita(
   const indirizzoImpianto =
     String(formData.get("indirizzoImpianto") ?? "").trim() || null;
 
+  // Risultato/parziali inseriti a mano solo per i Campionati senza link
+  // FIPAV (es. CSI, portale non leggibile dal server): con il link li scrive
+  // la sincronizzazione, che sovrascriverebbe comunque il valore manuale.
+  // Campi assenti dal form = risultato non toccato.
+  let risultatoManuale: { risultato: string | null; parziali: string | null } | null =
+    null;
+  if (formData.has("risultato")) {
+    if (partita.campionato?.linkFipav?.trim()) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Il risultato di questo Campionato arriva dalla sincronizzazione FIPAV.",
+        },
+      };
+    }
+    const risultatoTesto = String(formData.get("risultato") ?? "").trim();
+    const matchRisultato = FORMATO_RISULTATO.exec(risultatoTesto);
+    if (risultatoTesto && !matchRisultato) {
+      return {
+        error: { code: "VALIDATION", message: "Formato risultato non valido (es. 3-1)." },
+      };
+    }
+    risultatoManuale = {
+      risultato: matchRisultato ? `${matchRisultato[1]} - ${matchRisultato[2]}` : null,
+      parziali: String(formData.get("parziali") ?? "").trim() || null,
+    };
+  }
+
   try {
     await prisma.partita.update({
       where: { id: partitaId },
       // Story 10.11: modificataManualmente:true da qui in avanti - segnala
       // a sincronizzaGareFipav (campionati/sincronizza-fipav-actions.ts) di
       // non riscrivere piu' questi 4 campi per questa Partita.
-      data: { data, ora, impianto, indirizzoImpianto, modificataManualmente: true },
+      data: {
+        data,
+        ora,
+        impianto,
+        indirizzoImpianto,
+        ...risultatoManuale,
+        modificataManualmente: true,
+      },
     });
   } catch (err) {
     // Review fix (code review Story 10.4): stessa race TOCTOU gestita in

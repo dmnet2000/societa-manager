@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { prisma } from "@/lib/prisma";
 import { risolviAutorizzazioneGruppo } from "@/app/app/(partite-campionati)/autorizzazione";
-import { analizzaFileGare, type RigaScartata } from "@/lib/importa-gare/parser";
+import {
+  analizzaFileGare,
+  type RigaGaraImportata,
+  type RigaScartata,
+} from "@/lib/importa-gare/parser";
 
 export type ImportaGareState =
   | { error: { code: string; message: string } }
@@ -17,6 +21,19 @@ export type ImportaGareState =
 // AC #6: il Gruppo deve essere effettivamente proprietario del Campionato
 // scelto (Campionato.gruppoId, Story 10.7) - un mismatch qui indicherebbe un
 // form manomesso, non un caso d'uso legittimo dell'UI.
+// Un file senza risultati (calendario CSI: risultati inseriti a mano in
+// /app/partite) non deve cancellare quelli gia' salvati: i campi risultato
+// vuoti nel file non sovrascrivono la Partita esistente.
+function datiAggiornamento(riga: RigaGaraImportata) {
+  const { risultato, parziali, statoDescrizione, ...resto } = riga;
+  return {
+    ...resto,
+    ...(risultato !== null && { risultato }),
+    ...(parziali !== null && { parziali }),
+    ...(statoDescrizione !== null && { statoDescrizione }),
+  };
+}
+
 export async function importaGare(
   _prevState: ImportaGareState,
   formData: FormData
@@ -93,7 +110,7 @@ export async function importaGare(
       if (esistente) {
         await prisma.partita.update({
           where: { id: esistente.id },
-          data: { ...riga, campionatoId },
+          data: { ...datiAggiornamento(riga), campionatoId },
         });
         aggiornate++;
       } else {
@@ -116,7 +133,7 @@ export async function importaGare(
           });
           await prisma.partita.update({
             where: { id: concorrente.id },
-            data: { ...riga, campionatoId },
+            data: { ...datiAggiornamento(riga), campionatoId },
           });
           aggiornate++;
         }

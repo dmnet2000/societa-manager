@@ -254,6 +254,25 @@ describe("importaGare", () => {
     expect(result).toEqual({ success: true, create: 0, aggiornate: 1, scartate: [] });
   });
 
+  it("non cancella risultato/parziali/stato gia' salvati quando il file non li riporta (calendario CSI)", async () => {
+    partitaFindUniqueMock.mockResolvedValue({ id: "partita-1" });
+    analizzaFileGareMock.mockReturnValue({
+      righe: [{ ...RIGA_VALIDA, risultato: null, parziali: null, statoDescrizione: null }],
+      scartate: [],
+    });
+
+    await importaGare(
+      undefined,
+      buildFormData({ gruppoId: "gruppo-1", campionatoId: "campionato-1", file: buildFile() })
+    );
+
+    const datiScritti = partitaUpdateMock.mock.calls[0][0].data;
+    expect(datiScritti).not.toHaveProperty("risultato");
+    expect(datiScritti).not.toHaveProperty("parziali");
+    expect(datiScritti).not.toHaveProperty("statoDescrizione");
+    expect(datiScritti).toMatchObject({ garaNumero: RIGA_VALIDA.garaNumero, data: RIGA_VALIDA.data });
+  });
+
   it("falls back to an update instead of aborting when create hits a concurrent P2002 (TOCTOU review fix)", async () => {
     partitaCreateMock.mockRejectedValue(
       Object.assign(new Error("Unique constraint failed"), { code: "P2002" })

@@ -39,6 +39,7 @@ function RigaPartitaSolaLettura({
     ora: string;
     squadraCasa: string;
     squadraOspite: string;
+    risultato: string | null;
     impianto: string | null;
     indirizzoImpianto: string | null;
     gruppo: { nome: string };
@@ -54,6 +55,9 @@ function RigaPartitaSolaLettura({
       <td>{partita.ora}</td>
       <td>
         {partita.squadraCasa} - {partita.squadraOspite}
+        {partita.risultato && (
+          <span className={styles.risultato}> {partita.risultato}</span>
+        )}
       </td>
       <td>
         {partita.impianto}
@@ -202,7 +206,7 @@ export default async function PartitePage({
             // criterio di visualizzazione gia' scelto dal Site Manager
             // (Story 19.15, elencaGruppiOrdinati), non alfabeticamente.
             gruppo: { select: { nome: true, ordine: true } },
-            campionato: { select: { nome: true } },
+            campionato: { select: { nome: true, linkFipav: true } },
           },
           orderBy: [{ data: "asc" }, { ora: "asc" }],
         })
@@ -307,6 +311,9 @@ export default async function PartitePage({
                         squadraOspite: partita.squadraOspite,
                         gruppoNome: partita.gruppo.nome,
                         campionatoNome: partita.campionato.nome,
+                        risultato: partita.risultato,
+                        parziali: partita.parziali,
+                        risultatoManuale: !partita.campionato.linkFipav?.trim(),
                       }}
                     />
                   ) : (

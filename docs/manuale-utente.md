@@ -149,7 +149,7 @@ Dalla pagina **Il mio profilo** l'Allenatore può caricare/aggiornare la propria
 
 ### Gestire Campionati e importare le gare
 
-Dalla pagina **Campionati** l'Allenatore vede, per ciascun proprio Gruppo, i Campionati già collegati e due modi per aggiungerne: crearne uno nuovo, oppure collegare un Campionato già esistente creato da un altro Allenatore/Admin per un altro Gruppo. Per ogni Campionato collegato è disponibile "Importa gare (Excel)": si carica il file esportato dalla federazione. L'import è idempotente — ricaricare lo stesso file aggiorna le righe già importate invece di duplicarle, utile per aggiornare i risultati man mano che le giornate si giocano. Dopo l'import compare un riepilogo delle partite create/aggiornate/scartate.
+Dalla pagina **Campionati** l'Allenatore vede, per ciascun proprio Gruppo, i Campionati già collegati e due modi per aggiungerne: crearne uno nuovo, oppure collegare un Campionato già esistente creato da un altro Allenatore/Admin per un altro Gruppo. Per ogni Campionato collegato è disponibile "Importa gare (Excel)": si carica il file esportato dalla federazione: l'export gare FIPAV oppure il calendario Excel del CSI, riconosciuti automaticamente (dal file CSI non arrivano risultati: si inseriscono a mano da "Modifica" nella pagina Partite, e ricaricare il file non li cancella). L'import è idempotente — ricaricare lo stesso file aggiorna le righe già importate invece di duplicarle, utile per aggiornare i risultati man mano che le giornate si giocano. Dopo l'import compare un riepilogo delle partite create/aggiornate/scartate.
 
 ### Vista partite settimana per settimana
 
