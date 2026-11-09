@@ -175,6 +175,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
       "Puoi correggere nome e categoria di un Gruppo già creato con \"Modifica\", accanto alla categoria di ogni riga - non serve cancellare e ricreare il Gruppo per sistemare un errore di inserimento.",
+      "Puoi scegliere l'ordine di visualizzazione dei Gruppi con le frecce ↑ e ↓ accanto al nome di ogni riga (Admin e Dirigente). È lo stesso ordine usato in \"Ordine squadre\", quindi vale anche per la pagina pubblica delle squadre e per le classifiche. Se invece ordini l'elenco cliccando su Nome o Categoria, il browser ricorda la tua scelta alla visita successiva (solo per te, su quel dispositivo).",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo (per il Tesseramento anche le sigle delle federazioni, es. \"Tesserata · FIPAV, CSI\"), con un badge se un Certificato è in scadenza.",
       "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
       // Story 9.45: nuova capacita' - pulsante "Modifica" accanto al nome di

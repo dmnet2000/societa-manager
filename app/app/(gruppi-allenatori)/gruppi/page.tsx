@@ -104,7 +104,10 @@ export default async function GruppiPage() {
       annoCorrente
         ? prisma.gruppo.findMany({
             where: { annoAgonisticoId: annoCorrente.id },
-            orderBy: { nome: "asc" },
+            // Richiesta utente 2026-11-09: ordine di visualizzazione scelto
+            // dall'Admin (campo "ordine", lo stesso di /app/ordine-squadre),
+            // a parita' alfabetico.
+            orderBy: [{ ordine: "asc" }, { nome: "asc" }],
             include: {
               allenatori: {
                 include: { allenatore: true },
@@ -312,7 +315,8 @@ export default async function GruppiPage() {
           <TabellaOrdinabile
             className={styles.tabella}
             colonne={[{ etichetta: "Nome" }, { etichetta: "Categoria" }]}
-            righe={gruppi.map((gruppo) => {
+            memoriaChiave="ordinamento-elenco-gruppi"
+            righe={gruppi.map((gruppo, indiceGruppo) => {
               const atleteGruppo = gruppoAtleteRows
                 .filter((riga) => riga.gruppoId === gruppo.id)
                 // Story 9.35: "numero" vive sulla riga GruppoAtleta stessa
@@ -372,6 +376,8 @@ export default async function GruppiPage() {
                     fotoUrl={urlPubblicoFotoSquadra(supabase, gruppo.id)}
                     fotoAggiornataIl={fotoAggiornataIl}
                     puoModificareAtleta={puoModificareAtleta}
+                    primo={indiceGruppo === 0}
+                    ultimo={indiceGruppo === gruppi.length - 1}
                   />
                 ),
               };

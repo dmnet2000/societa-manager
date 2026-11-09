@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   aggiornaGruppoAction,
+  spostaGruppoNellElencoAction,
   assegnaAllenatore,
   assegnaAtleta,
   creaEAssegnaAtleta,
@@ -41,6 +42,8 @@ export function GruppoRow({
   fotoUrl,
   fotoAggiornataIl,
   puoModificareAtleta,
+  primo,
+  ultimo,
 }: {
   gruppo: Gruppo;
   allenatoriDisponibili: Allenatore[];
@@ -51,7 +54,14 @@ export function GruppoRow({
   // Story 9.45: ADMIN/SEGRETERIA (calcolato una volta in page.tsx) -
   // passato a ogni AtletaTabellaRiga sotto insieme a atleta.datiAnagrafici.
   puoModificareAtleta?: boolean;
+  // Posizione nell'ordine di visualizzazione: disabilita Su/Giu' sul margine.
+  primo?: boolean;
+  ultimo?: boolean;
 }) {
+  const [spostaState, spostaAction, spostaPending] = useActionState(
+    spostaGruppoNellElencoAction,
+    undefined
+  );
   // Story 9.37: toggle sola-lettura/modifica per nome/categoria del
   // Gruppo, mirror di CategoriaTorneoRow.tsx (Story 20.1) - stessa
   // "adjust state during render" per ricollassare al successo, invece di
@@ -139,7 +149,38 @@ export function GruppoRow({
   return (
     <>
       <tr className={styles.rigaPrincipale}>
-        <td>{gruppo.nome}</td>
+        <td>
+          {gruppo.nome}{" "}
+          <form action={spostaAction} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={gruppo.id} />
+            <input type="hidden" name="direzione" value="su" />
+            <button
+              type="submit"
+              disabled={spostaPending || primo}
+              className={styles.bottoneCompatto}
+              aria-label={`Sposta ${gruppo.nome} più in alto`}
+            >
+              ↑
+            </button>
+          </form>{" "}
+          <form action={spostaAction} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={gruppo.id} />
+            <input type="hidden" name="direzione" value="giu" />
+            <button
+              type="submit"
+              disabled={spostaPending || ultimo}
+              className={styles.bottoneCompatto}
+              aria-label={`Sposta ${gruppo.nome} più in basso`}
+            >
+              ↓
+            </button>
+          </form>
+          {spostaState && "error" in spostaState && (
+            <p role="alert" className={styles.errore}>
+              {spostaState.error.message}
+            </p>
+          )}
+        </td>
         <td>
           {/* Review fix (Blind Hunter): bottone testuale invece dell'icona
               di icone-azione-riga.tsx (mirror parziale e deliberato di

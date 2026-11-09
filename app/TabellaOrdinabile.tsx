@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ordinaRigheTabella,
   prossimoOrdinamentoTabella,
@@ -8,6 +8,55 @@ import {
   type ValoreOrdinamento,
 } from "@/lib/ordina-tabella";
 import styles from "./tabella-ordinabile.module.css";
+
+// Memoria opzionale dell'ordinamento scelto (prop `memoriaChiave`): salvato in
+// localStorage del browser, per utente e per dispositivo. useSyncExternalStore
+// evita differenze tra render server e client (lato server vale sempre null).
+const EVENTO_MEMORIA = "tabella-ordinabile-memoria";
+
+function leggiMemoria(chiave: string): string | null {
+  try {
+    return window.localStorage.getItem(chiave);
+  } catch {
+    return null;
+  }
+}
+
+function scriviMemoria(chiave: string, valore: OrdinamentoTabella) {
+  try {
+    window.localStorage.setItem(chiave, JSON.stringify(valore));
+  } catch {
+    // storage non disponibile: l'ordinamento resta valido solo per questa visita
+  }
+  window.dispatchEvent(new Event(EVENTO_MEMORIA));
+}
+
+function iscrivi(callback: () => void) {
+  window.addEventListener(EVENTO_MEMORIA, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENTO_MEMORIA, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function analizzaOrdinamento(grezzo: string | null, nColonne: number): OrdinamentoTabella | null {
+  if (!grezzo) return null;
+  try {
+    const v = JSON.parse(grezzo);
+    if (
+      Number.isInteger(v?.colonna) &&
+      v.colonna >= 0 &&
+      v.colonna < nColonne &&
+      (v.direzione === "asc" || v.direzione === "desc")
+    ) {
+      return { colonna: v.colonna, direzione: v.direzione };
+    }
+  } catch {
+    // valore corrotto: ignorato
+  }
+  return null;
+}
 
 export type ColonnaTabella = {
   // Nome della colonna, usato anche nell'aria-label del bottone.
@@ -45,6 +94,7 @@ export function TabellaOrdinabile({
   className,
   didascalia,
   "aria-label": ariaLabel,
+  memoriaChiave,
 }: {
   colonne: ColonnaTabella[];
   righe: RigaTabella[];
@@ -53,8 +103,26 @@ export function TabellaOrdinabile({
   // il testo.
   didascalia?: ReactNode;
   "aria-label"?: string;
+  // Se presente, l'ordinamento scelto viene ricordato nel browser con questa
+  // chiave e ripristinato alla visita successiva.
+  memoriaChiave?: string;
 }) {
-  const [ordinamento, setOrdinamento] = useState<OrdinamentoTabella | null>(null);
+  const grezzo = useSyncExternalStore(
+    iscrivi,
+    () => (memoriaChiave ? leggiMemoria(memoriaChiave) : null),
+    () => null
+  );
+  const [localeScelto, setLocaleScelto] = useState<OrdinamentoTabella | null>(null);
+  const ordinamento = memoriaChiave
+    ? analizzaOrdinamento(grezzo, colonne.length)
+    : localeScelto;
+  const setOrdinamento = (
+    aggiorna: (attuale: OrdinamentoTabella | null) => OrdinamentoTabella
+  ) => {
+    const nuovo = aggiorna(ordinamento);
+    if (memoriaChiave) scriviMemoria(memoriaChiave, nuovo);
+    else setLocaleScelto(nuovo);
+  };
   const righeOrdinate = useMemo(
     () => ordinaRigheTabella(righe, ordinamento),
     [righe, ordinamento]

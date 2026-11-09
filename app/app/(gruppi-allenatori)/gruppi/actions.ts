@@ -7,6 +7,7 @@ import {
   trovaAnnoAgonisticoCorrente,
 } from "@/lib/anno-agonistico";
 import { prisma } from "@/lib/prisma";
+import { elencaGruppiOrdinati, riordinaGruppi } from "@/lib/ordine-squadre";
 import { createClient } from "@/lib/supabase/server";
 import { parseRuoli } from "@/lib/ruoli";
 import { creaAtleta, aggiornaAtleta } from "@/lib/db-rls/atleta";
@@ -172,6 +173,59 @@ export async function creaGruppo(
   }
 
   revalidatePath("/app/gruppi");
+  return { success: true };
+}
+
+// Richiesta utente 2026-11-09: riordino manuale dei Gruppi direttamente
+// dall'elenco /gruppi. Usa lo stesso campo "ordine" di /app/ordine-squadre
+// (Story 19.15), quindi vale anche per /squadre e /classifiche. Legge
+// l'elenco corrente invece di fidarsi di un indice del client.
+export async function spostaGruppoNellElencoAction(
+  _prevState: GruppoActionState,
+  formData: FormData
+): Promise<GruppoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const direzione = String(formData.get("direzione") ?? "");
+  if (direzione !== "su" && direzione !== "giu") {
+    return { error: { code: "VALIDATION", message: "Direzione non valida." } };
+  }
+
+  try {
+    const annoCorrente = await trovaAnnoAgonisticoCorrente();
+    if (!annoCorrente) {
+      return {
+        error: { code: "VALIDATION", message: "Nessuna stagione corrente trovata." },
+      };
+    }
+    const gruppi = await elencaGruppiOrdinati(annoCorrente.id);
+    const indice = gruppi.findIndex((g) => g.id === id);
+    if (indice === -1) {
+      return { error: { code: "VALIDATION", message: "Gruppo non trovato." } };
+    }
+    const indiceVicino = direzione === "su" ? indice - 1 : indice + 1;
+    if (indiceVicino < 0 || indiceVicino >= gruppi.length) {
+      return { success: true };
+    }
+    const nuovoOrdine = [...gruppi];
+    [nuovoOrdine[indice], nuovoOrdine[indiceVicino]] = [
+      nuovoOrdine[indiceVicino],
+      nuovoOrdine[indice],
+    ];
+    await riordinaGruppi(nuovoOrdine.map((g) => g.id));
+  } catch (err) {
+    console.error(err);
+    return {
+      error: { code: "INTERNAL", message: "Impossibile riordinare i Gruppi. Riprova." },
+    };
+  }
+
+  revalidatePath("/app/gruppi");
+  revalidatePath("/app/ordine-squadre");
+  revalidatePath("/squadre");
+  revalidatePath("/classifiche");
   return { success: true };
 }
 
