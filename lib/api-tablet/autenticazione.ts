@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
+import { rispostaErroreTablet } from "./risposta-errore";
 
 // Story 2.1 (epic tablet-collegato, referto elettronico tornei): unico punto
 // di autenticazione dell'API del tablet (AD-13). L'app Capacitor manda
@@ -13,23 +14,9 @@ import { createClient, type User } from "@supabase/supabase-js";
 // configurazione mancante -> sempre 401 NON_AUTENTICATO. I log contengono
 // solo codici, mai il JWT ne' dati personali.
 
-export type CodiceErroreTablet = "NON_AUTENTICATO";
-
 export type EsitoAutenticazioneTablet =
   | { ok: true; utente: User }
   | { ok: false; risposta: NextResponse };
-
-// Forma unica degli errori dell'API del tablet: { error: { code, message } }.
-export function rispostaErroreTablet(
-  code: CodiceErroreTablet,
-  message: string,
-  status: number
-): NextResponse {
-  return NextResponse.json(
-    { error: { code, message } },
-    { status, headers: { "Cache-Control": "no-store" } }
-  );
-}
 
 // Tre segmenti base64url separati da punti: un JWT. Tutto il resto e'
 // malformato e non merita una chiamata a Supabase Auth.
