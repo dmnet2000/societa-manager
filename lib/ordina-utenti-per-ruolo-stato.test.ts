@@ -17,6 +17,12 @@ describe("prioritaRuoloUtente", () => {
     );
   });
 
+  it("i tablet vengono dopo ogni altro Ruolo", () => {
+    expect(prioritaRuoloUtente(["TABLET"])).toBeGreaterThan(
+      prioritaRuoloUtente(["DIRETTORE_TECNICO"])!
+    );
+  });
+
   it("un Utente senza Ruoli non ha priorita' (null, sempre in fondo)", () => {
     expect(prioritaRuoloUtente([])).toBeNull();
   });

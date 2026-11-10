@@ -66,6 +66,34 @@ export function leggiGare(corpo: unknown): RispostaGare | undefined {
 }
 
 /**
+ * Dominio dell'email sintetica di un utente tablet (AD-12). `.invalid` e' un
+ * dominio riservato: nessuna email puo' mai arrivare a un tablet.
+ */
+export const DOMINIO_TABLET = "tablet.invalid";
+
+/** Regola del nome del tablet: lettera iniziale, poi `a-z`, `0-9`, `-`; da 3 a 30 caratteri. */
+const NOME_TABLET_VALIDO = /^[a-z][a-z0-9-]{2,29}$/;
+
+/**
+ * Normalizza il nome di un tablet: toglie lo spazio ai bordi e porta in
+ * minuscolo. `undefined` se il risultato non rispetta la regola del nome.
+ */
+export function normalizzaNomeTablet(valore: string | null | undefined): string | undefined {
+  if (typeof valore !== "string") return undefined;
+  const nome = valore.trim().toLowerCase();
+  return NOME_TABLET_VALIDO.test(nome) ? nome : undefined;
+}
+
+/**
+ * Email sintetica dell'utente tablet: `<nome>@tablet.invalid`, col nome
+ * normalizzato. `undefined` se il nome non e' valido.
+ */
+export function emailDaNomeTablet(valore: string | null | undefined): string | undefined {
+  const nome = normalizzaNomeTablet(valore);
+  return nome === undefined ? undefined : `${nome}@${DOMINIO_TABLET}`;
+}
+
+/**
  * Legge il valore dell'header di versione: un intero positivo scritto solo con
  * cifre, senza zeri iniziali. Tutto il resto (assente, vuoto, `abc`, `0`,
  * `-1`, `1.5`, `1e3`) e' `undefined`.

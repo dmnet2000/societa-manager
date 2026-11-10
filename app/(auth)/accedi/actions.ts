@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { eUtenteTablet, parseRuoli } from "@/lib/ruoli";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -66,8 +67,25 @@ export async function accedi(
   try {
     const utente = await prisma.utente.findUnique({
       where: { supabaseAuthId: data.user.id },
-      select: { attivo: true },
+      select: { attivo: true, ruoli: { select: { ruolo: true } } },
     });
+
+    // Referto elettronico (AD-12): l'utente tablet entra solo dall'app, mai
+    // nel sito. Controllo sia sul database (fonte di verita') sia su
+    // app_metadata. signOut "local": chiude solo la sessione appena aperta
+    // qui, non quella dell'app sul tablet (il "global" di default la
+    // revocherebbe).
+    const ruoliDb = utente?.ruoli.map((r) => r.ruolo) ?? [];
+    const ruoliJwt = parseRuoli(data.user.app_metadata?.ruoli);
+    if (eUtenteTablet(ruoliDb) || eUtenteTablet(ruoliJwt)) {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      return {
+        error: {
+          code: "UTENTE_TABLET",
+          message: "Utente riservato al tablet: accedi dall'app del referto.",
+        },
+      };
+    }
 
     if (!utente || !utente.attivo) {
       await supabase.auth.signOut().catch(() => {});

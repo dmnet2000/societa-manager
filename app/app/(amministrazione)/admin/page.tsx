@@ -6,6 +6,7 @@ import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoUtenteForm } from "./NuovoUtenteForm";
+import { NuovoTabletForm } from "./NuovoTabletForm";
 import { ElencoUtenti } from "./ElencoUtenti";
 import styles from "./admin.module.css";
 
@@ -131,6 +132,11 @@ export default async function AdminPage() {
       <section className={styles.sezione}>
         <h2>Nuovo utente</h2>
         <NuovoUtenteForm />
+      </section>
+
+      <section className={styles.sezione}>
+        <h2>Nuovo tablet</h2>
+        <NuovoTabletForm />
       </section>
 
       <section className={styles.sezione}>

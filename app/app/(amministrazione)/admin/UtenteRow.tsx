@@ -141,6 +141,11 @@ export function UtenteRow({ utente }: { utente: Utente }) {
     utente.ruoli.includes(ruolo.value as Ruolo)
   );
 
+  // Referto elettronico (AD-12): TABLET non e' tra le caselle dei Ruoli -
+  // un utente tablet mostra solo l'etichetta "Tablet", senza modifica dei
+  // Ruoli ne' password fissa (rifiutate comunque lato server).
+  const eTablet = utente.ruoli.includes("TABLET");
+
   return (
     <tr>
       <td>{utente.email}</td>
@@ -186,6 +191,10 @@ export function UtenteRow({ utente }: { utente: Utente }) {
               </button>
             </div>
           </form>
+        ) : eTablet ? (
+          <div className={styles.ruoliVista}>
+            <span>Tablet</span>
+          </div>
         ) : (
           <div className={styles.ruoliVista}>
             <span>
@@ -210,39 +219,44 @@ export function UtenteRow({ utente }: { utente: Utente }) {
       </td>
       <td>{utente.attivo ? "Attivo" : "Disattivato"}</td>
       <td className={styles.funzioni}>
-        <div>
-          <button
-            disabled={isTogglePending}
-            onClick={toggleAttivo}
-            type="button"
-            className={
-              utente.attivo ? styles.bottoneSecondario : styles.bottoneCompatto
-            }
-          >
-            {utente.attivo ? "Disattiva" : "Riattiva"}
-          </button>
-          {attivoError && (
-            <p role="alert" className={styles.errore}>
-              {attivoError}
-            </p>
-          )}
-        </div>
-        <div>
-          <button
-            disabled={isResetPasswordPending}
-            onClick={reimpostaPassword}
-            type="button"
-            className={styles.bottoneSecondario}
-            aria-label={`Reimposta password di ${utente.email}`}
-          >
-            Reimposta password
-          </button>
-          {resetPasswordError && (
-            <p role="alert" className={styles.errore}>
-              {resetPasswordError}
-            </p>
-          )}
-        </div>
+        {/* Tablet: la disattivazione vera (app compresa) arriva con la 2.4. */}
+        {!eTablet && (
+          <div>
+            <button
+              disabled={isTogglePending}
+              onClick={toggleAttivo}
+              type="button"
+              className={
+                utente.attivo ? styles.bottoneSecondario : styles.bottoneCompatto
+              }
+            >
+              {utente.attivo ? "Disattiva" : "Riattiva"}
+            </button>
+            {attivoError && (
+              <p role="alert" className={styles.errore}>
+                {attivoError}
+              </p>
+            )}
+          </div>
+        )}
+        {!eTablet && (
+          <div>
+            <button
+              disabled={isResetPasswordPending}
+              onClick={reimpostaPassword}
+              type="button"
+              className={styles.bottoneSecondario}
+              aria-label={`Reimposta password di ${utente.email}`}
+            >
+              Reimposta password
+            </button>
+            {resetPasswordError && (
+              <p role="alert" className={styles.errore}>
+                {resetPasswordError}
+              </p>
+            )}
+          </div>
+        )}
       </td>
       <td>
         {/* Story 9.38: solo per un Utente mai confermato - emailConfermata

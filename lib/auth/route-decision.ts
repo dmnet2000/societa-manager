@@ -1,5 +1,6 @@
 import "server-only";
 import type { Ruolo } from "@prisma/client";
+import { eUtenteTablet } from "@/lib/ruoli";
 import { rottaAbilitataPerRuolo } from "@/lib/auth/permessi-configurabili";
 import { paginaPubblicaEsistePerSlug } from "@/lib/auth/pagine-pubbliche-slug-cache";
 import {
@@ -105,6 +106,14 @@ export async function getRouteDecision(
   }
 
   if (!isAuthenticated) {
+    return { action: "redirect", location: LOGIN_PATH };
+  }
+
+  // Referto elettronico (AD-12): l'utente tablet entra solo dall'app, mai
+  // nel sito - nessuna pagina /app, nemmeno quelle senza controllo Ruolo
+  // (/app, /app/modifica-password, /app/non-autorizzato). Va al login, non a
+  // NON_AUTORIZZATO_PATH, che sta anch'essa sotto /app.
+  if (eUtenteTablet(ruoli) && (pathname === "/app" || pathname.startsWith("/app/"))) {
     return { action: "redirect", location: LOGIN_PATH };
   }
 

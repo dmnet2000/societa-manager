@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CODICI_ERRORE,
+  DOMINIO_TABLET,
   HEADER_VERSIONE_APP,
+  emailDaNomeTablet,
+  normalizzaNomeTablet,
   leggiErrore,
   leggiGare,
   leggiVersioneApp,
@@ -74,5 +77,44 @@ describe("contratto API del tablet", () => {
         expect(leggiVersioneApp(valore)).toBeUndefined();
       }
     );
+  });
+
+  describe("nome del tablet", () => {
+    it("usa il dominio riservato .invalid", () => {
+      expect(DOMINIO_TABLET).toBe("tablet.invalid");
+    });
+
+    it.each([
+      [" Campo1 ", "campo1"],
+      ["campo1", "campo1"],
+      ["CAMPO-2", "campo-2"],
+      ["abc", "abc"],
+      ["c1-", "c1-"],
+      ["a".repeat(30), "a".repeat(30)],
+    ])("%j -> %j", (valore, atteso) => {
+      expect(normalizzaNomeTablet(valore)).toBe(atteso);
+      expect(emailDaNomeTablet(valore)).toBe(`${atteso}@tablet.invalid`);
+    });
+
+    it.each([
+      [null],
+      [undefined],
+      [""],
+      ["   "],
+      ["1campo"],
+      ["-campo"],
+      ["c"],
+      [" c "],
+      ["ca"],
+      ["c1"],
+      ["campo 1"],
+      ["càmpo"],
+      ["campo_1"],
+      ["campo1@tablet.invalid"],
+      ["a".repeat(31)],
+    ])("%j -> undefined", (valore) => {
+      expect(normalizzaNomeTablet(valore)).toBeUndefined();
+      expect(emailDaNomeTablet(valore)).toBeUndefined();
+    });
   });
 });

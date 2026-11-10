@@ -91,6 +91,7 @@ vi.mock("@/lib/email/invia-email", () => ({
 
 const {
   creaUtente,
+  creaUtenteTablet,
   impostaAttivoUtente,
   aggiornaRuoliUtente,
   reimpostaPasswordFissaUtente,
@@ -265,6 +266,23 @@ describe("reimpostaPasswordFissaUtente", () => {
     expect(updateUserByIdMock).not.toHaveBeenCalled();
   });
 
+  it("refuses to reset the password of a tablet Utente (AD-12)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      supabaseAuthId: "auth-t1",
+      ruoli: [{ ruolo: "TABLET" }],
+    });
+
+    const result = await reimpostaPasswordFissaUtente(undefined, "t1");
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Non puoi reimpostare la password di un tablet con questa funzione.",
+      },
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
   it("returns an error, no crash, when updateUserById fails", async () => {
     utenteFindUniqueOrThrowMock.mockResolvedValue({
       supabaseAuthId: "auth-u1",
@@ -308,6 +326,24 @@ describe("creaUtente", () => {
     );
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." },
+    });
+    expect(createUserMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un'email del dominio riservato ai tablet", async () => {
+    const result = await creaUtente(
+      undefined,
+      buildFormData({
+        email: "Campo1@tablet.invalid",
+        password: "pw123456",
+        ruoli: ["ADMIN"],
+      })
+    );
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+      },
     });
     expect(createUserMock).not.toHaveBeenCalled();
   });
@@ -424,6 +460,23 @@ describe("creaUtente", () => {
     expect(result).toEqual({
       error: { code: "INTERNAL", message: "Impossibile creare l'utente. Riprova." },
     });
+  });
+
+  it("refuses the TABLET ruolo, alone or with others (AD-12)", async () => {
+    for (const ruoli of [["TABLET"], ["ATLETA", "TABLET"]]) {
+      const result = await creaUtente(
+        undefined,
+        buildFormData({ email: "a@example.com", password: "pw123456", ruoli })
+      );
+
+      expect(result).toEqual({
+        error: {
+          code: "VALIDATION",
+          message: "Il ruolo Tablet si assegna solo creando un nuovo tablet.",
+        },
+      });
+    }
+    expect(createUserMock).not.toHaveBeenCalled();
   });
 });
 
@@ -631,6 +684,192 @@ describe("aggiornaRuoliUtente", () => {
       error: { code: "INTERNAL", message: "Impossibile aggiornare i Ruoli. Riprova." },
     });
   });
+
+  it("refuses to give TABLET to a normal Utente (AD-12)", async () => {
+    const result = await aggiornaRuoliUtente(
+      undefined,
+      buildFormData({ utenteId: "u1", ruoli: ["ATLETA", "TABLET"] })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il ruolo Tablet si assegna solo creando un nuovo tablet.",
+      },
+    });
+    expect(transactionMock).not.toHaveBeenCalled();
+    expect(sincronizzaRuoliMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to change the Ruoli of a tablet Utente (AD-12)", async () => {
+    utenteFindUniqueOrThrowMock.mockResolvedValue({
+      id: "t1",
+      supabaseAuthId: "sb-t1",
+      ruoli: [{ ruolo: "TABLET" }],
+    });
+
+    const result = await aggiornaRuoliUtente(
+      undefined,
+      buildFormData({ utenteId: "t1", ruoli: ["ADMIN"] })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "I ruoli di un utente tablet non si possono modificare.",
+      },
+    });
+    expect(transactionMock).not.toHaveBeenCalled();
+    expect(sincronizzaRuoliMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("creaUtenteTablet", () => {
+  beforeEach(() => {
+    requireRuoloMock.mockReset();
+    requireRuoloMock.mockResolvedValue(null);
+    createUserMock.mockReset();
+    utenteCreateMock.mockReset();
+    sincronizzaRuoliMock.mockReset();
+    revalidatePathMock.mockReset();
+  });
+
+  it("returns FORBIDDEN and creates nothing when the caller is not Admin", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await creaUtenteTablet(
+      undefined,
+      buildFormData({ nome: "campo1", password: "pw123456" })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(requireRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(createUserMock).not.toHaveBeenCalled();
+  });
+
+  it("creates the tablet Utente with the synthetic email and the TABLET ruolo", async () => {
+    createUserMock.mockResolvedValue({
+      data: { user: { id: "auth-t1", identities: [{ id: "id1" }] } },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({});
+    sincronizzaRuoliMock.mockResolvedValue(undefined);
+
+    const result = await creaUtenteTablet(
+      undefined,
+      buildFormData({ nome: " Campo1 ", password: "pw123456" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(createUserMock).toHaveBeenCalledWith({
+      email: "campo1@tablet.invalid",
+      password: "pw123456",
+      email_confirm: true,
+    });
+    expect(utenteCreateMock).toHaveBeenCalledWith({
+      data: {
+        supabaseAuthId: "auth-t1",
+        email: "campo1@tablet.invalid",
+        ruoli: { create: [{ ruolo: "TABLET" }] },
+      },
+    });
+    expect(sincronizzaRuoliMock).toHaveBeenCalledWith("auth-t1", ["TABLET"]);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/admin");
+  });
+
+  it.each(["1campo", "c", "campo 1", "càmpo", "a".repeat(31), ""])(
+    "rejects the invalid name %j without calling Supabase",
+    async (nome) => {
+      const result = await creaUtenteTablet(
+        undefined,
+        buildFormData({ nome, password: "pw123456" })
+      );
+
+      expect(result).toMatchObject({ error: { code: "VALIDATION" } });
+      expect(result && "error" in result && result.error.message).toContain(
+        "da 3 a 30 caratteri"
+      );
+      expect(createUserMock).not.toHaveBeenCalled();
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it("requires a password", async () => {
+    const result = await creaUtenteTablet(undefined, buildFormData({ nome: "campo1" }));
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "La password è obbligatoria." },
+    });
+    expect(createUserMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["email_exists", "user_already_exists"])(
+    "reports 'nome già usato' when createUser returns %s",
+    async (code) => {
+      createUserMock.mockResolvedValue({
+        data: { user: null },
+        error: { code, message: "already registered" },
+      });
+
+      const result = await creaUtenteTablet(
+        undefined,
+        buildFormData({ nome: "campo1", password: "pw123456" })
+      );
+
+      expect(result).toEqual({
+        error: { code: "VALIDATION", message: "Nome già usato da un altro tablet." },
+      });
+      expect(utenteCreateMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it("reports a weak password as VALIDATION", async () => {
+    createUserMock.mockResolvedValue({
+      data: { user: null },
+      error: { code: "weak_password", message: "weak" },
+    });
+
+    const result = await creaUtenteTablet(
+      undefined,
+      buildFormData({ nome: "campo1", password: "x" })
+    );
+
+    expect(result).toMatchObject({ error: { code: "VALIDATION" } });
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a friendly error, no crash, when createUser throws", async () => {
+    createUserMock.mockRejectedValue(new Error("network down"));
+
+    const result = await creaUtenteTablet(
+      undefined,
+      buildFormData({ nome: "campo1", password: "pw123456" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile creare il tablet. Riprova." },
+    });
+  });
+
+  it("returns a friendly error when the app_metadata sync fails", async () => {
+    createUserMock.mockResolvedValue({
+      data: { user: { id: "auth-t2", identities: [{ id: "id1" }] } },
+      error: null,
+    });
+    utenteCreateMock.mockResolvedValue({});
+    sincronizzaRuoliMock.mockRejectedValue(new Error("sync failed"));
+
+    const result = await creaUtenteTablet(
+      undefined,
+      buildFormData({ nome: "campo2", password: "pw123456" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile creare il tablet. Riprova." },
+    });
+  });
 });
 
 describe("correggiEmailUtenteAction", () => {
@@ -660,6 +899,22 @@ describe("correggiEmailUtenteAction", () => {
 
     expect(result).toEqual({
       error: { code: "VALIDATION", message: "Inserisci un indirizzo email valido." },
+    });
+    expect(utenteFindUniqueOrThrowMock).not.toHaveBeenCalled();
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns VALIDATION and touches nothing when nuovaEmail uses the tablet domain", async () => {
+    const result = await correggiEmailUtenteAction(
+      undefined,
+      buildFormData({ utenteId: "u1", nuovaEmail: "campo1@tablet.invalid" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+      },
     });
     expect(utenteFindUniqueOrThrowMock).not.toHaveBeenCalled();
     expect(updateUserByIdMock).not.toHaveBeenCalled();
