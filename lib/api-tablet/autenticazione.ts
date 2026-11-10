@@ -1,17 +1,20 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import { rispostaErroreTablet } from "./risposta-errore";
 
 // Story 2.1 (epic tablet-collegato, referto elettronico tornei): unico punto
 // di autenticazione dell'API del tablet (AD-13). L'app Capacitor manda
 // "Authorization: Bearer <access_token>" ottenuto con supabase-js; qui il
 // JWT si rivalida con getUser(jwt) - un client anon senza sessione basta,
-// niente service-role. Le story 2.4 (Utente.attivo) e 2.6 estenderanno
-// questa funzione, non i singoli Route Handler.
+// niente service-role. La story 2.4 ha aggiunto il controllo su
+// Utente.attivo; la 2.6 estendera' questa funzione, non i singoli Route
+// Handler.
 //
 // Fail-closed: header assente o malformato, getUser fallito o lanciato,
-// configurazione mancante -> sempre 401 NON_AUTENTICATO. I log contengono
+// configurazione mancante, Utente assente o disattivato, Prisma che lancia
+// -> sempre 401 NON_AUTENTICATO. I log contengono
 // solo codici, mai il JWT ne' dati personali.
 
 export type EsitoAutenticazioneTablet =
@@ -56,6 +59,16 @@ export async function autenticaTablet(
     });
     const { data, error } = await supabase.auth.getUser(jwt);
     if (error || !data.user) return nonAutenticato("TOKEN_NON_VALIDO");
+
+    // Story 2.4 (AD-12): un tablet disattivato dall'Admin viene rifiutato a
+    // ogni richiesta, anche con un token emesso prima della disattivazione.
+    // Regola nostra, indipendente dal ban in Supabase Auth.
+    const utenteDb = await prisma.utente.findUnique({
+      where: { supabaseAuthId: data.user.id },
+      select: { attivo: true },
+    });
+    if (!utenteDb?.attivo) return nonAutenticato("UTENTE_NON_ATTIVO");
+
     return { ok: true, utente: data.user };
   } catch {
     return nonAutenticato("VERIFICA_FALLITA");
