@@ -44,6 +44,15 @@ L'app è disponibile su [http://localhost:3000](http://localhost:3000). Lo Studi
 
 L'utente Admin di seed (solo contro Supabase locale) è `admin@societa-manager.local` / `password`.
 
+### API del tablet (referto elettronico)
+
+`/api/tablet/v1/*` richiede l'header `X-App-Versione` (intero positivo). Il contratto (codici di errore, forme delle risposte) sta in `lib/api-tablet/contratto.ts`, copiato dall'app referto-tornei. Variabili del worker:
+
+- `TABLET_APP_VERSIONE_MINIMA`: versione minima accettata, assente = 1; sotto il minimo → `426 APP_OBSOLETA`. Si alza sul worker senza ricompilare l'app.
+- `TABLET_APK_URL`: dove scaricare il nuovo APK, citato nel messaggio di `APP_OBSOLETA`; assente = "chiedi il nuovo APK all'organizzatore".
+
+Dettagli in `docs/deploy-produzione.md`.
+
 ## Comandi principali
 
 ```bash

@@ -181,7 +181,15 @@ Nato con la story 2.1 del referto elettronico tornei (2026-10-27): l'app tablet 
    ```
 
    Prima del deploy, controllare che `.open-next/cloudflare/next-env.mjs` contenga solo l'URL del progetto di prova.
-6. **Verifica**: `curl -i https://societa-manager-preview.<account>.workers.dev/api/tablet/v1/gare` → `401` con corpo JSON `{"error":{"code":"NON_AUTENTICATO",…}}`, mai un redirect a `/accedi`.
+6. **Verifica**: `curl -i https://societa-manager-preview.<account>.workers.dev/api/tablet/v1/gare` → `401` con corpo JSON `{"error":{"code":"NON_AUTENTICATO",…}}`, mai un redirect a `/accedi`. Dalla story 2.2 serve anche l'header `-H "X-App-Versione: 1"`: senza, la risposta è `426` `APP_OBSOLETA`.
+7. **Versione minima dell'app tablet** (story 2.2, opzionale; vale per preview e produzione). Variabili del worker, non segreti (Settings → Variables and Secrets, oppure `vars` nel wrangler):
+
+   | Variabile | Significato | Default |
+   | --- | --- | --- |
+   | `TABLET_APP_VERSIONE_MINIMA` | Versione di protocollo minima accettata dall'API del tablet (header `X-App-Versione`, intero positivo). Sotto il minimo → `426 APP_OBSOLETA`. Un valore non valido vale 1 (con un avviso nel log). | assente = `1` |
+   | `TABLET_APK_URL` | Dove scaricare il nuovo APK, citato nel messaggio di `APP_OBSOLETA`. Se assente, il messaggio dice di chiedere il nuovo APK all'organizzatore. | assente |
+
+   Per rifiutare le APK vecchie basta alzare `TABLET_APP_VERSIONE_MINIMA` sul worker (e, se c'è, impostare `TABLET_APK_URL`): non serve ricompilare né l'app né il worker.
 
 ## Riferimenti
 
