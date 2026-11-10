@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import type { Ruolo } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";
-import { RUOLI_VALIDI } from "@/lib/ruoli";
+import { eEmailTablet, RUOLI_VALIDI, RUOLO_TABLET } from "@/lib/ruoli";
 import {
   isCodiceFiscaleValido,
   trovaAllenatorePerCodiceFiscale,
@@ -43,7 +43,12 @@ const ETICHETTA_RUOLO: Record<Ruolo, string> = {
   ADMIN: "Admin",
   SITE_MANAGER: "Site manager",
   DIRETTORE_TECNICO: "Direttore tecnico",
+  TABLET: "Tablet",
 };
+
+// Referto elettronico (AD-12): l'utente tablet lo crea solo l'Admin
+// (creaUtenteTablet) - qui e' trattato come un Ruolo non valido.
+const RUOLI_REGISTRABILI = RUOLI_VALIDI.filter((r) => r !== RUOLO_TABLET);
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
 // { error: { code, message } }, "FORBIDDEN" riservato ai rifiuti di
@@ -84,12 +89,20 @@ export async function registrati(
       },
     };
   }
+  if (eEmailTablet(email)) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+      },
+    };
+  }
 
   // Set: sia per scartare i Ruoli non validi, sia per deduplicare eventuali
   // valori ripetuti - senza dedup, una create annidata di Prisma con lo
   // stesso Ruolo due volte urterebbe contro @@unique([utenteId, ruolo]).
   const ruoli = [
-    ...new Set(ruoliSelezionati.filter((r) => RUOLI_VALIDI.includes(r))),
+    ...new Set(ruoliSelezionati.filter((r) => RUOLI_REGISTRABILI.includes(r))),
   ];
   if (ruoli.length === 0) {
     return { error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." } };

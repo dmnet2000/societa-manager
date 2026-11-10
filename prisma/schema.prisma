@@ -32,6 +32,7 @@ enum Ruolo {
   ADMIN
   SITE_MANAGER
   DIRETTORE_TECNICO
+  TABLET
 }
 
 // Non protetto da RLS (AD-9): gestibile via Prisma con connessione diretta.

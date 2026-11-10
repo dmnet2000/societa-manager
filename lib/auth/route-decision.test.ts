@@ -72,6 +72,37 @@ describe("getRouteDecision", () => {
     });
   });
 
+  // Referto elettronico (AD-12): l'utente tablet non entra mai nel sito,
+  // nemmeno nelle pagine /app senza controllo Ruolo.
+  it.each([
+    "/app",
+    "/app/",
+    "/app/modifica-password",
+    "/app/admin",
+    "/app/non-autorizzato",
+    "/app/guida",
+  ])("redirects a TABLET session to login on %s", async (rotta) => {
+    expect(await getRouteDecision(rotta, true, ["TABLET"])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+    expect(rottaAbilitataMock).not.toHaveBeenCalled();
+  });
+
+  it("leaves public pages and the tablet API to a TABLET session", async () => {
+    expect(await getRouteDecision("/accedi", true, ["TABLET"])).toEqual({ action: "allow" });
+    expect(await getRouteDecision("/", true, ["TABLET"])).toEqual({ action: "allow" });
+    expect(await getRouteDecision("/api/tablet/v1/gare", true, ["TABLET"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("does not treat /applicazione-like paths as /app for a TABLET session", async () => {
+    expect(await getRouteDecision("/applicazione", true, ["TABLET"])).toEqual({
+      action: "allow",
+    });
+  });
+
   // Story 18.1 (Epic 18): "/" e' ora pubblica (la home del sito pubblico) -
   // prima di questa storia era l'esempio usato dal test sopra per "una
   // rotta non pubblica qualunque".

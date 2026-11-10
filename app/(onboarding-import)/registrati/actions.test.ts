@@ -171,6 +171,38 @@ describe("registrati", () => {
     expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
+  it("rifiuta un'email del dominio riservato ai tablet", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "campo1@tablet.invalid",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+      })
+    );
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+      },
+    });
+    expect(generateLinkMock).not.toHaveBeenCalled();
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+  });
+
+  // Referto elettronico (AD-12): l'utente tablet lo crea solo l'Admin -
+  // nella registrazione autonoma TABLET vale come un Ruolo non valido.
+  it("rejects TABLET like an invalid ruolo", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({ email: "a@example.com", password: "pw123456", ruoli: ["TABLET"] })
+    );
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." },
+    });
+    expect(generateLinkMock).not.toHaveBeenCalled();
+  });
+
   it("returns 'email già registrata' when generateLink returns empty identities (AC #4)", async () => {
     generateLinkMock.mockResolvedValue({
       data: {

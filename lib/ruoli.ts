@@ -1,4 +1,5 @@
 import type { Ruolo } from "@prisma/client";
+import { DOMINIO_TABLET } from "@/lib/api-tablet/contratto";
 
 export const RUOLI_VALIDI: Ruolo[] = [
   "ALLENATORE",
@@ -9,7 +10,27 @@ export const RUOLI_VALIDI: Ruolo[] = [
   "ADMIN",
   "SITE_MANAGER",
   "DIRETTORE_TECNICO",
+  // Referto elettronico (AD-12): utente dedicato a un tablet, esclusivo (mai
+  // insieme ad altri Ruoli) e mai ammesso nel sito. Valido come valore qui
+  // (app_metadata, elenco Admin), escluso dalla registrazione autonoma e
+  // dalle caselle dei Ruoli in /app/admin.
+  "TABLET",
 ];
+
+// Il Ruolo del tablet: esclusivo, creato solo da creaUtenteTablet.
+export const RUOLO_TABLET: Ruolo = "TABLET";
+
+// true se l'insieme di Ruoli e' quello di un utente tablet.
+export function eUtenteTablet(ruoli: readonly Ruolo[]): boolean {
+  return ruoli.includes(RUOLO_TABLET);
+}
+
+// true se l'email usa il dominio riservato ai tablet: solo creaUtenteTablet
+// puo' creare indirizzi cosi', altrimenti un utente normale occuperebbe il
+// nome di un tablet e potrebbe entrare dall'app con quel nome.
+export function eEmailTablet(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(`@${DOMINIO_TABLET}`);
+}
 
 const RUOLI_VALIDI_SET = new Set<string>(RUOLI_VALIDI);
 

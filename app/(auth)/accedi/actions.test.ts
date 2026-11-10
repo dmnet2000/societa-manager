@@ -87,7 +87,7 @@ describe("accedi", () => {
 
   it("redirects to the app area on success (AC #2)", async () => {
     signInMock.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
-    findUniqueMock.mockResolvedValue({ attivo: true });
+    findUniqueMock.mockResolvedValue({ attivo: true, ruoli: [] });
 
     await expect(
       accedi(
@@ -101,7 +101,7 @@ describe("accedi", () => {
 
   it("blocks login and signs out when the Utente is deactivated (Story 1.2 AC #3)", async () => {
     signInMock.mockResolvedValue({ data: { user: { id: "u2" } }, error: null });
-    findUniqueMock.mockResolvedValue({ attivo: false });
+    findUniqueMock.mockResolvedValue({ attivo: false, ruoli: [] });
 
     const result = await accedi(
       undefined,
@@ -114,6 +114,43 @@ describe("accedi", () => {
         message: "Account disattivato. Contatta la segreteria.",
       },
     });
+    expect(signOutMock).toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  // Referto elettronico (AD-12): l'utente tablet entra solo dall'app.
+  it("blocks login and signs out (local only) a TABLET Utente", async () => {
+    signInMock.mockResolvedValue({ data: { user: { id: "t1" } }, error: null });
+    findUniqueMock.mockResolvedValue({ attivo: true, ruoli: [{ ruolo: "TABLET" }] });
+
+    const result = await accedi(
+      undefined,
+      buildFormData({ email: "campo1@tablet.invalid", password: "right" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "UTENTE_TABLET",
+        message: "Utente riservato al tablet: accedi dall'app del referto.",
+      },
+    });
+    expect(signOutMock).toHaveBeenCalledWith({ scope: "local" });
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks login of a TABLET Utente also when only app_metadata says so", async () => {
+    signInMock.mockResolvedValue({
+      data: { user: { id: "t2", app_metadata: { ruoli: ["TABLET"] } } },
+      error: null,
+    });
+    findUniqueMock.mockResolvedValue({ attivo: true, ruoli: [] });
+
+    const result = await accedi(
+      undefined,
+      buildFormData({ email: "campo2@tablet.invalid", password: "right" })
+    );
+
+    expect(result).toMatchObject({ error: { code: "UTENTE_TABLET" } });
     expect(signOutMock).toHaveBeenCalled();
     expect(redirectMock).not.toHaveBeenCalled();
   });

@@ -46,6 +46,20 @@ describe("contenutoPerRotta", () => {
     const risultato = contenutoPerRotta("/app/palestre", ["DIRIGENTE"]);
     expect(risultato?.titolo).toBe("Palestre");
   });
+
+  // Referto elettronico (AD-12): la sezione Amministrazione spiega l'utente tablet.
+  it("la sezione Amministrazione spiega l'utente tablet", () => {
+    const corpo = contenutoPerRotta("/app/admin", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("Nuovo tablet");
+    expect(corpo).toContain("non può accedere a questo sito");
+  });
+});
+
+describe("Ruolo TABLET", () => {
+  it("non vede alcuna voce della guida (il tablet non entra nel sito)", () => {
+    expect(contenutiPerRuoli(["TABLET"])).toEqual([]);
+    expect(CONTENUTI_GUIDA.some((c) => c.ruoliAmmessi.includes("TABLET"))).toBe(false);
+  });
 });
 
 // Review fix (2026-08-10, Blind Hunter): CONTENUTI_GUIDA duplica a mano
