@@ -5,6 +5,7 @@ import type { Ruolo } from "@prisma/client";
 import {
   aggiornaRuoliUtente,
   aggiungiAtletaGenitoreAction,
+  cambiaPasswordTablet,
   correggiEmailUtenteAction,
   impostaAttivoUtente,
   reimpostaPasswordFissaUtente,
@@ -92,6 +93,11 @@ export function UtenteRow({ utente }: { utente: Utente }) {
   const [aggiungiAtletaState, aggiungiAtletaAction, aggiungiAtletaPending] =
     useActionState(aggiungiAtletaGenitoreAction, undefined);
 
+  // Story 2.4 (AD-12): cambio password di un tablet - il form compare solo
+  // per un utente tablet (vedi JSX sotto), il server lo verifica comunque.
+  const [passwordTabletState, passwordTabletAction, passwordTabletPending] =
+    useActionState(cambiaPasswordTablet, undefined);
+
   function toggleAttivo() {
     setAttivoError(null);
     startToggleTransition(async () => {
@@ -143,7 +149,8 @@ export function UtenteRow({ utente }: { utente: Utente }) {
 
   // Referto elettronico (AD-12): TABLET non e' tra le caselle dei Ruoli -
   // un utente tablet mostra solo l'etichetta "Tablet", senza modifica dei
-  // Ruoli ne' password fissa (rifiutate comunque lato server).
+  // Ruoli ne' password fissa (rifiutate comunque lato server). Ha invece
+  // Disattiva/Riattiva e "Cambia password" (story 2.4).
   const eTablet = utente.ruoli.includes("TABLET");
 
   return (
@@ -219,25 +226,67 @@ export function UtenteRow({ utente }: { utente: Utente }) {
       </td>
       <td>{utente.attivo ? "Attivo" : "Disattivato"}</td>
       <td className={styles.funzioni}>
-        {/* Tablet: la disattivazione vera (app compresa) arriva con la 2.4. */}
-        {!eTablet && (
-          <div>
-            <button
-              disabled={isTogglePending}
-              onClick={toggleAttivo}
-              type="button"
-              className={
-                utente.attivo ? styles.bottoneSecondario : styles.bottoneCompatto
+        {/* Tablet: Disattiva/Riattiva blocca anche l'app (ban + attivo, 2.4). */}
+        <div>
+          <button
+            disabled={isTogglePending}
+            onClick={toggleAttivo}
+            type="button"
+            className={
+              utente.attivo ? styles.bottoneSecondario : styles.bottoneCompatto
+            }
+          >
+            {utente.attivo ? "Disattiva" : "Riattiva"}
+          </button>
+          {attivoError && (
+            <p role="alert" className={styles.errore}>
+              {attivoError}
+            </p>
+          )}
+        </div>
+        {eTablet && (
+          <form
+            action={passwordTabletAction}
+            onSubmit={(event) => {
+              // Stesso argine di reimpostaPassword(): il tablet torna subito
+              // al login, non deve partire da un click accidentale.
+              if (
+                !window.confirm(
+                  `Cambiare la password del tablet ${utente.email}? Il tablet tornerà al login e dovrà entrare con la nuova password.`
+                )
+              ) {
+                event.preventDefault();
               }
-            >
-              {utente.attivo ? "Disattiva" : "Riattiva"}
-            </button>
-            {attivoError && (
+            }}
+            className={styles.formCompatto}
+          >
+            <input type="hidden" name="utenteId" value={utente.id} />
+            <input
+              type="password"
+              name="password"
+              placeholder="Nuova password"
+              required
+              autoComplete="new-password"
+              aria-label={`Nuova password per il tablet ${utente.email}`}
+            />
+            {passwordTabletState && "error" in passwordTabletState && (
               <p role="alert" className={styles.errore}>
-                {attivoError}
+                {passwordTabletState.error.message}
               </p>
             )}
-          </div>
+            {passwordTabletState && "success" in passwordTabletState && (
+              <p role="status" className={styles.successo}>
+                Password cambiata.
+              </p>
+            )}
+            <button
+              disabled={passwordTabletPending}
+              type="submit"
+              className={styles.bottoneSecondario}
+            >
+              Cambia password
+            </button>
+          </form>
         )}
         {!eTablet && (
           <div>

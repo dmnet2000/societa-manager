@@ -53,6 +53,14 @@ describe("contenutoPerRotta", () => {
     expect(corpo).toContain("Nuovo tablet");
     expect(corpo).toContain("non può accedere a questo sito");
   });
+
+  // Story 2.4 (AD-12): disattivazione, riattivazione e cambio password del tablet.
+  it("la sezione Amministrazione spiega disattivazione e cambio password del tablet", () => {
+    const corpo = contenutoPerRotta("/app/admin", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("perso o rubato");
+    expect(corpo).toContain("\"Riattiva\"");
+    expect(corpo).toContain("\"Cambia password\"");
+  });
 });
 
 describe("Ruolo TABLET", () => {

@@ -2,9 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const getUserMock = vi.fn();
 const createClientMock = vi.fn(() => ({ auth: { getUser: getUserMock } }));
+const utenteFindUniqueMock = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: createClientMock }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: { utente: { findUnique: utenteFindUniqueMock } },
+}));
 
 const { autenticaTablet, estraiBearer } = await import("./autenticazione");
 
@@ -51,6 +55,8 @@ describe("autenticaTablet", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "chiave-anon");
     getUserMock.mockReset();
     createClientMock.mockClear();
+    utenteFindUniqueMock.mockReset();
+    utenteFindUniqueMock.mockResolvedValue({ attivo: true });
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -66,6 +72,44 @@ describe("autenticaTablet", () => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
     expect(getUserMock).toHaveBeenCalledWith(JWT);
+    expect(utenteFindUniqueMock).toHaveBeenCalledWith({
+      where: { supabaseAuthId: "u-1" },
+      select: { attivo: true },
+    });
+  });
+
+  it("401 NON_AUTENTICATO per un tablet disattivato, anche con un token emesso prima", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    utenteFindUniqueMock.mockResolvedValue({ attivo: false });
+
+    await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
+    const loggato = vi.mocked(console.warn).mock.calls.flat().join(" ");
+    expect(loggato).toContain("motivo=UTENTE_NON_ATTIVO");
+    expect(loggato).not.toContain("u-1");
+  });
+
+  it("401 NON_AUTENTICATO quando il JWT e' valido ma manca la riga Utente", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    utenteFindUniqueMock.mockResolvedValue(null);
+
+    await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
+    expect(vi.mocked(console.warn).mock.calls.flat().join(" ")).toContain(
+      "motivo=UTENTE_NON_ATTIVO"
+    );
+  });
+
+  it("401 NON_AUTENTICATO quando Prisma lancia (fail-closed)", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    utenteFindUniqueMock.mockRejectedValue(new Error("db down"));
+
+    await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
+  });
+
+  it("non interroga il database quando getUser rifiuta il token", async () => {
+    getUserMock.mockResolvedValue({ data: { user: null }, error: { message: "x" } });
+
+    await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
+    expect(utenteFindUniqueMock).not.toHaveBeenCalled();
   });
 
   it("401 NON_AUTENTICATO senza header, senza chiamare Supabase", async () => {
