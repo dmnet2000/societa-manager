@@ -107,6 +107,12 @@ export default async function EdizioneTorneoPage({
           Slot orari/Palestre →
         </Link>
       </p>
+      {/* Referto elettronico, story 2.5: assegnazione delle gare ai tablet. */}
+      <p className={styles.riepilogo}>
+        <Link className={styles.link} href={`/app/torneo/${edizione.id}/tablet`}>
+          Tablet del referto →
+        </Link>
+      </p>
 
       <section className={styles.sezione}>
         <h2>Nuova Categoria</h2>

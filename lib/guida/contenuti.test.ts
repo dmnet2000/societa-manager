@@ -61,6 +61,17 @@ describe("contenutoPerRotta", () => {
     expect(corpo).toContain("\"Riattiva\"");
     expect(corpo).toContain("\"Cambia password\"");
   });
+
+  // Story 2.5 (AD-2): assegnazione delle gare ai tablet, per Admin e Dirigente.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "la sezione Torneo spiega l'assegnazione delle gare ai tablet (%s)",
+    (ruolo) => {
+      const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+      expect(corpo).toContain("\"Tablet del referto\"");
+      expect(corpo).toContain("\"Nessun tablet\"");
+      expect(corpo).toContain("\"Epoca\"");
+    }
+  );
 });
 
 describe("Ruolo TABLET", () => {
