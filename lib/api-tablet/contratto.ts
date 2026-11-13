@@ -33,8 +33,23 @@ export interface ErroreApi {
   };
 }
 
-/** Gara assegnata al tablet. Vuota nel tracer: i campi arrivano con la story 2.5. */
-export type Gara = Readonly<Record<string, unknown>>;
+/**
+ * Gara assegnata al tablet (story 2.6). `garaId` e' l'id della partita sul
+ * server (AD-15); `epoca` cresce a ogni cambio di tablet (AD-2). `data`
+ * (`AAAA-MM-GG`), `ora` (`HH:MM`) e `luogo` sono l'orario locale del torneo e
+ * il campo di gioco, `null` se la gara non ha ancora un orario.
+ */
+export interface Gara {
+  readonly garaId: string;
+  readonly epoca: number;
+  readonly numero: number;
+  readonly categoria: string;
+  readonly casa: string;
+  readonly ospite: string;
+  readonly data: string | null;
+  readonly ora: string | null;
+  readonly luogo: string | null;
+}
 
 /** Risposta di `GET /api/tablet/v1/gare`. */
 export interface RispostaGare {
@@ -57,12 +72,57 @@ export function leggiErrore(corpo: unknown): ErroreApi["error"] | undefined {
   return { code, message };
 }
 
-/** Legge un corpo JSON come elenco gare; `undefined` se non lo e'. */
+function eTesto(valore: unknown): valore is string {
+  return typeof valore === "string" && valore.length > 0;
+}
+
+function eTestoONull(valore: unknown): valore is string | null {
+  return valore === null || eTesto(valore);
+}
+
+// Nomi mostrati (categoria, squadre, luogo): basta che siano testo, anche
+// vuoto. Un nome vuoto nel database non deve far rifiutare tutto l'elenco.
+function eNome(valore: unknown): valore is string {
+  return typeof valore === "string";
+}
+
+function eInteroPositivo(valore: unknown): valore is number {
+  return typeof valore === "number" && Number.isSafeInteger(valore) && valore >= 1;
+}
+
+/** Legge un valore come gara del contratto; `undefined` se un campo manca o ha il tipo sbagliato. */
+function leggiGara(valore: unknown): Gara | undefined {
+  if (!eOggetto(valore)) return undefined;
+  const { garaId, epoca, numero, categoria, casa, ospite, data, ora, luogo } = valore;
+  if (
+    !eTesto(garaId) ||
+    !eInteroPositivo(epoca) ||
+    !eInteroPositivo(numero) ||
+    !eNome(categoria) ||
+    !eNome(casa) ||
+    !eNome(ospite) ||
+    !eTestoONull(data) ||
+    !eTestoONull(ora) ||
+    !(luogo === null || eNome(luogo))
+  ) {
+    return undefined;
+  }
+  return { garaId, epoca, numero, categoria, casa, ospite, data, ora, luogo };
+}
+
+/**
+ * Legge un corpo JSON come elenco gare; `undefined` se non lo e', anche quando
+ * una sola gara e' malformata (mai un elenco parziale).
+ */
 export function leggiGare(corpo: unknown): RispostaGare | undefined {
   if (!eOggetto(corpo) || !Array.isArray(corpo["gare"])) return undefined;
-  const gare: unknown[] = corpo["gare"];
-  if (!gare.every(eOggetto)) return undefined;
-  return { gare: gare as readonly Gara[] };
+  const gare: Gara[] = [];
+  for (const valore of corpo["gare"] as unknown[]) {
+    const gara = leggiGara(valore);
+    if (gara === undefined) return undefined;
+    gare.push(gara);
+  }
+  return { gare };
 }
 
 /**

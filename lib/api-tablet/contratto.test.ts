@@ -49,9 +49,35 @@ describe("contratto API del tablet", () => {
   });
 
   describe("leggiGare", () => {
+    const GARA = {
+      garaId: "p-1",
+      epoca: 2,
+      numero: 7,
+      categoria: "Under 14",
+      casa: "Squadra A",
+      ospite: "Squadra B",
+      data: "2027-09-04",
+      ora: "15:30",
+      luogo: "Palazzetto - Campo 1",
+    };
+
     it("legge l'elenco, anche vuoto", () => {
       expect(leggiGare({ gare: [] })).toEqual({ gare: [] });
-      expect(leggiGare({ gare: [{ id: "g1" }] })).toEqual({ gare: [{ id: "g1" }] });
+      expect(leggiGare({ gare: [GARA] })).toEqual({ gare: [GARA] });
+    });
+
+    it("accetta una gara senza orario (data, ora e luogo null)", () => {
+      const senzaSlot = { ...GARA, data: null, ora: null, luogo: null };
+      expect(leggiGare({ gare: [senzaSlot] })).toEqual({ gare: [senzaSlot] });
+    });
+
+    it("accetta nomi vuoti (un dato vecchio non nasconde tutto l'elenco)", () => {
+      const nomiVuoti = { ...GARA, categoria: "", casa: "", ospite: "", luogo: "" };
+      expect(leggiGare({ gare: [nomiVuoti] })).toEqual({ gare: [nomiVuoti] });
+    });
+
+    it("tiene solo i campi del contratto", () => {
+      expect(leggiGare({ gare: [{ ...GARA, extra: "x" }] })).toEqual({ gare: [GARA] });
     });
 
     it.each([[undefined], [null], [{}], [{ gare: "x" }], [{ gare: [1] }], [{ gare: [null] }]])(
@@ -60,6 +86,21 @@ describe("contratto API del tablet", () => {
         expect(leggiGare(corpo)).toBeUndefined();
       }
     );
+
+    it.each([
+      ["senza epoca", { ...GARA, epoca: undefined }],
+      ["epoca 0", { ...GARA, epoca: 0 }],
+      ["epoca non intera", { ...GARA, epoca: 1.5 }],
+      ["epoca testo", { ...GARA, epoca: "1" }],
+      ["numero mancante", { ...GARA, numero: undefined }],
+      ["garaId vuoto", { ...GARA, garaId: "" }],
+      ["casa non testo", { ...GARA, casa: 3 }],
+      ["data assente invece di null", { ...GARA, data: undefined }],
+      ["data vuota", { ...GARA, data: "" }],
+      ["luogo non testo", { ...GARA, luogo: 1 }],
+    ])("rifiuta tutta la risposta con una gara malformata (%s)", (_nome, gara) => {
+      expect(leggiGare({ gare: [GARA, gara] })).toBeUndefined();
+    });
   });
 
   describe("leggiVersioneApp", () => {
