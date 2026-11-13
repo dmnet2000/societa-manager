@@ -58,6 +58,12 @@ import {
   haRisultatoCompleto,
   type RisultatoSet,
 } from "@/lib/risultato-partita-torneo";
+import {
+  assegnaTabletPartita,
+  trovaTabletAssegnato,
+  trovaUtenteConRuoliPerId,
+} from "@/lib/assegnazioni-tablet";
+import { eUtenteTablet } from "@/lib/ruoli";
 import type { SettimanaTorneo, GironeTorneo, TabelloneTorneo, FaseTorneo } from "@prisma/client";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -2441,6 +2447,61 @@ export async function assegnaRefertistaPartitaTorneoAction(
   } catch (err) {
     console.error(err);
     return { error: { code: "INTERNAL", message: "Impossibile assegnare il Refertista. Riprova." } };
+  }
+
+  return { success: true };
+}
+
+// Referto elettronico, story 2.5 (AD-2): assegna una gara a un tablet, o la
+// lascia senza tablet (utenteId vuoto). Stesso perimetro di Slot e
+// Refertista (ADMIN, DIRIGENTE - decisione utente 2026-11-12: chi e' al
+// campo sposta la gara se un tablet si guasta). Gara e tablet si rileggono
+// sempre sul server: la gara deve essere dell'Edizione della pagina, il
+// tablet deve avere il ruolo TABLET ed essere attivo. L'epoca la gestisce
+// assegnaTabletPartita (lib/assegnazioni-tablet.ts).
+export async function assegnaTabletPartitaTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!id || !edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Incontro non specificato." } };
+  }
+  const utenteId = String(formData.get("utenteId") ?? "").trim() || null;
+
+  try {
+    const partita = await trovaPartitaTorneoPerId(id);
+    if (!partita || partita.edizioneTorneoId !== edizioneTorneoId) {
+      return { error: { code: "VALIDATION", message: "Incontro non trovato in questa Edizione." } };
+    }
+
+    if (utenteId) {
+      const utente = await trovaUtenteConRuoliPerId(utenteId);
+      if (!utente || !eUtenteTablet(utente.ruoli.map((r) => r.ruolo))) {
+        return { error: { code: "VALIDATION", message: "Tablet non trovato." } };
+      }
+      // Review fix: un tablet disattivato che resta sulla sua gara (default
+      // del menu) non e' un errore se si preme "Salva" senza cambiarlo -
+      // stesso tablet = nessuna scrittura, come da matrice.
+      if (!utente.attivo && (await trovaTabletAssegnato(id)) !== utenteId) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Il tablet è disattivato: riattivalo da Amministrazione prima di assegnargli una gara.",
+          },
+        };
+      }
+    }
+
+    await assegnaTabletPartita(id, utenteId);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/tablet`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile assegnare il tablet. Riprova." } };
   }
 
   return { success: true };
