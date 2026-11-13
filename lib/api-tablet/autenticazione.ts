@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
+import { eUtenteTablet } from "@/lib/ruoli";
 import { rispostaErroreTablet } from "./risposta-errore";
 
 // Story 2.1 (epic tablet-collegato, referto elettronico tornei): unico punto
@@ -9,16 +10,20 @@ import { rispostaErroreTablet } from "./risposta-errore";
 // "Authorization: Bearer <access_token>" ottenuto con supabase-js; qui il
 // JWT si rivalida con getUser(jwt) - un client anon senza sessione basta,
 // niente service-role. La story 2.4 ha aggiunto il controllo su
-// Utente.attivo; la 2.6 estendera' questa funzione, non i singoli Route
-// Handler.
+// Utente.attivo; la 2.6 il ruolo TABLET (FORBIDDEN) e l'id Utente
+// nell'esito. Il controllo "questa gara e' tua in questa epoca" sta in
+// gare-tablet.ts (autorizzaGaraTablet), che parte da qui.
 //
 // Fail-closed: header assente o malformato, getUser fallito o lanciato,
 // configurazione mancante, Utente assente o disattivato, Prisma che lancia
-// -> sempre 401 NON_AUTENTICATO. I log contengono
+// -> sempre 401 NON_AUTENTICATO. Unica eccezione: un utente attivo ma senza
+// ruolo TABLET riceve 403 FORBIDDEN (story 2.6). I log contengono
 // solo codici, mai il JWT ne' dati personali.
 
+// utenteId e' l'id della riga Utente (Prisma), quello delle assegnazioni
+// (story 2.6); utente.id e' invece l'id di Supabase Auth.
 export type EsitoAutenticazioneTablet =
-  | { ok: true; utente: User }
+  | { ok: true; utente: User; utenteId: string }
   | { ok: false; risposta: NextResponse };
 
 // Tre segmenti base64url separati da punti: un JWT. Tutto il resto e'
@@ -43,6 +48,17 @@ function nonAutenticato(motivo: string): EsitoAutenticazioneTablet {
   };
 }
 
+// Story 2.6 (AD-12): un utente autenticato e attivo ma senza ruolo TABLET
+// (es. un Admin che prova l'app con le sue credenziali) e' un problema di
+// autorizzazione, non di autenticazione: 403 FORBIDDEN.
+function nonTablet(): EsitoAutenticazioneTablet {
+  console.warn("api-tablet FORBIDDEN motivo=RUOLO_NON_TABLET");
+  return {
+    ok: false,
+    risposta: rispostaErroreTablet("FORBIDDEN", "Questo account non è un tablet.", 403),
+  };
+}
+
 export async function autenticaTablet(
   request: Request
 ): Promise<EsitoAutenticazioneTablet> {
@@ -63,13 +79,16 @@ export async function autenticaTablet(
     // Story 2.4 (AD-12): un tablet disattivato dall'Admin viene rifiutato a
     // ogni richiesta, anche con un token emesso prima della disattivazione.
     // Regola nostra, indipendente dal ban in Supabase Auth.
+    // Story 2.6: nella stessa query anche id e ruoli (Prisma e' la fonte di
+    // verita' dei ruoli, AD-11 di societa-manager).
     const utenteDb = await prisma.utente.findUnique({
       where: { supabaseAuthId: data.user.id },
-      select: { attivo: true },
+      select: { id: true, attivo: true, ruoli: { select: { ruolo: true } } },
     });
     if (!utenteDb?.attivo) return nonAutenticato("UTENTE_NON_ATTIVO");
+    if (!eUtenteTablet(utenteDb.ruoli.map((r) => r.ruolo))) return nonTablet();
 
-    return { ok: true, utente: data.user };
+    return { ok: true, utente: data.user, utenteId: utenteDb.id };
   } catch {
     return nonAutenticato("VERIFICA_FALLITA");
   }

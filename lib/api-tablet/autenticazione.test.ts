@@ -12,6 +12,8 @@ vi.mock("@/lib/prisma", () => ({
 
 const { autenticaTablet, estraiBearer } = await import("./autenticazione");
 
+const TABLET_DB = { id: "ut-1", attivo: true, ruoli: [{ ruolo: "TABLET" }] };
+
 const JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1LTEifQ.firma_valida-123";
 
 function richiesta(authorization?: string) {
@@ -56,7 +58,7 @@ describe("autenticaTablet", () => {
     getUserMock.mockReset();
     createClientMock.mockClear();
     utenteFindUniqueMock.mockReset();
-    utenteFindUniqueMock.mockResolvedValue({ attivo: true });
+    utenteFindUniqueMock.mockResolvedValue(TABLET_DB);
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
@@ -65,7 +67,7 @@ describe("autenticaTablet", () => {
 
     const esito = await autenticaTablet(richiesta(`Bearer ${JWT}`));
 
-    expect(esito).toEqual({ ok: true, utente: { id: "u-1" } });
+    expect(esito).toEqual({ ok: true, utente: { id: "u-1" }, utenteId: "ut-1" });
     expect(createClientMock).toHaveBeenCalledWith(
       "https://prova.supabase.test",
       "chiave-anon",
@@ -74,13 +76,38 @@ describe("autenticaTablet", () => {
     expect(getUserMock).toHaveBeenCalledWith(JWT);
     expect(utenteFindUniqueMock).toHaveBeenCalledWith({
       where: { supabaseAuthId: "u-1" },
-      select: { attivo: true },
+      select: { id: true, attivo: true, ruoli: { select: { ruolo: true } } },
     });
+  });
+
+  // Story 2.6 (AD-12): utente attivo ma non TABLET -> FORBIDDEN, non NON_AUTENTICATO.
+  it("403 FORBIDDEN per un utente attivo senza ruolo TABLET", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    utenteFindUniqueMock.mockResolvedValue({ id: "ut-1", attivo: true, ruoli: [{ ruolo: "ADMIN" }] });
+
+    const esito = await autenticaTablet(richiesta(`Bearer ${JWT}`));
+
+    expect(esito.ok).toBe(false);
+    if (esito.ok) return;
+    expect(esito.risposta.status).toBe(403);
+    expect(await esito.risposta.json()).toEqual({
+      error: { code: "FORBIDDEN", message: expect.any(String) },
+    });
+    const loggato = vi.mocked(console.warn).mock.calls.flat().join(" ");
+    expect(loggato).toContain("motivo=RUOLO_NON_TABLET");
+    expect(loggato).not.toContain("u-1");
+  });
+
+  it("un utente disattivato senza ruolo TABLET resta 401 (prima l'attivo, poi il ruolo)", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    utenteFindUniqueMock.mockResolvedValue({ id: "ut-1", attivo: false, ruoli: [] });
+
+    await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
   });
 
   it("401 NON_AUTENTICATO per un tablet disattivato, anche con un token emesso prima", async () => {
     getUserMock.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    utenteFindUniqueMock.mockResolvedValue({ attivo: false });
+    utenteFindUniqueMock.mockResolvedValue({ ...TABLET_DB, attivo: false });
 
     await attesoNonAutenticato(await autenticaTablet(richiesta(`Bearer ${JWT}`)));
     const loggato = vi.mocked(console.warn).mock.calls.flat().join(" ");
