@@ -64,8 +64,11 @@ function argomenti(argv) {
 
 function domanda(testo, nascosta = false) {
   return new Promise((risolvi) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    if (nascosta) {
+    // Modalita' terminale solo con una tastiera vera: con l'input da un
+    // altro programma (pipe) la modalita' terminale non riconosce l'a capo.
+    const tastiera = Boolean(process.stdin.isTTY);
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: tastiera });
+    if (nascosta && tastiera) {
       // Scrive la domanda una volta sola, poi nessun eco: readline ridisegna
       // la riga (domanda + testo digitato) a ogni Backspace, quindi ogni
       // scrittura successiva va scartata, non filtrata.
@@ -357,14 +360,15 @@ Ora disattiva "${secondo.nome}" dal sito (Amministrazione > Disattiva), poi prem
   }
 }
 
-// exitCode e non process.exit: su Windows le scritture sul terminale sono
-// asincrone e un'uscita immediata puo' troncare il riepilogo.
-main().then(
-  (codice) => {
-    process.exitCode = codice;
-  },
-  (errore) => {
-    console.error(errore instanceof ErroreConfigurazione ? `ERRORE: ${errore.message}` : errore);
-    process.exitCode = 2;
-  }
-);
+// Uscita esplicita, ma solo dopo che il terminale ha ricevuto tutto: su
+// Windows le scritture sono asincrone (un process.exit immediato puo'
+// troncare il riepilogo) e senza uscita esplicita lo stdin aperto dalle
+// domande e le connessioni HTTP in keep-alive tengono vivo il processo.
+function esci(codice) {
+  process.stdout.write("", () => process.exit(codice));
+}
+
+main().then(esci, (errore) => {
+  console.error(errore instanceof ErroreConfigurazione ? `ERRORE: ${errore.message}` : errore);
+  esci(2);
+});
