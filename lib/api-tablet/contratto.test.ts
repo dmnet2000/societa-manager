@@ -7,6 +7,7 @@ import {
   normalizzaNomeTablet,
   leggiErrore,
   leggiGare,
+  leggiParametri,
   leggiVersioneApp,
 } from "./contratto";
 
@@ -157,5 +158,43 @@ describe("contratto API del tablet", () => {
       expect(normalizzaNomeTablet(valore)).toBeUndefined();
       expect(emailDaNomeTablet(valore)).toBeUndefined();
     });
+  });
+});
+
+describe("leggiParametri", () => {
+  const PARAMETRI = {
+    versione: 1,
+    setPerVincere: 2,
+    puntiSet: 25,
+    puntiSetDecisivo: 15,
+    scartoMinimo: 2,
+    cambiPerSet: 8,
+    timeoutPerSet: 2,
+    liberiMin: 1,
+    liberiMax: 2,
+    rosaMax: 14,
+  };
+
+  it("legge i parametri completi", () => {
+    expect(leggiParametri({ parametri: PARAMETRI })).toEqual({ parametri: PARAMETRI });
+  });
+
+  it("accetta liberiMin uguale a liberiMax", () => {
+    const p = { ...PARAMETRI, liberiMin: 2 };
+    expect(leggiParametri({ parametri: p })).toEqual({ parametri: p });
+  });
+
+  it.each([
+    ["corpo non oggetto", "x"],
+    ["parametri assenti", {}],
+    ["parametri null", { parametri: null }],
+    ["campo mancante", { parametri: { ...PARAMETRI, rosaMax: undefined } }],
+    ["decimale", { parametri: { ...PARAMETRI, puntiSet: 25.5 } }],
+    ["testo", { parametri: { ...PARAMETRI, puntiSet: "25" } }],
+    ["zero", { parametri: { ...PARAMETRI, scartoMinimo: 0 } }],
+    ["negativo", { parametri: { ...PARAMETRI, cambiPerSet: -1 } }],
+    ["liberiMin > liberiMax", { parametri: { ...PARAMETRI, liberiMin: 3, liberiMax: 2 } }],
+  ])("rifiuta: %s", (_nome, corpo) => {
+    expect(leggiParametri(corpo)).toBeUndefined();
   });
 });
