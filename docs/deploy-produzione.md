@@ -191,6 +191,22 @@ Nato con la story 2.1 del referto elettronico tornei (2026-10-27): l'app tablet 
 
    Per rifiutare le APK vecchie basta alzare `TABLET_APP_VERSIONE_MINIMA` sul worker (e, se c'è, impostare `TABLET_APK_URL`): non serve ricompilare né l'app né il worker.
 
+## Referto elettronico tornei — rilascio in produzione `[x]`
+
+Fatto il 2026-11-15 (story 2.10 dell'initiative referto-elettronico). Riferimento per i rilasci successivi dell'app tablet e dell'API `/api/tablet/v1/*`.
+
+1. **Il codice arriva in produzione da solo** con il merge su `main` (Fase 2). Quindi una story del referto con una migrazione segue la Fase 3bis: `scripts\migrate-produzione.bat` (mostra le migrazioni in sospeso e chiede conferma) **prima** o insieme al merge. Migrazioni dell'epic tablet: `20261110000000_add_tablet_ruolo`, `20261112000000_add_assegnazioni_tablet`.
+2. **APK di produzione** (repo `referto-tornei`): `.env.produzione` (gitignored) con le sole `VITE_API_URL` (URL del sito, senza slash finale), `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (chiave pubblica). Poi `npm run android:produzione`, `gradlew assembleRelease` (se il daemon Gradle si chiude da solo: `--no-daemon`), `apksigner verify`, `adb install -r`. Prima di installare, controllare che negli asset dell'APK ci sia l'URL di produzione e non quello della preview.
+3. **Tablet**: Amministrazione → "Nuovo tablet" (nome e password scelti dall'Admin). Gare assegnate da Torneo → Edizione → "Tablet del referto".
+4. **Verifica di sicurezza** (sola lettura, la lancia l'Admin con le password di due tablet):
+
+   ```powershell
+   node scripts\verifica-sicurezza-tablet.mjs --env .env.production --api https://societa-manager.dmnet2000.workers.dev --con-disattivazione
+   ```
+
+   Richiede Node >= 22.18. Esito del 2026-11-15: tutte le tabelle negate o filtrate (58 negate, 26 vuote con righe nel database), bucket privati protetti, gare uguali alle assegnazioni, disattivazione rispettata; 10 voci "lette" dall'elenco dei file di 5 bucket pubblici, da correggere con la Story 11.6 (`_bmad-output/planning-artifacts/epics.md`).
+5. Variabili `TABLET_APP_VERSIONE_MINIMA` e `TABLET_APK_URL`: vedi il punto 7 di "Ambiente di prova"; in produzione non sono impostate (minimo 1).
+
 ## Riferimenti
 
 - Architettura completa: `_bmad-output/planning-artifacts/architecture/architecture-societa-manager-2026-07-13/ARCHITECTURE-SPINE.md` (AD-7 Cron, AD-11 Ruoli/Middleware, stack Cloudflare)
