@@ -2,7 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
-import { eUtenteTablet } from "@/lib/ruoli";
+import { haRuoloTablet } from "@/lib/ruoli";
 import { rispostaErroreTablet } from "./risposta-errore";
 
 // Story 2.1 (epic tablet-collegato, referto elettronico tornei): unico punto
@@ -86,7 +86,7 @@ export async function autenticaTablet(
       select: { id: true, attivo: true, ruoli: { select: { ruolo: true } } },
     });
     if (!utenteDb?.attivo) return nonAutenticato("UTENTE_NON_ATTIVO");
-    if (!eUtenteTablet(utenteDb.ruoli.map((r) => r.ruolo))) return nonTablet();
+    if (!haRuoloTablet(utenteDb)) return nonTablet();
 
     return { ok: true, utente: data.user, utenteId: utenteDb.id };
   } catch {

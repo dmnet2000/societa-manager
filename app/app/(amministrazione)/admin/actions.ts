@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/auth-admin/client";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";
-import { eEmailTablet, eUtenteTablet, parseRuoli, RUOLO_TABLET } from "@/lib/ruoli";
+import { eEmailTablet, eUtenteTablet, haRuoloTablet, parseRuoli, RUOLO_TABLET } from "@/lib/ruoli";
 import { emailDaNomeTablet, normalizzaNomeTablet } from "@/lib/api-tablet/contratto";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { inviaEmail } from "@/lib/email/invia-email";
@@ -151,6 +151,11 @@ export async function creaUtente(
   return { success: true };
 }
 
+const ERRORE_NOME_TABLET_USATO = {
+  code: "VALIDATION",
+  message: "Nome già usato da un altro tablet.",
+} as const;
+
 const ERRORE_CREAZIONE_TABLET = {
   code: "INTERNAL",
   message: "Impossibile creare il tablet. Riprova.",
@@ -201,7 +206,7 @@ export async function creaUtenteTablet(
 
   if (error) {
     if (error.code === "email_exists" || error.code === "user_already_exists") {
-      return { error: { code: "VALIDATION", message: "Nome già usato da un altro tablet." } };
+      return { error: ERRORE_NOME_TABLET_USATO };
     }
     if (error.code === "weak_password") {
       return {
@@ -217,7 +222,7 @@ export async function creaUtenteTablet(
   }
 
   if (data.user.identities && data.user.identities.length === 0) {
-    return { error: { code: "VALIDATION", message: "Nome già usato da un altro tablet." } };
+    return { error: ERRORE_NOME_TABLET_USATO };
   }
 
   const ruoli = [RUOLO_TABLET];
@@ -276,7 +281,7 @@ export async function impostaAttivoUtente(
       where: { id: utenteId },
       include: { ruoli: true },
     });
-    const eTablet = eUtenteTablet(utente.ruoli.map((r) => r.ruolo));
+    const eTablet = haRuoloTablet(utente);
 
     if (!attivo) {
       // Decisione: impedire di disattivare l'unico Admin attivo rimasto.
@@ -372,7 +377,7 @@ export async function cambiaPasswordTablet(
       include: { ruoli: true },
     });
 
-    if (!eUtenteTablet(utente.ruoli.map((r) => r.ruolo))) {
+    if (!haRuoloTablet(utente)) {
       return {
         error: {
           code: "VALIDATION",
@@ -437,7 +442,7 @@ export async function aggiornaRuoliUtente(
     });
 
     // AD-12: un utente tablet ha solo il Ruolo TABLET, per sempre.
-    if (eUtenteTablet(utente.ruoli.map((r) => r.ruolo))) {
+    if (haRuoloTablet(utente)) {
       return {
         error: {
           code: "VALIDATION",
@@ -527,7 +532,7 @@ export async function reimpostaPasswordFissaUtente(
 
     // AD-12: la password fissa e' nota a tutti - su un tablet aprirebbe
     // l'app a chiunque. Per i tablet c'e' cambiaPasswordTablet.
-    if (eUtenteTablet(utente.ruoli.map((r) => r.ruolo))) {
+    if (haRuoloTablet(utente)) {
       return {
         error: {
           code: "VALIDATION",

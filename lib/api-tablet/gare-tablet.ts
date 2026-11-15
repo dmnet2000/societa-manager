@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import type { Gara } from "./contratto";
 import { autenticaTablet } from "./autenticazione";
-import { rispostaErroreTablet } from "./risposta-errore";
+import { erroreInternoTablet, rispostaErroreTablet } from "./risposta-errore";
 
 // Story 2.6 (epic tablet-collegato, AD-2, AD-15): le gare del tablet
 // chiamante, dalle assegnazioni della story 2.5. Solo i dati del contratto:
@@ -120,7 +120,7 @@ export async function autorizzaGaraTablet(
     console.error("api-tablet INTERNAL motivo=ASSEGNAZIONE_NON_LEGGIBILE");
     return {
       ok: false,
-      risposta: rispostaErroreTablet("INTERNAL", "Errore del server. Riprova.", 500),
+      risposta: erroreInternoTablet(),
     };
   }
 }

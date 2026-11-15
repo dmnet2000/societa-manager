@@ -63,7 +63,7 @@ import {
   trovaTabletAssegnato,
   trovaUtenteConRuoliPerId,
 } from "@/lib/assegnazioni-tablet";
-import { eUtenteTablet } from "@/lib/ruoli";
+import { haRuoloTablet } from "@/lib/ruoli";
 import type { SettimanaTorneo, GironeTorneo, TabelloneTorneo, FaseTorneo } from "@prisma/client";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -2481,7 +2481,7 @@ export async function assegnaTabletPartitaTorneoAction(
 
     if (utenteId) {
       const utente = await trovaUtenteConRuoliPerId(utenteId);
-      if (!utente || !eUtenteTablet(utente.ruoli.map((r) => r.ruolo))) {
+      if (!utente || !haRuoloTablet(utente)) {
         return { error: { code: "VALIDATION", message: "Tablet non trovato." } };
       }
       // Review fix: un tablet disattivato che resta sulla sua gara (default

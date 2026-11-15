@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eEmailTablet, eUtenteTablet, parseRuoli, RUOLI_VALIDI } from "./ruoli";
+import { eEmailTablet, eUtenteTablet, haRuoloTablet, parseRuoli, RUOLI_VALIDI } from "./ruoli";
 
 describe("eEmailTablet", () => {
   it("riconosce il dominio riservato ai tablet, maiuscole e spazi compresi", () => {
@@ -71,5 +71,13 @@ describe("eUtenteTablet", () => {
   it("non considera tablet gli altri Ruoli", () => {
     expect(eUtenteTablet([])).toBe(false);
     expect(eUtenteTablet(["ADMIN", "ALLENATORE"])).toBe(false);
+  });
+});
+
+describe("haRuoloTablet", () => {
+  it("legge i ruoli nella forma della giunzione UtenteRuolo", () => {
+    expect(haRuoloTablet({ ruoli: [{ ruolo: "TABLET" }] })).toBe(true);
+    expect(haRuoloTablet({ ruoli: [{ ruolo: "ADMIN" }, { ruolo: "DIRIGENTE" }] })).toBe(false);
+    expect(haRuoloTablet({ ruoli: [] })).toBe(false);
   });
 });

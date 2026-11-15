@@ -8,6 +8,8 @@
 // con --con-disattivazione, verifica che un tablet disattivato dall'operatore
 // venga rifiutato.
 //
+// Richiede Node >= 22.18 (esegue il .ts del contratto senza compilarlo).
+//
 // Uso (dalla cartella societa-manager):
 //   node scripts/verifica-sicurezza-tablet.mjs --env <file .env> --api <url del sito>
 //        [--con-disattivazione] [--schemi public,altro] [--versione-app N]
@@ -41,8 +43,33 @@ import {
   riepilogo,
 } from "./verifica-sicurezza-tablet/logica.mjs";
 
-const NOME_TABLET = /^[a-z][a-z0-9-]{2,29}$/;
-const DOMINIO_TABLET = "tablet.invalid";
+// Regole del tablet (nome, email sintetica, header della versione) dalla
+// fonte unica del contratto, non ricopiate: caricate all'avvio di main().
+let normalizzaNomeTablet, emailDaNomeTablet, HEADER_VERSIONE_APP;
+
+// Node (>= 22.18 / 23.6) esegue il .ts del contratto togliendo i tipi. Solo
+// durante questo import si scarta l'avviso innocuo
+// MODULE_TYPELESS_PACKAGE_JSON; gli altri avvisi restano come li stampa Node.
+// Un import fallito (Node troppo vecchio) e' un errore di configurazione.
+async function caricaContratto() {
+  const originale = process.emitWarning;
+  process.emitWarning = function (avviso, ...resto) {
+    const codice = typeof resto[0] === "object" ? resto[0]?.code : resto[1];
+    if (codice === "MODULE_TYPELESS_PACKAGE_JSON" || String(avviso).includes("MODULE_TYPELESS")) return;
+    return originale.call(this, avviso, ...resto);
+  };
+  try {
+    ({ normalizzaNomeTablet, emailDaNomeTablet, HEADER_VERSIONE_APP } = await import(
+      "../lib/api-tablet/contratto.ts"
+    ));
+  } catch (errore) {
+    throw new ErroreConfigurazione(
+      `Impossibile caricare lib/api-tablet/contratto.ts (serve Node >= 22.18): ${errore.message}`
+    );
+  } finally {
+    process.emitWarning = originale;
+  }
+}
 
 class ErroreConfigurazione extends Error {}
 
@@ -84,10 +111,11 @@ function domanda(testo, nascosta = false) {
 }
 
 async function credenziali(prefisso, etichetta) {
-  const nome = (process.env[`${prefisso}_NOME`] ?? (await domanda(`Nome del ${etichetta}: `))).trim().toLowerCase();
-  if (!NOME_TABLET.test(nome)) throw new ErroreConfigurazione(`Nome tablet non valido: ${nome}`);
+  const grezzo = process.env[`${prefisso}_NOME`] ?? (await domanda(`Nome del ${etichetta}: `));
+  const nome = normalizzaNomeTablet(grezzo);
+  if (nome === undefined) throw new ErroreConfigurazione(`Nome tablet non valido: ${grezzo.trim()}`);
   const password = process.env[`${prefisso}_PASSWORD`] ?? (await domanda(`Password di ${nome}: `, true));
-  return { nome, email: `${nome}@${DOMINIO_TABLET}`, password };
+  return { nome, email: emailDaNomeTablet(nome), password };
 }
 
 function clientSupabase(url, anonKey) {
@@ -186,7 +214,7 @@ async function elencaBucket(url, anonKey, bearer, id) {
 
 async function chiamaGare(api, jwt, versioneApp) {
   const risposta = await fetch(`${api}/api/tablet/v1/gare`, {
-    headers: { Authorization: `Bearer ${jwt}`, "X-App-Versione": versioneApp },
+    headers: { Authorization: `Bearer ${jwt}`, [HEADER_VERSIONE_APP]: versioneApp },
   });
   return { status: risposta.status, corpo: await leggiJson(risposta) };
 }
@@ -198,6 +226,7 @@ function dettaglioApi(status) {
 }
 
 async function main() {
+  await caricaContratto();
   const opz = argomenti(process.argv.slice(2));
   const env = leggiEnv(await readFile(opz.env, "utf8"));
   const url = env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
