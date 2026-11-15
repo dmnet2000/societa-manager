@@ -201,7 +201,7 @@ Fatto il 2026-11-15 (story 2.10 dell'initiative referto-elettronico). Riferiment
 4. **Verifica di sicurezza** (sola lettura, la lancia l'Admin con le password di due tablet):
 
    ```powershell
-   node scriptserifica-sicurezza-tablet.mjs --env .env.production --api https://societa-manager.dmnet2000.workers.dev --con-disattivazione
+   node scripts\verifica-sicurezza-tablet.mjs --env .env.production --api https://societa-manager.dmnet2000.workers.dev --con-disattivazione
    ```
 
    Richiede Node >= 22.18. Esito del 2026-11-15: tutte le tabelle negate o filtrate (58 negate, 26 vuote con righe nel database), bucket privati protetti, gare uguali alle assegnazioni, disattivazione rispettata; 10 voci "lette" dall'elenco dei file di 5 bucket pubblici, da correggere con la Story 11.6 (`_bmad-output/planning-artifacts/epics.md`).
