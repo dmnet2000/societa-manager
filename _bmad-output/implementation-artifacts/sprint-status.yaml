@@ -1,3 +1,4 @@
+# last_updated: 2026-11-15 (Story 11.6 aggiunta: elenco dei file leggibile da anon/tablet nei bucket pubblici foto-squadra-gruppo e volantino-torneo, emerso dalla verifica di sicurezza in produzione del referto elettronico (story 2.10). Solo la story, nessuna implementazione. Vedi epics.md#Story 11.6.)
 # last_updated: 2026-10-27 (Story 9.48 tesseramento in /app/conferma-certificati: review -> done, verificata dall'utente dal vivo.)
 # last_updated: 2026-10-25 (Code review Epic 28 a 4 livelli (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) sul diff 3fb0e8d..5ec4bb6: 7 patch applicati (pulsante senza attributo download, ordine Gruppi in memoria, reduce al posto di Math.max spread, escape U+FFFE/FFFF, 3 test aggiunti), 2 defer in deferred-work.md, 19 scartati. Story restano done.)
 # last_updated: 2026-10-25 (Epic 28 chiuso: Story 28.1-28.4 review -> done, verificate dall'utente dal vivo dopo il deploy (file aperti, export funzionanti).)
@@ -972,6 +973,7 @@ development_status:
   11-3-invalid-login-invio-email: done
   11-4-registrazione-safari-ios: done
   11-5-errore-console-widget-facebook: done
+  11-6-elenco-file-bucket-pubblici: backlog
 
   # Epic 12 (Permessi Configurabili da Admin) inserito il 2026-08-02 su
   # richiesta dell'utente, emersa discutendo la Story 9.22. Analisi di

@@ -2225,6 +2225,37 @@ Found null hrp, blocking mods: ExceptionDialog; non-blocking mods: ; response er
 **When** viene identificata
 **Then** viene corretta e la causa/correzione vengono documentate in questa storia
 
+### Story 11.6: Elenco dei file leggibile da chiunque nei bucket pubblici foto-squadra-gruppo e volantino-torneo
+
+As a Admin responsabile dei dati della società,
+I want che chi non è autenticato (o un tablet del referto) non possa elencare tutti i file dei bucket pubblici,
+so that restano visibili solo le immagini che il sito mostra, non file caricati e poi non più usati.
+
+**Note aggiuntive:** emerso il 2026-11-15 dalla verifica di sicurezza in produzione del referto elettronico (story 2.10 dell'initiative referto-elettronico, script `scripts/verifica-sicurezza-tablet.mjs`). Evidenza: con la sola chiave pubblica (anon) e con il JWT di un tablet, `POST /storage/v1/object/list/<bucket>` restituisce file per 5 bucket marcati `public`. Tutte le tabelle e i bucket privati (certificati medici, foto profilo) risultano invece protetti.
+
+Analisi già fatta (da confermare in sviluppo):
+- `foto-hero`, `logo-applicazione`, `logo-polisportiva`: la policy SELECT su `storage.objects` ammette **un solo nome fisso** (es. `name = 'foto-hero'`), già pubblico per URL. L'elenco non rivela altro: probabilmente nessuna correzione, solo da documentare e da far riconoscere allo script di verifica come atteso.
+- `foto-squadra-gruppo` (policy `foto_squadra_gruppo_select`, migrazione `20260813000000_add_foto_squadra_bucket`) e `volantino-torneo` (policy `volantino_torneo_select`, migrazione `20260824010000_add_volantino_torneo_bucket`): la SELECT vale per **tutto il bucket**, quindi chiunque elenca tutti i file, compresi quelli eventualmente sostituiti e non più mostrati.
+- **Attenzione:** il sito stesso usa `list()` su questi bucket con il client passato dal chiamante (`lib/storage/foto-squadra.ts:49`, `lib/storage/volantino-torneo.ts:59`, anche `foto-hero.ts`, `logo.ts`, `logo-polisportiva.ts`), anche dalle pagine pubbliche (`app/page.tsx`, `app/torneo/page.tsx`). Restringere la policy senza spostare quelle letture su un client lato server (service role) o su metadati nel database romperebbe la home e la pagina /torneo. Il download per URL pubblico (`/storage/v1/object/public/...`) non dipende dalla policy SELECT e continua a funzionare.
+
+**Acceptance Criteria:**
+
+**Given** un client con la sola chiave pubblica, o con il JWT di un tablet
+**When** chiede l'elenco dei file di `foto-squadra-gruppo` o `volantino-torneo`
+**Then** riceve un elenco vuoto o un rifiuto, mentre le immagini mostrate dal sito restano raggiungibili dal loro URL pubblico
+
+**Given** la home pubblica, la pagina /torneo e le pagine di amministrazione che mostrano o caricano foto di squadra e volantino
+**When** vengono aperte dopo la modifica
+**Then** funzionano come prima (stesse immagini, stesso caricamento e sostituzione)
+
+**Given** lo script `scripts/verifica-sicurezza-tablet.mjs`
+**When** viene rilanciato in produzione dopo la modifica
+**Then** non segnala più `foto-squadra-gruppo` e `volantino-torneo`, e i tre bucket a nome fisso sono riconosciuti come attesi (o la decisione di lasciarli così è documentata qui)
+
+**Given** la modifica richiede una migrazione
+**When** viene rilasciata
+**Then** la migrazione è applicata al database di produzione prima o insieme al merge su `main` (deploy automatico, vedi `docs/deploy-produzione.md` Fase 3bis)
+
 ## Epic 12: Permessi Configurabili da Admin
 
 *(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, emersa discutendo la Story 9.22. Analisi di apertura completata il 2026-08-04, stesso approccio già usato per Epic 10 — vedi decisioni sotto. Rotto in 4 story fondative + un elenco aperto di story di estensione (una rotta alla volta, deliberatamente incrementale, non un refactor big-bang).)*
