@@ -25,6 +25,12 @@ export function eUtenteTablet(ruoli: readonly Ruolo[]): boolean {
   return ruoli.includes(RUOLO_TABLET);
 }
 
+// Come eUtenteTablet, per un Utente letto con `ruoli: { select: { ruolo } }`
+// (la forma restituita da Prisma per la giunzione UtenteRuolo).
+export function haRuoloTablet(utente: { readonly ruoli: readonly { readonly ruolo: Ruolo }[] }): boolean {
+  return eUtenteTablet(utente.ruoli.map((r) => r.ruolo));
+}
+
 // true se l'email usa il dominio riservato ai tablet: solo creaUtenteTablet
 // puo' creare indirizzi cosi', altrimenti un utente normale occuperebbe il
 // nome di un tablet e potrebbe entrare dall'app con quel nome.
