@@ -1109,6 +1109,8 @@ model SquadraTorneo {
   // di una relazione collega la stessa coppia di modelli).
   partiteCasa       PartitaTorneo[] @relation("PartiteCasa")
   partiteOspite     PartitaTorneo[] @relation("PartiteOspite")
+  // Referto elettronico, story 3.2 (AD-6): rosa della squadra, separata da Atleta.
+  rosa              RosaSquadra?
 
   @@map("squadre_torneo")
 }
@@ -1363,4 +1365,69 @@ model SlotTorneo {
   partite                       PartitaTorneo[]
 
   @@map("slot_torneo")
+}
+
+// Referto elettronico, story 3.2 (AD-6, AD-11, AD-17): rosa di una
+// SquadraTorneo, senza legami con Atleta (nomi di minori, dati minimi).
+// Lettura via RLS (TABLET solo squadre delle proprie gare, Admin/Dirigente
+// tutto); scrittura solo tramite la funzione SQL salva_rosa_squadra, che
+// applica versione e idempotenza (idModifica). Vedi la migrazione.
+model RosaSquadra {
+  id              String          @id @default(uuid())
+  squadraTorneoId String          @unique
+  squadraTorneo   SquadraTorneo   @relation(fields: [squadraTorneoId], references: [id], onDelete: Cascade)
+  versione        Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  giocatori       GiocatoreRosa[]
+  tesserati       TesseratoRosa[]
+  modifiche       ModificaRosa[]
+
+  @@map("rose_squadra")
+}
+
+model GiocatoreRosa {
+  id       String      @id @default(uuid())
+  rosaId   String
+  rosa     RosaSquadra @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  numero   Int
+  nome     String
+  cognome  String
+  capitano Boolean     @default(false)
+  libero   Boolean     @default(false)
+
+  @@unique([rosaId, numero])
+  @@map("giocatori_rosa")
+}
+
+enum RuoloTesserato {
+  A
+  VA
+  M
+  FT
+  D
+}
+
+model TesseratoRosa {
+  id     String         @id @default(uuid())
+  rosaId String
+  rosa   RosaSquadra    @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  ruolo  RuoloTesserato
+  nome   String
+
+  @@index([rosaId])
+  @@map("tesserati_rosa")
+}
+
+// Registro delle modifiche gia' applicate (idempotenza, AD-11). Nessuna
+// policy: negata a ogni ruolo client, scritta solo dalla funzione SQL.
+model ModificaRosa {
+  idModifica String      @id
+  rosaId     String
+  rosa       RosaSquadra @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  versione   Int
+  createdAt  DateTime    @default(now())
+
+  @@index([rosaId])
+  @@map("modifiche_rosa")
 }
