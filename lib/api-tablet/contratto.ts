@@ -126,6 +126,83 @@ export function leggiGare(corpo: unknown): RispostaGare | undefined {
 }
 
 /**
+ * Parametri del formato di una gara (AD-5), tutti interi. `versione` e' la
+ * versione della forma dell'oggetto (oggi 1).
+ */
+export interface ParametriFormato {
+  readonly versione: number;
+  readonly setPerVincere: number;
+  readonly puntiSet: number;
+  readonly puntiSetDecisivo: number;
+  readonly scartoMinimo: number;
+  readonly cambiPerSet: number;
+  readonly timeoutPerSet: number;
+  readonly liberiMin: number;
+  readonly liberiMax: number;
+  readonly rosaMax: number;
+}
+
+/** Risposta di `GET /api/tablet/v1/gare/{garaId}/parametri?epoca=N`. */
+export interface RispostaParametri {
+  readonly parametri: ParametriFormato;
+}
+
+/**
+ * Legge un valore come parametri del formato; `undefined` se un campo manca,
+ * non e' un intero positivo, `scartoMinimo` < 1 (gia' coperto) o
+ * `liberiMin` > `liberiMax`.
+ */
+function leggiParametriFormato(valore: unknown): ParametriFormato | undefined {
+  if (!eOggetto(valore)) return undefined;
+  const {
+    versione,
+    setPerVincere,
+    puntiSet,
+    puntiSetDecisivo,
+    scartoMinimo,
+    cambiPerSet,
+    timeoutPerSet,
+    liberiMin,
+    liberiMax,
+    rosaMax,
+  } = valore;
+  if (
+    !eInteroPositivo(versione) ||
+    !eInteroPositivo(setPerVincere) ||
+    !eInteroPositivo(puntiSet) ||
+    !eInteroPositivo(puntiSetDecisivo) ||
+    !eInteroPositivo(scartoMinimo) ||
+    !eInteroPositivo(cambiPerSet) ||
+    !eInteroPositivo(timeoutPerSet) ||
+    !eInteroPositivo(liberiMin) ||
+    !eInteroPositivo(liberiMax) ||
+    !eInteroPositivo(rosaMax) ||
+    liberiMin > liberiMax
+  ) {
+    return undefined;
+  }
+  return {
+    versione,
+    setPerVincere,
+    puntiSet,
+    puntiSetDecisivo,
+    scartoMinimo,
+    cambiPerSet,
+    timeoutPerSet,
+    liberiMin,
+    liberiMax,
+    rosaMax,
+  };
+}
+
+/** Legge un corpo JSON come risposta dei parametri; `undefined` se non lo e'. */
+export function leggiParametri(corpo: unknown): RispostaParametri | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const parametri = leggiParametriFormato(corpo["parametri"]);
+  return parametri === undefined ? undefined : { parametri };
+}
+
+/**
  * Dominio dell'email sintetica di un utente tablet (AD-12). `.invalid` e' un
  * dominio riservato: nessuna email puo' mai arrivare a un tablet.
  */
