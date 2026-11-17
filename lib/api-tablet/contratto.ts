@@ -242,3 +242,162 @@ export function leggiVersioneApp(valore: string | null | undefined): number | un
   const numero = Number(testo);
   return Number.isSafeInteger(numero) ? numero : undefined;
 }
+
+/** Giocatore della rosa di una gara; `id` e' stabile (AD-4). */
+export interface GiocatoreRosaGara {
+  readonly id: string;
+  readonly numero: number;
+  readonly nome: string;
+  readonly cognome: string;
+  readonly capitano: boolean;
+  readonly libero: boolean;
+}
+
+export const RUOLI_TESSERATO = ["A", "VA", "M", "FT", "D"] as const;
+export type RuoloTesseratoGara = (typeof RUOLI_TESSERATO)[number];
+
+/** Tesserato (staff) della rosa di una gara. */
+export interface TesseratoRosaGara {
+  readonly id: string;
+  readonly ruolo: RuoloTesseratoGara;
+  readonly nome: string;
+}
+
+/** Rosa di un lato della gara; rosa assente = `versione` 0 e liste vuote. */
+export interface RosaGara {
+  readonly versione: number;
+  readonly giocatori: readonly GiocatoreRosaGara[];
+  readonly tesserati: readonly TesseratoRosaGara[];
+}
+
+/** Risposta di `GET /api/tablet/v1/gare/{garaId}/rose?epoca=N`. */
+export interface RispostaRose {
+  readonly casa: RosaGara;
+  readonly ospite: RosaGara;
+}
+
+export interface GiocatoreSalvaRosa {
+  readonly numero: number;
+  readonly nome: string;
+  readonly cognome: string;
+  readonly capitano: boolean;
+  readonly libero: boolean;
+}
+
+export interface TesseratoSalvaRosa {
+  readonly ruolo: RuoloTesseratoGara;
+  readonly nome: string;
+}
+
+/** Corpo di `PUT /api/tablet/v1/gare/{garaId}/rose/{lato}?epoca=N`. */
+export interface RichiestaSalvaRosa {
+  readonly versioneBase: number;
+  readonly idModifica: string;
+  readonly giocatori: readonly GiocatoreSalvaRosa[];
+  readonly tesserati: readonly TesseratoSalvaRosa[];
+}
+
+/** Risposta del salvataggio della rosa. */
+export interface RispostaSalvaRosa {
+  readonly versione: number;
+}
+
+const LUNGHEZZA_MAX_NOME = 60;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function eInteroNonNegativo(valore: unknown): valore is number {
+  return typeof valore === "number" && Number.isSafeInteger(valore) && valore >= 0;
+}
+
+function eNomePersona(valore: unknown): valore is string {
+  return typeof valore === "string" && valore.trim().length > 0 && valore.length <= LUNGHEZZA_MAX_NOME;
+}
+
+function eNumeroMaglia(valore: unknown): valore is number {
+  return typeof valore === "number" && Number.isInteger(valore) && valore >= 1 && valore <= 99;
+}
+
+function eRuolo(valore: unknown): valore is RuoloTesseratoGara {
+  return typeof valore === "string" && (RUOLI_TESSERATO as readonly string[]).includes(valore);
+}
+
+function leggiGiocatoreSalva(valore: unknown): GiocatoreSalvaRosa | undefined {
+  if (!eOggetto(valore)) return undefined;
+  const { numero, nome, cognome, capitano, libero } = valore;
+  if (
+    !eNumeroMaglia(numero) ||
+    !eNomePersona(nome) ||
+    !eNomePersona(cognome) ||
+    typeof capitano !== "boolean" ||
+    typeof libero !== "boolean"
+  ) {
+    return undefined;
+  }
+  return { numero, nome, cognome, capitano, libero };
+}
+
+function leggiTesseratoSalva(valore: unknown): TesseratoSalvaRosa | undefined {
+  if (!eOggetto(valore)) return undefined;
+  const { ruolo, nome } = valore;
+  if (!eRuolo(ruolo) || !eNomePersona(nome)) return undefined;
+  return { ruolo, nome };
+}
+
+function leggiElenco<T>(valore: unknown, legge: (v: unknown) => T | undefined): T[] | undefined {
+  if (!Array.isArray(valore)) return undefined;
+  const risultato: T[] = [];
+  for (const v of valore as unknown[]) {
+    const letto = legge(v);
+    if (letto === undefined) return undefined;
+    risultato.push(letto);
+  }
+  return risultato;
+}
+
+function leggiRosaGara(valore: unknown): RosaGara | undefined {
+  if (!eOggetto(valore)) return undefined;
+  const versione = valore["versione"];
+  if (!eInteroNonNegativo(versione)) return undefined;
+  const giocatori = leggiElenco<GiocatoreRosaGara>(valore["giocatori"], (v) => {
+    if (!eOggetto(v)) return undefined;
+    const id = v["id"];
+    const g = leggiGiocatoreSalva(v);
+    return eTesto(id) && g !== undefined ? { id, ...g } : undefined;
+  });
+  const tesserati = leggiElenco<TesseratoRosaGara>(valore["tesserati"], (v) => {
+    if (!eOggetto(v)) return undefined;
+    const id = v["id"];
+    const t = leggiTesseratoSalva(v);
+    return eTesto(id) && t !== undefined ? { id, ...t } : undefined;
+  });
+  if (giocatori === undefined || tesserati === undefined) return undefined;
+  return { versione, giocatori, tesserati };
+}
+
+/** Legge un corpo JSON come risposta delle rose; `undefined` se non lo e'. */
+export function leggiRose(corpo: unknown): RispostaRose | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const casa = leggiRosaGara(corpo["casa"]);
+  const ospite = leggiRosaGara(corpo["ospite"]);
+  return casa === undefined || ospite === undefined ? undefined : { casa, ospite };
+}
+
+/** Legge un corpo JSON come richiesta di salvataggio della rosa; `undefined` se non lo e'. */
+export function leggiRichiestaSalvaRosa(corpo: unknown): RichiestaSalvaRosa | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { versioneBase, idModifica } = corpo;
+  if (!eInteroNonNegativo(versioneBase) || typeof idModifica !== "string" || !UUID.test(idModifica)) {
+    return undefined;
+  }
+  const giocatori = leggiElenco(corpo["giocatori"], leggiGiocatoreSalva);
+  const tesserati = leggiElenco(corpo["tesserati"], leggiTesseratoSalva);
+  if (giocatori === undefined || tesserati === undefined) return undefined;
+  return { versioneBase, idModifica, giocatori, tesserati };
+}
+
+/** Legge un corpo JSON come risposta del salvataggio; `undefined` se non lo e'. */
+export function leggiRispostaSalvaRosa(corpo: unknown): RispostaSalvaRosa | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const versione = corpo["versione"];
+  return eInteroNonNegativo(versione) ? { versione } : undefined;
+}

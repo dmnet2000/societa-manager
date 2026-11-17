@@ -75,7 +75,7 @@ export async function elencaGareTablet(utenteId: string): Promise<Gara[]> {
 }
 
 export type EsitoAutorizzazioneGara =
-  | { ok: true; utente: User; utenteId: string; garaId: string; epoca: number }
+  | { ok: true; utente: User; utenteId: string; jwt: string; garaId: string; epoca: number }
   | { ok: false; risposta: NextResponse };
 
 const MESSAGGIO_RIASSEGNATA =
@@ -113,6 +113,7 @@ export async function autorizzaGaraTablet(
       ok: true,
       utente: autenticazione.utente,
       utenteId: autenticazione.utenteId,
+      jwt: autenticazione.jwt,
       garaId,
       epoca,
     };

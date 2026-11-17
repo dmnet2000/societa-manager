@@ -8,6 +8,9 @@ import {
   leggiErrore,
   leggiGare,
   leggiParametri,
+  leggiRichiestaSalvaRosa,
+  leggiRispostaSalvaRosa,
+  leggiRose,
   leggiVersioneApp,
 } from "./contratto";
 
@@ -196,5 +199,55 @@ describe("leggiParametri", () => {
     ["liberiMin > liberiMax", { parametri: { ...PARAMETRI, liberiMin: 3, liberiMax: 2 } }],
   ])("rifiuta: %s", (_nome, corpo) => {
     expect(leggiParametri(corpo)).toBeUndefined();
+  });
+});
+
+describe("contratto delle rose", () => {
+  const ID = "123e4567-e89b-42d3-a456-426614174000";
+  const giocatore = { numero: 7, nome: "Anna", cognome: "Rossi", capitano: false, libero: false };
+  const richiesta = {
+    versioneBase: 0,
+    idModifica: ID,
+    giocatori: [giocatore],
+    tesserati: [{ ruolo: "A", nome: "Luca" }],
+  };
+  const rosa = {
+    versione: 1,
+    giocatori: [{ id: "g1", ...giocatore }],
+    tesserati: [{ id: "t1", ruolo: "A", nome: "Luca" }],
+  };
+
+  it("leggiRichiestaSalvaRosa accetta una richiesta valida", () => {
+    expect(leggiRichiestaSalvaRosa(richiesta)).toEqual(richiesta);
+  });
+
+  it.each([
+    ["non oggetto", null],
+    ["idModifica non UUID", { ...richiesta, idModifica: "x" }],
+    ["versioneBase negativa", { ...richiesta, versioneBase: -1 }],
+    ["versioneBase decimale", { ...richiesta, versioneBase: 1.5 }],
+    ["numero 0", { ...richiesta, giocatori: [{ ...giocatore, numero: 0 }] }],
+    ["numero 100", { ...richiesta, giocatori: [{ ...giocatore, numero: 100 }] }],
+    ["nome vuoto", { ...richiesta, giocatori: [{ ...giocatore, nome: "" }] }],
+    ["cognome di soli spazi", { ...richiesta, giocatori: [{ ...giocatore, cognome: "   " }] }],
+    ["tesserato con nome di soli spazi", { ...richiesta, tesserati: [{ ruolo: "A", nome: " " }] }],
+    ["nome troppo lungo", { ...richiesta, giocatori: [{ ...giocatore, nome: "a".repeat(61) }] }],
+    ["libero non booleano", { ...richiesta, giocatori: [{ ...giocatore, libero: "si" }] }],
+    ["ruolo sconosciuto", { ...richiesta, tesserati: [{ ruolo: "X", nome: "Luca" }] }],
+    ["giocatori mancanti", { ...richiesta, giocatori: undefined }],
+  ])("leggiRichiestaSalvaRosa rifiuta: %s", (_n, corpo) => {
+    expect(leggiRichiestaSalvaRosa(corpo)).toBeUndefined();
+  });
+
+  it("leggiRose accetta e rifiuta", () => {
+    expect(leggiRose({ casa: rosa, ospite: { versione: 0, giocatori: [], tesserati: [] } })).toBeDefined();
+    expect(leggiRose({ casa: rosa })).toBeUndefined();
+    expect(leggiRose({ casa: { ...rosa, giocatori: [{ ...giocatore }] }, ospite: rosa })).toBeUndefined();
+  });
+
+  it("leggiRispostaSalvaRosa", () => {
+    expect(leggiRispostaSalvaRosa({ versione: 3 })).toEqual({ versione: 3 });
+    expect(leggiRispostaSalvaRosa({ versione: -1 })).toBeUndefined();
+    expect(leggiRispostaSalvaRosa({})).toBeUndefined();
   });
 });

@@ -123,7 +123,7 @@ describe("autorizzaGaraTablet", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    autenticaTabletMock.mockResolvedValue({ ok: true, utente: { id: "auth-1" }, utenteId: "ut-1" });
+    autenticaTabletMock.mockResolvedValue({ ok: true, utente: { id: "auth-1" }, utenteId: "ut-1", jwt: "a.b.c" });
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -144,6 +144,7 @@ describe("autorizzaGaraTablet", () => {
       ok: true,
       utente: { id: "auth-1" },
       utenteId: "ut-1",
+      jwt: "a.b.c",
       garaId: "p-1",
       epoca: 1,
     });

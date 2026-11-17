@@ -23,7 +23,7 @@ import { rispostaErroreTablet } from "./risposta-errore";
 // utenteId e' l'id della riga Utente (Prisma), quello delle assegnazioni
 // (story 2.6); utente.id e' invece l'id di Supabase Auth.
 export type EsitoAutenticazioneTablet =
-  | { ok: true; utente: User; utenteId: string }
+  | { ok: true; utente: User; utenteId: string; jwt: string }
   | { ok: false; risposta: NextResponse };
 
 // Tre segmenti base64url separati da punti: un JWT. Tutto il resto e'
@@ -88,7 +88,7 @@ export async function autenticaTablet(
     if (!utenteDb?.attivo) return nonAutenticato("UTENTE_NON_ATTIVO");
     if (!haRuoloTablet(utenteDb)) return nonTablet();
 
-    return { ok: true, utente: data.user, utenteId: utenteDb.id };
+    return { ok: true, utente: data.user, utenteId: utenteDb.id, jwt };
   } catch {
     return nonAutenticato("VERIFICA_FALLITA");
   }
