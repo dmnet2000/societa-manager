@@ -67,7 +67,7 @@ describe("autenticaTablet", () => {
 
     const esito = await autenticaTablet(richiesta(`Bearer ${JWT}`));
 
-    expect(esito).toEqual({ ok: true, utente: { id: "u-1" }, utenteId: "ut-1" });
+    expect(esito).toEqual({ ok: true, utente: { id: "u-1" }, utenteId: "ut-1", jwt: JWT });
     expect(createClientMock).toHaveBeenCalledWith(
       "https://prova.supabase.test",
       "chiave-anon",
