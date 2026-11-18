@@ -64,6 +64,15 @@ import {
   trovaUtenteConRuoliPerId,
 } from "@/lib/assegnazioni-tablet";
 import { haRuoloTablet } from "@/lib/ruoli";
+import { salvaParametriEdizione, salvaParametriCategoria } from "@/lib/parametri-formato";
+import {
+  CAMPI_MODULO,
+  coppiaLiberi,
+  liberiCoerenti,
+  validaModuloParametri,
+  type ChiaveModulo,
+  type ErroriModulo,
+} from "@/lib/parametri-formato-modulo";
 import type { SettimanaTorneo, GironeTorneo, TabelloneTorneo, FaseTorneo } from "@prisma/client";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -2735,5 +2744,146 @@ export async function prenotaSlotIpoteticoAction(
     return { error: { code: "INTERNAL", message: "Impossibile prenotare lo Slot. Riprova." } };
   }
 
+  return { success: true };
+}
+
+// Referto elettronico, story 3.8 (AD-5): parametri del formato dall'Admin.
+// Stato con messaggi per campo (`errori`) oltre al messaggio generale.
+export type ParametriActionState =
+  | {
+      error: { code: string; message: string };
+      errori?: ErroriModulo;
+      /** Testo inviato, per rimostrarlo accanto agli errori. */
+      inseriti?: Partial<Record<ChiaveModulo, string>>;
+    }
+  | { success: true }
+  | undefined;
+
+function leggiCampiParametri(formData: FormData) {
+  const campi: Partial<Record<ChiaveModulo, string>> = {};
+  for (const { chiave } of CAMPI_MODULO) {
+    campi[chiave] = String(formData.get(chiave) ?? "");
+  }
+  return { campi, esito: validaModuloParametri(campi) };
+}
+
+// Errore sui liberi, attaccato ai campi liberi impostati in questo invio
+// (entrambi se nessuno dei due lo e').
+function erroreLiberi(
+  campi: Partial<Record<ChiaveModulo, string>>,
+  valori: { liberiMin?: number; liberiMax?: number },
+  messaggio: string
+): ParametriActionState {
+  const toccati: ChiaveModulo[] = [];
+  if (valori.liberiMin !== undefined) toccati.push("liberiMin");
+  if (valori.liberiMax !== undefined) toccati.push("liberiMax");
+  if (toccati.length === 0) toccati.push("liberiMin", "liberiMax");
+  const errori: ErroriModulo = {};
+  for (const c of toccati) errori[c] = messaggio;
+  return { error: { code: "VALIDATION", message: messaggio }, errori, inseriti: campi };
+}
+
+// Parametri di default dell'Edizione. La coerenza dei liberi si controlla
+// anche sulle eccezioni gia' salvate delle sue Categorie.
+export async function salvaParametriEdizioneAction(
+  _prevState: ParametriActionState,
+  formData: FormData
+): Promise<ParametriActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  const { campi, esito } = leggiCampiParametri(formData);
+  if ("errori" in esito) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi i campi evidenziati." },
+      errori: esito.errori,
+      inseriti: campi,
+    };
+  }
+
+  try {
+    const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+    if (!edizione) {
+      return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+    }
+    const categorie = await elencaCategorieTorneo(edizioneTorneoId);
+    if (!liberiCoerenti(esito.valori, null)) {
+      const { min, max } = coppiaLiberi(esito.valori, null);
+      return erroreLiberi(campi, esito.valori, `Liberi: il minimo ${min} supera il massimo ${max}.`);
+    }
+    const conflitto = categorie.find((c) => !liberiCoerenti(esito.valori, c.parametriFormato));
+    if (conflitto) {
+      const { min, max } = coppiaLiberi(esito.valori, conflitto.parametriFormato);
+      return erroreLiberi(
+        campi,
+        esito.valori,
+        `Liberi: con questo valore la categoria ${conflitto.nome} avrebbe minimo ${min} e massimo ${max}.`
+      );
+    }
+
+    await salvaParametriEdizione(edizioneTorneoId, esito.valori);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/parametri`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile salvare i parametri. Riprova." } };
+  }
+  return { success: true };
+}
+
+// Eccezioni di una Categoria (campo vuoto = eredita). Edizione e Categoria si
+// rileggono sul server e la Categoria deve essere dell'Edizione.
+export async function salvaParametriCategoriaAction(
+  _prevState: ParametriActionState,
+  formData: FormData
+): Promise<ParametriActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!edizioneTorneoId || !categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Categoria non specificata." } };
+  }
+
+  const { campi, esito } = leggiCampiParametri(formData);
+  if ("errori" in esito) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi i campi evidenziati." },
+      errori: esito.errori,
+      inseriti: campi,
+    };
+  }
+
+  try {
+    const [edizione, categoria] = await Promise.all([
+      trovaEdizioneTorneoPerId(edizioneTorneoId),
+      trovaCategoriaTorneoPerId(categoriaTorneoId),
+    ]);
+    if (!edizione || !categoria || categoria.edizioneTorneoId !== edizioneTorneoId) {
+      return {
+        error: { code: "VALIDATION", message: "Categoria non trovata in questa Edizione." },
+      };
+    }
+    if (!liberiCoerenti(edizione.parametriFormato, esito.valori)) {
+      const { min, max } = coppiaLiberi(edizione.parametriFormato, esito.valori);
+      return erroreLiberi(campi, esito.valori, `Liberi: il minimo ${min} supera il massimo ${max}.`);
+    }
+
+    const risultato = await salvaParametriCategoria(categoriaTorneoId, edizioneTorneoId, esito.valori);
+    if (risultato.count === 0) {
+      return {
+        error: { code: "VALIDATION", message: "Categoria non trovata in questa Edizione." },
+      };
+    }
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/parametri`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile salvare i parametri. Riprova." } };
+  }
   return { success: true };
 }

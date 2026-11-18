@@ -1,11 +1,26 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const findUniqueMock = vi.fn();
-vi.mock("@/lib/prisma", () => ({ prisma: { partitaTorneo: { findUnique: findUniqueMock } } }));
+const updateManyMock = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    partitaTorneo: { findUnique: findUniqueMock },
+    edizioneTorneo: { updateMany: updateManyMock },
+    categoriaTorneo: { updateMany: updateManyMock },
+  },
+}));
 
-const { PARAMETRI_FORMATO_DEFAULT, parametriEffettivi, leggiParametriGara } = await import(
+const {
+  PARAMETRI_FORMATO_DEFAULT,
+  parametriEffettivi,
+  leggiParametriGara,
+  salvaParametriEdizione,
+  salvaParametriCategoria,
+} = await import(
   "./parametri-formato"
 );
+
+import { Prisma } from "./prisma-engine-wasm";
 
 describe("parametriEffettivi", () => {
   it("solo default: i valori di regole-gara", () => {
@@ -85,5 +100,21 @@ describe("leggiParametriGara", () => {
   it("null se la gara non esiste", async () => {
     findUniqueMock.mockResolvedValue(null);
     expect(await leggiParametriGara("x")).toBeNull();
+  });
+});
+
+describe("salvataggio parametri (story 3.8)", () => {
+  it("salva solo le chiavi impostate; nessuna chiave -> DbNull", async () => {
+    updateManyMock.mockResolvedValue({ count: 1 });
+    await salvaParametriEdizione("ed1", { cambiPerSet: 6 });
+    expect(updateManyMock).toHaveBeenLastCalledWith({
+      where: { id: "ed1" },
+      data: { parametriFormato: { cambiPerSet: 6 } },
+    });
+
+    await salvaParametriCategoria("c1", "ed1", {});
+    const arg = updateManyMock.mock.calls.at(-1)![0];
+    expect(arg.where).toEqual({ id: "c1", edizioneTorneoId: "ed1" });
+    expect(arg.data.parametriFormato).toBe(Prisma.DbNull);
   });
 });

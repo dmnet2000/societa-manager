@@ -113,6 +113,12 @@ export default async function EdizioneTorneoPage({
           Tablet del referto →
         </Link>
       </p>
+      {/* Referto elettronico, story 3.8: parametri del formato di gara. */}
+      <p className={styles.riepilogo}>
+        <Link className={styles.link} href={`/app/torneo/${edizione.id}/parametri`}>
+          Parametri del formato →
+        </Link>
+      </p>
 
       <section className={styles.sezione}>
         <h2>Nuova Categoria</h2>

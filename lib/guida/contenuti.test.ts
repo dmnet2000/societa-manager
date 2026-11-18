@@ -72,6 +72,17 @@ describe("contenutoPerRotta", () => {
       expect(corpo).toContain("\"Epoca\"");
     }
   );
+
+  // Story 3.8 (AD-5): parametri del formato dall'Admin.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "la sezione Torneo spiega i parametri del formato (%s)",
+    (ruolo) => {
+      const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+      expect(corpo).toContain("\"Parametri del formato\"");
+      expect(corpo).toContain("\"Valore effettivo\"");
+      expect(corpo).toContain("\"Aggiorna\"");
+    }
+  );
 });
 
 describe("Ruolo TABLET", () => {
