@@ -110,7 +110,7 @@ export default async function CategoriaTorneoPage({
                 squadra.contatto,
                 null,
               ],
-              riga: <SquadraTorneoRow squadra={squadra} />,
+              riga: <SquadraTorneoRow squadra={squadra} edizioneTorneoId={edizioneId} />,
             }))}
           />
         )}

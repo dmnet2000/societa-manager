@@ -85,6 +85,15 @@ describe("contenutoPerRotta", () => {
   );
 });
 
+describe("Rose dal sito (story 3.9)", () => {
+  it.each(["ADMIN", "DIRIGENTE"] as const)("la sezione Torneo spiega le rose (%s)", (ruolo) => {
+    const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("\"Rosa\"");
+    expect(corpo).toContain("in anticipo");
+    expect(corpo).toContain("La rosa è stata modificata");
+  });
+});
+
 describe("Ruolo TABLET", () => {
   it("non vede alcuna voce della guida (il tablet non entra nel sito)", () => {
     expect(contenutiPerRuoli(["TABLET"])).toEqual([]);

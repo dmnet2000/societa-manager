@@ -2,9 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const findUniqueMock = vi.fn();
 const updateManyMock = vi.fn();
+const squadraFindUniqueMock = vi.fn();
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     partitaTorneo: { findUnique: findUniqueMock },
+    squadraTorneo: { findUnique: squadraFindUniqueMock },
     edizioneTorneo: { updateMany: updateManyMock },
     categoriaTorneo: { updateMany: updateManyMock },
   },
@@ -14,6 +16,7 @@ const {
   PARAMETRI_FORMATO_DEFAULT,
   parametriEffettivi,
   leggiParametriGara,
+  leggiParametriSquadra,
   salvaParametriEdizione,
   salvaParametriCategoria,
 } = await import(
@@ -100,6 +103,30 @@ describe("leggiParametriGara", () => {
   it("null se la gara non esiste", async () => {
     findUniqueMock.mockResolvedValue(null);
     expect(await leggiParametriGara("x")).toBeNull();
+  });
+});
+
+describe("leggiParametriSquadra (story 3.9)", () => {
+  beforeEach(() => squadraFindUniqueMock.mockReset());
+
+  it("fonde edizione e categoria della squadra", async () => {
+    squadraFindUniqueMock.mockResolvedValue({
+      categoriaTorneo: {
+        parametriFormato: { rosaMax: 12 },
+        edizioneTorneo: { parametriFormato: { rosaMax: 10, liberiMax: 1 } },
+      },
+    });
+    expect(await leggiParametriSquadra("s-1")).toEqual({
+      ...PARAMETRI_FORMATO_DEFAULT,
+      rosaMax: 12,
+      liberiMax: 1,
+    });
+    expect(squadraFindUniqueMock).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "s-1" } }));
+  });
+
+  it("null se la squadra non esiste", async () => {
+    squadraFindUniqueMock.mockResolvedValue(null);
+    expect(await leggiParametriSquadra("x")).toBeNull();
   });
 });
 

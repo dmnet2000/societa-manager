@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { leggiRosa, salvaRosa, RosaValidationError } from "@/lib/db-rls/rosa";
-import { leggiParametriGara } from "@/lib/parametri-formato";
+import { leggiParametriGara, leggiParametriSquadra } from "@/lib/parametri-formato";
 import type {
   GiocatoreSalvaRosa,
+  ParametriFormato,
   RispostaRose,
   RosaGara,
   TesseratoSalvaRosa,
@@ -33,6 +34,34 @@ function messaggioLiberi(min: number, max: number): string {
   if (min === max) return min === 1 ? "La rosa deve avere un libero." : `La rosa deve avere ${min} liberi.`;
   if (min === 0) return max === 1 ? "La rosa può avere al massimo un libero." : `La rosa può avere al massimo ${max} liberi.`;
   return `I liberi devono essere da ${min} a ${max}.`;
+}
+
+/**
+ * Regole del formato per una rosa (uguali per tablet e sito): atleti massimi,
+ * liberi, numeri di maglia unici, al massimo un capitano. Lancia
+ * `RosaValidationError` con un messaggio italiano.
+ */
+export function controllaRegoleRosa(
+  parametri: Pick<ParametriFormato, "rosaMax" | "liberiMin" | "liberiMax">,
+  giocatori: readonly GiocatoreSalvaRosa[]
+): void {
+  const liberi = giocatori.filter((g) => g.libero).length;
+  if (giocatori.length > parametri.rosaMax) {
+    throw new RosaValidationError(
+      `La rosa può avere al massimo ${parametri.rosaMax} giocatori.`
+    );
+  }
+  if (liberi < parametri.liberiMin || liberi > parametri.liberiMax) {
+    throw new RosaValidationError(messaggioLiberi(parametri.liberiMin, parametri.liberiMax));
+  }
+  // Stessi controlli della funzione SQL, ma con un messaggio da mostrare.
+  const numeri = new Set(giocatori.map((g) => g.numero));
+  if (numeri.size !== giocatori.length) {
+    throw new RosaValidationError("Due giocatori hanno lo stesso numero di maglia.");
+  }
+  if (giocatori.filter((g) => g.capitano).length > 1) {
+    throw new RosaValidationError("La rosa può avere un solo capitano.");
+  }
 }
 
 /** Rose di casa e ospite; una rosa assente e `versione` 0 con liste vuote. */
@@ -68,28 +97,40 @@ export async function salvaRosaGara(
   const parametri = await leggiParametriGara(garaId);
   if (parametri === null) throw new Error("GARA_INESISTENTE");
 
-  const liberi = giocatori.filter((g) => g.libero).length;
-  if (giocatori.length > parametri.rosaMax) {
-    throw new RosaValidationError(
-      `La rosa può avere al massimo ${parametri.rosaMax} giocatori.`
-    );
-  }
-  if (liberi < parametri.liberiMin || liberi > parametri.liberiMax) {
-    throw new RosaValidationError(messaggioLiberi(parametri.liberiMin, parametri.liberiMax));
-  }
-  // Stessi controlli della funzione SQL, ma con un messaggio da mostrare.
-  const numeri = new Set(giocatori.map((g) => g.numero));
-  if (numeri.size !== giocatori.length) {
-    throw new RosaValidationError("Due giocatori hanno lo stesso numero di maglia.");
-  }
-  if (giocatori.filter((g) => g.capitano).length > 1) {
-    throw new RosaValidationError("La rosa può avere un solo capitano.");
-  }
+  controllaRegoleRosa(parametri, giocatori);
 
   const squadre = await squadreGara(garaId);
   return salvaRosa(
     supabase,
     squadre[lato],
+    versioneBase,
+    idModifica,
+    giocatori.map((g) => ({ ...g })),
+    tesserati.map((t) => ({ ...t }))
+  );
+}
+
+/**
+ * Salva la rosa di una Squadra (dal sito, story 3.9) con i parametri effettivi
+ * della sua Categoria. Stessi errori di `salvaRosaGara`.
+ */
+export async function salvaRosaSquadra(
+  supabase: SupabaseClient,
+  args: {
+    squadraId: string;
+    versioneBase: number;
+    idModifica: string;
+    giocatori: readonly GiocatoreSalvaRosa[];
+    tesserati: readonly TesseratoSalvaRosa[];
+  }
+): Promise<EsitoSalvataggioRosaGara> {
+  const { squadraId, versioneBase, idModifica, giocatori, tesserati } = args;
+  const parametri = await leggiParametriSquadra(squadraId);
+  if (parametri === null) throw new Error("SQUADRA_INESISTENTE");
+  controllaRegoleRosa(parametri, giocatori);
+  return salvaRosa(
+    supabase,
+    squadraId,
     versioneBase,
     idModifica,
     giocatori.map((g) => ({ ...g })),

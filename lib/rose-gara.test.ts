@@ -6,15 +6,19 @@ const findUniqueMock = vi.fn();
 const leggiRosaMock = vi.fn();
 const salvaRosaMock = vi.fn();
 const leggiParametriMock = vi.fn();
+const leggiParametriSquadraMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({ prisma: { partitaTorneo: { findUnique: findUniqueMock } } }));
-vi.mock("@/lib/parametri-formato", () => ({ leggiParametriGara: leggiParametriMock }));
+vi.mock("@/lib/parametri-formato", () => ({
+  leggiParametriGara: leggiParametriMock,
+  leggiParametriSquadra: leggiParametriSquadraMock,
+}));
 vi.mock("@/lib/db-rls/rosa", async (importOriginal) => {
   const originale = await importOriginal<typeof import("@/lib/db-rls/rosa")>();
   return { ...originale, leggiRosa: leggiRosaMock, salvaRosa: salvaRosaMock };
 });
 
-const { leggiRoseGara, salvaRosaGara } = await import("./rose-gara");
+const { leggiRoseGara, salvaRosaGara, salvaRosaSquadra } = await import("./rose-gara");
 const { RosaValidationError } = await import("@/lib/db-rls/rosa");
 
 const supabase = { marker: "supabase" } as never;
@@ -129,5 +133,64 @@ describe("salvaRosaGara", () => {
     const giocatori = [giocatore(1, true)];
     for (let n = 2; n <= 14; n++) giocatori.push(giocatore(n));
     await expect(salvaRosaGara(supabase, { ...base, lato: "casa", giocatori })).resolves.toBeDefined();
+  });
+});
+
+describe("salvaRosaSquadra (story 3.9)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    leggiParametriSquadraMock.mockResolvedValue(PARAMETRI);
+    salvaRosaMock.mockResolvedValue({ esito: "ok", versione: 1 });
+  });
+
+  const base = { squadraId: "s-1", versioneBase: 0, idModifica: ID, tesserati: [{ ruolo: "A" as const, nome: "L" }] };
+
+  it("rosa corretta: salva sulla squadra con i parametri della sua Categoria", async () => {
+    const giocatori = [giocatore(1), giocatore(2, true)];
+    await expect(salvaRosaSquadra(supabase, { ...base, giocatori })).resolves.toEqual({
+      esito: "ok",
+      versione: 1,
+    });
+    expect(leggiParametriSquadraMock).toHaveBeenCalledWith("s-1");
+    expect(salvaRosaMock).toHaveBeenCalledWith(supabase, "s-1", 0, ID, giocatori, base.tesserati);
+  });
+
+  it("conflitto come valore", async () => {
+    salvaRosaMock.mockResolvedValue({ esito: "conflitto", versione: 4 });
+    await expect(
+      salvaRosaSquadra(supabase, { ...base, giocatori: [giocatore(1, true)] })
+    ).resolves.toEqual({ esito: "conflitto", versione: 4 });
+  });
+
+  it("senza libero con liberiMin 1: validazione, nulla salvato", async () => {
+    await expect(salvaRosaSquadra(supabase, { ...base, giocatori: [giocatore(1)] })).rejects.toBeInstanceOf(
+      RosaValidationError
+    );
+    expect(salvaRosaMock).not.toHaveBeenCalled();
+  });
+
+  it("troppi atleti secondo rosaMax della Categoria", async () => {
+    const giocatori = [giocatore(1, true)];
+    for (let n = 2; n <= 15; n++) giocatori.push(giocatore(n));
+    await expect(salvaRosaSquadra(supabase, { ...base, giocatori })).rejects.toThrow(
+      "al massimo 14 giocatori"
+    );
+  });
+
+  it("numeri doppi e due capitani", async () => {
+    await expect(
+      salvaRosaSquadra(supabase, { ...base, giocatori: [giocatore(1, true), giocatore(1)] })
+    ).rejects.toThrow(/stesso numero/);
+    await expect(
+      salvaRosaSquadra(supabase, {
+        ...base,
+        giocatori: [{ ...giocatore(1, true), capitano: true }, { ...giocatore(2), capitano: true }],
+      })
+    ).rejects.toThrow(/un solo capitano/);
+  });
+
+  it("squadra inesistente: errore", async () => {
+    leggiParametriSquadraMock.mockResolvedValue(null);
+    await expect(salvaRosaSquadra(supabase, { ...base, giocatori: [] })).rejects.toThrow();
   });
 });
