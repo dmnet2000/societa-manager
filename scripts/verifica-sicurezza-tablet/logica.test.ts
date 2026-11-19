@@ -3,8 +3,11 @@ import {
   classificaBucket,
   classificaLettura,
   citaIdentificatore,
+  classificaRotta,
+  classificaScrittura,
   codiceUscita,
   confrontaGare,
+  confrontaRigheRose,
   leggiEnv,
   riepilogo,
 } from "./logica.mjs";
@@ -99,6 +102,16 @@ describe("codiceUscita e riepilogo", () => {
     expect(testo).toContain("ESITO: nessuna lettura riuscita");
   });
 
+  it("elenca i controlli superati prima dei non verificabili", () => {
+    const testo = riepilogo([
+      { voce: "api rose", chi: "verifica1", esito: "ok" as const, dettaglio: "HTTP 200" },
+      { voce: "gare", chi: "api", esito: "ok" as const },
+      { voce: "public.vuota", chi: "tablet", esito: "non-verificabile" as const },
+    ]);
+    expect(testo).toContain("CONTROLLI SUPERATI\n  api rose [verifica1] - HTTP 200\n  gare [api]");
+    expect(testo.indexOf("CONTROLLI SUPERATI")).toBeLessThan(testo.indexOf("NON VERIFICABILI"));
+  });
+
   it("una lettura riuscita o un controllo fallito: 1, elencati nei fallimenti", () => {
     const controlli = [
       ...sani,
@@ -124,5 +137,66 @@ describe("leggiEnv", () => {
 describe("citaIdentificatore", () => {
   it("cita e raddoppia le virgolette", () => {
     expect(citaIdentificatore('ta"b')).toBe('"ta""b"');
+  });
+});
+
+describe("classificaRotta", () => {
+  const riassegnata = { error: { code: "RIASSEGNATA", message: "x" } };
+  it("gara assegnata: 200 ok, altro fallita", () => {
+    expect(classificaRotta({ status: 200, corpo: {}, attesa: "assegnata" })).toBe("ok");
+    expect(classificaRotta({ status: 409, corpo: riassegnata, attesa: "assegnata" })).toBe("fallita");
+  });
+  it("gara non assegnata: 409 RIASSEGNATA e 403 ok", () => {
+    expect(classificaRotta({ status: 409, corpo: riassegnata, attesa: "rifiutata" })).toBe("ok");
+    expect(classificaRotta({ status: 403, corpo: {}, attesa: "rifiutata" })).toBe("ok");
+  });
+  it("gara non assegnata: 200, 409 CONFLITTO, 404 fallita", () => {
+    expect(classificaRotta({ status: 200, corpo: {}, attesa: "rifiutata" })).toBe("fallita");
+    expect(
+      classificaRotta({ status: 409, corpo: { error: { code: "CONFLITTO" } }, attesa: "rifiutata" })
+    ).toBe("fallita");
+    expect(classificaRotta({ status: 404, corpo: null, attesa: "rifiutata" })).toBe("fallita");
+  });
+});
+
+describe("classificaScrittura", () => {
+  it("api: 409 RIASSEGNATA e 403 ok; 409 CONFLITTO e 200 fallita", () => {
+    const rias = { error: { code: "RIASSEGNATA" } };
+    expect(classificaScrittura({ canale: "api", status: 409, corpo: rias })).toBe("ok");
+    expect(classificaScrittura({ canale: "api", status: 403, corpo: {} })).toBe("ok");
+    expect(classificaScrittura({ canale: "api", status: 409, corpo: { error: { code: "CONFLITTO" } } })).toBe("fallita");
+    expect(classificaScrittura({ canale: "api", status: 200, corpo: { versione: 1 } })).toBe("fallita");
+  });
+  it("rpc: FORBIDDEN e 42501 ok; conflitto, ok e VALIDATION fallita", () => {
+    expect(classificaScrittura({ canale: "rpc", status: 400, corpo: { code: "P0001", message: "FORBIDDEN" } })).toBe("ok");
+    expect(classificaScrittura({ canale: "rpc", status: 403, corpo: { code: "42501", message: "x" } })).toBe("ok");
+    expect(classificaScrittura({ canale: "rpc", status: 200, corpo: { esito: "conflitto", versione: 0 } })).toBe("fallita");
+    expect(classificaScrittura({ canale: "rpc", status: 200, corpo: { esito: "ok", versione: 1 } })).toBe("fallita");
+    expect(classificaScrittura({ canale: "rpc", status: 400, corpo: { code: "P0001", message: "VALIDATION: x" } })).toBe("fallita");
+  });
+  it("postgrest: 401/403/42501 ok; 2xx e vincoli fallita", () => {
+    expect(classificaScrittura({ canale: "postgrest", status: 401, corpo: {} })).toBe("ok");
+    expect(classificaScrittura({ canale: "postgrest", status: 403, corpo: { code: "42501" } })).toBe("ok");
+    expect(classificaScrittura({ canale: "postgrest", status: 400, corpo: { code: "42501" } })).toBe("ok");
+    expect(classificaScrittura({ canale: "postgrest", status: 204, corpo: "" })).toBe("fallita");
+    for (const code of ["23514", "23502", "23503"]) {
+      expect(classificaScrittura({ canale: "postgrest", status: 400, corpo: { code } })).toBe("fallita");
+      expect(classificaScrittura({ canale: "postgrest", status: 409, corpo: { code } })).toBe("fallita");
+    }
+  });
+});
+
+describe("confrontaRigheRose", () => {
+  it("solo righe ammesse: ok con il conteggio", () => {
+    expect(confrontaRigheRose(["a", "b", "a"], ["a", "b", "c"])).toEqual({ ok: true, righe: 3, estranei: [] });
+  });
+  it("nessuna riga: ok", () => {
+    expect(confrontaRigheRose([], ["a"])).toEqual({ ok: true, righe: 0, estranei: [] });
+  });
+  it("riga estranea: fallita con l'id (senza duplicati)", () => {
+    expect(confrontaRigheRose(["a", "x", "x"], ["a"])).toEqual({ ok: false, righe: 3, estranei: ["x"] });
+  });
+  it("nessuna squadra ammessa: ogni riga e' estranea", () => {
+    expect(confrontaRigheRose(["a"], []).ok).toBe(false);
   });
 });

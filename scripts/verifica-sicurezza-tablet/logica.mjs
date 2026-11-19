@@ -64,6 +64,65 @@ export function confrontaGare(api, db) {
 }
 
 /**
+ * Codice di errore del contratto API (`{ error: { code } }`) o stringa vuota.
+ * @param {unknown} corpo
+ * @returns {string}
+ */
+function codiceApi(corpo) {
+  const errore = corpo && typeof corpo === "object" ? /** @type {{ error?: unknown }} */ (corpo).error : undefined;
+  const codice = errore && typeof errore === "object" ? /** @type {{ code?: unknown }} */ (errore).code : undefined;
+  return typeof codice === "string" ? codice : "";
+}
+
+/**
+ * Classifica una rotta dell'API tablet (rose, parametri, PUT rose).
+ * - attesa "assegnata": 200 e' ok;
+ * - attesa "rifiutata" (gara non assegnata): 409 RIASSEGNATA o 403 e' ok.
+ * Ogni altra risposta (anche 409 CONFLITTO o 2xx) e' fallita.
+ * @param {{ status: number, corpo: unknown, attesa: "assegnata" | "rifiutata" }} risposta
+ * @returns {"ok" | "fallita"}
+ */
+export function classificaRotta({ status, corpo, attesa }) {
+  if (attesa === "assegnata") return status === 200 ? "ok" : "fallita";
+  if (status === 403) return "ok";
+  return status === 409 && codiceApi(corpo) === "RIASSEGNATA" ? "ok" : "fallita";
+}
+
+/**
+ * Classifica un tentativo di scrittura innocuo che deve essere negato.
+ * - "api": 409 RIASSEGNATA o 403;
+ * - "rpc": errore FORBIDDEN (messaggio) o codice Postgres 42501;
+ * - "postgrest": 401/403 o codice 42501.
+ * Un 2xx, `conflitto`, un errore di vincolo (23514/23502/23503) o qualunque
+ * altra risposta vuol dire accesso aperto (o risposta inattesa): fallita.
+ * @param {{ canale: "api" | "rpc" | "postgrest", status: number, corpo: unknown }} tentativo
+ * @returns {"ok" | "fallita"}
+ */
+export function classificaScrittura({ canale, status, corpo }) {
+  if (status >= 200 && status < 300) return "fallita";
+  if (canale === "api") return classificaRotta({ status, corpo, attesa: "rifiutata" });
+  const oggetto = corpo && typeof corpo === "object" ? /** @type {{ code?: unknown, message?: unknown }} */ (corpo) : {};
+  if (oggetto.code === "42501") return "ok";
+  if (canale === "rpc") {
+    return typeof oggetto.message === "string" && oggetto.message.startsWith("FORBIDDEN") ? "ok" : "fallita";
+  }
+  return status === 401 || status === 403 ? "ok" : "fallita";
+}
+
+/**
+ * Confronta gli id ricevuti da PostgREST con quelli ammessi (le squadre delle
+ * gare assegnate, o le rose di quelle squadre). Estranei = ricevuti non ammessi.
+ * @param {readonly string[]} ricevuti
+ * @param {readonly string[]} ammessi
+ * @returns {{ ok: boolean, righe: number, estranei: string[] }}
+ */
+export function confrontaRigheRose(ricevuti, ammessi) {
+  const ammesso = new Set(ammessi);
+  const estranei = [...new Set(ricevuti.filter((id) => !ammesso.has(id)))].sort();
+  return { ok: estranei.length === 0, righe: ricevuti.length, estranei };
+}
+
+/**
  * @typedef {{ voce: string, chi: string, esito: EsitoLettura | "ok" | "fallita", dettaglio?: string }} Controllo
  */
 
@@ -105,6 +164,11 @@ export function riepilogo(controlli, daRivedere = []) {
   if (ko.length > 0) {
     righe.push("", "FALLIMENTI");
     for (const c of ko) righe.push(`  ${c.voce} [${c.chi}] ${c.esito}${c.dettaglio ? ` - ${c.dettaglio}` : ""}`);
+  }
+  const superati = controlli.filter((c) => c.esito === "ok");
+  if (superati.length > 0) {
+    righe.push("", "CONTROLLI SUPERATI");
+    for (const c of superati) righe.push(`  ${c.voce} [${c.chi}]${c.dettaglio ? ` - ${c.dettaglio}` : ""}`);
   }
   const nv = controlli.filter((c) => c.esito === "non-verificabile");
   if (nv.length > 0) {

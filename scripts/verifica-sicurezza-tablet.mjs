@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Verifica di sicurezza dell'API tablet (story 2.8, AD-17) - SOLA LETTURA.
+// Verifica di sicurezza dell'API tablet (story 2.8, AD-17) - sola lettura dei dati;
+// tentativi di scrittura innocui per costruzione (vedi sotto).
 //
 // Entra come un tablet e prova a leggere direttamente, con il JWT del tablet
 // e con la sola chiave pubblica dell'APK, ogni tabella e vista esposta da
@@ -24,11 +25,22 @@
 // VERIFICA_TABLET_NOME / VERIFICA_TABLET_PASSWORD; il secondo tablet di
 // --con-disattivazione da VERIFICA_TABLET2_NOME / VERIFICA_TABLET2_PASSWORD.
 //
-// Scrive solo: login e logout dei tablet. Sul database solo SELECT, in una
-// transazione READ ONLY. Mai token, password o righe lette nell'output.
+// Story 3.10: verifica anche le rose e i parametri. Le righe delle rose che il
+// tablet legge via PostgREST devono essere solo quelle delle squadre delle sue
+// gare; le rotte rose/parametri rispondono per le gare assegnate e rifiutano le
+// altre; i tentativi di scrittura su squadre o gare non assegnate sono rifiutati.
+//
+// Scrive solo: login e logout dei tablet e questi tentativi di scrittura,
+// innocui per costruzione (non scrivono nulla neanche se l'accesso fosse
+// aperto): PUT rose e RPC salva_rosa_squadra con versione base 2147483647
+// (risponderebbero "conflitto" senza scrivere); PATCH e DELETE su rose_squadra
+// con un id inesistente; POST con versione -1 (violerebbe il CHECK). Sul
+// database solo SELECT, in una transazione READ ONLY. Mai token, password,
+// nomi o righe lette nell'output.
 // Uscita: 0 nessuna lettura riuscita, 1 almeno un fallimento, 2 errore di
 // configurazione o di login.
 
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createClient } from "@supabase/supabase-js";
@@ -37,8 +49,11 @@ import {
   citaIdentificatore,
   classificaBucket,
   classificaLettura,
+  classificaRotta,
+  classificaScrittura,
   codiceUscita,
   confrontaGare,
+  confrontaRigheRose,
   leggiEnv,
   riepilogo,
 } from "./verifica-sicurezza-tablet/logica.mjs";
@@ -72,6 +87,8 @@ async function caricaContratto() {
 }
 
 class ErroreConfigurazione extends Error {}
+
+const TABELLE_ROSE = ["public.rose_squadra", "public.giocatori_rosa", "public.tesserati_rosa"];
 
 function argomenti(argv) {
   const opz = { env: undefined, api: undefined, disattivazione: false, schemi: ["public"], versioneApp: "1" };
@@ -196,6 +213,107 @@ async function garaIdAssegnati(db, email) {
   ).rows.map((r) => r.id);
 }
 
+/** Gare assegnate al tablet, con epoca e squadre casa/ospite. */
+async function gareAssegnateDettaglio(db, email) {
+  return (
+    await db.query(
+      `select p.id, a.epoca, p."squadraCasaId" as casa, p."squadraOspiteId" as ospite
+         from assegnazioni_tablet a
+         join utenti u on u.id = a."utenteId"
+         join partite_torneo p on p.id = a."partitaTorneoId"
+        where u.email = $1
+        order by p.id`,
+      [email]
+    )
+  ).rows;
+}
+
+/** Una gara non assegnata al tablet, preferendo una assegnata ad altro tablet. */
+async function garaNonAssegnata(db, garaAssegnate) {
+  const r = await db.query(
+    `select p.id, coalesce(a.epoca, 1) as epoca
+       from partite_torneo p
+       left join assegnazioni_tablet a on a."partitaTorneoId" = p.id
+      where p.id <> all($1::text[])
+      order by (a.id is null), p.id
+      limit 1`,
+    [garaAssegnate]
+  );
+  return r.rows[0];
+}
+
+/** Una squadra che non e' casa ne' ospite di nessuna gara assegnata al tablet. */
+async function squadraNonAssegnata(db, squadreAssegnate) {
+  const r = await db.query(`select id from squadre_torneo where id <> all($1::text[]) order by id limit 1`, [
+    squadreAssegnate,
+  ]);
+  return r.rows[0]?.id;
+}
+
+/** Id delle rose delle squadre indicate (solo colonne id). */
+async function roseDelleSquadre(db, squadre) {
+  return (
+    await db.query(`select id from rose_squadra where "squadraTorneoId" = any($1::text[])`, [squadre])
+  ).rows.map((r) => r.id);
+}
+
+// Legge tutte le righe visibili a pagine da 1000 (max_rows di PostgREST),
+// finche' una pagina e' corta; ordinate per colonna per paginare in modo stabile.
+async function leggiColonnaId(url, anonKey, jwt, tabella, colonna) {
+  const PAGINA = 1000;
+  const righe = [];
+  for (let offset = 0; ; offset += PAGINA) {
+    const risposta = await fetch(
+      `${url}/rest/v1/${tabella}?select=${encodeURIComponent(colonna)}&order=${encodeURIComponent(colonna)}&limit=${PAGINA}&offset=${offset}`,
+      { headers: { apikey: anonKey, Authorization: `Bearer ${jwt}` } }
+    );
+    const corpo = await leggiJson(risposta);
+    if (risposta.status !== 200 || !Array.isArray(corpo)) return { status: risposta.status, corpo };
+    righe.push(...corpo);
+    if (corpo.length < PAGINA) return { status: 200, corpo: righe };
+  }
+}
+
+async function chiamaApi(api, jwt, versioneApp, metodo, percorso, corpo) {
+  const risposta = await fetch(`${api}/api/tablet/v1/${percorso}`, {
+    method: metodo,
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      [HEADER_VERSIONE_APP]: versioneApp,
+      ...(corpo === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+  return { status: risposta.status, corpo: await leggiJson(risposta) };
+}
+
+async function chiamaPostgrest(url, anonKey, jwt, metodo, percorso, corpo) {
+  const risposta = await fetch(`${url}/rest/v1/${percorso}`, {
+    method: metodo,
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${jwt}`,
+      Prefer: "return=minimal",
+      ...(corpo === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+  return { status: risposta.status, corpo: await leggiJson(risposta) };
+}
+
+/** Dettaglio di un esito HTTP: stato e solo un codice di errore noto, mai il corpo. */
+function dettaglioHttp(r) {
+  if (r.status === 426) return dettaglioApi(426);
+  const c = r.corpo && typeof r.corpo === "object" ? r.corpo : {};
+  let codice = c.error?.code ?? c.code;
+  // Gli errori RAISE di Postgres hanno sempre codice P0001: della message si
+  // mostra solo la parola iniziale FORBIDDEN o VALIDATION.
+  const parola = typeof c.message === "string" ? /^(FORBIDDEN|VALIDATION)\b/.exec(c.message)?.[1] : undefined;
+  if (parola) codice = parola;
+  const sicuro = typeof codice === "string" && /^[A-Z0-9_]{3,20}$/.test(codice) ? ` ${codice}` : "";
+  return `HTTP ${r.status}${sicuro}`;
+}
+
 async function leggiTabella(url, anonKey, bearer, { schema, nome }) {
   const risposta = await fetch(`${url}/rest/v1/${encodeURIComponent(nome)}?select=*&limit=1`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${bearer}`, "Accept-Profile": schema },
@@ -289,6 +407,9 @@ async function verificaLetture({ opz, url, anonKey, directUrl, tablet, jwt, cont
       ["anon", anonKey],
     ]) {
       for (const r of cat.relazioni) {
+        // Per il tablet le tre tabelle delle rose hanno un controllo dedicato
+        // (verificaRose): le sue squadre le puo' leggere legittimamente.
+        if (chi === "tablet" && TABELLE_ROSE.includes(`${r.schema}.${r.nome}`)) continue;
         const lettura = await leggiTabella(url, anonKey, bearer, r);
         const esito = classificaLettura({ ...lettura, righeNelDb: r.righe ?? 0 });
         controlli.push({
@@ -336,10 +457,110 @@ async function verificaLetture({ opz, url, anonKey, directUrl, tablet, jwt, cont
           : `in piu' ${confronto.inPiu.join(",") || "-"}; mancanti ${confronto.mancanti.join(",") || "-"}`,
       });
     }
+    await verificaRose({ opz, url, anonKey, db, tablet, jwt, controlli });
     await db.query("rollback");
-    return cat.funzioni;
+    // salva_rosa_squadra e' chiamata (con dati innocui) da verificaRose: non e' "non chiamata".
+    return cat.funzioni.filter((f) => !f.startsWith("public.salva_rosa_squadra("));
   } finally {
     await db.end();
+  }
+}
+
+// Rose e parametri (story 3.10). Le uniche scritture sono i tentativi innocui
+// descritti nell'intestazione: nessuna puo' modificare dati.
+async function verificaRose({ opz, url, anonKey, db, tablet, jwt, controlli }) {
+  const chi = tablet.nome;
+  const aggiungi = (voce, esito, dettaglio) => controlli.push({ voce, chi, esito, dettaglio });
+  const assegnate = await gareAssegnateDettaglio(db, tablet.email);
+  const idGare = assegnate.map((g) => g.id);
+  const squadre = [...new Set(assegnate.flatMap((g) => [g.casa, g.ospite]))];
+  const roseAmmesse = squadre.length > 0 ? await roseDelleSquadre(db, squadre) : [];
+
+  // 1. Righe delle rose visibili al tablet via PostgREST.
+  for (const [tabella, colonna, ammessi] of [
+    ["rose_squadra", "squadraTorneoId", squadre],
+    ["giocatori_rosa", "rosaId", roseAmmesse],
+    ["tesserati_rosa", "rosaId", roseAmmesse],
+  ]) {
+    const voce = `rose via PostgREST: ${tabella}`;
+    const lettura = await leggiColonnaId(url, anonKey, jwt, tabella, colonna);
+    if (lettura.status !== 200 || !Array.isArray(lettura.corpo)) {
+      aggiungi(voce, "fallita", `risposta inattesa ${dettaglioHttp(lettura)}`);
+      continue;
+    }
+    const confronto = confrontaRigheRose(
+      lettura.corpo.map((riga) => String(riga?.[colonna])),
+      ammessi
+    );
+    aggiungi(
+      voce,
+      confronto.ok ? "ok" : "fallita",
+      confronto.ok
+        ? `${confronto.righe} righe, tutte di squadre assegnate`
+        : `righe estranee (${colonna}): ${confronto.estranei.join(",")}`
+    );
+  }
+
+  // 2. Rotte rose e parametri per la gara assegnata.
+  if (assegnate.length === 0) {
+    aggiungi("api rose/parametri: gara assegnata", "non-verificabile", "il tablet non ha gare assegnate");
+  } else {
+    for (const g of assegnate) {
+      for (const parte of ["rose", "parametri"]) {
+        const r = await chiamaApi(opz.api, jwt, opz.versioneApp, "GET", `gare/${g.id}/${parte}?epoca=${g.epoca}`);
+        const esito = classificaRotta({ ...r, attesa: "assegnata" });
+        aggiungi(`api ${parte}: gara assegnata ${g.id}`, esito, esito === "ok" ? undefined : dettaglioHttp(r));
+      }
+    }
+  }
+
+  // 3. Gara non assegnata: rotte e PUT.
+  const altra = await garaNonAssegnata(db, idGare);
+  if (!altra) {
+    for (const voce of ["api rose", "api parametri", "api PUT rose"]) {
+      aggiungi(`${voce}: gara non assegnata`, "non-verificabile", "nessuna gara non assegnata al tablet");
+    }
+  } else {
+    for (const parte of ["rose", "parametri"]) {
+      const r = await chiamaApi(opz.api, jwt, opz.versioneApp, "GET", `gare/${altra.id}/${parte}?epoca=${altra.epoca}`);
+      aggiungi(`api ${parte}: gara non assegnata`, classificaRotta({ ...r, attesa: "rifiutata" }), dettaglioHttp(r));
+    }
+    const put = await chiamaApi(opz.api, jwt, opz.versioneApp, "PUT", `gare/${altra.id}/rose/casa?epoca=${altra.epoca}`, {
+      versioneBase: 2147483647,
+      idModifica: randomUUID(),
+      giocatori: [],
+      tesserati: [],
+    });
+    aggiungi("api PUT rose: gara non assegnata", classificaScrittura({ canale: "api", ...put }), dettaglioHttp(put));
+  }
+
+  // 4. RPC e PostgREST diretto su una squadra non assegnata.
+  const squadraAltra = await squadraNonAssegnata(db, squadre);
+  if (!squadraAltra) {
+    aggiungi("RPC salva_rosa_squadra: squadra non assegnata", "non-verificabile", "nessuna squadra fuori dalle gare assegnate");
+  } else {
+    const rpc = await chiamaPostgrest(url, anonKey, jwt, "POST", "rpc/salva_rosa_squadra", {
+      squadra_id_param: squadraAltra,
+      versione_base: 2147483647,
+      id_modifica: randomUUID(),
+      giocatori: [],
+      tesserati: [],
+    });
+    aggiungi("RPC salva_rosa_squadra: squadra non assegnata", classificaScrittura({ canale: "rpc", ...rpc }), dettaglioHttp(rpc));
+  }
+  const inesistente = "verifica-inesistente";
+  const prove = [
+    ["PATCH", `rose_squadra?id=eq.${inesistente}`, { versione: 0 }],
+    ["DELETE", `rose_squadra?id=eq.${inesistente}`, undefined],
+    [
+      "POST",
+      "rose_squadra",
+      { id: inesistente, squadraTorneoId: squadraAltra ?? inesistente, versione: -1, updatedAt: new Date().toISOString() },
+    ],
+  ];
+  for (const [metodo, percorso, corpo] of prove) {
+    const r = await chiamaPostgrest(url, anonKey, jwt, metodo, percorso, corpo);
+    aggiungi(`PostgREST ${metodo} rose_squadra`, classificaScrittura({ canale: "postgrest", ...r }), dettaglioHttp(r));
   }
 }
 
