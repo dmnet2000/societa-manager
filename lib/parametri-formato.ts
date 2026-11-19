@@ -88,6 +88,24 @@ export async function leggiParametriGara(garaId: string): Promise<ParametriForma
   return parametriEffettivi(categoria.edizioneTorneo.parametriFormato, categoria.parametriFormato);
 }
 
+/** Parametri effettivi della Categoria della Squadra; `null` se non esiste. */
+export async function leggiParametriSquadra(squadraId: string): Promise<ParametriFormato | null> {
+  const squadra = await prisma.squadraTorneo.findUnique({
+    where: { id: squadraId },
+    select: {
+      categoriaTorneo: {
+        select: {
+          parametriFormato: true,
+          edizioneTorneo: { select: { parametriFormato: true } },
+        },
+      },
+    },
+  });
+  if (!squadra) return null;
+  const categoria = squadra.categoriaTorneo;
+  return parametriEffettivi(categoria.edizioneTorneo.parametriFormato, categoria.parametriFormato);
+}
+
 // Story 3.8: scrittura dei parametri impostati dall'Admin. Si salvano solo le
 // chiavi impostate; nessuna chiave -> null del database (Prisma.DbNull).
 function perDatabase(valori: Partial<ParametriFormato>) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useActionState } from "react";
 import { aggiornaSquadraTorneoAction, cancellaSquadraTorneoAction } from "../../actions";
 import { GIRONI_TORNEO, ETICHETTA_GIRONE } from "@/lib/girone-torneo";
@@ -30,7 +31,13 @@ type Squadra = {
 // Categorie, una pagina diversa). Nessun prop edizioneTorneoId - le Server
 // Action derivano il percorso di revalidatePath lato server (vedi
 // commento in actions.ts), niente piu' campo nascosto non verificato.
-export function SquadraTorneoRow({ squadra }: { squadra: Squadra }) {
+export function SquadraTorneoRow({
+  squadra,
+  edizioneTorneoId,
+}: {
+  squadra: Squadra;
+  edizioneTorneoId: string;
+}) {
   const [inModifica, setInModifica] = useState(false);
   const [modificaState, modificaAction, modificaPending] = useActionState(
     aggiornaSquadraTorneoAction,
@@ -71,6 +78,13 @@ export function SquadraTorneoRow({ squadra }: { squadra: Squadra }) {
         <td>{squadra.referente || "—"}</td>
         <td>{squadra.contatto || "—"}</td>
         <td>
+          <Link
+            className={styles.link}
+            href={`/app/torneo/${edizioneTorneoId}/${squadra.categoriaTorneoId}/${squadra.id}/rosa`}
+            aria-label={`Rosa di ${squadra.nome}`}
+          >
+            Rosa
+          </Link>{" "}
           <button
             type="button"
             className={styles.iconaBottone}

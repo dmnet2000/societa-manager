@@ -1,8 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
+import { salvaRosaSquadra } from "@/lib/rose-gara";
+import { leggiModuloRosa, type InseritiRosa } from "@/lib/rose-modulo";
+import { RosaForbiddenError, RosaValidationError } from "@/lib/db-rls/rosa";
 import { caricaVolantinoTorneo } from "@/lib/storage/volantino-torneo";
 import { validaFileImmagine } from "@/lib/storage/validazione-immagine";
 import {
@@ -2886,4 +2890,97 @@ export async function salvaParametriCategoriaAction(
     return { error: { code: "INTERNAL", message: "Impossibile salvare i parametri. Riprova." } };
   }
   return { success: true };
+}
+
+// Referto elettronico, story 3.9 (AD-6): rosa di una Squadra dal sito.
+// Stesse regole del tablet; passa da lib/db-rls con la sessione dell'utente.
+// Log: solo id e codici, mai nomi.
+export type RosaActionState =
+  | {
+      error: { code: string; message: string };
+      /** Un messaggio per riga non valida. */
+      errori?: string[];
+      /** Valori scritti, da rimostrare dopo un rifiuto. */
+      inseriti?: InseritiRosa;
+    }
+  | { success: true; versione: number }
+  | undefined;
+
+const MESSAGGIO_CONFLITTO_ROSA =
+  "La rosa è stata modificata (dal tablet o da un altro utente) dopo che hai aperto la pagina: ricaricala per vedere la versione attuale.";
+
+export async function salvaRosaSquadraAction(
+  _prevState: RosaActionState,
+  formData: FormData
+): Promise<RosaActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  const squadraTorneoId = String(formData.get("squadraTorneoId") ?? "");
+  const versioneTesto = String(formData.get("versioneBase") ?? "");
+  if (!edizioneTorneoId || !categoriaTorneoId || !squadraTorneoId) {
+    return { error: { code: "VALIDATION", message: "Squadra non specificata." } };
+  }
+  if (!/^[0-9]{1,9}$/.test(versioneTesto)) {
+    return { error: { code: "VALIDATION", message: "Versione della rosa non valida: ricarica la pagina." } };
+  }
+  const versioneBase = Number(versioneTesto);
+
+  const modulo = leggiModuloRosa(formData);
+  if ("errori" in modulo) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi le righe indicate." },
+      errori: modulo.errori,
+      inseriti: modulo.inseriti,
+    };
+  }
+
+  try {
+    const [squadra, categoria] = await Promise.all([
+      trovaSquadraTorneoPerId(squadraTorneoId),
+      trovaCategoriaTorneoPerId(categoriaTorneoId),
+    ]);
+    if (
+      !squadra ||
+      !categoria ||
+      squadra.categoriaTorneoId !== categoriaTorneoId ||
+      categoria.edizioneTorneoId !== edizioneTorneoId
+    ) {
+      return {
+        error: { code: "VALIDATION", message: "Squadra non trovata in questa Categoria." },
+        inseriti: modulo.inseriti,
+      };
+    }
+
+    const supabase = await createClient();
+    const esito = await salvaRosaSquadra(supabase, {
+      squadraId: squadraTorneoId,
+      versioneBase,
+      idModifica: randomUUID(),
+      giocatori: modulo.giocatori,
+      tesserati: modulo.tesserati,
+    });
+    if (esito.esito === "conflitto") {
+      return {
+        error: { code: "CONFLITTO", message: MESSAGGIO_CONFLITTO_ROSA },
+        inseriti: modulo.inseriti,
+      };
+    }
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/${categoriaTorneoId}/${squadraTorneoId}/rosa`);
+    return { success: true, versione: esito.versione };
+  } catch (err) {
+    if (err instanceof RosaForbiddenError) {
+      return { error: { code: "FORBIDDEN", message: "Non autorizzato." }, inseriti: modulo.inseriti };
+    }
+    if (err instanceof RosaValidationError) {
+      return { error: { code: "VALIDATION", message: err.message }, inseriti: modulo.inseriti };
+    }
+    console.error("salvaRosaSquadraAction", squadraTorneoId, err instanceof Error ? err.name : "errore");
+    return {
+      error: { code: "INTERNAL", message: "Impossibile salvare la rosa. Riprova." },
+      inseriti: modulo.inseriti,
+    };
+  }
 }
