@@ -10,7 +10,8 @@ const fromMock = vi.fn(() => ({
 
 const supabase = { from: fromMock, rpc: rpcMock } as never;
 
-const { leggiRosa, salvaRosa, RosaForbiddenError, RosaValidationError } = await import("./rosa");
+const { leggiRosa, salvaRosa, cancellaRoseEdizione, contaRoseEdizione, RosaForbiddenError, RosaValidationError } =
+  await import("./rosa");
 
 const ID = "11111111-1111-4111-8111-111111111111";
 
@@ -94,5 +95,65 @@ describe("salvaRosa", () => {
   it("rifiuta una risposta inattesa", async () => {
     rpcMock.mockResolvedValue({ data: { esito: "boh" }, error: null });
     await expect(salvaRosa(supabase, "s1", 0, ID, [], [])).rejects.toThrow();
+  });
+});
+
+describe("cancellaRoseEdizione", () => {
+  beforeEach(() => rpcMock.mockReset());
+
+  it("chiama la funzione e restituisce il numero di rose cancellate", async () => {
+    rpcMock.mockResolvedValue({ data: 2, error: null });
+    expect(await cancellaRoseEdizione(supabase, "ed1")).toBe(2);
+    expect(rpcMock).toHaveBeenCalledWith("cancella_rose_edizione", { edizione_id_param: "ed1" });
+  });
+
+  it("mappa FORBIDDEN e il permesso negato", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "FORBIDDEN", code: "P0001" } });
+    await expect(cancellaRoseEdizione(supabase, "ed1")).rejects.toBeInstanceOf(RosaForbiddenError);
+    rpcMock.mockResolvedValue({ data: null, error: { message: "permission denied", code: "42501" } });
+    await expect(cancellaRoseEdizione(supabase, "ed1")).rejects.toBeInstanceOf(RosaForbiddenError);
+  });
+
+  it("altri errori e risposte inattese restano errori generici", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await expect(cancellaRoseEdizione(supabase, "ed1")).rejects.toThrow("boom");
+    rpcMock.mockResolvedValue({ data: null, error: null });
+    await expect(cancellaRoseEdizione(supabase, "ed1")).rejects.toThrow("Risposta inattesa");
+  });
+});
+
+describe("contaRoseEdizione", () => {
+  function conRisposte(...risposte: unknown[]) {
+    const inFn = vi.fn();
+    for (const r of risposte) inFn.mockResolvedValueOnce(r);
+    const select = vi.fn(() => ({ in: inFn }));
+    const from = vi.fn(() => ({ select }));
+    return { client: { from } as never, from, select, inFn };
+  }
+
+  it("conta le rose delle Squadre indicate, senza filtri su tabelle strutturali", async () => {
+    const { client, from, select, inFn } = conRisposte({ count: 3, error: null });
+    expect(await contaRoseEdizione(client, ["s1", "s2"])).toBe(3);
+    expect(from).toHaveBeenCalledWith("rose_squadra");
+    expect(select).toHaveBeenCalledWith("id", { count: "exact", head: true });
+    expect(inFn).toHaveBeenCalledWith("squadraTorneoId", ["s1", "s2"]);
+  });
+
+  it("nessuna Squadra: 0 senza query; molte Squadre: somma a blocchi", async () => {
+    const vuoto = conRisposte();
+    expect(await contaRoseEdizione(vuoto.client, [])).toBe(0);
+    expect(vuoto.from).not.toHaveBeenCalled();
+
+    const ids = Array.from({ length: 150 }, (_, i) => `s${i}`);
+    const { client, inFn } = conRisposte({ count: 2, error: null }, { count: null, error: null });
+    expect(await contaRoseEdizione(client, ids)).toBe(2);
+    expect(inFn).toHaveBeenCalledTimes(2);
+    expect(inFn.mock.calls[0][1]).toHaveLength(100);
+    expect(inFn.mock.calls[1][1]).toHaveLength(50);
+  });
+
+  it("errore: lancia", async () => {
+    const { client } = conRisposte({ count: null, error: { message: "boom" } });
+    await expect(contaRoseEdizione(client, ["s1"])).rejects.toThrow("boom");
   });
 });

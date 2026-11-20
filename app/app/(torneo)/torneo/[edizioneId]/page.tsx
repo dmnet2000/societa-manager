@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trovaEdizioneTorneoPerId, elencaCategorieTorneo } from "@/lib/torneo";
+import { trovaEdizioneTorneoPerId, elencaCategorieTorneo, elencaIdSquadreEdizioneTorneo } from "@/lib/torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { createClient } from "@/lib/supabase/server";
 import { leggiInfoVolantinoTorneo, urlPubblicoVolantinoTorneo } from "@/lib/storage/volantino-torneo";
+import { contaRoseEdizione } from "@/lib/db-rls/rosa";
+import { CancellaRoseEdizioneForm } from "../CancellaRoseEdizioneForm";
 import { NuovaCategoriaTorneoForm } from "../NuovaCategoriaTorneoForm";
 import { CategoriaTorneoRow } from "../CategoriaTorneoRow";
 import { VolantinoTorneoForm } from "./VolantinoTorneoForm";
@@ -58,6 +60,16 @@ export default async function EdizioneTorneoPage({
     console.error(err);
     return { esiste: false, aggiornatoIl: null };
   });
+
+  // Story 3.13: numero di rose salvate, letto con la sessione (RLS). Fail-soft:
+  // un errore di lettura non deve rompere la pagina.
+  const numeroRose = await elencaIdSquadreEdizioneTorneo(edizione.id)
+    .then((squadraIds) => contaRoseEdizione(supabase, squadraIds))
+    .catch((err) => {
+      console.error("contaRoseEdizione", err instanceof Error ? err.name : "errore");
+      return null;
+    });
+  const eAdmin = ruoli.includes("ADMIN");
 
   return (
     <main>
@@ -119,6 +131,26 @@ export default async function EdizioneTorneoPage({
           Parametri del formato →
         </Link>
       </p>
+
+      {/* Story 3.13: privacy delle rose (nomi di minori), solo l'Admin puo'
+          cancellarle. */}
+      <section className={styles.sezione}>
+        <h2>Rose (dati personali)</h2>
+        <p className={styles.riepilogo}>
+          {numeroRose === null
+            ? "Numero di rose salvate non disponibile."
+            : numeroRose === 1
+              ? "1 rosa salvata."
+              : `${numeroRose} rose salvate.`}
+        </p>
+        <p>
+          Le rose contengono i nomi dei ragazzi. Usa la cancellazione a torneo concluso: l&apos;operazione non è
+          reversibile e i tablet riceveranno rose vuote.
+        </p>
+        {eAdmin && (
+          <CancellaRoseEdizioneForm edizioneId={edizione.id} nome={edizione.nome} anno={edizione.anno} />
+        )}
+      </section>
 
       <section className={styles.sezione}>
         <h2>Nuova Categoria</h2>

@@ -128,3 +128,52 @@ export async function salvaRosa(
   }
   return { esito: esito.esito, versione: esito.versione };
 }
+
+// Story 3.13 (AD-4): cancellazione delle rose di un'Edizione, solo ADMIN
+// (la funzione SQL e' SECURITY DEFINER). Restituisce quante rose ha cancellato.
+export async function cancellaRoseEdizione(
+  supabase: SupabaseClient,
+  edizioneTorneoId: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc("cancella_rose_edizione", {
+    edizione_id_param: edizioneTorneoId,
+  });
+
+  if (error) {
+    const messaggio = error.message ?? "";
+    if (messaggio.startsWith("FORBIDDEN") || error.code === "42501") {
+      throw new RosaForbiddenError();
+    }
+    throw new Error(messaggio);
+  }
+  if (typeof data !== "number") {
+    throw new Error("Risposta inattesa da cancella_rose_edizione");
+  }
+  return data;
+}
+
+// Numero di rose salvate per le Squadre indicate (quelle dell'Edizione), letto
+// con la sessione (RLS). Gli id arrivano da Prisma: squadre_torneo e
+// categorie_torneo non sono leggibili da authenticated (REVOKE ALL), quindi
+// un filtro incorporato PostgREST fallirebbe sempre. A blocchi per non
+// allungare troppo l'URL.
+const BLOCCO_CONTEGGIO = 100;
+
+export async function contaRoseEdizione(
+  supabase: SupabaseClient,
+  squadraTorneoIds: readonly string[]
+): Promise<number> {
+  let totale = 0;
+  for (let i = 0; i < squadraTorneoIds.length; i += BLOCCO_CONTEGGIO) {
+    const blocco = squadraTorneoIds.slice(i, i + BLOCCO_CONTEGGIO);
+    const { count, error } = await supabase
+      .from("rose_squadra")
+      .select("id", { count: "exact", head: true })
+      .in("squadraTorneoId", blocco);
+    if (error) {
+      throw new Error(error.message);
+    }
+    totale += count ?? 0;
+  }
+  return totale;
+}
