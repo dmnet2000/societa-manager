@@ -6,6 +6,8 @@ vi.mock("server-only", () => ({}));
 const requireRuoloMock = vi.fn();
 const trovaSquadraMock = vi.fn();
 const trovaCategoriaMock = vi.fn();
+const trovaEdizioneMock = vi.fn();
+const cancellaRoseEdizioneMock = vi.fn();
 const salvaRosaSquadraMock = vi.fn();
 const revalidatePathMock = vi.fn();
 const supabaseFinto = { marker: "sessione" };
@@ -16,13 +18,18 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => supabaseFint
 vi.mock("@/lib/torneo", () => ({
   trovaSquadraTorneoPerId: trovaSquadraMock,
   trovaCategoriaTorneoPerId: trovaCategoriaMock,
+  trovaEdizioneTorneoPerId: trovaEdizioneMock,
 }));
 vi.mock("@/lib/assegnazioni-tablet", () => ({}));
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/rose-gara", () => ({ salvaRosaSquadra: salvaRosaSquadraMock }));
+vi.mock("@/lib/db-rls/rosa", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/db-rls/rosa")>()),
+  cancellaRoseEdizione: cancellaRoseEdizioneMock,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 
-const { salvaRosaSquadraAction } = await import("./actions");
+const { salvaRosaSquadraAction, cancellaRoseEdizioneAction } = await import("./actions");
 const { RosaForbiddenError, RosaValidationError } = await import("@/lib/db-rls/rosa");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -146,6 +153,63 @@ describe("salvaRosaSquadraAction", () => {
     const res = await salvaRosaSquadraAction(undefined, form());
     expect(res).toMatchObject({ error: { code: "INTERNAL" } });
     expect(JSON.stringify(spy.mock.calls)).not.toContain("Anna");
+    spy.mockRestore();
+  });
+});
+
+describe("cancellaRoseEdizioneAction (story 3.13)", () => {
+  function formEd(id = "ed1") {
+    const fd = new FormData();
+    if (id) fd.set("edizioneTorneoId", id);
+    return fd;
+  }
+
+  beforeEach(() => {
+    trovaEdizioneMock.mockResolvedValue({ id: "ed1" });
+    cancellaRoseEdizioneMock.mockResolvedValue(2);
+  });
+
+  it("solo ADMIN: altrimenti rifiutato e nessuna cancellazione", async () => {
+    const forbidden = { error: { code: "FORBIDDEN", message: "Non autorizzato." } };
+    requireRuoloMock.mockResolvedValue(forbidden);
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toBe(forbidden);
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN"]);
+    expect(cancellaRoseEdizioneMock).not.toHaveBeenCalled();
+  });
+
+  it("edizione mancante o non trovata: VALIDATION", async () => {
+    expect(await cancellaRoseEdizioneAction(undefined, formEd(""))).toMatchObject({ error: { code: "VALIDATION" } });
+    trovaEdizioneMock.mockResolvedValue(null);
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toMatchObject({ error: { code: "VALIDATION" } });
+    expect(cancellaRoseEdizioneMock).not.toHaveBeenCalled();
+  });
+
+  it("0 rose: Nessuna rosa da cancellare", async () => {
+    cancellaRoseEdizioneMock.mockResolvedValue(0);
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toEqual({
+      success: true,
+      messaggio: "Nessuna rosa da cancellare",
+    });
+  });
+
+  it("N rose: Cancellate N rose, con la sessione e revalidate", async () => {
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toEqual({
+      success: true,
+      messaggio: "Cancellate 2 rose",
+    });
+    expect(cancellaRoseEdizioneMock).toHaveBeenCalledWith(supabaseFinto, "ed1");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/torneo/ed1");
+  });
+
+  it("RosaForbiddenError: FORBIDDEN", async () => {
+    cancellaRoseEdizioneMock.mockRejectedValue(new RosaForbiddenError());
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toMatchObject({ error: { code: "FORBIDDEN" } });
+  });
+
+  it("altro errore: INTERNAL", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    cancellaRoseEdizioneMock.mockRejectedValue(new Error("boom"));
+    expect(await cancellaRoseEdizioneAction(undefined, formEd())).toMatchObject({ error: { code: "INTERNAL" } });
     spy.mockRestore();
   });
 });

@@ -208,6 +208,16 @@ export async function contaSquadreTorneo(categoriaTorneoId: string) {
   return prisma.squadraTorneo.count({ where: { categoriaTorneoId } });
 }
 
+// Story 3.13: id di tutte le Squadre dell'Edizione, per contare le rose con
+// la sessione (le tabelle strutturali non sono leggibili via PostgREST).
+export async function elencaIdSquadreEdizioneTorneo(edizioneTorneoId: string): Promise<string[]> {
+  const squadre = await prisma.squadraTorneo.findMany({
+    where: { categoriaTorneo: { edizioneTorneoId } },
+    select: { id: true },
+  });
+  return squadre.map((s) => s.id);
+}
+
 export async function creaSquadraTorneo(dati: {
   nome: string;
   girone: GironeTorneo;

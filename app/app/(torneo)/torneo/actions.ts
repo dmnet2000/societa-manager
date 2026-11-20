@@ -6,7 +6,7 @@ import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
 import { salvaRosaSquadra } from "@/lib/rose-gara";
 import { leggiModuloRosa, type InseritiRosa } from "@/lib/rose-modulo";
-import { RosaForbiddenError, RosaValidationError } from "@/lib/db-rls/rosa";
+import { RosaForbiddenError, RosaValidationError, cancellaRoseEdizione } from "@/lib/db-rls/rosa";
 import { caricaVolantinoTorneo } from "@/lib/storage/volantino-torneo";
 import { validaFileImmagine } from "@/lib/storage/validazione-immagine";
 import {
@@ -2982,5 +2982,52 @@ export async function salvaRosaSquadraAction(
       error: { code: "INTERNAL", message: "Impossibile salvare la rosa. Riprova." },
       inseriti: modulo.inseriti,
     };
+  }
+}
+
+// Story 3.13 (AD-4): cancellazione di tutte le rose dell'Edizione, solo
+// ADMIN, a torneo concluso. Passa dalla funzione SQL SECURITY DEFINER con la
+// sessione dell'utente (mai Prisma ne' service role). Log: solo id e codici.
+export type CancellaRoseActionState =
+  | { error: { code: string; message: string } }
+  | { success: true; messaggio: string }
+  | undefined;
+
+export async function cancellaRoseEdizioneAction(
+  _prevState: CancellaRoseActionState,
+  formData: FormData
+): Promise<CancellaRoseActionState> {
+  const forbidden = await requireRuolo(["ADMIN"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  try {
+    const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+    if (!edizione) {
+      return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+    }
+
+    const supabase = await createClient();
+    const cancellate = await cancellaRoseEdizione(supabase, edizioneTorneoId);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}`);
+    return {
+      success: true,
+      messaggio:
+        cancellate === 0
+          ? "Nessuna rosa da cancellare"
+          : cancellate === 1
+            ? "Cancellata 1 rosa"
+            : `Cancellate ${cancellate} rose`,
+    };
+  } catch (err) {
+    if (err instanceof RosaForbiddenError) {
+      return { error: { code: "FORBIDDEN", message: "Non autorizzato." } };
+    }
+    console.error("cancellaRoseEdizioneAction", edizioneTorneoId, err instanceof Error ? err.name : "errore");
+    return { error: { code: "INTERNAL", message: "Impossibile cancellare le rose. Riprova." } };
   }
 }

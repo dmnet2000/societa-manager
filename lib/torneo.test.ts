@@ -104,6 +104,7 @@ const {
   cancellaCategoriaTorneo,
   elencaSquadreTorneo,
   contaSquadreTorneo,
+  elencaIdSquadreEdizioneTorneo,
   creaSquadraTorneo,
   aggiornaSquadraTorneo,
   cancellaSquadraTorneo,
@@ -435,6 +436,18 @@ describe("contaSquadreTorneo", () => {
 
     expect(squadraCountMock).toHaveBeenCalledWith({ where: { categoriaTorneoId: "categoria-1" } });
     expect(result).toBe(3);
+  });
+});
+
+describe("elencaIdSquadreEdizioneTorneo (story 3.13)", () => {
+  it("restituisce gli id delle Squadre di tutte le Categorie dell'Edizione", async () => {
+    squadraFindManyMock.mockResolvedValue([{ id: "s1" }, { id: "s2" }]);
+
+    expect(await elencaIdSquadreEdizioneTorneo("ed-1")).toEqual(["s1", "s2"]);
+    expect(squadraFindManyMock).toHaveBeenCalledWith({
+      where: { categoriaTorneo: { edizioneTorneoId: "ed-1" } },
+      select: { id: true },
+    });
   });
 });
 

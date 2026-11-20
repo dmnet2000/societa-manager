@@ -94,6 +94,14 @@ describe("Rose dal sito (story 3.9)", () => {
   });
 });
 
+describe("Privacy delle rose (story 3.13)", () => {
+  it("la sezione Torneo spiega il pulsante di cancellazione delle rose", () => {
+    const corpo = contenutoPerRotta("/app/torneo", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("Cancella le rose dell'Edizione");
+    expect(corpo).toContain("non è reversibile");
+  });
+});
+
 describe("Ruolo TABLET", () => {
   it("non vede alcuna voce della guida (il tablet non entra nel sito)", () => {
     expect(contenutiPerRuoli(["TABLET"])).toEqual([]);
