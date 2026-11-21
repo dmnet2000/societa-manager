@@ -1,4 +1,8 @@
-import type { GiocatoreSalvaRosa, TesseratoSalvaRosa } from "@/lib/api-tablet/contratto";
+import {
+  RUOLI_TESSERATO,
+  type GiocatoreSalvaRosa,
+  type TesseratoSalvaRosa,
+} from "@/lib/api-tablet/contratto";
 
 // Referto elettronico, story 3.9: lettura pura del modulo "Rosa" del sito.
 // Campi indicizzati: g<i>_numero, g<i>_nome, g<i>_cognome, g<i>_capitano,
@@ -6,7 +10,6 @@ import type { GiocatoreSalvaRosa, TesseratoSalvaRosa } from "@/lib/api-tablet/co
 // accesso al database; mai nomi nei log. Le etichette di errore usano la
 // posizione della riga nel modulo (indice + 1).
 
-export const RUOLI_TESSERATO = ["A", "VA", "M", "FT", "D"] as const;
 export const LUNGHEZZA_MAX_NOME = 60;
 
 export type RigaGiocatoreTesto = {

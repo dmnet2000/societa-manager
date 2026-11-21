@@ -20,6 +20,14 @@ export type EsitoSalvataggioRosaGara = { esito: "ok" | "conflitto"; versione: nu
 
 const ROSA_VUOTA: RosaGara = { versione: 0, giocatori: [], tesserati: [] };
 
+// Copie dei giocatori e dei tesserati, nell'ordine dei parametri di `salvaRosa`.
+function copiaRosa(
+  giocatori: readonly GiocatoreSalvaRosa[],
+  tesserati: readonly TesseratoSalvaRosa[]
+): [GiocatoreSalvaRosa[], TesseratoSalvaRosa[]] {
+  return [giocatori.map((g) => ({ ...g })), tesserati.map((t) => ({ ...t }))];
+}
+
 async function squadreGara(garaId: string): Promise<{ casa: string; ospite: string }> {
   const partita = await prisma.partitaTorneo.findUnique({
     where: { id: garaId },
@@ -105,8 +113,7 @@ export async function salvaRosaGara(
     squadre[lato],
     versioneBase,
     idModifica,
-    giocatori.map((g) => ({ ...g })),
-    tesserati.map((t) => ({ ...t }))
+    ...copiaRosa(giocatori, tesserati)
   );
 }
 
@@ -133,7 +140,6 @@ export async function salvaRosaSquadra(
     squadraId,
     versioneBase,
     idModifica,
-    giocatori.map((g) => ({ ...g })),
-    tesserati.map((t) => ({ ...t }))
+    ...copiaRosa(giocatori, tesserati)
   );
 }

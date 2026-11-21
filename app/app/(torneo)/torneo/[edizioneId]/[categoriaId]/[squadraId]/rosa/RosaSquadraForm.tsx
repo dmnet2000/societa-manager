@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { salvaRosaSquadraAction, type RosaActionState } from "../../../../actions";
-import type { RigaGiocatoreTesto, RigaTesseratoTesto } from "@/lib/rose-modulo";
+import { LUNGHEZZA_MAX_NOME, type RigaGiocatoreTesto, type RigaTesseratoTesto } from "@/lib/rose-modulo";
 import styles from "../../../../torneo.module.css";
 
 // Referto elettronico, story 3.9: modulo della rosa di una Squadra. Campi
@@ -102,7 +102,7 @@ function CampiRosa({
               id={`g${i}_nome`}
               name={`g${i}_nome`}
               type="text"
-              maxLength={60}
+              maxLength={LUNGHEZZA_MAX_NOME}
               value={g.nome}
               onChange={(e) => aggiornaG(i, { nome: e.target.value })}
             />
@@ -113,7 +113,7 @@ function CampiRosa({
               id={`g${i}_cognome`}
               name={`g${i}_cognome`}
               type="text"
-              maxLength={60}
+              maxLength={LUNGHEZZA_MAX_NOME}
               value={g.cognome}
               onChange={(e) => aggiornaG(i, { cognome: e.target.value })}
             />
@@ -185,7 +185,7 @@ function CampiRosa({
               id={`t${i}_nome`}
               name={`t${i}_nome`}
               type="text"
-              maxLength={60}
+              maxLength={LUNGHEZZA_MAX_NOME}
               value={t.nome}
               onChange={(e) => aggiornaT(i, { nome: e.target.value })}
             />

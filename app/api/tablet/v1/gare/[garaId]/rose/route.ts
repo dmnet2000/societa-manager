@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
 import type { RispostaRose } from "@/lib/api-tablet/contratto";
 import { verificaVersioneApp } from "@/lib/api-tablet/versione-app";
 import { autorizzaGaraTablet } from "@/lib/api-tablet/gare-tablet";
-import { creaClientSupabaseTablet } from "@/lib/api-tablet/client-supabase-tablet";
-import { erroreInternoTablet, rispostaErroreTablet } from "@/lib/api-tablet/risposta-errore";
+import { leggiEpocaRichiesta } from "@/lib/api-tablet/epoca-richiesta";
+import {
+  clientSupabaseTabletOErrore,
+  erroreInternoTablet,
+  rispostaJsonTablet,
+  rispostaRoseNonConsentite,
+} from "@/lib/api-tablet/risposta-errore";
 import { RosaForbiddenError } from "@/lib/db-rls/rosa";
 import { leggiRoseGara } from "@/lib/rose-gara";
 
@@ -18,30 +22,25 @@ export async function GET(
   if (!versione.ok) return versione.risposta;
 
   const { garaId } = await params;
-  const testoEpoca = new URL(request.url).searchParams.get("epoca");
-  const epoca = testoEpoca !== null && /^[1-9][0-9]*$/.test(testoEpoca) ? Number(testoEpoca) : NaN;
-  if (!Number.isSafeInteger(epoca)) {
-    return rispostaErroreTablet("VALIDATION", "Epoca mancante o non valida.", 400);
-  }
+  const esitoEpoca = leggiEpocaRichiesta(request);
+  if (!esitoEpoca.ok) return esitoEpoca.risposta;
+  const { epoca } = esitoEpoca;
 
   const autorizzazione = await autorizzaGaraTablet(request, garaId, epoca);
   if (!autorizzazione.ok) return autorizzazione.risposta;
 
   let corpo: RispostaRose;
   try {
-    const supabase = creaClientSupabaseTablet(autorizzazione.jwt);
-    if (supabase === null) {
-      console.error("api-tablet INTERNAL motivo=CONFIGURAZIONE_MANCANTE");
-      return erroreInternoTablet();
-    }
+    const client = clientSupabaseTabletOErrore(autorizzazione.jwt);
+    if (!client.ok) return client.risposta;
+    const { supabase } = client;
     corpo = await leggiRoseGara(supabase, garaId);
   } catch (errore) {
     if (errore instanceof RosaForbiddenError) {
-      console.warn("api-tablet FORBIDDEN motivo=ROSE_RLS");
-      return rispostaErroreTablet("FORBIDDEN", "Accesso alle rose non consentito.", 403);
+      return rispostaRoseNonConsentite();
     }
     console.error("api-tablet INTERNAL motivo=ROSE_GARA");
     return erroreInternoTablet();
   }
-  return NextResponse.json(corpo, { headers: { "Cache-Control": "no-store" } });
+  return rispostaJsonTablet(corpo);
 }

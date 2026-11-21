@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
 import { leggiRichiestaSalvaRosa, type RispostaSalvaRosa } from "@/lib/api-tablet/contratto";
 import { verificaVersioneApp } from "@/lib/api-tablet/versione-app";
 import { autorizzaGaraTablet } from "@/lib/api-tablet/gare-tablet";
-import { creaClientSupabaseTablet } from "@/lib/api-tablet/client-supabase-tablet";
-import { erroreInternoTablet, rispostaErroreTablet } from "@/lib/api-tablet/risposta-errore";
+import { leggiEpocaRichiesta } from "@/lib/api-tablet/epoca-richiesta";
+import {
+  clientSupabaseTabletOErrore,
+  erroreInternoTablet,
+  rispostaErroreTablet,
+  rispostaJsonTablet,
+  rispostaRoseNonConsentite,
+} from "@/lib/api-tablet/risposta-errore";
 import { RosaForbiddenError, RosaValidationError } from "@/lib/db-rls/rosa";
 import { salvaRosaGara } from "@/lib/rose-gara";
 
@@ -18,11 +23,9 @@ export async function PUT(
   if (!versione.ok) return versione.risposta;
 
   const { garaId, lato } = await params;
-  const testoEpoca = new URL(request.url).searchParams.get("epoca");
-  const epoca = testoEpoca !== null && /^[1-9][0-9]*$/.test(testoEpoca) ? Number(testoEpoca) : NaN;
-  if (!Number.isSafeInteger(epoca)) {
-    return rispostaErroreTablet("VALIDATION", "Epoca mancante o non valida.", 400);
-  }
+  const esitoEpoca = leggiEpocaRichiesta(request);
+  if (!esitoEpoca.ok) return esitoEpoca.risposta;
+  const { epoca } = esitoEpoca;
   if (lato !== "casa" && lato !== "ospite") {
     return rispostaErroreTablet("VALIDATION", "Lato non valido: usa casa oppure ospite.", 400);
   }
@@ -42,11 +45,9 @@ export async function PUT(
   }
 
   try {
-    const supabase = creaClientSupabaseTablet(autorizzazione.jwt);
-    if (supabase === null) {
-      console.error("api-tablet INTERNAL motivo=CONFIGURAZIONE_MANCANTE");
-      return erroreInternoTablet();
-    }
+    const client = clientSupabaseTabletOErrore(autorizzazione.jwt);
+    if (!client.ok) return client.risposta;
+    const { supabase } = client;
     const esito = await salvaRosaGara(supabase, { garaId, lato, ...richiesta });
     if (esito.esito === "conflitto") {
       return rispostaErroreTablet(
@@ -56,11 +57,10 @@ export async function PUT(
       );
     }
     const corpo: RispostaSalvaRosa = { versione: esito.versione };
-    return NextResponse.json(corpo, { headers: { "Cache-Control": "no-store" } });
+    return rispostaJsonTablet(corpo);
   } catch (errore) {
     if (errore instanceof RosaForbiddenError) {
-      console.warn("api-tablet FORBIDDEN motivo=ROSE_RLS");
-      return rispostaErroreTablet("FORBIDDEN", "Accesso alle rose non consentito.", 403);
+      return rispostaRoseNonConsentite();
     }
     if (errore instanceof RosaValidationError) {
       // I messaggi del database iniziano con "VALIDATION": non si mostrano.

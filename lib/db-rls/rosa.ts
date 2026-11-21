@@ -1,11 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { RUOLI_TESSERATO, type RuoloTesseratoGara } from "@/lib/api-tablet/contratto";
 
 // Referto elettronico, story 3.2 (AD-6, AD-11, AD-17): rosa di una
 // SquadraTorneo. Tabelle protette da RLS - il client Supabase passato deve
 // avere la sessione dell'utente autenticato. Log: mai nomi della rosa.
 
-export type RuoloTesserato = "A" | "VA" | "M" | "FT" | "D";
+export type RuoloTesserato = RuoloTesseratoGara;
 
 export type GiocatoreRosa = {
   id: string;
@@ -78,14 +79,31 @@ export async function leggiRosa(
   );
   const tesserati = [...((rosa.tesserati_rosa ?? []) as TesseratoRosa[])].sort(
     (a, b) =>
-      ORDINE_RUOLI.indexOf(a.ruolo) - ORDINE_RUOLI.indexOf(b.ruolo) ||
+      RUOLI_TESSERATO.indexOf(a.ruolo) - RUOLI_TESSERATO.indexOf(b.ruolo) ||
       a.nome.localeCompare(b.nome)
   );
 
   return { versione: rosa.versione as number, giocatori, tesserati };
 }
 
-const ORDINE_RUOLI: RuoloTesserato[] = ["A", "VA", "M", "FT", "D"];
+// Errori RPC delle rose: FORBIDDEN, VALIDATION (solo se `conValidation`),
+// permesso negato di PostgREST (42501, es. anon), altro.
+function erroreRpcRosa(
+  error: { message?: string | null; code?: string },
+  conValidation: boolean
+): Error {
+  const messaggio = error.message ?? "";
+  if (messaggio.startsWith("FORBIDDEN")) {
+    return new RosaForbiddenError();
+  }
+  if (conValidation && messaggio.startsWith("VALIDATION")) {
+    return new RosaValidationError(messaggio);
+  }
+  if (error.code === "42501") {
+    return new RosaForbiddenError();
+  }
+  return new Error(messaggio);
+}
 
 export async function salvaRosa(
   supabase: SupabaseClient,
@@ -104,18 +122,7 @@ export async function salvaRosa(
   });
 
   if (error) {
-    const messaggio = error.message ?? "";
-    if (messaggio.startsWith("FORBIDDEN")) {
-      throw new RosaForbiddenError();
-    }
-    if (messaggio.startsWith("VALIDATION")) {
-      throw new RosaValidationError(messaggio);
-    }
-    // Permesso negato di PostgREST (42501, es. anon): stessa semantica.
-    if (error.code === "42501") {
-      throw new RosaForbiddenError();
-    }
-    throw new Error(messaggio);
+    throw erroreRpcRosa(error, true);
   }
 
   const esito = data as { esito?: string; versione?: number } | null;
@@ -140,11 +147,7 @@ export async function cancellaRoseEdizione(
   });
 
   if (error) {
-    const messaggio = error.message ?? "";
-    if (messaggio.startsWith("FORBIDDEN") || error.code === "42501") {
-      throw new RosaForbiddenError();
-    }
-    throw new Error(messaggio);
+    throw erroreRpcRosa(error, false);
   }
   if (typeof data !== "number") {
     throw new Error("Risposta inattesa da cancella_rose_edizione");
