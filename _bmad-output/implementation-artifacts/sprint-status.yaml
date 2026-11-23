@@ -1,3 +1,4 @@
+# last_updated: 2026-11-23 (Epic 29 Torneo - Form iscrizione squadre e gestione pasti aperto: analisi + 8 story in backlog, nessuna implementazione. Vedi epics.md#Epic 29.)
 # last_updated: 2026-11-15 (Story 11.6 aggiunta: elenco dei file leggibile da anon/tablet nei bucket pubblici foto-squadra-gruppo e volantino-torneo, emerso dalla verifica di sicurezza in produzione del referto elettronico (story 2.10). Solo la story, nessuna implementazione. Vedi epics.md#Story 11.6.)
 # last_updated: 2026-10-27 (Story 9.48 tesseramento in /app/conferma-certificati: review -> done, verificata dall'utente dal vivo.)
 # last_updated: 2026-10-25 (Code review Epic 28 a 4 livelli (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) sul diff 3fb0e8d..5ec4bb6: 7 patch applicati (pulsante senza attributo download, ordine Gruppi in memoria, reduce al posto di Math.max spread, escape U+FFFE/FFFF, 3 test aggiunti), 2 defer in deferred-work.md, 19 scartati. Story restano done.)
@@ -2392,3 +2393,18 @@ development_status:
   28-2-export-iscrizioni: done
   28-3-export-tesseramenti: done
   28-4-export-complessivo-admin: done
+
+  # Epic 29 (Torneo - Form di iscrizione squadre e gestione pasti) aperto
+  # 2026-11-23, richiesta esplicita dell'utente. Solo analisi + story
+  # scritte, nessuna implementazione. Assunzioni e decisioni aperte da
+  # chiudere con l'utente. Ordine 29.1 -> 29.8, MVP = 29.1-29.5. Vedi
+  # epics.md#Epic 29.
+  epic-29: backlog
+  29-1-apertura-iscrizioni-edizione: backlog
+  29-2-configurazione-pasti-edizione: backlog
+  29-3-form-pubblico-iscrizione-squadre: backlog
+  29-4-prenotazione-pasti-form: backlog
+  29-5-gestione-richieste-iscrizione: backlog
+  29-6-modifica-iscrizione-referente: backlog
+  29-7-riepilogo-pasti-cucina: backlog
+  29-8-riepilogo-economico-pagamenti: backlog
