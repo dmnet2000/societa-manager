@@ -1220,6 +1220,9 @@ model PartitaTorneo {
   // Referto elettronico, story 2.5 (AD-2): tablet assegnato e sua epoca -
   // al massimo una riga per gara (vincolo unico su AssegnazioneTablet).
   assegnazioneTablet AssegnazioneTablet?
+  // Referto elettronico, story 4.1: risultati dei set chiusi (referto in
+  // corso), una riga per set.
+  risultatiSetReferto RisultatoSetReferto[]
 
   // Review fix (Edge Case Hunter, Story 20.3): rete di sicurezza a livello
   // DB contro la generazione duplicata della stessa coppia (la guardia di
@@ -1267,6 +1270,28 @@ model AssegnazioneTablet {
 
   @@index([utenteId])
   @@map("assegnazioni_tablet")
+}
+
+// Referto elettronico, story 4.1 (AD-7, AD-8, AD-11, AD-17): risultato di un
+// set chiuso dal tablet nel "referto in corso". Una riga per (gara, set);
+// l'upsert e' monotono su seqFinale (vince il FINE_SET piu' recente del
+// registro). Tabella strutturale: RLS senza policy + REVOKE (migrazione),
+// scritta solo via Prisma (SQL raw per l'upsert condizionato).
+model RisultatoSetReferto {
+  id              String        @id @default(uuid())
+  partitaTorneoId String
+  partitaTorneo   PartitaTorneo @relation(fields: [partitaTorneoId], references: [id], onDelete: Cascade)
+  numeroSet       Int
+  casa            Int
+  ospite          Int
+  seqFinale       Int
+  registroId      String
+  epoca           Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([partitaTorneoId, numeroSet])
+  @@map("risultati_set_referto")
 }
 
 // Story 20.9 (Epic 20, Torneo Memorial): "prenotazione per fase" - permette

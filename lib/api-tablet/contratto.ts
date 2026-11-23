@@ -401,3 +401,59 @@ export function leggiRispostaSalvaRosa(corpo: unknown): RispostaSalvaRosa | unde
   const versione = corpo["versione"];
   return eInteroNonNegativo(versione) ? { versione } : undefined;
 }
+
+/**
+ * Corpo di `PUT /api/tablet/v1/gare/{garaId}/risultati-set/{numeroSet}?epoca=N`
+ * (story 4.1): risultato di un set chiuso. `seqFinale` e' il `seq` dell'evento
+ * `FINE_SET` nel registro `registroId`; il server tiene il piu' alto.
+ */
+export interface RichiestaRisultatoSet {
+  readonly registroId: string;
+  readonly casa: number;
+  readonly ospite: number;
+  readonly seqFinale: number;
+}
+
+/** Risposta dell'invio: la riga salvata sul server (puo' essere piu' recente di quella inviata). */
+export interface RispostaRisultatoSet {
+  readonly numeroSet: number;
+  readonly casa: number;
+  readonly ospite: number;
+  readonly seqFinale: number;
+}
+
+function ePunteggio(valore: unknown): valore is number {
+  return typeof valore === "number" && Number.isSafeInteger(valore) && valore >= 0 && valore <= 99;
+}
+
+/** Legge un corpo JSON come richiesta di risultato del set; `undefined` se non lo e'. */
+export function leggiRichiestaRisultatoSet(corpo: unknown): RichiestaRisultatoSet | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { registroId, casa, ospite, seqFinale } = corpo;
+  if (
+    typeof registroId !== "string" ||
+    !UUID.test(registroId) ||
+    !ePunteggio(casa) ||
+    !ePunteggio(ospite) ||
+    !eInteroPositivo(seqFinale)
+  ) {
+    return undefined;
+  }
+  return { registroId, casa, ospite, seqFinale };
+}
+
+/** Legge un corpo JSON come risposta del risultato del set; `undefined` se non lo e'. */
+export function leggiRispostaRisultatoSet(corpo: unknown): RispostaRisultatoSet | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { numeroSet, casa, ospite, seqFinale } = corpo;
+  if (
+    !eInteroPositivo(numeroSet) ||
+    numeroSet > 5 ||
+    !ePunteggio(casa) ||
+    !ePunteggio(ospite) ||
+    !eInteroPositivo(seqFinale)
+  ) {
+    return undefined;
+  }
+  return { numeroSet, casa, ospite, seqFinale };
+}

@@ -8,7 +8,9 @@ import {
   leggiErrore,
   leggiGare,
   leggiParametri,
+  leggiRichiestaRisultatoSet,
   leggiRichiestaSalvaRosa,
+  leggiRispostaRisultatoSet,
   leggiRispostaSalvaRosa,
   leggiRose,
   leggiVersioneApp,
@@ -249,5 +251,41 @@ describe("contratto delle rose", () => {
     expect(leggiRispostaSalvaRosa({ versione: 3 })).toEqual({ versione: 3 });
     expect(leggiRispostaSalvaRosa({ versione: -1 })).toBeUndefined();
     expect(leggiRispostaSalvaRosa({})).toBeUndefined();
+  });
+
+  describe("risultato del set", () => {
+    const valida = {
+      registroId: "123e4567-e89b-42d3-a456-426614174000",
+      casa: 25,
+      ospite: 23,
+      seqFinale: 120,
+    };
+
+    it("leggiRichiestaRisultatoSet accetta una richiesta valida e i limiti", () => {
+      expect(leggiRichiestaRisultatoSet(valida)).toEqual(valida);
+      expect(leggiRichiestaRisultatoSet({ ...valida, casa: 0, ospite: 99, seqFinale: 1 })).toBeDefined();
+    });
+
+    it.each([
+      ["registroId non UUID", { ...valida, registroId: "x" }],
+      ["casa negativa", { ...valida, casa: -1 }],
+      ["ospite oltre 99", { ...valida, ospite: 100 }],
+      ["casa non intera", { ...valida, casa: 1.5 }],
+      ["seqFinale 0", { ...valida, seqFinale: 0 }],
+      ["seqFinale testo", { ...valida, seqFinale: "3" }],
+      ["campo mancante", { registroId: valida.registroId, casa: 1, ospite: 2 }],
+      ["non oggetto", null],
+    ])("leggiRichiestaRisultatoSet rifiuta: %s", (_nome, corpo) => {
+      expect(leggiRichiestaRisultatoSet(corpo)).toBeUndefined();
+    });
+
+    it("leggiRispostaRisultatoSet legge la riga salvata e rifiuta il resto", () => {
+      const riga = { numeroSet: 1, casa: 25, ospite: 23, seqFinale: 120 };
+      expect(leggiRispostaRisultatoSet(riga)).toEqual(riga);
+      expect(leggiRispostaRisultatoSet({ ...riga, numeroSet: 6 })).toBeUndefined();
+      expect(leggiRispostaRisultatoSet({ ...riga, numeroSet: 0 })).toBeUndefined();
+      expect(leggiRispostaRisultatoSet({ ...riga, casa: -1 })).toBeUndefined();
+      expect(leggiRispostaRisultatoSet({})).toBeUndefined();
+    });
   });
 });
