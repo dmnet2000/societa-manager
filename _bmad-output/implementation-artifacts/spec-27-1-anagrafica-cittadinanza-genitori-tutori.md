@@ -57,7 +57,7 @@ context:
 
 **Execution:**
 - [x] `prisma/schema.prisma` -- `Atleta.cittadinanza`, model `TutoreAtleta` (id, atletaId, posizione Int, nome "Cognome Nome", codiceFiscale, luogoNascita?, dataNascita?, indirizzo?, cap?, localitaResidenza?, provinciaResidenza?, email?, telefono?, intestatarioRicevuta Boolean default false, utenteId?, createdAt, updatedAt) -- dati del modulo.
-- [x] `prisma/migrations/20261019000000_add_tutori_atleta/migration.sql` -- ALTER `atlete` ADD `cittadinanza`; CREATE `tutori_atleta`, CHECK `posizione IN (1,2)`, unique (atletaId, posizione), unique parziale su atletaId WHERE intestatarioRicevuta; ENABLE RLS, REVOKE, GRANT SELECT/INSERT/UPDATE/DELETE a authenticated, policy per ruolo come da Boundaries -- RLS obbligatoria.
+- [x] `prisma/migrations/20261124000000_add_tutori_atleta/migration.sql` -- ALTER `atlete` ADD `cittadinanza`; CREATE `tutori_atleta`, CHECK `posizione IN (1,2)`, unique (atletaId, posizione), unique parziale su atletaId WHERE intestatarioRicevuta; ENABLE RLS, REVOKE, GRANT SELECT/INSERT/UPDATE/DELETE a authenticated, policy per ruolo come da Boundaries -- RLS obbligatoria.
 - [x] `lib/db-rls/tutore-atleta.ts` (+ `.test.ts`) -- `elencaTutori(supabase)` e `salvaTutoriAtleta(supabase, atletaId, slot[])`: per ogni posizione, upsert su (atletaId, posizione) se compilato, delete se vuoto; prima le delete/il reset di `intestatarioRicevuta`, poi le scritture, per non violare l'indice parziale.
 - [x] `lib/eta.ts` (+ test) -- `isMinorenne(dataNascita, oggi)` pura.
 - [x] `lib/db-rls/atleta.ts` -- `cittadinanza` in tipo, select ed elenco.
@@ -92,10 +92,10 @@ Upsert per posizione invece di "cancella tutto e reinserisci": conserva `id`/`cr
 **Sicurezza dati (RLS)**
 
 - Punto d'ingresso: tabella nuova con RLS + REVOKE, policy per ruolo, nessun accesso Genitore
-  [`migration.sql:59`](../../prisma/migrations/20261019000000_add_tutori_atleta/migration.sql#L59)
+  [`migration.sql:59`](../../prisma/migrations/20261124000000_add_tutori_atleta/migration.sql#L59)
 
 - Indice unico parziale: al massimo un intestatario ricevuta per Atleta, garantito dal DB
-  [`migration.sql:45`](../../prisma/migrations/20261019000000_add_tutori_atleta/migration.sql#L45)
+  [`migration.sql:45`](../../prisma/migrations/20261124000000_add_tutori_atleta/migration.sql#L45)
 
 **Validazione e scrittura**
 
