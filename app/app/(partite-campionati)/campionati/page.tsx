@@ -9,6 +9,7 @@ import { ImportaGareForm } from "./ImportaGareForm";
 import { SincronizzaFipavForm } from "./SincronizzaFipavForm";
 import { EliminaCampionatoForm } from "./EliminaCampionatoForm";
 import { ModificaCampionatoForm } from "./ModificaCampionatoForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./campionati.module.css";
 
 // Dati mutabili in tempo reale (creazione/collegamento Campionato tramite
@@ -74,16 +75,17 @@ export default async function CampionatiPage() {
     <main>
       <TitoloPagina titolo="Campionati" contenuto={contenutoPerRotta("/app/campionati", ruoli)} />
       <div className={styles.scrollWrapper}>
-        <table className={styles.tabella}>
-          <thead>
-            <tr>
-              <th>Gruppo</th>
-              <th>Campionati</th>
-            </tr>
-          </thead>
-          <tbody>
-            {gruppi.map((gruppo) => (
-              <tr key={gruppo.id}>
+        <TabellaOrdinabile
+          className={styles.tabella}
+          colonne={[
+            { etichetta: "Gruppo" },
+            { etichetta: "Campionati", ordinabile: false },
+          ]}
+          righe={gruppi.map((gruppo) => ({
+            chiave: gruppo.id,
+            valori: [gruppo.nome, null],
+            riga: (
+              <tr>
                 <td>{gruppo.nome}</td>
                 <td>
                   <ul className={styles.listaAssegnati}>
@@ -115,9 +117,9 @@ export default async function CampionatiPage() {
                   <NuovoCampionatoForm gruppoId={gruppo.id} />
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            ),
+          }))}
+        />
       </div>
     </main>
   );

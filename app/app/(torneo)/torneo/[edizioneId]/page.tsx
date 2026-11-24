@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trovaEdizioneTorneoPerId, elencaCategorieTorneo } from "@/lib/torneo";
+import { trovaEdizioneTorneoPerId, elencaCategorieTorneo, elencaIdSquadreEdizioneTorneo } from "@/lib/torneo";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagina";
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { createClient } from "@/lib/supabase/server";
 import { leggiInfoVolantinoTorneo, urlPubblicoVolantinoTorneo } from "@/lib/storage/volantino-torneo";
+import { contaRoseEdizione } from "@/lib/db-rls/rosa";
+import { CancellaRoseEdizioneForm } from "../CancellaRoseEdizioneForm";
 import { NuovaCategoriaTorneoForm } from "../NuovaCategoriaTorneoForm";
 import { CategoriaTorneoRow } from "../CategoriaTorneoRow";
 import { VolantinoTorneoForm } from "./VolantinoTorneoForm";
 import { NomiSettimaneTorneoForm } from "./NomiSettimaneTorneoForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../torneo.module.css";
 
 // Story 20.1 (Epic 20, Torneo Memorial): mirror di
@@ -57,6 +60,16 @@ export default async function EdizioneTorneoPage({
     console.error(err);
     return { esiste: false, aggiornatoIl: null };
   });
+
+  // Story 3.13: numero di rose salvate, letto con la sessione (RLS). Fail-soft:
+  // un errore di lettura non deve rompere la pagina.
+  const numeroRose = await elencaIdSquadreEdizioneTorneo(edizione.id)
+    .then((squadraIds) => contaRoseEdizione(supabase, squadraIds))
+    .catch((err) => {
+      console.error("contaRoseEdizione", err instanceof Error ? err.name : "errore");
+      return null;
+    });
+  const eAdmin = ruoli.includes("ADMIN");
 
   return (
     <main>
@@ -106,6 +119,38 @@ export default async function EdizioneTorneoPage({
           Slot orari/Palestre →
         </Link>
       </p>
+      {/* Referto elettronico, story 2.5: assegnazione delle gare ai tablet. */}
+      <p className={styles.riepilogo}>
+        <Link className={styles.link} href={`/app/torneo/${edizione.id}/tablet`}>
+          Tablet del referto →
+        </Link>
+      </p>
+      {/* Referto elettronico, story 3.8: parametri del formato di gara. */}
+      <p className={styles.riepilogo}>
+        <Link className={styles.link} href={`/app/torneo/${edizione.id}/parametri`}>
+          Parametri del formato →
+        </Link>
+      </p>
+
+      {/* Story 3.13: privacy delle rose (nomi di minori), solo l'Admin puo'
+          cancellarle. */}
+      <section className={styles.sezione}>
+        <h2>Rose (dati personali)</h2>
+        <p className={styles.riepilogo}>
+          {numeroRose === null
+            ? "Numero di rose salvate non disponibile."
+            : numeroRose === 1
+              ? "1 rosa salvata."
+              : `${numeroRose} rose salvate.`}
+        </p>
+        <p>
+          Le rose contengono i nomi dei ragazzi. Usa la cancellazione a torneo concluso: l&apos;operazione non è
+          reversibile e i tablet riceveranno rose vuote.
+        </p>
+        {eAdmin && (
+          <CancellaRoseEdizioneForm edizioneId={edizione.id} nome={edizione.nome} anno={edizione.anno} />
+        )}
+      </section>
 
       <section className={styles.sezione}>
         <h2>Nuova Categoria</h2>
@@ -117,21 +162,22 @@ export default async function EdizioneTorneoPage({
         {categorie.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuna Categoria inserita.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Settimana</th>
-                <th>Numero massimo squadre</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categorie.map((categoria) => (
-                <CategoriaTorneoRow key={categoria.id} categoria={categoria} edizione={edizione} />
-              ))}
-            </tbody>
-          </table>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Settimana" },
+              { etichetta: "Numero massimo squadre" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={categorie.map((categoria) => ({
+              chiave: categoria.id,
+              // Settimana: valore dell'enum (SETTIMANA_1 < SETTIMANA_2), non
+              // il nome personalizzato mostrato - ordine cronologico.
+              valori: [categoria.nome, categoria.settimana, categoria.numeroMassimoSquadre, null],
+              riga: <CategoriaTorneoRow categoria={categoria} edizione={edizione} />,
+            }))}
+          />
         )}
       </section>
     </main>

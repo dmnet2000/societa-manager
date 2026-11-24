@@ -146,6 +146,70 @@ Il build/deploy tecnico va a buon fine (verificato dopo l'upgrade a Workers Paid
 2. **Attenzione ai deploy di anteprima** (Fase 2, punto 5: ogni branch/PR genera un deploy automatico): se le Variables and Secrets sono condivise a livello di intero progetto Worker (non scoping per ambiente), ogni visita a un URL di anteprima durante test/QA finisce nella STESSA dashboard Web Analytics della produzione, sporcando le statistiche. Se questo diventa un problema reale, valutare un secondo "sito" Web Analytics dedicato all'ambiente di anteprima (token diverso) o l'uso degli Environment separati di Cloudflare Workers Builds (non ancora configurati da questo progetto).
 3. Dopo il deploy, verificare (DevTools → Network, su una pagina pubblica) la richiesta a `static.cloudflareinsights.com/beacon.min.js` - se assente, il token non è stato propagato in fase di build (mai a runtime per una `NEXT_PUBLIC_*`, vedi Fase 5 sopra).
 
+## Ambiente di prova — progetto Supabase di prova + worker `societa-manager-preview` `[ ]`
+
+Nato con la story 2.1 del referto elettronico tornei (2026-10-27): l'app tablet in modalità `prova` chiama `/api/tablet/v1/*` su questo worker. **Mai** collegarlo al database o al progetto Supabase di produzione.
+
+1. **Progetto Supabase di prova**: Dashboard Supabase → nuovo progetto, regione EU, piano gratuito. Raccogliere le stesse variabili della Fase 1 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL` con `sslmode=require`), più un `CRON_SECRET` diverso da quello di produzione.
+2. **Migrazioni**: `DIRECT_URL="<session pooler del progetto di prova, ?sslmode=require>" npx prisma migrate deploy`. Verifica: `npx prisma migrate status` con la stessa `DIRECT_URL` dice che lo schema è aggiornato, e le migrazioni elencate coincidono con le cartelle di `prisma/migrations`; nella dashboard (Table Editor / Authentication → Policies) la RLS risulta attiva sulle stesse tabelle della produzione.
+3. **Utente di prova**: Authentication → Users → Add user → email e password, "Auto confirm". È l'utente con cui si fa il login sul tablet.
+4. **Segreti del worker di preview** (solo valori di prova), uno per uno:
+
+   ```bash
+   npx wrangler secret put NEXT_PUBLIC_SUPABASE_URL --config wrangler.preview.jsonc
+   npx wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --config wrangler.preview.jsonc
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.preview.jsonc
+   npx wrangler secret put DATABASE_URL --config wrangler.preview.jsonc
+   npx wrangler secret put CRON_SECRET --config wrangler.preview.jsonc
+   ```
+
+5. **Build e deploy da Windows** (decisione 2026-10-27; richiede la Modalità sviluppatore, vedi "Limite Windows" in Fase 4).
+
+   ⚠️ **Il build incorpora i file `.env*` della cartella.** `next build` inlinea le `NEXT_PUBLIC_*` lette da `.env`, `.env.production`, `.env.local`; in più `opennextjs-cloudflare build` copia **tutte** le variabili di quei file nel bundle del worker (`.open-next/cloudflare/next-env.mjs`) come valori di riserva per quelle non impostate su Cloudflare. Un build lanciato nella cartella di sviluppo, dove c'è `.env.production`, porterebbe nel worker di preview le chiavi e il database di **produzione**. Quindi il build si fa in un worktree separato che contiene solo i valori di prova:
+
+   ```powershell
+   git worktree add ..\societa-manager-prova <branch>
+   cd ..\societa-manager-prova
+   # .env.production con i SOLI valori di prova (gitignored); nessun .env né .env.local
+   # postinstall lancia `prisma generate`: prisma.config.ts legge DIRECT_URL
+   # (dotenv legge solo .env, che qui non c'è), quindi va impostata nella shell.
+   # Anche questa è la DIRECT_URL del progetto di PROVA, mai quella di produzione.
+   $env:DIRECT_URL="<session pooler del progetto di prova, ?sslmode=require>"
+   npm ci
+   npx opennextjs-cloudflare build
+   npx wrangler deploy --config wrangler.preview.jsonc
+   ```
+
+   Prima del deploy, controllare che `.open-next/cloudflare/next-env.mjs` contenga solo l'URL del progetto di prova.
+6. **Verifica**: `curl -i https://societa-manager-preview.<account>.workers.dev/api/tablet/v1/gare` → `401` con corpo JSON `{"error":{"code":"NON_AUTENTICATO",…}}`, mai un redirect a `/accedi`. Dalla story 2.2 serve anche l'header `-H "X-App-Versione: 1"`: senza, la risposta è `426` `APP_OBSOLETA`.
+7. **Versione minima dell'app tablet** (story 2.2, opzionale; vale per preview e produzione). Variabili del worker, non segreti (Settings → Variables and Secrets, oppure `vars` nel wrangler):
+
+   | Variabile | Significato | Default |
+   | --- | --- | --- |
+   | `TABLET_APP_VERSIONE_MINIMA` | Versione di protocollo minima accettata dall'API del tablet (header `X-App-Versione`, intero positivo). Sotto il minimo → `426 APP_OBSOLETA`. Un valore non valido vale 1 (con un avviso nel log). | assente = `1` |
+   | `TABLET_APK_URL` | Dove scaricare il nuovo APK, citato nel messaggio di `APP_OBSOLETA`. Se assente, il messaggio dice di chiedere il nuovo APK all'organizzatore. | assente |
+
+   Per rifiutare le APK vecchie basta alzare `TABLET_APP_VERSIONE_MINIMA` sul worker (e, se c'è, impostare `TABLET_APK_URL`): non serve ricompilare né l'app né il worker.
+
+## Referto elettronico tornei — rilascio in produzione `[x]`
+
+Fatto il 2026-11-15 (story 2.10 dell'initiative referto-elettronico). Riferimento per i rilasci successivi dell'app tablet e dell'API `/api/tablet/v1/*`.
+
+1. **Il codice arriva in produzione da solo** con il merge su `main` (Fase 2). Quindi una story del referto con una migrazione segue la Fase 3bis: `scripts\migrate-produzione.bat` (mostra le migrazioni in sospeso e chiede conferma) **prima** o insieme al merge. Migrazioni dell'epic tablet: `20261110000000_add_tablet_ruolo`, `20261112000000_add_assegnazioni_tablet`. Migrazioni dell'epic pre-gara e rose (epic 3): `20261115000000_add_parametri_formato`, `20261116000000_add_rose_squadra`, `20261120000000_add_cancella_rose_edizione`.
+2. **APK di produzione** (repo `referto-tornei`): `.env.produzione` (gitignored) con le sole `VITE_API_URL` (URL del sito, senza slash finale), `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (chiave pubblica). Poi `npm run android:produzione`, `gradlew assembleRelease` (se il daemon Gradle si chiude da solo: `--no-daemon`), `apksigner verify`, `adb install -r`. Prima di installare, controllare che negli asset dell'APK ci sia l'URL di produzione e non quello della preview.
+3. **Tablet**: Amministrazione → "Nuovo tablet" (nome e password scelti dall'Admin). Gare assegnate da Torneo → Edizione → "Tablet del referto".
+4. **Verifica di sicurezza** (la lancia l'Admin con le password di due tablet; sul database solo lettura. Dalla story 3.10 controlla anche le rose e i parametri: le righe delle rose lette dal tablet via PostgREST devono essere solo quelle delle sue gare, le rotte `rose` e `parametri` rifiutano le gare non assegnate, e i tentativi di scrittura su rose di altre squadre sono rifiutati. Questi tentativi sono innocui per costruzione e non scrivono nulla, neanche se l'accesso fosse aperto):
+
+   ```powershell
+   node scripts\verifica-sicurezza-tablet.mjs --env .env.production --api https://societa-manager.dmnet2000.workers.dev --con-disattivazione
+   ```
+
+   Richiede Node >= 22.18. Esito del 2026-11-15: tutte le tabelle negate o filtrate (58 negate, 26 vuote con righe nel database), bucket privati protetti, gare uguali alle assegnazioni, disattivazione rispettata; 10 voci "lette" dall'elenco dei file di 5 bucket pubblici, da correggere con la Story 11.6 (`_bmad-output/planning-artifacts/epics.md`).
+   Esito del 2026-11-21 (story 3.12, un solo tablet, senza `--con-disattivazione`, lanciata con `segreti\verifica-sicurezza-produzione-3-12.bat`): 11 ok, 63 negate, 26 vuote; rose e parametri di gare non assegnate rifiutati (409 RIASSEGNATA), scritture sulle rose rifiutate (403/400); restano solo le stesse 10 voci "lette" dei bucket pubblici (Story 11.6), per cui il codice di uscita e' 1.
+5. Variabili `TABLET_APP_VERSIONE_MINIMA` e `TABLET_APK_URL`: vedi il punto 7 di "Ambiente di prova"; in produzione non sono impostate (minimo 1).
+6. **Rilascio dell'epic 3** (story 3.12, 2026-11-21): APK di produzione compilato da `referto-tornei` `b2e5371` (copia in `C:\d\bmad-project\apk\referto-tornei-produzione-3.12.apk`). Prova dal vivo su un'Edizione passata (2026 U17) con rose dai nomi finti: rosa confermata su una gara e ritrovata precompilata su un'altra gara con la stessa squadra, rosa senza libero rifiutata, "Inizia la gara" bloccato senza segnapunti/sorteggio, "Cambi per set" cambiato dall'Admin e visto sul tablet dopo "Aggiorna" (poi rimesso a 8).
+7. **Privacy delle rose (GDPR)**: a fine torneo l'Admin preme "Cancella le rose" nella pagina dell'Edizione (funzione `cancella_rose_edizione`, solo ADMIN). Il tablet svuota la sua copia locale con "Esci" e per le gare non piu' assegnate. Usato anche per la pulizia dopo la prova del 2026-11-21.
+
 ## Riferimenti
 
 - Architettura completa: `_bmad-output/planning-artifacts/architecture/architecture-societa-manager-2026-07-13/ARCHITECTURE-SPINE.md` (AD-7 Cron, AD-11 Ruoli/Middleware, stack Cloudflare)

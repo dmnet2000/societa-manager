@@ -12,6 +12,7 @@ const RUOLI = [
   { value: "DIRIGENTE", label: "Dirigente" },
   { value: "ADMIN", label: "Admin" },
   { value: "SITE_MANAGER", label: "Site manager" },
+  { value: "DIRETTORE_TECNICO", label: "Direttore tecnico" },
 ];
 
 export function NuovoUtenteForm() {

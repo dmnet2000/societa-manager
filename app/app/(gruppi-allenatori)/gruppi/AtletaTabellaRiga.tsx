@@ -10,6 +10,8 @@ import {
 import { GenitoriTutoriForm } from "./GenitoriTutoriForm";
 import type { DatiGenitoriTutori } from "./genitori-tutori-per-atleta";
 import { formattaDataScadenzaCertificato } from "@/lib/certificato-in-scadenza-per-atleta";
+import type { ColonnaTabella } from "@/app/TabellaOrdinabile";
+import type { ValoreOrdinamento } from "@/lib/ordina-tabella";
 import styles from "./gruppi.module.css";
 
 // Richiesta utente 2026-08-07: Iscrizione/Tesseramento aggiunti SOLO qui
@@ -41,6 +43,33 @@ export type AtletaConStato = Atleta & {
   // salvati, sola rimozione) - assente -> nessun pulsante "Genitori".
   genitoriTutori?: DatiGenitoriTutori;
 };
+
+// Intestazioni e valori di ordinamento della tabella Atlete di un Gruppo -
+// condivisi da /gruppi (GruppoRow.tsx) e /i-miei-gruppi (MioGruppoCard.tsx),
+// che renderizzano le stesse righe. In crescente i "problemi" vengono prima:
+// certificato scaduto, poi in scadenza, poi regolare; Non iscritta prima di
+// Iscritta; Non tesserata prima di Tesserata (poi per Federazione).
+export const COLONNE_TABELLA_ATLETE: ColonnaTabella[] = [
+  { etichetta: "Nome" },
+  { etichetta: "Numero" },
+  { etichetta: "Certificato" },
+  { etichetta: "Iscrizione" },
+  { etichetta: "Tesseramento" },
+  { etichetta: "Rimuovi", ordinabile: false },
+];
+
+export function valoriOrdinamentoAtleta(atleta: AtletaConStato): ValoreOrdinamento[] {
+  return [
+    atleta.nome,
+    atleta.numero,
+    atleta.certificatoScaduto ? 0 : atleta.certificatoInScadenza ? 1 : 2,
+    atleta.iscritta ? 1 : 0,
+    atleta.federazioniTesseramento.length > 0
+      ? `1 ${atleta.federazioniTesseramento.join(", ")}`
+      : "0",
+    null,
+  ];
+}
 
 // Richiesta utente 2026-08-06 (estensione Story 9.33): nome completo
 // dell'Atleta, gia' "Cognome Nome" per convenzione pre-esistente

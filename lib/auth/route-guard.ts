@@ -182,6 +182,15 @@ export const PROTECTED_ROUTES: {
     gruppo: "Atleti",
   },
   {
+    // Story 28.4 (Epic 28): export completo per Atleta + i tre export di
+    // sezione, solo Admin (decisione utente 2026-10-25). Ultima figlia del
+    // gruppo "Atleti".
+    prefix: "/app/export-dati",
+    ruoliAmmessi: ["ADMIN"],
+    navLabel: "Export dati",
+    gruppo: "Atleti",
+  },
+  {
     // Story 15.2 (Epic 15): prima applicazione reale del campo "gruppo"
     // introdotto come infrastruttura pura da Story 15.1 - raggruppa con
     // /palestre sotto la voce di menu "Orari/Palestre". Nessun cambio a
@@ -232,6 +241,14 @@ export const PROTECTED_ROUTES: {
     prefix: "/app/gruppi",
     ruoliAmmessi: ["ADMIN", "DIRIGENTE", "SEGRETERIA"],
     navLabel: "Gruppi",
+  },
+  {
+    // Ruolo Direttore Tecnico: composizione di tutti i Gruppi della
+    // stagione con stato Iscrizione/Tesseramento, in sola lettura - pagina
+    // separata da /app/gruppi (gestione), il cui perimetro resta invariato.
+    prefix: "/app/composizione-gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRETTORE_TECNICO"],
+    navLabel: "Composizione gruppi",
   },
   {
     prefix: "/app/i-miei-gruppi",
@@ -352,6 +369,7 @@ export const PROTECTED_ROUTES: {
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     navLabel: "Sponsor",
     // Story 19.4: seconda figlia del gruppo "Gestione sito" (vedi
@@ -456,6 +474,7 @@ export const PROTECTED_ROUTES: {
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     navLabel: "Guida",
   },
@@ -595,6 +614,16 @@ export function isRouteHandlerCron(pathname: string): boolean {
 // Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.
 export function isRouteHandlerHealth(pathname: string): boolean {
   return pathname === "/api/health";
+}
+
+// Story 2.1 (epic tablet-collegato, referto elettronico tornei): l'API del
+// tablet e' chiamata dall'app Capacitor, non da un browser - non ha cookie
+// di sessione e un redirect HTML a /accedi non ha senso. Ogni Route Handler
+// sotto "/api/tablet/v1/" verifica da se' il JWT Bearer (unico punto:
+// lib/api-tablet/autenticazione.ts) e risponde 401 NON_AUTENTICATO.
+// Limitata al prefisso versionato, stesso principio di isRouteHandlerCron.
+export function isRouteHandlerTablet(pathname: string): boolean {
+  return pathname.startsWith("/api/tablet/v1/");
 }
 
 // Story 12.3: esportata (era privata), stesso motivo di isPublicRoute sopra.

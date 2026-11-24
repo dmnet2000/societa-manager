@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { parseDataUtc } from "@/lib/raggruppa-per-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./partite.module.css";
 
 type PartitaGruppo = {
@@ -60,26 +61,36 @@ export function TabellaPartiteGruppo({
 
       {visibile && (
         <div id={idTabella} className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <caption className={styles.srOnly}>
-              Tutte le partite di {gruppoNome}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Giorno</th>
-                <th scope="col">Ora</th>
-                <th scope="col">Squadre</th>
-                <th scope="col">Luogo</th>
-                <th scope="col">Campionato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {partite.map((partita) => {
-                const linkNaviga = costruisciLinkNaviga({
-                  indirizzo: partita.indirizzoImpianto,
-                });
-                return (
-                  <tr key={partita.id}>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            didascalia={
+              <caption className={styles.srOnly}>
+                Tutte le partite di {gruppoNome}
+              </caption>
+            }
+            colonne={[
+              { etichetta: "Giorno" },
+              { etichetta: "Ora" },
+              { etichetta: "Squadre" },
+              { etichetta: "Luogo" },
+              { etichetta: "Campionato" },
+            ]}
+            righe={partite.map((partita) => {
+              const linkNaviga = costruisciLinkNaviga({
+                indirizzo: partita.indirizzoImpianto,
+              });
+              return {
+                chiave: partita.id,
+                // Giorno: data ISO con l'ora come spareggio (cronologico).
+                valori: [
+                  `${partita.data} ${partita.ora}`,
+                  partita.ora,
+                  `${partita.squadraCasa} - ${partita.squadraOspite}`,
+                  partita.impianto,
+                  partita.campionatoNome,
+                ],
+                riga: (
+                  <tr>
                     <td>{formattaData(partita.data)}</td>
                     <td>{partita.ora}</td>
                     <td>
@@ -104,10 +115,10 @@ export function TabellaPartiteGruppo({
                     </td>
                     <td>{partita.campionatoNome}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ),
+              };
+            })}
+          />
         </div>
       )}
     </section>

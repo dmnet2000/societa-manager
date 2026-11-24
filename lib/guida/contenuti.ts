@@ -20,6 +20,11 @@ export type ContenutoGuida = {
 // Pilota su due rotte reali per validare entrambi gli scoping:
 // - "/app/sponsor": tutti i Ruoli (Story 16.2; Story 19.3 aggiunge SITE_MANAGER, settimo Ruolo).
 // - "/app/palestre": solo ADMIN/DIRIGENTE (Story 2.1).
+// Frase comune alle pagine le cui tabelle usano TabellaOrdinabile
+// (app/TabellaOrdinabile.tsx) - una sola fonte, mai copie da allineare.
+const FRASE_ORDINAMENTO_TABELLE =
+  "Puoi ordinare le tabelle di questa pagina cliccando sull'intestazione di una colonna: il primo clic ordina in modo crescente, il clic successivo sulla stessa colonna inverte la direzione (una freccia indica la colonna e la direzione). Le celle vuote restano sempre in fondo; ricaricando la pagina torna l'ordine iniziale.";
+
 export const CONTENUTI_GUIDA: ContenutoGuida[] = [
   {
     rotta: "/app/sponsor",
@@ -34,6 +39,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "DIRIGENTE",
       "ADMIN",
       "SITE_MANAGER",
+      "DIRETTORE_TECNICO",
     ],
     corpo: [
       "In questa sezione trovi i Banner pubblicitari e le Convenzioni attive della società, con immagine e descrizione.",
@@ -75,8 +81,11 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "L'elenco parte ordinato per Nome. Per cambiare ordine clicca sulle intestazioni \"Nome\", \"Gruppo\" o \"Stato Iscrizione\": il primo clic su una nuova colonna ordina in modo crescente, il clic successivo sulla stessa colonna inverte la direzione (una freccia indica la colonna e la direzione). Ordinando per Gruppo le Atlete senza Gruppo restano sempre in fondo; ordinando per Stato in modo crescente le Atlete \"Non iscritta\" compaiono per prime. Dopo una conferma o un'esclusione l'elenco si aggiorna da solo e la riga si sposta al suo nuovo posto, mantenendo l'ordinamento scelto. L'ordinamento si combina con la ricerca; ricaricando la pagina l'elenco torna ordinato per Nome.",
       "Solo la Segreteria può confermare o escludere un'iscrizione - Admin e Dirigente vedono l'elenco in sola lettura.",
       "Un'Atleta senza iscrizione confermata non compare come iscritta nelle altre sezioni dell'app (es. Conferma tesseramenti).",
+      "Accanto a ogni Atleta iscritta compare la data della conferma (\"Iscritta il ...\"): è il giorno in cui la Segreteria ha premuto \"Conferma\". Se un'iscrizione esclusa viene riconfermata, la data diventa quella della nuova conferma.",
+      "Se sei Admin ricevi una mail ogni volta che la Segreteria conferma una nuova iscrizione, con nome dell'Atleta, Gruppo, data della conferma e un link a questa pagina - utile per sapere chi tesserare o aggiungere a un Gruppo.",
       "La colonna \"Gruppo\" mostra a quale Gruppo (o Gruppi) l'Atleta è già assegnata per la stagione corrente - mostra un trattino (–) finché non viene assegnata da /app/gruppi.",
       "\"Escludi\" e \"Rimuovi dalla società\" non sono la stessa cosa: \"Escludi\" toglie l'iscrizione solo per la stagione corrente, l'Atleta resta nell'anagrafica e puoi riconfermarla in seguito. \"Rimuovi dalla società\" (Segreteria, Admin o Dirigente) è definitiva - l'Atleta sparisce da tutti gli elenchi operativi e dal sito pubblico finché non la ripristini dalla sezione \"Atlete rimosse\" in fondo a questa pagina, mantenendo comunque tutto lo storico (presenze, certificati, tesseramenti).",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, categoria, Gruppo, se è iscritta e la data dell'iscrizione, email e cellulare. La ricerca e l'ordinamento a schermo non cambiano il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {
@@ -88,7 +97,10 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Per trovare un'Atleta usa il campo \"Cerca\" sopra le sezioni: puoi scrivere il cognome, il nome o il codice fiscale (anche solo una parte). La ricerca filtra sia \"Da confermare\" sia \"Confermati\"; se scrivi più parole, l'Atleta deve contenerle tutte.",
       "La sezione \"Da confermare\" mostra chi ha un Certificato in attesa (o nessun Certificato caricato); \"Confermati\" mostra chi è già a posto, con lo stato di scadenza in evidenza.",
       "Admin e Dirigente possono anche modificare un Certificato già confermato, se serve correggere una data.",
+      "Quando alleghi o sostituisci una scansione, i file pesanti vengono ottimizzati automaticamente sul tuo dispositivo prima dell'invio: i PDF oltre 1MB vengono ricompressi (il testo del PDF ricompresso non resta selezionabile) e le foto pesanti o molto grandi vengono ridimensionate e salvate in JPG. I PDF firmati digitalmente vengono inviati così come sono, per non invalidare la firma. Se l'ottimizzazione non riesce viene inviato il file originale.",
+      "Sotto il nome di ogni Atleta, sia in \"Da confermare\" sia in \"Confermati\", vedi dove è tesserata nella stagione corrente (es. \"Tesserata · FIPAV, CSI\") oppure \"Non tesserata\". È solo un'informazione: i tesseramenti li gestiscono Admin e Dirigente da Conferma tesseramenti.",
       "Se sei Admin ricevi una mail ogni volta che viene caricato un nuovo Certificato, con nome dell'Atleta, Gruppo, data/ora del caricamento e un link a questa pagina - il file non è allegato, per vederlo devi accedere all'app. Se il tuo indirizzo coincide con l'email della Segreteria ricevi una sola mail, quella della Segreteria.",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, Gruppo, stato del Certificato (Da confermare, In regola, In scadenza, Scaduto, Senza certificato), date di validità e se il file è stato caricato. La ricerca a schermo non filtra il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {
@@ -104,6 +116,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Una federazione disattivata compare solo se qualche Atleta vi è ancora tesserata in questa stagione: puoi togliere la casella, ma non aggiungerla a nuove Atlete.",
       "Le modifiche riguardano solo la stagione corrente: i tesseramenti delle stagioni passate non vengono toccati.",
       "Il Tesseramento è indipendente dall'Iscrizione: puoi tesserare anche un'Atleta non ancora iscritta.",
+      "Con \"Esporta Excel\" scarichi un file Excel con tutte le Atlete della stagione (escluse quelle rimosse), in ordine di nome: codice fiscale, data di nascita, Gruppo, se è iscritta, se è tesserata e una colonna per ogni federazione della tabella, con \"Sì\" dove l'Atleta è tesserata. Il file riporta i tesseramenti salvati: le caselle spuntate e non ancora salvate non ci sono, e l'ordinamento a schermo non cambia il file. Il file contiene dati personali, anche di minori: conservalo con cura e non inoltrarlo a chi non ne ha bisogno.",
     ],
   },
   {
@@ -118,6 +131,17 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "\"Elimina\" cancella definitivamente una federazione e chiede conferma prima di procedere. Una federazione già usata in un tesseramento non può essere eliminata: in quel caso disattivala.",
     ],
   },
+  {
+    rotta: "/app/export-dati",
+    titolo: "Export dati",
+    ruoliAmmessi: ["ADMIN"],
+    corpo: [
+      "Qui scarichi in Excel i dati delle Atlete della stagione corrente - solo l'Admin vede questa pagina.",
+      "\"Export completo\" crea un unico file con una riga per ogni Atleta (escluse quelle rimosse), in ordine di nome: anagrafica (codice fiscale, sesso, data e luogo di nascita, indirizzo, email, cellulare, categoria, matricola), Gruppo, stato e scadenza del Certificato medico, iscrizione con la data, tesseramento con le sigle delle federazioni.",
+      "Stato del Certificato, iscrizione e tesseramento sono calcolati esattamente come negli export delle pagine Conferma certificati, Conferma iscrizioni e Conferma tesseramenti, che trovi anche qui sotto \"Export per sezione\".",
+      "I file contengono dati personali, anche di minori: conservali con cura e non inoltrarli a chi non ne ha bisogno.",
+    ],
+  },
   // Orari/Palestre.
   {
     rotta: "/app/orari",
@@ -127,6 +151,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui vedi gli Slot (giorno, orario, campo) della stagione corrente divisi in una sezione per ciascun Gruppo, filtrabili per Palestra o per un singolo Gruppo.",
       "Un Gruppo senza Slot nel filtro attuale compare comunque, con un messaggio esplicito - così vedi subito quali Gruppi non hanno ancora orari assegnati.",
       "Questa vista è pensata per la Segreteria: sola lettura, nessuna creazione o modifica di Slot da qui.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -137,6 +162,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui crei e modifichi gli Slot settimanali: giorno, orario, Campo e Gruppo a cui è assegnato.",
       "Uno Slot creato qui resta fisso per l'intera stagione (Anno Agonistico) - per cambiarlo in corso di stagione, modificalo direttamente dalla riga corrispondente.",
       "Gli Slot creati qui sono quelli che compaiono poi in \"Il mio orario\" per Allenatori e Atlete, e nella vista Segreteria (/app/orari).",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   // Gruppi/Allenatori.
@@ -149,6 +175,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui crei i Gruppi della stagione e assegni le Atlete a ciascuno di essi.",
       "Puoi correggere nome e categoria di un Gruppo già creato con \"Modifica\", accanto alla categoria di ogni riga - non serve cancellare e ricreare il Gruppo per sistemare un errore di inserimento.",
+      "Puoi scegliere l'ordine di visualizzazione dei Gruppi con le frecce ↑ e ↓ accanto al nome di ogni riga (Admin e Dirigente). È lo stesso ordine usato in \"Ordine squadre\", quindi vale anche per la pagina pubblica delle squadre e per le classifiche. Se invece ordini l'elenco cliccando su Nome o Categoria, il browser ricorda la tua scelta alla visita successiva (solo per te, su quel dispositivo).",
       "Ogni riga mostra anche gli Allenatori assegnati e lo stato di Iscrizione/Tesseramento/Certificato Medico delle Atlete del Gruppo (per il Tesseramento anche le sigle delle federazioni, es. \"Tesserata · FIPAV, CSI\"), con un badge se un Certificato è in scadenza.",
       "Per ogni Atleta puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) - due Atlete dello stesso Gruppo possono avere lo stesso Numero, nessun controllo lo impedisce.",
       // Story 9.45: nuova capacita' - pulsante "Modifica" accanto al nome di
@@ -166,6 +193,19 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       // lettura su tutto il resto della pagina (creazione/modifica Gruppi,
       // assegnazione Allenatori/Atlete).
       "Se sei Segreteria vedi questa stessa pagina in sola lettura: nome Gruppo, categoria ed elenco Atlete di ciascun Gruppo, senza alcuna azione di creazione o modifica sui Gruppi - per quello serve il Ruolo Admin o Dirigente. Un'unica eccezione: puoi comunque correggere i dati anagrafici di un'Atleta con \"Modifica\" e, per un'Atleta minorenne, i suoi Genitori/Tutori con \"Genitori\", accanto al suo nome.",
+      FRASE_ORDINAMENTO_TABELLE,
+    ],
+  },
+  {
+    // Ruolo Direttore Tecnico: mirror di ruoliAmmessi per
+    // /app/composizione-gruppi in route-guard.ts.
+    rotta: "/app/composizione-gruppi",
+    titolo: "Composizione gruppi",
+    ruoliAmmessi: ["ADMIN", "DIRETTORE_TECNICO"],
+    corpo: [
+      "Qui vedi tutti i Gruppi della stagione corrente, ciascuno con l'elenco delle sue Atlete in ordine alfabetico.",
+      "Accanto a ogni Atleta trovi se è iscritta alla stagione (\"Iscritta\" o \"Non iscritta\") e se è tesserata, con la sigla di ogni Federazione con cui è tesserata, oppure \"Non tesserata\". In testa a ogni Gruppo c'è il riepilogo: quante Atlete, quante iscritte, quante tesserate.",
+      "La pagina è in sola lettura: l'assegnazione delle Atlete ai Gruppi e la conferma di iscrizioni e tesseramenti restano compiti di Admin e Dirigenza, dalle rispettive pagine.",
     ],
   },
   {
@@ -180,6 +220,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui carichi o sostituisci la foto di squadra di ogni Gruppo della stagione corrente, mostrata sul sito pubblico.",
       "Questa vista mostra solo il controllo foto - per creare Gruppi o assegnare Allenatori/Atlete serve il Ruolo Admin o Dirigente su /app/gruppi.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -250,6 +291,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui imposti la descrizione personale e i ruoli aggiuntivi (es. \"Team Manager\", \"Preparatore Atletico\") di ogni Allenatore assegnato a un Gruppo nella stagione corrente, mostrati sulla pagina pubblica \"/staff\".",
       "I ruoli aggiuntivi sono etichette libere (max 40 caratteri ciascuna): aggiungine quante ne servono con \"Aggiungi\", oppure rimuovine una alla volta prima di salvare. Un solo salvataggio aggiorna insieme descrizione e intero elenco di ruoli.",
       "Questa vista mostra solo questi due campi - per creare Allenatori o assegnarli a un Gruppo serve il Ruolo Admin o Dirigente su /app/gruppi.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -261,6 +303,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Puoi aggiungere o rimuovere un'Atleta dal Gruppo direttamente da qui: l'assegnazione è sempre additiva, non toglie l'Atleta da altri Gruppi.",
       "Puoi impostare un Numero di maglia (facoltativo, specifico di questa stagione) per ogni Atleta del tuo Gruppo.",
       "Se non gestisci ancora nessun Gruppo, contatta la segreteria per farti assegnare.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -293,6 +336,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Come Allenatore vedi invece una griglia mensile per Gruppo, un'Atleta per riga e una colonna per ogni giorno del mese selezionato.",
       "Come Segreteria vedi la stessa griglia mensile, ma per qualsiasi Gruppo della stagione corrente, non solo per i tuoi.",
       "Le presenze mostrate riflettono lo Slot attuale (giorno/ora/Gruppo) al momento della visualizzazione, non uno snapshot storico immutabile.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   // Certificati/Notifiche/Configurazione.
@@ -305,6 +349,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Se sei Genitore con più figlie, seleziona prima l'Atleta con il menu in alto.",
       "Lo stato mostrato (in regola, in scadenza, scaduto, in attesa di conferma) si aggiorna solo dopo che la Segreteria ha confermato il Certificato caricato.",
       "Se l'Atleta non è più tesserata con la società (rimossa dalla Segreteria), questa pagina mostra un messaggio esplicito al posto del modulo di caricamento - nessuna email viene inviata in questo caso.",
+      "I file pesanti vengono ottimizzati automaticamente sul tuo dispositivo prima dell'invio: i PDF scansionati oltre 1MB vengono ricompressi (il testo non resta selezionabile, ma il Certificato resta leggibile) e le foto pesanti o molto grandi vengono ridimensionate e salvate in JPG. I PDF firmati digitalmente vengono inviati così come sono, per non invalidare la firma. Se l'ottimizzazione non riesce, viene inviato il file originale.",
     ],
   },
   {
@@ -384,6 +429,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Come Atleta vedi solo le tue misurazioni; come Allenatore selezioni prima l'Atleta tra quelle dei tuoi Gruppi.",
       "Per i parametri con più tentativi nello stesso giorno (es. test di elevazione), il grafico mostra solo il valore migliore per data.",
       "Se non sei più tesserata con la società (rimossa dalla Segreteria), questa pagina mostra un messaggio esplicito al posto delle tue misurazioni.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -414,10 +460,12 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui colleghi ogni Gruppo ai Campionati a cui partecipa, con un link al calendario FIPAV per l'import automatico delle partite.",
       "Un Allenatore vede e gestisce solo i Campionati dei propri Gruppi; Admin e Dirigente vedono tutti i Gruppi della stagione.",
       "Le partite importate da qui compaiono poi nella pagina Partite.",
+      "Con \"Importa gare (Excel)\" carichi il calendario da file: va bene sia l'export gare FIPAV sia il calendario Excel del CSI, il formato viene riconosciuto da solo. Ricaricare lo stesso file aggiorna le partite già importate invece di duplicarle. Dal file CSI vengono presi numero gara, giornata (es. \"2ª Andata\"), squadre, data, ora e palestra con indirizzo; il CSI non riporta i risultati, che si inseriscono a mano dalla pagina Partite. Ricaricare il file non cancella i risultati già inseriti.",
       "Se il Campionato ha un link al portale FIPAV, il bottone \"Sincronizza da FIPAV\" scarica calendario e risultati direttamente da lì: crea le partite nuove e aggiorna quelle esistenti. Se una partita è stata corretta a mano nella pagina Partite (data/ora/impianto), la sincronizzazione non sovrascrive più quei campi per quella partita, ma aggiorna comunque risultato e parziali.",
       "Da \"Modifica\" puoi anche assegnare un colore personalizzato al Campionato: serve solo a distinguerlo visivamente sul sito pubblico, dove diventa lo sfondo della riga di ogni sua partita (calendario, partite della settimana e risultati della settimana scorsa in home; la data resta sempre nel blocco rosso a sinistra) e della fascia del titolo della sua classifica (pagina \"Classifiche\"), è del tutto facoltativo. Nella vista \"Mese\" del calendario pubblico lo stesso colore identifica anche il Campionato nella legenda, dove il visitatore può scegliere con le caselle quali Campionati vedere; toccando o cliccando una partita nella vista \"Mese\" si apre una finestra con tutti i suoi dettagli (palestra, indirizzo con link Naviga, giornata, stato, risultato e parziali quando disponibili), che si chiude con ×, con il tasto Esc o toccando fuori dalla finestra.",
       "Se il Campionato ha un link al portale FIPAV, la home pubblica del sito mostra anche i risultati della settimana scorsa di quel Campionato, e la pagina pubblica \"Classifiche\" (raggiungibile dal menu) ne mostra la classifica aggiornata in una tabella con tutte le colonne (posizione in un quadratino rosso, punti in risalto). La riga della nostra squadra è evidenziata: il sito la riconosce da solo guardando le partite del Campionato, senza nulla da impostare. Nelle prime giornate, quando le partite sono ancora poche, oppure se sul portale il nome della squadra è scritto in modo diverso tra partite e classifica, può capitare che non venga evidenziata: la classifica resta comunque completa. Entrambe sono lette in tempo reale dal portale a ogni visita, nessuna azione da fare qui, è automatico e indipendente dal bottone \"Sincronizza da FIPAV\" sopra (quello aggiorna solo i dati interni della pagina Partite). Il calendario pubblico (vista Elenco) e le \"Partite della settimana\" in home mostrano invece il risultato delle partite già giocate prendendolo dai dati interni della pagina Partite: compare non appena la sincronizzazione FIPAV (manuale o automatica) lo ha scaricato, al posto dell'orario che resta scritto in piccolo sotto.",
       "Oltre al bottone manuale, ogni Campionato con un link al portale FIPAV viene sincronizzato anche automaticamente in background, con la stessa logica (crea le partite nuove, aggiorna quelle esistenti, non sovrascrive una partita corretta a mano). Avviene ogni notte alle 2:00, un Campionato alla volta con un minuto di pausa tra l'uno e l'altro: un risultato pubblicato in serata sul portale compare quindi la mattina dopo. Per vederlo subito usa il bottone \"Sincronizza da FIPAV\", sempre disponibile.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -428,7 +476,9 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui vedi il calendario delle partite, raggruppate per settimana, con giorno, ora, luogo e link per navigare all'impianto.",
       "Admin, Dirigente e Allenatore possono modificare i dati di una partita; Atleta e Genitore vedono l'elenco in sola lettura, scoped alle proprie Atlete/Gruppi.",
       "Un Genitore con più figlie deve selezionare l'Atleta per vedere le sue partite, come nelle altre pagine con più profili collegati.",
+      "Il risultato di una partita, quando c'è, compare accanto alle squadre. Per i Campionati senza link al portale FIPAV (per esempio quelli CSI, il cui portale non può essere letto in automatico) Admin, Dirigente e Allenatore lo inseriscono a mano da \"Modifica\": risultato a set (es. 3-1) e, se vuoi, i parziali (es. 25-19 23-25 25-20 25-18). Svuotando il campo il risultato viene tolto. Una volta salvato compare anche nel calendario pubblico del sito. Per i Campionati con link FIPAV i campi non ci sono, perché il risultato arriva dalla sincronizzazione.",
       "Se vedi le partite di più Gruppi mescolate tra le settimane (Admin, Dirigente, o Allenatore di più Gruppi), in fondo alla pagina trovi una sezione \"Partite per Gruppo\": un bottone per ciascun Gruppo rivela tutte le sue partite della stagione raccolte in un'unica tabella, senza dover scorrere ogni settimana.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -440,8 +490,12 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Un utente disattivato non può più accedere all'app, ma i suoi dati storici (es. presenze registrate) restano invariati.",
       "Se un Utente ha sbagliato a digitare l'email in fase di registrazione e non ha mai confermato l'account, compare qui il campo \"Correggi email\": corregge l'indirizzo e reinvia subito un nuovo link di conferma. Disponibile solo finché l'Utente non ha mai confermato l'account.",
       "\"Correggi email\" rifiuta sempre un bersaglio con Ruolo Admin (usa un altro account per correggere quello), e rifiuta anche se il nuovo indirizzo è già in uso da un altro Utente.",
-      "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin e Site Manager restano soggetti all'attivazione manuale da questa pagina.",
+      "Dalla Story 9.41, chi si auto-registra con Ruolo Segreteria e/o Dirigente non finisce più qui in attesa di attivazione: la registrazione viene rifiutata subito se l'email non è stata precaricata prima da /app/precaricamento-ruoli. Solo Admin, Site Manager e Direttore tecnico restano soggetti all'attivazione manuale da questa pagina. Il Ruolo Direttore tecnico, che dà accesso in sola lettura alla pagina Composizione gruppi, si assegna da qui.",
       "Un Genitore già registrato può risultare collegato a una sola figlia/o (il Codice Fiscale inserito in registrazione ne aggancia solo una): per ogni Utente con Ruolo Genitore trovi qui la colonna \"Figli collegati\", con l'elenco delle Atlete già agganciate e un campo per collegarne un'altra inserendo il suo Codice Fiscale. Un Codice Fiscale già collegato a questo stesso Genitore restituisce un errore esplicito, nessun duplicato; nessuna funzione per rimuovere un aggancio esistente.",
+      "Da \"Nuovo tablet\" crei l'utente dedicato a un tablet del referto elettronico, col solo nome (es. campo1) e una password: niente email. Il nome va da 3 a 30 caratteri tra lettere senza accenti, cifre e trattino, e inizia con una lettera; maiuscole e spazi ai bordi non contano. Il tablet entra solo dall'app del referto con quel nome e quella password: non può accedere a questo sito. In elenco compare con il Ruolo \"Tablet\", che non si assegna ad altri utenti e non si toglie.",
+      "Se un tablet viene perso o rubato, premi \"Disattiva\" sulla sua riga: dalla richiesta successiva l'app del referto torna alla schermata di accesso e non riesce più a entrare, nemmeno con la password giusta. \"Riattiva\" lo sblocca e il tablet può accedere di nuovo con la sua password.",
+      "Con \"Cambia password\" sulla riga del tablet scegli una nuova password (ti viene chiesta una conferma): il tablet torna subito alla schermata di accesso e da quel momento entra solo con la password nuova. Comunicala tu a chi usa il tablet: non parte nessuna email. \"Reimposta password\" con la password fissa non vale per i tablet.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -452,6 +506,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Qui precarichi un'email con Ruolo Segreteria e/o Dirigente prima che la persona si registri: solo un'email precaricata per un Ruolo può completare la registrazione con quel Ruolo.",
       "A differenza degli altri Ruoli, Segreteria e Dirigente non passano dal gate di conferma Admin: appena la registrazione supera il controllo di precaricamento, l'account parte già attivo, senza bisogno di attivarlo da /app/admin.",
       "Una voce (email) con almeno un Ruolo già agganciato a un account registrato non è più modificabile né cancellabile: per correggere un'email sbagliata, cancellala (se non ancora agganciata) e ricreala.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -461,6 +516,7 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
     corpo: [
       "Qui precarichi l'anagrafica degli Allenatori (nome, cognome, codice fiscale) prima che si registrino, così puoi già assegnarli a un Gruppo.",
       "Quando un Allenatore precaricato completa la registrazione con lo stesso codice fiscale, il suo account si collega automaticamente al profilo già creato qui.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
   {
@@ -543,6 +599,11 @@ export const CONTENUTI_GUIDA: ContenutoGuida[] = [
       "Sulla pagina \"Risultati e classifica\" (girone) e \"Tabellone semifinali/finali\", ogni incontro ha un menu per assegnargli uno degli Slot compatibili con la sua fase, oppure per togliere l'assegnazione esistente. Se scegli uno Slot già assegnato a un altro incontro, l'app te lo segnala e ti chiede conferma prima di sovrascriverlo - non c'è alcun blocco, solo un avviso. Il menu nasconde automaticamente uno Slot quando, insieme, la sua Settimana è precedente a quella della Categoria che stai gestendo ED è già occupato da un altro incontro: uno Slot di Settimana passata ma ancora libero resta invece visibile, così come uno Slot occupato ma della Settimana giusta (o successiva) resta visibile con il consueto avviso \"(occupato)\". Lo Slot già assegnato a QUESTO incontro non sparisce mai dal suo stesso menu, qualunque sia la sua Settimana.",
       "Quando generi il tabellone semifinali/finali o quando si generano da sole le finali, il sistema assegna in automatico uno Slot libero della fase giusta a ogni nuovo incontro, se ce n'è uno disponibile: nessun errore né blocco se non ce ne sono, l'incontro resta semplicemente senza Slot finché non ne assegni uno a mano.",
       "Ogni incontro generato (di girone, semifinale o finale) mostra anche il proprio numero di gara (\"Gara N\"): una sequenza unica che attraversa l'intera Edizione, non ricomincia mai per Categoria né per fase, ed è sempre calcolata automaticamente - non è mai un campo che puoi modificare a mano.",
+      "Dentro un'Edizione, in \"Tablet del referto\" scegli quale tablet compila il referto elettronico di ciascuna gara: l'elenco mostra tutte le gare dell'Edizione con numero, Categoria, incontro e Slot, e per ognuna un menu con i tablet attivi (quelli creati da Amministrazione con \"Nuovo tablet\") più \"Nessun tablet\". Ogni gara ha al massimo un tablet, l'unico che potrà scriverne il referto. Se un tablet si guasta, sposta le sue gare su un altro: ogni cambio di tablet fa salire di 1 il numero \"Epoca\" della gara, e un tablet con un'epoca vecchia non potrà più scrivere su quella gara. Un tablet disattivato non si può assegnare a nuove gare; su quelle che aveva già resta indicato come \"(disattivato)\" finché non le sposti. Se cancelli le partite di una Categoria, anche le loro assegnazioni ai tablet vengono cancellate.",
+      "Dentro un'Edizione, in \"Parametri del formato\" imposti le regole di gioco che il tablet userà per il referto (set per vincere, punti per set e per il set decisivo, scarto minimo, cambi e timeout per set, liberi minimi e massimi, giocatori in rosa). Il modulo \"Edizione\" vale per tutte le Categorie; sotto, ogni Categoria ha le sue eccezioni: un campo lasciato vuoto eredita il valore dell'Edizione o, se anche quello è vuoto, il default. Sotto ogni campo vedi il \"Valore effettivo\" che il tablet riceverà. I valori sono controllati al salvataggio (per ora i set per vincere possono essere solo 2). Il tablet riceve i parametri al successivo \"Aggiorna\" dell'elenco gare; una gara già iniziata mantiene i parametri con cui è partita.",
+      "Dentro una Categoria, accanto a ogni Squadra trovi il collegamento \"Rosa\": da lì puoi vedere i giocatori e i tesserati, correggerli o inserirli in anticipo, prima del torneo. La rosa è la stessa che usano i tablet: quello che salvi qui lo trova il tablet, e viceversa. Valgono le regole del formato della Categoria (giocatori massimi, liberi, numeri di maglia diversi, un solo capitano), e sulla pagina vedi la versione attuale. Se compare il messaggio \"La rosa è stata modificata (dal tablet o da un altro utente) dopo che hai aperto la pagina\", qualcun altro ha salvato nel frattempo: nulla è stato sovrascritto, ricarica la pagina per vedere la rosa attuale e rifai la tua correzione.",
+      "A torneo concluso, solo l'Admin trova in ogni Edizione la sezione \"Rose (dati personali)\": mostra quante rose sono salvate e, con \"Cancella le rose dell'Edizione\" (dopo una conferma), le cancella tutte in un colpo solo, con giocatori, tesserati e storico delle modifiche. Serve alla privacy, perché le rose contengono i nomi dei ragazzi. L'operazione non è reversibile e riguarda solo quell'Edizione: i tablet che chiederanno la rosa di una gara riceveranno una rosa vuota. Le rose non vengono mai cancellate in automatico.",
+      FRASE_ORDINAMENTO_TABELLE,
     ],
   },
 ];

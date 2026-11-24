@@ -232,3 +232,100 @@ describe("analizzaFileGare", () => {
     expect(risultato.righe.map((r) => r.giornata)).toEqual(["1", "2"]);
   });
 });
+
+// Calendario CSI: riga titolo, intestazioni alla riga 2, data nativa Excel,
+// impianto e indirizzo nella stessa cella "Campo".
+const INTESTAZIONI_CSI = [
+  "Gara",
+  "Fase",
+  "Giornata",
+  "Squadra di casa (1ª nominata)",
+  "Squadra ospite (2ª nominata)",
+  "Giorno",
+  "Data",
+  "Ora",
+  "Campo",
+];
+
+function creaFileCsi(righe: (string | number | Date)[][]): Buffer {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet([["U17 CSI"], INTESTAZIONI_CSI, ...righe], {
+    cellDates: true,
+  });
+  XLSX.utils.book_append_sheet(workbook, sheet, "Foglio1");
+  return Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
+}
+
+describe("analizzaFileGare - calendario CSI", () => {
+  it("riconosce il formato CSI e importa una riga completa", () => {
+    const buffer = creaFileCsi([
+      [
+        "2610A6",
+        "Andata",
+        2,
+        "Volley San Dona' Blu",
+        "Pol. Mogliano Veneto",
+        "Sab",
+        new Date(Date.UTC(2026, 10, 1)),
+        "17:30",
+        "Palestra Toti Via Marconi, 1 - 30024 Musile di Piave VE",
+      ],
+    ]);
+
+    const risultato = analizzaFileGare(buffer);
+
+    expect(risultato.scartate).toEqual([]);
+    expect(risultato.righe).toEqual([
+      {
+        garaNumero: "2610A6",
+        giornata: "2ª Andata",
+        data: "2026-11-01",
+        ora: "17:30",
+        squadraCasa: "Volley San Dona' Blu",
+        squadraOspite: "Pol. Mogliano Veneto",
+        risultato: null,
+        parziali: null,
+        statoDescrizione: null,
+        impianto: "Palestra Toti",
+        indirizzoImpianto: "Via Marconi, 1 - 30024 Musile di Piave VE",
+      },
+    ]);
+  });
+
+  it("accetta anche data testuale gg/mm/aaaa e ora nativa Excel", () => {
+    const buffer = creaFileCsi([
+      ["2610R3", "Ritorno", 1, "A", "B", "Dom", "17/01/2027", 0.4791666666666667, "Palestra"],
+    ]);
+
+    const [riga] = analizzaFileGare(buffer).righe;
+
+    expect(riga.data).toBe("2027-01-17");
+    expect(riga.ora).toBe("11:30");
+    expect(riga.giornata).toBe("1ª Ritorno");
+  });
+
+  it("lascia l'intera cella Campo come impianto e indirizzo se la via non e' riconoscibile", () => {
+    const buffer = creaFileCsi([
+      ["1", "Andata", 1, "A", "B", "Dom", "01/11/2026", "10:30", "PalaVerde Treviso"],
+    ]);
+
+    const [riga] = analizzaFileGare(buffer).righe;
+
+    expect(riga.impianto).toBe("PalaVerde Treviso");
+    expect(riga.indirizzoImpianto).toBe("PalaVerde Treviso");
+  });
+
+  it("scarta con motivo la riga senza data, senza bloccare le altre", () => {
+    const buffer = creaFileCsi([
+      ["1", "Andata", 1, "A", "B", "Dom", "", "10:30", "Palestra"],
+      ["2", "Andata", 2, "C", "D", "Dom", "08/11/2026", "10:30", "Palestra"],
+    ]);
+
+    const risultato = analizzaFileGare(buffer);
+
+    expect(risultato.righe.map((r) => r.garaNumero)).toEqual(["2"]);
+    expect(risultato.scartate).toEqual([
+      { numeroRiga: 3, motivo: "Data mancante o in formato non riconosciuto" },
+    ]);
+  });
+});

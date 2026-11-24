@@ -2,10 +2,12 @@
 
 import { useState, useActionState } from "react";
 import type { StatoCertificatoAggregato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
+import { conCompressioneCertificato } from "@/lib/comprimi-file-certificato";
 import {
   aggiornaCertificatoConfermato,
   ottieniUrlCertificatoConferma,
 } from "./actions";
+import { BadgeTesseramento } from "./BadgeTesseramento";
 import styles from "./conferma-certificati.module.css";
 
 // Story 9.23: stessa mappa gia' presente in ListaConfermati.tsx fino a
@@ -35,11 +37,19 @@ type Props = {
   mesiValidita: number | null | undefined;
   modulo: string | null | undefined;
   filePath: string | null;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
   puoModificare: boolean;
   // Riga esclusa dalla ricerca corrente (CertificatiElenco): nascosta, non
   // smontata, per non perdere lo stato del form di modifica aperto.
   nascosta?: boolean;
 };
+
+// File opzionale ottimizzato nel browser prima dell'invio (fail-soft,
+// vedi lib/comprimi-file-certificato.ts); senza file il FormData e' invariato.
+const aggiornaCertificatoConfermatoCompresso = conCompressioneCertificato(
+  aggiornaCertificatoConfermato
+);
 
 // Story 9.27 (AC #1/#2): estrae il singolo <li> oggi inline in
 // ListaConfermati.tsx (Story 9.25) - ogni riga confermata ha bisogno del
@@ -60,12 +70,13 @@ export function CertificatoConfermatoRow({
   mesiValidita,
   modulo,
   filePath,
+  federazioni,
   puoModificare,
   nascosta = false,
 }: Props) {
   const [inModifica, setInModifica] = useState(false);
   const [modificaState, modificaAction, modificaPending] = useActionState(
-    aggiornaCertificatoConfermato,
+    aggiornaCertificatoConfermatoCompresso,
     undefined
   );
 
@@ -101,6 +112,9 @@ export function CertificatoConfermatoRow({
           {dataFineValiditaFormattata
             ? ` — valido fino al ${dataFineValiditaFormattata}`
             : null}
+          <span className={styles.rigaTesseramento}>
+            <BadgeTesseramento federazioni={federazioni} />
+          </span>
         </span>
         {classeBadge && (
           <span className={classeBadge}>{ETICHETTA_BADGE[stato]}</span>

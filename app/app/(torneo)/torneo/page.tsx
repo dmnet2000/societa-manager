@@ -5,6 +5,7 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovaEdizioneTorneoForm } from "./NuovaEdizioneTorneoForm";
 import { EliminaEdizioneTorneoForm } from "./EliminaEdizioneTorneoForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./torneo.module.css";
 
 // Story 20.1 (Epic 20, Torneo Memorial): dati mutabili in tempo reale
@@ -32,18 +33,19 @@ export default async function TorneoPage() {
         {edizioni.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuna Edizione inserita.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Anno</th>
-                <th>Categorie</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {edizioni.map((edizione) => (
-                <tr key={edizione.id}>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Nome" },
+              { etichetta: "Anno" },
+              { etichetta: "Categorie" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={edizioni.map((edizione) => ({
+              chiave: edizione.id,
+              valori: [edizione.nome, edizione.anno, edizione._count.categorie, null],
+              riga: (
+                <tr>
                   <td>{edizione.nome}</td>
                   <td>{edizione.anno}</td>
                   <td>
@@ -61,9 +63,9 @@ export default async function TorneoPage() {
                     />
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              ),
+            }))}
+          />
         )}
       </section>
     </main>

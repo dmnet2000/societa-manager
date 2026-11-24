@@ -3,12 +3,19 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   aggiornaGruppoAction,
+  spostaGruppoNellElencoAction,
   assegnaAllenatore,
   assegnaAtleta,
   creaEAssegnaAtleta,
 } from "./actions";
 import type { Atleta } from "./AtletaAssegnata";
-import { AtletaTabellaRiga, type AtletaConStato } from "./AtletaTabellaRiga";
+import {
+  AtletaTabellaRiga,
+  COLONNE_TABELLA_ATLETE,
+  valoriOrdinamentoAtleta,
+  type AtletaConStato,
+} from "./AtletaTabellaRiga";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import { AllenatoreAssegnato, type Allenatore } from "./AllenatoreAssegnato";
 import { FotoSquadraForm } from "./FotoSquadraForm";
 import styles from "./gruppi.module.css";
@@ -35,6 +42,8 @@ export function GruppoRow({
   fotoUrl,
   fotoAggiornataIl,
   puoModificareAtleta,
+  primo,
+  ultimo,
 }: {
   gruppo: Gruppo;
   allenatoriDisponibili: Allenatore[];
@@ -45,7 +54,14 @@ export function GruppoRow({
   // Story 9.45: ADMIN/SEGRETERIA (calcolato una volta in page.tsx) -
   // passato a ogni AtletaTabellaRiga sotto insieme a atleta.datiAnagrafici.
   puoModificareAtleta?: boolean;
+  // Posizione nell'ordine di visualizzazione: disabilita Su/Giu' sul margine.
+  primo?: boolean;
+  ultimo?: boolean;
 }) {
+  const [spostaState, spostaAction, spostaPending] = useActionState(
+    spostaGruppoNellElencoAction,
+    undefined
+  );
   // Story 9.37: toggle sola-lettura/modifica per nome/categoria del
   // Gruppo, mirror di CategoriaTorneoRow.tsx (Story 20.1) - stessa
   // "adjust state during render" per ricollassare al successo, invece di
@@ -133,7 +149,38 @@ export function GruppoRow({
   return (
     <>
       <tr className={styles.rigaPrincipale}>
-        <td>{gruppo.nome}</td>
+        <td>
+          {gruppo.nome}{" "}
+          <form action={spostaAction} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={gruppo.id} />
+            <input type="hidden" name="direzione" value="su" />
+            <button
+              type="submit"
+              disabled={spostaPending || primo}
+              className={styles.bottoneCompatto}
+              aria-label={`Sposta ${gruppo.nome} più in alto`}
+            >
+              ↑
+            </button>
+          </form>{" "}
+          <form action={spostaAction} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={gruppo.id} />
+            <input type="hidden" name="direzione" value="giu" />
+            <button
+              type="submit"
+              disabled={spostaPending || ultimo}
+              className={styles.bottoneCompatto}
+              aria-label={`Sposta ${gruppo.nome} più in basso`}
+            >
+              ↓
+            </button>
+          </form>
+          {spostaState && "error" in spostaState && (
+            <p role="alert" className={styles.errore}>
+              {spostaState.error.message}
+            </p>
+          )}
+        </td>
         <td>
           {/* Review fix (Blind Hunter): bottone testuale invece dell'icona
               di icone-azione-riga.tsx (mirror parziale e deliberato di
@@ -351,29 +398,22 @@ export function GruppoRow({
           )}
 
           {gruppo.atlete.length > 0 && (
-            <table className={styles.tabellaAtlete}>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Numero</th>
-                  <th>Certificato</th>
-                  <th>Iscrizione</th>
-                  <th>Tesseramento</th>
-                  <th>Rimuovi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gruppo.atlete.map((atleta) => (
+            <TabellaOrdinabile
+              className={styles.tabellaAtlete}
+              colonne={COLONNE_TABELLA_ATLETE}
+              righe={gruppo.atlete.map((atleta) => ({
+                chiave: atleta.id,
+                valori: valoriOrdinamentoAtleta(atleta),
+                riga: (
                   <AtletaTabellaRiga
-                    key={atleta.id}
                     gruppoId={gruppo.id}
                     gruppoNome={gruppo.nome}
                     atleta={atleta}
                     puoModificare={puoModificareAtleta}
                   />
-                ))}
-              </tbody>
-            </table>
+                ),
+              }))}
+            />
           )}
         </td>
       </tr>

@@ -1,13 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
+import { conCompressioneCertificato } from "@/lib/comprimi-file-certificato";
 import { confermaCertificato, ottieniUrlCertificatoConferma } from "./actions";
+import { BadgeTesseramento } from "./BadgeTesseramento";
 import styles from "./conferma-certificati.module.css";
 
 type Atleta = {
   id: string;
   nome: string;
 };
+
+// File opzionale ottimizzato nel browser prima dell'invio (fail-soft,
+// vedi lib/comprimi-file-certificato.ts); senza file il FormData e' invariato.
+const confermaCertificatoCompresso = conCompressioneCertificato(confermaCertificato);
 
 // AC #1/#2: un solo form copre sia la conferma di un Certificato gia'
 // caricato (filePath presente, data reali da leggere nel file prima di
@@ -20,10 +26,13 @@ export function ConfermaCertificatoRow({
   dataFineValidita = "",
   mesiValidita,
   modulo,
+  federazioni,
   nascosta = false,
 }: {
   atleta: Atleta;
   filePath: string | null;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
   dataInizioValidita?: string;
   dataFineValidita?: string;
   mesiValidita?: number | null;
@@ -33,13 +42,16 @@ export function ConfermaCertificatoRow({
   nascosta?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
-    confermaCertificato,
+    confermaCertificatoCompresso,
     undefined
   );
 
   return (
     <li className={styles.card} hidden={nascosta}>
       <strong className={styles.nomeAtleta}>{atleta.nome}</strong>
+      <span className={styles.rigaTesseramento}>
+        <BadgeTesseramento federazioni={federazioni} />
+      </span>
 
       {filePath && (
         <form action={ottieniUrlCertificatoConferma.bind(null, filePath)}>

@@ -82,6 +82,20 @@ describe("filtraVociNavigazione", () => {
     expect(href).not.toContain("/app/admin");
   });
 
+  // Ruolo Direttore Tecnico: solo Composizione gruppi piu' le rotte per
+  // tutti i Ruoli (Sponsor, dentro "Gestione sito", e Guida).
+  it("un Direttore Tecnico vede solo Composizione gruppi, Sponsor e Guida", () => {
+    expect(filtraVociNavigazione(["DIRETTORE_TECNICO"])).toEqual([
+      { tipo: "voce", href: "/app/composizione-gruppi", label: "Composizione gruppi" },
+      {
+        tipo: "gruppo",
+        label: "Gestione sito",
+        figlie: [{ href: "/app/sponsor", label: "Sponsor" }],
+      },
+      { tipo: "voce", href: "/app/guida", label: "Guida" },
+    ]);
+  });
+
   it("un Admin vede tutte le voci Admin-ammesse", () => {
     const href = hrefVoci(filtraVociNavigazione(["ADMIN"]));
     expect(href).toEqual(
@@ -225,9 +239,10 @@ describe("filtraVociNavigazione", () => {
         "/app/conferma-certificati",
         "/app/conferma-tesseramenti",
         "/app/federazioni",
+        "/app/export-dati",
       ])
     );
-    expect(atleti).toHaveLength(5);
+    expect(atleti).toHaveLength(6);
 
     expect(accounting.map((r) => r.prefix)).toEqual(
       expect.arrayContaining([
@@ -369,12 +384,17 @@ describe("filtraVociNavigazione", () => {
     ]);
   });
 
-  // Story 15.3 (AC #1): Admin e Dirigente hanno accesso a tutte e quattro le
-  // rotte - il gruppo "Atleti" mostra tutte e quattro le figlie, nell'ordine
-  // di dichiarazione del Task 1.
-  it.each(["ADMIN", "DIRIGENTE"] as const)(
-    "%s vede il gruppo Atleti con tutte e quattro le figlie, in ordine",
-    (ruolo) => {
+  // Story 15.3 (AC #1): Admin e Dirigente hanno accesso a tutte le rotte del
+  // gruppo "Atleti" a loro ammesse (Story 26.1: /federazioni) - il gruppo le
+  // mostra tutte, nell'ordine di dichiarazione in PROTECTED_ROUTES.
+  // Story 28.4: /app/export-dati e' solo Admin - sesta figlia per l'Admin,
+  // assente per il Dirigente.
+  it.each([
+    ["ADMIN", ["/app/export-dati"]],
+    ["DIRIGENTE", []],
+  ] as const)(
+    "%s vede il gruppo Atleti con tutte le sue figlie, in ordine",
+    (ruolo, soloAdmin) => {
       const gruppo = trovaGruppo(filtraVociNavigazione([ruolo]), "Atleti");
       expect(gruppo).toBeDefined();
       expect(gruppo?.figlie).toEqual([
@@ -383,6 +403,7 @@ describe("filtraVociNavigazione", () => {
         { href: "/app/conferma-certificati", label: "Conferma certificati" },
         { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
         { href: "/app/federazioni", label: "Federazioni" },
+        ...soloAdmin.map((href) => ({ href, label: "Export dati" })),
       ]);
     }
   );
@@ -397,9 +418,10 @@ describe("filtraVociNavigazione", () => {
 
   // Story 15.3: stesso principio del test gemello per "Orari/Palestre"
   // (dedup Admin+Dirigente su /palestre, review di Story 15.2) - qui con
-  // quattro rotte condivise invece di una sola: un Utente con entrambi i
-  // Ruoli deve vedere quattro figlie, non otto duplicate.
-  it("un Utente con Ruoli Admin e Dirigente vede quattro figlie del gruppo Atleti, non duplicate", () => {
+  // piu' rotte condivise invece di una sola: un Utente con entrambi i Ruoli
+  // deve vedere ogni figlia una sola volta (Story 28.4: anche /export-dati,
+  // solo Admin).
+  it("un Utente con Ruoli Admin e Dirigente vede le figlie del gruppo Atleti senza duplicati", () => {
     const gruppo = trovaGruppo(filtraVociNavigazione(["ADMIN", "DIRIGENTE"]), "Atleti");
     expect(gruppo).toBeDefined();
     expect(gruppo?.figlie).toEqual([
@@ -408,6 +430,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
       { href: "/app/federazioni", label: "Federazioni" },
+      { href: "/app/export-dati", label: "Export dati" },
     ]);
   });
 
@@ -476,6 +499,7 @@ describe("filtraVociNavigazione", () => {
       { href: "/app/conferma-certificati", label: "Conferma certificati" },
       { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
       { href: "/app/federazioni", label: "Federazioni" },
+      { href: "/app/export-dati", label: "Export dati" },
     ]);
   });
 
@@ -542,6 +566,7 @@ describe("filtraVociNavigazione", () => {
           { href: "/app/conferma-certificati", label: "Conferma certificati" },
           { href: "/app/conferma-tesseramenti", label: "Conferma tesseramenti" },
           { href: "/app/federazioni", label: "Federazioni" },
+          { href: "/app/export-dati", label: "Export dati" },
         ],
       },
       {
@@ -553,6 +578,7 @@ describe("filtraVociNavigazione", () => {
         ],
       },
       { tipo: "voce", href: "/app/gruppi", label: "Gruppi" },
+      { tipo: "voce", href: "/app/composizione-gruppi", label: "Composizione gruppi" },
       {
         tipo: "gruppo",
         label: "Gestione sito",

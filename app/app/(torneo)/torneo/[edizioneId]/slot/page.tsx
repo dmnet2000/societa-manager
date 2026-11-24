@@ -7,6 +7,8 @@ import { risolviRuoliPerAiutoContestuale } from "@/lib/guida/risolvi-ruoli-pagin
 import { TitoloPagina } from "@/app/AiutoContestuale";
 import { NuovoSlotTorneoForm } from "../../NuovoSlotTorneoForm";
 import { SlotTorneoRow } from "../../SlotTorneoRow";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
+import { FASI_TORNEO } from "@/lib/fase-torneo";
 import styles from "../../torneo.module.css";
 
 // Story 20.9 (Epic 20, Torneo Memorial): mirror di
@@ -65,26 +67,36 @@ export default async function SlotTorneoPage({
         {slot.length === 0 ? (
           <p className={styles.messaggioVuoto}>Nessuno Slot inserito.</p>
         ) : (
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Etichetta</th>
-                <th>Data</th>
-                <th>Ora</th>
-                {/* Story 20.18 (review fix, Blind Hunter): rinominata da
-                    "Palestra" - la cella puo' ora mostrare anche il Campo
-                    ("Palestra - Campo", SlotTorneoRow.tsx). */}
-                <th>Palestra / Campo</th>
-                <th>Fase</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slot.map((s) => (
-                <SlotTorneoRow key={s.id} slot={s} palestre={palestre} />
-              ))}
-            </tbody>
-          </table>
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[
+              { etichetta: "Etichetta" },
+              { etichetta: "Data" },
+              { etichetta: "Ora" },
+              // Story 20.18 (review fix, Blind Hunter): rinominata da
+              // "Palestra" - la cella puo' ora mostrare anche il Campo
+              // ("Palestra - Campo", SlotTorneoRow.tsx).
+              { etichetta: "Palestra / Campo" },
+              { etichetta: "Fase" },
+              { etichetta: "Azioni", ordinabile: false },
+            ]}
+            righe={slot.map((s) => ({
+              chiave: s.id,
+              // Data: con l'ora come spareggio (stesso giorno -> cronologico).
+              // Fase: ordine del torneo (Girone, Semifinale, Finali), poi
+              // tabellone 1-4 prima di 5-8 - non alfabetico.
+              valori: [
+                s.etichetta,
+                `${s.data} ${s.ora}`,
+                s.ora,
+                s.campo ? `${s.palestra.nome} - ${s.campo.nome}` : s.palestra.nome,
+                FASI_TORNEO.findIndex((f) => f.value === s.fase) * 10 +
+                  (s.tabellone === "POSIZIONI_5_8" ? 1 : 0),
+                null,
+              ],
+              riga: <SlotTorneoRow slot={s} palestre={palestre} />,
+            }))}
+          />
         )}
       </section>
     </main>

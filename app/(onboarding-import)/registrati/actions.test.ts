@@ -171,6 +171,38 @@ describe("registrati", () => {
     expect(generateLinkMock).not.toHaveBeenCalled();
   });
 
+  it("rifiuta un'email del dominio riservato ai tablet", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({
+        email: "campo1@tablet.invalid",
+        password: "pw123456",
+        ruoli: ["ATLETA"],
+      })
+    );
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+      },
+    });
+    expect(generateLinkMock).not.toHaveBeenCalled();
+    expect(utenteCreateMock).not.toHaveBeenCalled();
+  });
+
+  // Referto elettronico (AD-12): l'utente tablet lo crea solo l'Admin -
+  // nella registrazione autonoma TABLET vale come un Ruolo non valido.
+  it("rejects TABLET like an invalid ruolo", async () => {
+    const result = await registrati(
+      undefined,
+      buildFormData({ email: "a@example.com", password: "pw123456", ruoli: ["TABLET"] })
+    );
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." },
+    });
+    expect(generateLinkMock).not.toHaveBeenCalled();
+  });
+
   it("returns 'email già registrata' when generateLink returns empty identities (AC #4)", async () => {
     generateLinkMock.mockResolvedValue({
       data: {
@@ -1146,6 +1178,34 @@ describe("registrati", () => {
         expect.objectContaining({
           destinatario: ["admin1@example.com", "admin2@example.com"],
         })
+      );
+    });
+
+    // Ruolo Direttore Tecnico: non selezionabile in /registrati, ma un POST
+    // costruito a mano lo accetta (RUOLI_VALIDI) - deve finire nello stesso
+    // gate dei Ruoli sensibili, mai attivo senza conferma Admin.
+    it("creates a self-registered DIRETTORE_TECNICO as attivo:false and notifies active Admins", async () => {
+      generateLinkMock.mockResolvedValue(generateLinkSuccess("gate-dt"));
+      utenteCreateMock.mockResolvedValue({ id: "utente-gate-dt" });
+      sincronizzaRuoliMock.mockResolvedValue(undefined);
+      utenteCountMock.mockResolvedValue(1);
+      elencaEmailPerRuoloMock.mockResolvedValue(["admin1@example.com"]);
+
+      const result = await registrati(
+        undefined,
+        buildFormData({
+          email: "nuovo-dt@example.com",
+          password: "pw123456",
+          ruoli: ["DIRETTORE_TECNICO"],
+        })
+      );
+
+      expect(result).toEqual({ successo: true, messaggio: MESSAGGIO_SUCCESSO });
+      expect(utenteCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attivo: false }) })
+      );
+      expect(inviaEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({ oggetto: "Nuova registrazione da confermare" })
       );
     });
 

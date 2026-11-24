@@ -2,10 +2,13 @@ import type { StatoCertificato } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { elencaAtlete } from "@/lib/db-rls/atleta";
 import { elencaCertificati } from "@/lib/db-rls/certificato-medico";
+import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
+import { etichetteTesseramentoPerAtleta } from "@/lib/tesseramento";
 import { categorizzaStatoCertificato } from "@/app/app/(amministrazione)/vista-dirigente/categorizza-stato-certificato";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { PulsanteEsportaExcel } from "@/app/PulsanteEsportaExcel";
 import { CertificatiElenco } from "./CertificatiElenco";
 
 // Dati mutabili ad ogni visita (conferma tramite Server Action sulla stessa
@@ -38,10 +41,19 @@ export default async function ConfermaCertificatiPage() {
   // evita N+1) + un join applicativo in memoria per atletaId - stesso
   // pattern gia' usato in notifiche/page.tsx e storico-presenze/page.tsx,
   // mai un `include` Prisma diretto su tabelle RLS-protette (AD-4).
-  const [atlete, certificati] = await Promise.all([
+  const [atlete, certificati, annoCorrente] = await Promise.all([
     elencaAtlete(supabase),
     elencaCertificati(supabase),
+    trovaAnnoAgonisticoCorrente(),
   ]);
+  // Richiesta utente 2026-10-27: dove e' tesserata l'Atleta nella stagione
+  // corrente, accanto al Certificato - per tutti i Ruoli della pagina,
+  // Segreteria compresa (decisione esplicita, unica pagina in cui la
+  // Segreteria vede il Tesseramento). Solo tramite lib/tesseramento.ts
+  // (vincolo Epic 26). Senza Anno Agonistico corrente nessuna e' tesserata.
+  const federazioniPerAtleta = annoCorrente
+    ? await etichetteTesseramentoPerAtleta(annoCorrente.id)
+    : new Map<string, string[]>();
 
   // Story 9.23 (review fix): calcolata dopo le letture, non prima - stesso
   // pattern di vista-dirigente/page.tsx. Evita che un fetch lento faccia
@@ -76,6 +88,8 @@ export default async function ConfermaCertificatiPage() {
         contenuto={contenutoPerRotta("/app/conferma-certificati", ruoli)}
       />
 
+      <PulsanteEsportaExcel href="/app/conferma-certificati/export" />
+
       <CertificatiElenco
         puoModificare={puoModificareCertificatiConfermati}
         daConfermare={daConfermare.map(({ atleta, certificato }) => ({
@@ -93,6 +107,7 @@ export default async function ConfermaCertificatiPage() {
             (certificato?.dataFineValidita as string | undefined)?.slice(0, 10) ?? "",
           mesiValidita: certificato?.mesiValidita as number | null | undefined,
           modulo: certificato?.modulo as string | null | undefined,
+          federazioni: federazioniPerAtleta.get(atleta.id) ?? [],
         }))}
         confermati={confermati.map(({ atleta, certificato }) => {
           const dataFineValidita =
@@ -150,6 +165,7 @@ export default async function ConfermaCertificatiPage() {
             mesiValidita: certificato?.mesiValidita as number | null | undefined,
             modulo: certificato?.modulo as string | null | undefined,
             filePath: (certificato?.filePath as string | undefined) ?? null,
+            federazioni: federazioniPerAtleta.get(atleta.id) ?? [],
           };
         })}
       />

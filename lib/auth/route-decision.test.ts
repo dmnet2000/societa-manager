@@ -72,6 +72,37 @@ describe("getRouteDecision", () => {
     });
   });
 
+  // Referto elettronico (AD-12): l'utente tablet non entra mai nel sito,
+  // nemmeno nelle pagine /app senza controllo Ruolo.
+  it.each([
+    "/app",
+    "/app/",
+    "/app/modifica-password",
+    "/app/admin",
+    "/app/non-autorizzato",
+    "/app/guida",
+  ])("redirects a TABLET session to login on %s", async (rotta) => {
+    expect(await getRouteDecision(rotta, true, ["TABLET"])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+    expect(rottaAbilitataMock).not.toHaveBeenCalled();
+  });
+
+  it("leaves public pages and the tablet API to a TABLET session", async () => {
+    expect(await getRouteDecision("/accedi", true, ["TABLET"])).toEqual({ action: "allow" });
+    expect(await getRouteDecision("/", true, ["TABLET"])).toEqual({ action: "allow" });
+    expect(await getRouteDecision("/api/tablet/v1/gare", true, ["TABLET"])).toEqual({
+      action: "allow",
+    });
+  });
+
+  it("does not treat /applicazione-like paths as /app for a TABLET session", async () => {
+    expect(await getRouteDecision("/applicazione", true, ["TABLET"])).toEqual({
+      action: "allow",
+    });
+  });
+
   // Story 18.1 (Epic 18): "/" e' ora pubblica (la home del sito pubblico) -
   // prima di questa storia era l'esempio usato dal test sopra per "una
   // rotta non pubblica qualunque".
@@ -164,6 +195,84 @@ describe("getRouteDecision", () => {
       action: "redirect",
       location: "/app/non-autorizzato",
     });
+  });
+
+  // Ruolo Direttore Tecnico: /app/composizione-gruppi solo ADMIN e
+  // DIRETTORE_TECNICO, che resta fuori dalle pagine di gestione.
+  it.each(["ADMIN", "DIRETTORE_TECNICO"] as const)(
+    "allows %s on /app/composizione-gruppi",
+    async (ruolo) => {
+      expect(await getRouteDecision("/app/composizione-gruppi", true, [ruolo])).toEqual({
+        action: "allow",
+      });
+    }
+  );
+
+  it.each(["DIRIGENTE", "SEGRETERIA", "ALLENATORE", "ATLETA", "GENITORE", "SITE_MANAGER"] as const)(
+    "redirects %s away from /app/composizione-gruppi",
+    async (ruolo) => {
+      expect(await getRouteDecision("/app/composizione-gruppi", true, [ruolo])).toEqual({
+        action: "redirect",
+        location: "/app/non-autorizzato",
+      });
+    }
+  );
+
+  it.each([
+    "/app/gruppi",
+    "/app/admin",
+    "/app/conferma-iscrizioni",
+    "/app/conferma-tesseramenti",
+    "/app/precaricamento-ruoli",
+  ])("redirects Direttore Tecnico away from %s (gestione, perimetro invariato)", async (rotta) => {
+    expect(await getRouteDecision(rotta, true, ["DIRETTORE_TECNICO"])).toEqual({
+      action: "redirect",
+      location: "/app/non-autorizzato",
+    });
+  });
+
+  it.each(["/app/guida", "/app/sponsor"])(
+    "allows Direttore Tecnico on %s (rotte per tutti i Ruoli)",
+    async (rotta) => {
+      expect(await getRouteDecision(rotta, true, ["DIRETTORE_TECNICO"])).toEqual({
+        action: "allow",
+      });
+    }
+  );
+
+  // Story 28.4: /app/export-dati (e la sua rotta di download) solo ADMIN.
+  it("allows ADMIN on /app/export-dati and its download route", async () => {
+    for (const rotta of ["/app/export-dati", "/app/export-dati/export"]) {
+      expect(await getRouteDecision(rotta, true, ["ADMIN"])).toEqual({ action: "allow" });
+    }
+  });
+
+  it.each(["DIRIGENTE", "SEGRETERIA", "ALLENATORE", "ATLETA", "GENITORE", "SITE_MANAGER", "DIRETTORE_TECNICO"] as const)(
+    "redirects %s away from /app/export-dati and its download route",
+    async (ruolo) => {
+      for (const rotta of ["/app/export-dati", "/app/export-dati/export"]) {
+        expect(await getRouteDecision(rotta, true, [ruolo])).toEqual({
+          action: "redirect",
+          location: "/app/non-autorizzato",
+        });
+      }
+    }
+  );
+
+  // Review fix (code review Epic 28): le rotte /export di sezione ereditano
+  // dal prefisso della pagina gli stessi Ruoli - Segreteria ammessa su
+  // certificati/iscrizioni, esclusa dai tesseramenti (Story 13.1).
+  it.each(["/app/conferma-certificati/export", "/app/conferma-iscrizioni/export"])(
+    "allows SEGRETERIA on %s",
+    async (rotta) => {
+      expect(await getRouteDecision(rotta, true, ["SEGRETERIA"])).toEqual({ action: "allow" });
+    }
+  );
+
+  it("redirects SEGRETERIA away from /app/conferma-tesseramenti/export", async () => {
+    expect(
+      await getRouteDecision("/app/conferma-tesseramenti/export", true, ["SEGRETERIA"])
+    ).toEqual({ action: "redirect", location: "/app/non-autorizzato" });
   });
 
   it("matches nested paths under a protected prefix", async () => {
@@ -572,6 +681,26 @@ describe("getRouteDecision", () => {
 
   it("does NOT exempt /api/ routes outside /api/cron/ - a future authenticated API must still pass session/Ruolo checks (review fix, Story 4.6: scope was too broad)", async () => {
     expect(await getRouteDecision("/api/qualcosa", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+  });
+
+  it("allows any Route Handler under /api/tablet/v1/ regardless of session (Story 2.1 referto): l'app tablet non e' un browser, il JWT e' verificato dal Route Handler", async () => {
+    expect(await getRouteDecision("/api/tablet/v1/gare", false, [])).toEqual({
+      action: "allow",
+    });
+    expect(
+      await getRouteDecision("/api/tablet/v1/gare", true, ["ATLETA"])
+    ).toEqual({ action: "allow" });
+  });
+
+  it("does NOT exempt /api/tablet without the versioned prefix (Story 2.1 referto)", async () => {
+    expect(await getRouteDecision("/api/tablet", false, [])).toEqual({
+      action: "redirect",
+      location: "/accedi",
+    });
+    expect(await getRouteDecision("/api/tablet/v2/gare", false, [])).toEqual({
       action: "redirect",
       location: "/accedi",
     });

@@ -18,6 +18,13 @@ export const ETICHETTA_GIORNO: Record<GiornoSettimana, string> = Object.fromEntr
   GIORNI_SETTIMANA.map((giorno) => [giorno.value, giorno.label])
 ) as Record<GiornoSettimana, string>;
 
+// Posizione del giorno nella settimana (Lunedi=0..Domenica=6) - valore di
+// ordinamento per le colonne "Giorno" delle tabelle ordinabili, che
+// altrimenti ordinerebbero i giorni in ordine alfabetico.
+export function indiceGiorno(giorno: GiornoSettimana): number {
+  return GIORNI_SETTIMANA.findIndex((g) => g.value === giorno);
+}
+
 const GIORNI_VALIDI_SET = new Set<string>(GIORNI_SETTIMANA.map((g) => g.value));
 
 // Valida un valore non fidato (input form) prima di trattarlo come

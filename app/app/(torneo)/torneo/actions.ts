@@ -1,8 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
+import { salvaRosaSquadra } from "@/lib/rose-gara";
+import { leggiModuloRosa, type InseritiRosa } from "@/lib/rose-modulo";
+import { RosaForbiddenError, RosaValidationError, cancellaRoseEdizione } from "@/lib/db-rls/rosa";
 import { caricaVolantinoTorneo } from "@/lib/storage/volantino-torneo";
 import { validaFileImmagine } from "@/lib/storage/validazione-immagine";
 import {
@@ -58,6 +62,21 @@ import {
   haRisultatoCompleto,
   type RisultatoSet,
 } from "@/lib/risultato-partita-torneo";
+import {
+  assegnaTabletPartita,
+  trovaTabletAssegnato,
+  trovaUtenteConRuoliPerId,
+} from "@/lib/assegnazioni-tablet";
+import { haRuoloTablet } from "@/lib/ruoli";
+import { salvaParametriEdizione, salvaParametriCategoria } from "@/lib/parametri-formato";
+import {
+  CAMPI_MODULO,
+  coppiaLiberi,
+  liberiCoerenti,
+  validaModuloParametri,
+  type ChiaveModulo,
+  type ErroriModulo,
+} from "@/lib/parametri-formato-modulo";
 import type { SettimanaTorneo, GironeTorneo, TabelloneTorneo, FaseTorneo } from "@prisma/client";
 
 // Data & formati (ARCHITECTURE-SPINE.md): errori dei Server Action come
@@ -2446,6 +2465,61 @@ export async function assegnaRefertistaPartitaTorneoAction(
   return { success: true };
 }
 
+// Referto elettronico, story 2.5 (AD-2): assegna una gara a un tablet, o la
+// lascia senza tablet (utenteId vuoto). Stesso perimetro di Slot e
+// Refertista (ADMIN, DIRIGENTE - decisione utente 2026-11-12: chi e' al
+// campo sposta la gara se un tablet si guasta). Gara e tablet si rileggono
+// sempre sul server: la gara deve essere dell'Edizione della pagina, il
+// tablet deve avere il ruolo TABLET ed essere attivo. L'epoca la gestisce
+// assegnaTabletPartita (lib/assegnazioni-tablet.ts).
+export async function assegnaTabletPartitaTorneoAction(
+  _prevState: TorneoActionState,
+  formData: FormData
+): Promise<TorneoActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const id = String(formData.get("id") ?? "");
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!id || !edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Incontro non specificato." } };
+  }
+  const utenteId = String(formData.get("utenteId") ?? "").trim() || null;
+
+  try {
+    const partita = await trovaPartitaTorneoPerId(id);
+    if (!partita || partita.edizioneTorneoId !== edizioneTorneoId) {
+      return { error: { code: "VALIDATION", message: "Incontro non trovato in questa Edizione." } };
+    }
+
+    if (utenteId) {
+      const utente = await trovaUtenteConRuoliPerId(utenteId);
+      if (!utente || !haRuoloTablet(utente)) {
+        return { error: { code: "VALIDATION", message: "Tablet non trovato." } };
+      }
+      // Review fix: un tablet disattivato che resta sulla sua gara (default
+      // del menu) non e' un errore se si preme "Salva" senza cambiarlo -
+      // stesso tablet = nessuna scrittura, come da matrice.
+      if (!utente.attivo && (await trovaTabletAssegnato(id)) !== utenteId) {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Il tablet è disattivato: riattivalo da Amministrazione prima di assegnargli una gara.",
+          },
+        };
+      }
+    }
+
+    await assegnaTabletPartita(id, utenteId);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/tablet`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile assegnare il tablet. Riprova." } };
+  }
+
+  return { success: true };
+}
+
 // Story 20.21 (Epic 20, Torneo Memorial): prenotazione anticipata (o
 // rimozione, slotTorneoId vuoto - stesso principio di
 // assegnaSlotPartitaTorneoAction sopra) di uno Slot per una riga precisa del
@@ -2675,4 +2749,285 @@ export async function prenotaSlotIpoteticoAction(
   }
 
   return { success: true };
+}
+
+// Referto elettronico, story 3.8 (AD-5): parametri del formato dall'Admin.
+// Stato con messaggi per campo (`errori`) oltre al messaggio generale.
+export type ParametriActionState =
+  | {
+      error: { code: string; message: string };
+      errori?: ErroriModulo;
+      /** Testo inviato, per rimostrarlo accanto agli errori. */
+      inseriti?: Partial<Record<ChiaveModulo, string>>;
+    }
+  | { success: true }
+  | undefined;
+
+function leggiCampiParametri(formData: FormData) {
+  const campi: Partial<Record<ChiaveModulo, string>> = {};
+  for (const { chiave } of CAMPI_MODULO) {
+    campi[chiave] = String(formData.get(chiave) ?? "");
+  }
+  return { campi, esito: validaModuloParametri(campi) };
+}
+
+// Errore sui liberi, attaccato ai campi liberi impostati in questo invio
+// (entrambi se nessuno dei due lo e').
+function erroreLiberi(
+  campi: Partial<Record<ChiaveModulo, string>>,
+  valori: { liberiMin?: number; liberiMax?: number },
+  messaggio: string
+): ParametriActionState {
+  const toccati: ChiaveModulo[] = [];
+  if (valori.liberiMin !== undefined) toccati.push("liberiMin");
+  if (valori.liberiMax !== undefined) toccati.push("liberiMax");
+  if (toccati.length === 0) toccati.push("liberiMin", "liberiMax");
+  const errori: ErroriModulo = {};
+  for (const c of toccati) errori[c] = messaggio;
+  return { error: { code: "VALIDATION", message: messaggio }, errori, inseriti: campi };
+}
+
+// Parametri di default dell'Edizione. La coerenza dei liberi si controlla
+// anche sulle eccezioni gia' salvate delle sue Categorie.
+export async function salvaParametriEdizioneAction(
+  _prevState: ParametriActionState,
+  formData: FormData
+): Promise<ParametriActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  const { campi, esito } = leggiCampiParametri(formData);
+  if ("errori" in esito) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi i campi evidenziati." },
+      errori: esito.errori,
+      inseriti: campi,
+    };
+  }
+
+  try {
+    const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+    if (!edizione) {
+      return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+    }
+    const categorie = await elencaCategorieTorneo(edizioneTorneoId);
+    if (!liberiCoerenti(esito.valori, null)) {
+      const { min, max } = coppiaLiberi(esito.valori, null);
+      return erroreLiberi(campi, esito.valori, `Liberi: il minimo ${min} supera il massimo ${max}.`);
+    }
+    const conflitto = categorie.find((c) => !liberiCoerenti(esito.valori, c.parametriFormato));
+    if (conflitto) {
+      const { min, max } = coppiaLiberi(esito.valori, conflitto.parametriFormato);
+      return erroreLiberi(
+        campi,
+        esito.valori,
+        `Liberi: con questo valore la categoria ${conflitto.nome} avrebbe minimo ${min} e massimo ${max}.`
+      );
+    }
+
+    await salvaParametriEdizione(edizioneTorneoId, esito.valori);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/parametri`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile salvare i parametri. Riprova." } };
+  }
+  return { success: true };
+}
+
+// Eccezioni di una Categoria (campo vuoto = eredita). Edizione e Categoria si
+// rileggono sul server e la Categoria deve essere dell'Edizione.
+export async function salvaParametriCategoriaAction(
+  _prevState: ParametriActionState,
+  formData: FormData
+): Promise<ParametriActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  if (!edizioneTorneoId || !categoriaTorneoId) {
+    return { error: { code: "VALIDATION", message: "Categoria non specificata." } };
+  }
+
+  const { campi, esito } = leggiCampiParametri(formData);
+  if ("errori" in esito) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi i campi evidenziati." },
+      errori: esito.errori,
+      inseriti: campi,
+    };
+  }
+
+  try {
+    const [edizione, categoria] = await Promise.all([
+      trovaEdizioneTorneoPerId(edizioneTorneoId),
+      trovaCategoriaTorneoPerId(categoriaTorneoId),
+    ]);
+    if (!edizione || !categoria || categoria.edizioneTorneoId !== edizioneTorneoId) {
+      return {
+        error: { code: "VALIDATION", message: "Categoria non trovata in questa Edizione." },
+      };
+    }
+    if (!liberiCoerenti(edizione.parametriFormato, esito.valori)) {
+      const { min, max } = coppiaLiberi(edizione.parametriFormato, esito.valori);
+      return erroreLiberi(campi, esito.valori, `Liberi: il minimo ${min} supera il massimo ${max}.`);
+    }
+
+    const risultato = await salvaParametriCategoria(categoriaTorneoId, edizioneTorneoId, esito.valori);
+    if (risultato.count === 0) {
+      return {
+        error: { code: "VALIDATION", message: "Categoria non trovata in questa Edizione." },
+      };
+    }
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/parametri`);
+  } catch (err) {
+    console.error(err);
+    return { error: { code: "INTERNAL", message: "Impossibile salvare i parametri. Riprova." } };
+  }
+  return { success: true };
+}
+
+// Referto elettronico, story 3.9 (AD-6): rosa di una Squadra dal sito.
+// Stesse regole del tablet; passa da lib/db-rls con la sessione dell'utente.
+// Log: solo id e codici, mai nomi.
+export type RosaActionState =
+  | {
+      error: { code: string; message: string };
+      /** Un messaggio per riga non valida. */
+      errori?: string[];
+      /** Valori scritti, da rimostrare dopo un rifiuto. */
+      inseriti?: InseritiRosa;
+    }
+  | { success: true; versione: number }
+  | undefined;
+
+const MESSAGGIO_CONFLITTO_ROSA =
+  "La rosa è stata modificata (dal tablet o da un altro utente) dopo che hai aperto la pagina: ricaricala per vedere la versione attuale.";
+
+export async function salvaRosaSquadraAction(
+  _prevState: RosaActionState,
+  formData: FormData
+): Promise<RosaActionState> {
+  const forbidden = await requireRuolo(["ADMIN", "DIRIGENTE"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  const categoriaTorneoId = String(formData.get("categoriaTorneoId") ?? "");
+  const squadraTorneoId = String(formData.get("squadraTorneoId") ?? "");
+  const versioneTesto = String(formData.get("versioneBase") ?? "");
+  if (!edizioneTorneoId || !categoriaTorneoId || !squadraTorneoId) {
+    return { error: { code: "VALIDATION", message: "Squadra non specificata." } };
+  }
+  if (!/^[0-9]{1,9}$/.test(versioneTesto)) {
+    return { error: { code: "VALIDATION", message: "Versione della rosa non valida: ricarica la pagina." } };
+  }
+  const versioneBase = Number(versioneTesto);
+
+  const modulo = leggiModuloRosa(formData);
+  if ("errori" in modulo) {
+    return {
+      error: { code: "VALIDATION", message: "Correggi le righe indicate." },
+      errori: modulo.errori,
+      inseriti: modulo.inseriti,
+    };
+  }
+
+  try {
+    const [squadra, categoria] = await Promise.all([
+      trovaSquadraTorneoPerId(squadraTorneoId),
+      trovaCategoriaTorneoPerId(categoriaTorneoId),
+    ]);
+    if (
+      !squadra ||
+      !categoria ||
+      squadra.categoriaTorneoId !== categoriaTorneoId ||
+      categoria.edizioneTorneoId !== edizioneTorneoId
+    ) {
+      return {
+        error: { code: "VALIDATION", message: "Squadra non trovata in questa Categoria." },
+        inseriti: modulo.inseriti,
+      };
+    }
+
+    const supabase = await createClient();
+    const esito = await salvaRosaSquadra(supabase, {
+      squadraId: squadraTorneoId,
+      versioneBase,
+      idModifica: randomUUID(),
+      giocatori: modulo.giocatori,
+      tesserati: modulo.tesserati,
+    });
+    if (esito.esito === "conflitto") {
+      return {
+        error: { code: "CONFLITTO", message: MESSAGGIO_CONFLITTO_ROSA },
+        inseriti: modulo.inseriti,
+      };
+    }
+    revalidatePath(`/app/torneo/${edizioneTorneoId}/${categoriaTorneoId}/${squadraTorneoId}/rosa`);
+    return { success: true, versione: esito.versione };
+  } catch (err) {
+    if (err instanceof RosaForbiddenError) {
+      return { error: { code: "FORBIDDEN", message: "Non autorizzato." }, inseriti: modulo.inseriti };
+    }
+    if (err instanceof RosaValidationError) {
+      return { error: { code: "VALIDATION", message: err.message }, inseriti: modulo.inseriti };
+    }
+    console.error("salvaRosaSquadraAction", squadraTorneoId, err instanceof Error ? err.name : "errore");
+    return {
+      error: { code: "INTERNAL", message: "Impossibile salvare la rosa. Riprova." },
+      inseriti: modulo.inseriti,
+    };
+  }
+}
+
+// Story 3.13 (AD-4): cancellazione di tutte le rose dell'Edizione, solo
+// ADMIN, a torneo concluso. Passa dalla funzione SQL SECURITY DEFINER con la
+// sessione dell'utente (mai Prisma ne' service role). Log: solo id e codici.
+export type CancellaRoseActionState =
+  | { error: { code: string; message: string } }
+  | { success: true; messaggio: string }
+  | undefined;
+
+export async function cancellaRoseEdizioneAction(
+  _prevState: CancellaRoseActionState,
+  formData: FormData
+): Promise<CancellaRoseActionState> {
+  const forbidden = await requireRuolo(["ADMIN"]);
+  if (forbidden) return forbidden;
+
+  const edizioneTorneoId = String(formData.get("edizioneTorneoId") ?? "");
+  if (!edizioneTorneoId) {
+    return { error: { code: "VALIDATION", message: "Edizione non specificata." } };
+  }
+
+  try {
+    const edizione = await trovaEdizioneTorneoPerId(edizioneTorneoId);
+    if (!edizione) {
+      return { error: { code: "VALIDATION", message: "Edizione non trovata." } };
+    }
+
+    const supabase = await createClient();
+    const cancellate = await cancellaRoseEdizione(supabase, edizioneTorneoId);
+    revalidatePath(`/app/torneo/${edizioneTorneoId}`);
+    return {
+      success: true,
+      messaggio:
+        cancellate === 0
+          ? "Nessuna rosa da cancellare"
+          : cancellate === 1
+            ? "Cancellata 1 rosa"
+            : `Cancellate ${cancellate} rose`,
+    };
+  } catch (err) {
+    if (err instanceof RosaForbiddenError) {
+      return { error: { code: "FORBIDDEN", message: "Non autorizzato." } };
+    }
+    console.error("cancellaRoseEdizioneAction", edizioneTorneoId, err instanceof Error ? err.name : "errore");
+    return { error: { code: "INTERNAL", message: "Impossibile cancellare le rose. Riprova." } };
+  }
 }

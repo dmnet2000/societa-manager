@@ -28,6 +28,8 @@ export type RigaConfermata = {
   mesiValidita: number | null | undefined;
   modulo: string | null | undefined;
   filePath: string | null;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
 };
 
 // Story 9.25: prima interazione client-side di ordinamento su una lista in
@@ -78,6 +80,7 @@ export function ListaConfermati({
             mesiValidita={riga.mesiValidita}
             modulo={riga.modulo}
             filePath={riga.filePath}
+            federazioni={riga.federazioni}
             puoModificare={puoModificare}
             nascosta={!corrispondeRicercaAtleta(riga, ricerca)}
           />

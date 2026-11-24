@@ -46,6 +46,67 @@ describe("contenutoPerRotta", () => {
     const risultato = contenutoPerRotta("/app/palestre", ["DIRIGENTE"]);
     expect(risultato?.titolo).toBe("Palestre");
   });
+
+  // Referto elettronico (AD-12): la sezione Amministrazione spiega l'utente tablet.
+  it("la sezione Amministrazione spiega l'utente tablet", () => {
+    const corpo = contenutoPerRotta("/app/admin", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("Nuovo tablet");
+    expect(corpo).toContain("non può accedere a questo sito");
+  });
+
+  // Story 2.4 (AD-12): disattivazione, riattivazione e cambio password del tablet.
+  it("la sezione Amministrazione spiega disattivazione e cambio password del tablet", () => {
+    const corpo = contenutoPerRotta("/app/admin", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("perso o rubato");
+    expect(corpo).toContain("\"Riattiva\"");
+    expect(corpo).toContain("\"Cambia password\"");
+  });
+
+  // Story 2.5 (AD-2): assegnazione delle gare ai tablet, per Admin e Dirigente.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "la sezione Torneo spiega l'assegnazione delle gare ai tablet (%s)",
+    (ruolo) => {
+      const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+      expect(corpo).toContain("\"Tablet del referto\"");
+      expect(corpo).toContain("\"Nessun tablet\"");
+      expect(corpo).toContain("\"Epoca\"");
+    }
+  );
+
+  // Story 3.8 (AD-5): parametri del formato dall'Admin.
+  it.each(["ADMIN", "DIRIGENTE"] as const)(
+    "la sezione Torneo spiega i parametri del formato (%s)",
+    (ruolo) => {
+      const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+      expect(corpo).toContain("\"Parametri del formato\"");
+      expect(corpo).toContain("\"Valore effettivo\"");
+      expect(corpo).toContain("\"Aggiorna\"");
+    }
+  );
+});
+
+describe("Rose dal sito (story 3.9)", () => {
+  it.each(["ADMIN", "DIRIGENTE"] as const)("la sezione Torneo spiega le rose (%s)", (ruolo) => {
+    const corpo = contenutoPerRotta("/app/torneo", [ruolo])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("\"Rosa\"");
+    expect(corpo).toContain("in anticipo");
+    expect(corpo).toContain("La rosa è stata modificata");
+  });
+});
+
+describe("Privacy delle rose (story 3.13)", () => {
+  it("la sezione Torneo spiega il pulsante di cancellazione delle rose", () => {
+    const corpo = contenutoPerRotta("/app/torneo", ["ADMIN"])?.corpo.join(" ") ?? "";
+    expect(corpo).toContain("Cancella le rose dell'Edizione");
+    expect(corpo).toContain("non è reversibile");
+  });
+});
+
+describe("Ruolo TABLET", () => {
+  it("non vede alcuna voce della guida (il tablet non entra nel sito)", () => {
+    expect(contenutiPerRuoli(["TABLET"])).toEqual([]);
+    expect(CONTENUTI_GUIDA.some((c) => c.ruoliAmmessi.includes("TABLET"))).toBe(false);
+  });
 });
 
 // Review fix (2026-08-10, Blind Hunter): CONTENUTI_GUIDA duplica a mano

@@ -2,7 +2,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type IscrizioneElenco = { id: string; atletaId: string };
+// confermataIl: data della conferma da parte della Segreteria, mostrata
+// nella colonna "Stato Iscrizione" di /app/conferma-iscrizioni.
+export type IscrizioneElenco = { id: string; atletaId: string; confermataIl: string };
 
 // AD-4/AD-9: Iscrizione e' protetta da RLS - il client Supabase passato
 // deve avere la sessione dell'utente autenticato (mai Prisma diretto a
@@ -18,7 +20,7 @@ export async function elencaIscrizioniPerAnno(
 ): Promise<IscrizioneElenco[]> {
   const { data, error } = await supabase
     .from("iscrizioni")
-    .select("id, atletaId")
+    .select("id, atletaId, confermataIl")
     .eq("annoAgonisticoId", annoAgonisticoId)
     .eq("attiva", true);
 
@@ -39,6 +41,8 @@ export async function elencaIscrizioniPerAnno(
 // nuova conferma manuale ne' da un futuro riporto automatico - un vicolo
 // cieco permanente). Restituisce true se e' stata creata/riattivata una
 // riga attiva, false se la riga esistente era gia' attiva (vero no-op).
+// Una riattivazione aggiorna anche confermataIl: la data mostrata e' quella
+// dell'ultima conferma, non della prima conferma poi esclusa.
 export async function inserisciIscrizione(
   supabase: SupabaseClient,
   atletaId: string,
@@ -60,7 +64,7 @@ export async function inserisciIscrizione(
 
   const { data, error: updateError } = await supabase
     .from("iscrizioni")
-    .update({ attiva: true })
+    .update({ attiva: true, confermataIl: new Date().toISOString() })
     .eq("atletaId", atletaId)
     .eq("annoAgonisticoId", annoAgonisticoId)
     .eq("attiva", false)

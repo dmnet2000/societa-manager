@@ -1,6 +1,7 @@
-import { ETICHETTA_GIORNO } from "@/lib/giorno-settimana";
+import { ETICHETTA_GIORNO, indiceGiorno } from "@/lib/giorno-settimana";
 import { costruisciLinkNaviga } from "@/lib/link-naviga-palestra";
 import type { GiornoSettimana } from "@prisma/client";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./SlotTable.module.css";
 
 // Esportato (review Story 8.3) - riusato identico da mio-orario/page.tsx,
@@ -38,20 +39,26 @@ export function SlotTable({
 
   return (
     <div className={styles.scrollWrapper}>
-      <table className={styles.tabella}>
-        <thead>
-          <tr>
-            <th>Giorno</th>
-            <th>Orario</th>
-            <th>Palestra / Campo</th>
-            <th>Gruppo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {slot.map((s) => {
-            const linkNaviga = costruisciLinkNaviga(s.campo.palestra);
-            return (
-              <tr key={s.id}>
+      <TabellaOrdinabile
+        className={styles.tabella}
+        colonne={[
+          { etichetta: "Giorno" },
+          { etichetta: "Orario" },
+          { etichetta: "Palestra / Campo" },
+          { etichetta: "Gruppo" },
+        ]}
+        righe={slot.map((s) => {
+          const linkNaviga = costruisciLinkNaviga(s.campo.palestra);
+          return {
+            chiave: s.id,
+            valori: [
+              indiceGiorno(s.giorno),
+              s.oraInizio,
+              `${s.campo.palestra.nome} - ${s.campo.nome}`,
+              s.gruppo.nome,
+            ],
+            riga: (
+              <tr>
                 <td>{ETICHETTA_GIORNO[s.giorno]}</td>
                 <td>
                   {s.oraInizio}–{s.oraFine}
@@ -75,10 +82,10 @@ export function SlotTable({
                 </td>
                 <td>{s.gruppo.nome}</td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ),
+          };
+        })}
+      />
     </div>
   );
 }

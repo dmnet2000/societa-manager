@@ -37,9 +37,9 @@ function atleta(id: string, nome: string): AtletaElenco {
 
 // Arrivano dalla pagina gia' in ordine di nome.
 const RIGHE: RigaIscrizione[] = [
-  { atleta: atleta("a", "ANNA"), iscrizioneId: "i-a", gruppi: ["U16"] },
-  { atleta: atleta("b", "BEA"), iscrizioneId: null, gruppi: [] },
-  { atleta: atleta("c", "CARLA"), iscrizioneId: null, gruppi: ["U8"] },
+  { atleta: atleta("a", "ANNA"), iscrizioneId: "i-a", confermataIl: "2026-10-23T08:00:00Z", gruppi: ["U16"] },
+  { atleta: atleta("b", "BEA"), iscrizioneId: null, confermataIl: null, gruppi: [] },
+  { atleta: atleta("c", "CARLA"), iscrizioneId: null, confermataIl: null, gruppi: ["U8"] },
 ];
 
 let contenitore: HTMLDivElement;

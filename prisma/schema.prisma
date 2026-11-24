@@ -31,6 +31,8 @@ enum Ruolo {
   DIRIGENTE
   ADMIN
   SITE_MANAGER
+  DIRETTORE_TECNICO
+  TABLET
 }
 
 // Non protetto da RLS (AD-9): gestibile via Prisma con connessione diretta.
@@ -51,6 +53,8 @@ model Utente {
   // Story 27.1: back-relation di TutoreAtleta.utenteId (collegamento
   // opzionale del Genitore/Tutore a un account esistente).
   tutoriAtleta        TutoreAtleta[]
+  // Referto elettronico, story 2.5: gare assegnate a questo utente TABLET.
+  assegnazioniTablet  AssegnazioneTablet[]
 
   @@map("utenti")
 }
@@ -1048,6 +1052,9 @@ model EdizioneTorneo {
   // congelata di id nascosti.
   nascondiConcluseSettimana1 Boolean           @default(false)
   nascondiConcluseSettimana2 Boolean           @default(false)
+  // Referto elettronico, story 3.1 (AD-5): parametri del formato di gara
+  // (oggetto completo o assente; null = default del modulo torneo).
+  parametriFormato           Json?
   createdAt                  DateTime          @default(now())
   updatedAt                  DateTime          @updatedAt
   categorie                  CategoriaTorneo[]
@@ -1081,6 +1088,9 @@ model CategoriaTorneo {
   numeroMassimoSquadre Int
   edizioneTorneoId     String
   edizioneTorneo       EdizioneTorneo  @relation(fields: [edizioneTorneoId], references: [id])
+  // Referto elettronico, story 3.1 (AD-5): solo le chiavi dei parametri del
+  // formato che la Categoria sovrascrive rispetto all'Edizione.
+  parametriFormato     Json?
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
   squadre              SquadraTorneo[]
@@ -1143,6 +1153,8 @@ model SquadraTorneo {
   // di una relazione collega la stessa coppia di modelli).
   partiteCasa       PartitaTorneo[] @relation("PartiteCasa")
   partiteOspite     PartitaTorneo[] @relation("PartiteOspite")
+  // Referto elettronico, story 3.2 (AD-6): rosa della squadra, separata da Atleta.
+  rosa              RosaSquadra?
 
   @@map("squadre_torneo")
 }
@@ -1183,9 +1195,9 @@ enum TabelloneTorneo {
 // SquadraTorneo senza onDelete esplicito (default Prisma Restrict) - stesso
 // identico trattamento delle FK Torneo precedenti.
 model PartitaTorneo {
-  id                String           @id @default(uuid())
-  categoriaTorneoId String
-  categoriaTorneo   CategoriaTorneo  @relation(fields: [categoriaTorneoId], references: [id])
+  id                 String              @id @default(uuid())
+  categoriaTorneoId  String
+  categoriaTorneo    CategoriaTorneo     @relation(fields: [categoriaTorneoId], references: [id])
   // Story 20.11: denormalizzato da categoriaTorneo.edizioneTorneoId -
   // necessario per esprimere @@unique([edizioneTorneoId, numero]) sotto
   // senza attraversare la FK verso categorie_torneo (un vincolo @@unique in
@@ -1195,8 +1207,8 @@ model PartitaTorneo {
   // categoriaTorneoId stesso non cambia mai dopo la creazione in questa
   // epica). FK senza onDelete esplicito (default Prisma Restrict), stesso
   // trattamento di ogni altra FK strutturale Torneo.
-  edizioneTorneoId  String
-  edizioneTorneo    EdizioneTorneo   @relation(fields: [edizioneTorneoId], references: [id])
+  edizioneTorneoId   String
+  edizioneTorneo     EdizioneTorneo      @relation(fields: [edizioneTorneoId], references: [id])
   // Story 20.11: numero di gara progressivo, calcolato SEMPRE server-side al
   // momento della generazione (prossimoNumeroPartitaTorneo, lib/torneo.ts) -
   // mai un input manuale dell'Admin. Un'unica sequenza per l'intera
@@ -1207,11 +1219,11 @@ model PartitaTorneo {
   // prossimoNumeroPartitaTorneo) - mai fidarsi solo della disciplina
   // applicativa, stesso principio di ogni altro vincolo unico di questa
   // epica.
-  numero            Int
-  squadraCasaId     String
-  squadraCasa       SquadraTorneo    @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
-  squadraOspiteId   String
-  squadraOspite     SquadraTorneo    @relation("PartiteOspite", fields: [squadraOspiteId], references: [id])
+  numero             Int
+  squadraCasaId      String
+  squadraCasa        SquadraTorneo       @relation("PartiteCasa", fields: [squadraCasaId], references: [id])
+  squadraOspiteId    String
+  squadraOspite      SquadraTorneo       @relation("PartiteOspite", fields: [squadraOspiteId], references: [id])
   // Story 20.4: distingue un incontro di girone (fase GIRONE, tabellone
   // nullo, comportamento invariato dalla Story 20.3) da una
   // semifinale/finale del tabellone di posizionamento, generato da
@@ -1220,8 +1232,8 @@ model PartitaTorneo {
   // solo per fase GIRONE - nessun vincolo CHECK a livello DB per questa
   // coerenza (stessa filosofia "il vero cancello e' nella Server Action"
   // gia' applicata a numeroMassimoSquadre).
-  fase              FaseTorneo       @default(GIRONE)
-  tabellone         TabelloneTorneo?
+  fase               FaseTorneo          @default(GIRONE)
+  tabellone          TabelloneTorneo?
   // Story 20.9: assegnazione opzionale di uno SlotTorneo (dove/quando si
   // gioca) - null finche' nessuno Slot e' stato assegnato (a mano per il
   // girone, in automatico per semifinali/finali al momento della
@@ -1230,14 +1242,14 @@ model PartitaTorneo {
   // strutturale Torneo - nessun vincolo di unicita' (spec-20-9 Boundaries
   // "Never": due Partite possono puntare allo stesso Slot, la protezione e'
   // solo un avviso applicativo prima di sovrascrivere).
-  slotTorneoId      String?
-  slotTorneo        SlotTorneo?      @relation(fields: [slotTorneoId], references: [id])
-  set1Casa          Int?
-  set1Ospite        Int?
-  set2Casa          Int?
-  set2Ospite        Int?
-  set3Casa          Int?
-  set3Ospite        Int?
+  slotTorneoId       String?
+  slotTorneo         SlotTorneo?         @relation(fields: [slotTorneoId], references: [id])
+  set1Casa           Int?
+  set1Ospite         Int?
+  set2Casa           Int?
+  set2Ospite         Int?
+  set3Casa           Int?
+  set3Ospite         Int?
   // Story 20.34 (Epic 20, Torneo Memorial): chi ha compilato il referto
   // cartaceo dell'incontro - testo libero facoltativo (nessun collegamento a
   // un'anagrafica Utente/Allenatore, decisione esplicita dell'utente), stesso
@@ -1246,9 +1258,15 @@ model PartitaTorneo {
   // ogni PartitaTorneo esistente resta refertista = null finche' un Admin non
   // lo valorizza esplicitamente salvando il risultato (stesso form/stessa
   // Server Action, spec-20-34 Boundaries "Always").
-  refertista        String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  refertista         String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  // Referto elettronico, story 2.5 (AD-2): tablet assegnato e sua epoca -
+  // al massimo una riga per gara (vincolo unico su AssegnazioneTablet).
+  assegnazioneTablet AssegnazioneTablet?
+  // Referto elettronico, story 4.1: risultati dei set chiusi (referto in
+  // corso), una riga per set.
+  risultatiSetReferto RisultatoSetReferto[]
 
   // Review fix (Edge Case Hunter, Story 20.3): rete di sicurezza a livello
   // DB contro la generazione duplicata della stessa coppia (la guardia di
@@ -1276,6 +1294,48 @@ model PartitaTorneo {
   // erroreNumeroPartitaTorneoDuplicato (app/app/(torneo)/torneo/actions.ts).
   @@unique([edizioneTorneoId, numero])
   @@map("partite_torneo")
+}
+
+// Referto elettronico, story 2.5 (AD-2, AD-15, AD-17): una riga per gara
+// (garaId = PartitaTorneo.id) con il tablet che ne e' l'unico scrittore e
+// l'epoca, che cresce a ogni cambio di tablet (anche verso/da "nessun
+// tablet", utenteId nullo) e non riparte mai finche' la gara esiste. Tabella
+// strutturale: RLS senza policy + REVOKE (migrazione), letta e scritta solo
+// via Prisma.
+model AssegnazioneTablet {
+  id              String        @id @default(uuid())
+  partitaTorneoId String        @unique
+  partitaTorneo   PartitaTorneo @relation(fields: [partitaTorneoId], references: [id], onDelete: Cascade)
+  utenteId        String?
+  utente          Utente?       @relation(fields: [utenteId], references: [id], onDelete: Restrict)
+  epoca           Int           @default(1)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([utenteId])
+  @@map("assegnazioni_tablet")
+}
+
+// Referto elettronico, story 4.1 (AD-7, AD-8, AD-11, AD-17): risultato di un
+// set chiuso dal tablet nel "referto in corso". Una riga per (gara, set);
+// l'upsert e' monotono su seqFinale (vince il FINE_SET piu' recente del
+// registro). Tabella strutturale: RLS senza policy + REVOKE (migrazione),
+// scritta solo via Prisma (SQL raw per l'upsert condizionato).
+model RisultatoSetReferto {
+  id              String        @id @default(uuid())
+  partitaTorneoId String
+  partitaTorneo   PartitaTorneo @relation(fields: [partitaTorneoId], references: [id], onDelete: Cascade)
+  numeroSet       Int
+  casa            Int
+  ospite          Int
+  seqFinale       Int
+  registroId      String
+  epoca           Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([partitaTorneoId, numeroSet])
+  @@map("risultati_set_referto")
 }
 
 // Story 20.9 (Epic 20, Torneo Memorial): "prenotazione per fase" - permette
@@ -1374,4 +1434,69 @@ model SlotTorneo {
   partite                       PartitaTorneo[]
 
   @@map("slot_torneo")
+}
+
+// Referto elettronico, story 3.2 (AD-6, AD-11, AD-17): rosa di una
+// SquadraTorneo, senza legami con Atleta (nomi di minori, dati minimi).
+// Lettura via RLS (TABLET solo squadre delle proprie gare, Admin/Dirigente
+// tutto); scrittura solo tramite la funzione SQL salva_rosa_squadra, che
+// applica versione e idempotenza (idModifica). Vedi la migrazione.
+model RosaSquadra {
+  id              String          @id @default(uuid())
+  squadraTorneoId String          @unique
+  squadraTorneo   SquadraTorneo   @relation(fields: [squadraTorneoId], references: [id], onDelete: Cascade)
+  versione        Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  giocatori       GiocatoreRosa[]
+  tesserati       TesseratoRosa[]
+  modifiche       ModificaRosa[]
+
+  @@map("rose_squadra")
+}
+
+model GiocatoreRosa {
+  id       String      @id @default(uuid())
+  rosaId   String
+  rosa     RosaSquadra @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  numero   Int
+  nome     String
+  cognome  String
+  capitano Boolean     @default(false)
+  libero   Boolean     @default(false)
+
+  @@unique([rosaId, numero])
+  @@map("giocatori_rosa")
+}
+
+enum RuoloTesserato {
+  A
+  VA
+  M
+  FT
+  D
+}
+
+model TesseratoRosa {
+  id     String         @id @default(uuid())
+  rosaId String
+  rosa   RosaSquadra    @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  ruolo  RuoloTesserato
+  nome   String
+
+  @@index([rosaId])
+  @@map("tesserati_rosa")
+}
+
+// Registro delle modifiche gia' applicate (idempotenza, AD-11). Nessuna
+// policy: negata a ogni ruolo client, scritta solo dalla funzione SQL.
+model ModificaRosa {
+  idModifica String      @id
+  rosaId     String
+  rosa       RosaSquadra @relation(fields: [rosaId], references: [id], onDelete: Cascade)
+  versione   Int
+  createdAt  DateTime    @default(now())
+
+  @@index([rosaId])
+  @@map("modifiche_rosa")
 }

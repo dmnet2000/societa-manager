@@ -52,7 +52,7 @@ describe("elencaIscrizioniPerAnno", () => {
     const result = await elencaIscrizioniPerAnno(supabase, "anno-1");
 
     expect(fromMock).toHaveBeenCalledWith("iscrizioni");
-    expect(selectMock).toHaveBeenCalledWith("id, atletaId");
+    expect(selectMock).toHaveBeenCalledWith("id, atletaId, confermataIl");
     expect(eqAnnoMock).toHaveBeenCalledWith("annoAgonisticoId", "anno-1");
     expect(eqAttivaMock).toHaveBeenCalledWith("attiva", true);
     expect(result).toEqual([
@@ -101,7 +101,10 @@ describe("inserisciIscrizione", () => {
 
     const risultato = await inserisciIscrizione(supabase, "atleta-1", "anno-1");
 
-    expect(updateMock).toHaveBeenCalledWith({ attiva: true });
+    expect(updateMock).toHaveBeenCalledWith({
+      attiva: true,
+      confermataIl: expect.any(String),
+    });
     expect(updateEqMock.mock.calls).toEqual([
       ["atletaId", "atleta-1"],
       ["annoAgonisticoId", "anno-1"],

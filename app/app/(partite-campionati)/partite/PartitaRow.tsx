@@ -17,6 +17,10 @@ type Partita = {
   squadraOspite: string;
   gruppoNome: string;
   campionatoNome: string;
+  risultato: string | null;
+  parziali: string | null;
+  // Campionato senza link FIPAV (es. CSI): risultato inserito a mano.
+  risultatoManuale: boolean;
 };
 
 // Story 10.4: stesso pattern "riga con toggle Modifica/Annulla" gia'
@@ -67,6 +71,9 @@ export function PartitaRow({ partita }: { partita: Partita }) {
         <td>{partita.ora}</td>
         <td>
           {partita.squadraCasa} - {partita.squadraOspite}
+          {partita.risultato && (
+            <span className={styles.risultato}> {partita.risultato}</span>
+          )}
         </td>
         <td>
           {partita.impianto}
@@ -159,6 +166,30 @@ export function PartitaRow({ partita }: { partita: Partita }) {
                     defaultValue={partita.indirizzoImpianto ?? ""}
                   />
                 </div>
+                {partita.risultatoManuale && (
+                  <>
+                    <div className={styles.campo}>
+                      <label htmlFor={`partita-risultato-${partita.id}`}>Risultato</label>
+                      <input
+                        id={`partita-risultato-${partita.id}`}
+                        name="risultato"
+                        type="text"
+                        placeholder="es. 3-1"
+                        defaultValue={partita.risultato ?? ""}
+                      />
+                    </div>
+                    <div className={styles.campo}>
+                      <label htmlFor={`partita-parziali-${partita.id}`}>Parziali</label>
+                      <input
+                        id={`partita-parziali-${partita.id}`}
+                        name="parziali"
+                        type="text"
+                        placeholder="es. 25-19 23-25 25-20 25-18"
+                        defaultValue={partita.parziali ?? ""}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               {modificaState && "error" in modificaState && (
                 <p role="alert" className={styles.errore}>

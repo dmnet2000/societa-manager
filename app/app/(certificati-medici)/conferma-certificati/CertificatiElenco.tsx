@@ -14,6 +14,8 @@ export type RigaDaConfermare = {
   dataFineValidita: string;
   mesiValidita: number | null | undefined;
   modulo: string | null | undefined;
+  // Sigle delle Federazioni del Tesseramento della stagione corrente.
+  federazioni: string[];
 };
 
 // Le due sezioni ("Da confermare" / "Confermati") con un'unica ricerca per
@@ -66,7 +68,15 @@ export function CertificatiElenco({
             )}
             <ul className={styles.lista}>
               {daConfermare.map(
-                ({ atleta, filePath, dataInizioValidita, dataFineValidita, mesiValidita, modulo }) => (
+                ({
+                  atleta,
+                  filePath,
+                  dataInizioValidita,
+                  dataFineValidita,
+                  mesiValidita,
+                  modulo,
+                  federazioni,
+                }) => (
                   <ConfermaCertificatoRow
                     key={atleta.id}
                     atleta={atleta}
@@ -75,6 +85,7 @@ export function CertificatiElenco({
                     dataFineValidita={dataFineValidita}
                     mesiValidita={mesiValidita}
                     modulo={modulo}
+                    federazioni={federazioni}
                     nascosta={!corrispondeRicercaAtleta(atleta, ricerca)}
                   />
                 )

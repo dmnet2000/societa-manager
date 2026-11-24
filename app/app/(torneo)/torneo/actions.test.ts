@@ -115,6 +115,14 @@ vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
 }));
 
+// Story 2.5: actions.ts importa anche lib/assegnazioni-tablet.ts (Prisma) -
+// la sua Server Action e' testata in actions-tablet.test.ts.
+vi.mock("@/lib/assegnazioni-tablet", () => ({
+  assegnaTabletPartita: vi.fn(),
+  trovaUtenteConRuoliPerId: vi.fn(),
+  trovaTabletAssegnato: vi.fn(),
+}));
+
 const {
   creaEdizioneTorneoAction,
   aggiornaNomiSettimaneAction,

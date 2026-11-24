@@ -11,6 +11,10 @@ const disattivaIscrizioneAttivaPerAtletaMock = vi.fn();
 const segnaAtletaRimossaMock = vi.fn();
 const annullaRimozioneAtletaMock = vi.fn();
 const revalidatePathMock = vi.fn();
+const elencaAtletePerIdsMock = vi.fn();
+const elencaEmailPerRuoloMock = vi.fn();
+const elencaNomiGruppiAtletaCorrentiMock = vi.fn();
+const inviaEmailMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -33,11 +37,28 @@ vi.mock("@/lib/db-rls/iscrizione", () => ({
 vi.mock("@/lib/db-rls/atleta", () => ({
   segnaAtletaRimossa: segnaAtletaRimossaMock,
   annullaRimozioneAtleta: annullaRimozioneAtletaMock,
+  elencaAtletePerIds: elencaAtletePerIdsMock,
   MOTIVI_RIMOZIONE_ATLETA: ["NON_PIU_IN_SOCIETA", "TRASFERITA"],
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: "app.example.it" }),
+}));
+
+vi.mock("@/lib/utenti/email-per-ruolo", () => ({
+  elencaEmailPerRuolo: elencaEmailPerRuoloMock,
+}));
+
+vi.mock("@/lib/nomi-gruppi-atleta", () => ({
+  elencaNomiGruppiAtletaCorrenti: elencaNomiGruppiAtletaCorrentiMock,
+}));
+
+vi.mock("@/lib/email/invia-email", () => ({
+  inviaEmail: inviaEmailMock,
 }));
 
 const { confermaIscrizione, escludiIscrizione, rimuoviAtleta, ripristinaAtleta } =
@@ -61,6 +82,14 @@ describe("confermaIscrizione (Server Action)", () => {
     inserisciIscrizioneMock.mockReset();
     disattivaIscrizioneMock.mockReset();
     revalidatePathMock.mockReset();
+    elencaEmailPerRuoloMock.mockReset();
+    elencaEmailPerRuoloMock.mockResolvedValue([]);
+    elencaAtletePerIdsMock.mockReset();
+    elencaAtletePerIdsMock.mockResolvedValue([{ id: "atleta-1", nome: "ROSSI ANNA" }]);
+    elencaNomiGruppiAtletaCorrentiMock.mockReset();
+    elencaNomiGruppiAtletaCorrentiMock.mockResolvedValue(["Under 14"]);
+    inviaEmailMock.mockReset();
+    inviaEmailMock.mockResolvedValue(undefined);
   });
 
   it("returns FORBIDDEN and does nothing if the caller is not Segreteria", async () => {
@@ -91,6 +120,48 @@ describe("confermaIscrizione (Server Action)", () => {
       "anno-1"
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/conferma-iscrizioni");
+  });
+
+  it("emails every active Admin when a new Iscrizione is created", async () => {
+    risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    inserisciIscrizioneMock.mockResolvedValue(true);
+    elencaEmailPerRuoloMock.mockResolvedValue(["Admin@Example.it", "admin@example.it", "b@example.it"]);
+
+    const result = await confermaIscrizione(undefined, "atleta-1");
+
+    expect(result).toEqual({ success: true });
+    expect(elencaEmailPerRuoloMock).toHaveBeenCalledWith("ADMIN");
+    expect(inviaEmailMock).toHaveBeenCalledTimes(1);
+    const email = inviaEmailMock.mock.calls[0][0];
+    expect(email.destinatario).toEqual(["admin@example.it", "b@example.it"]);
+    expect(email.oggetto).toBe("Nuova iscrizione confermata: ROSSI ANNA");
+    expect(email.testo).toContain("Atleta: ROSSI ANNA");
+    expect(email.testo).toContain("Gruppo: Under 14");
+    expect(email.testo).toContain("https://app.example.it/app/conferma-iscrizioni");
+  });
+
+  it("sends no email when the Atleta was already iscritta (no-op confirm)", async () => {
+    risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    inserisciIscrizioneMock.mockResolvedValue(false);
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@example.it"]);
+
+    await confermaIscrizione(undefined, "atleta-1");
+
+    expect(inviaEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("still confirms when the Admin email fails (fail-soft)", async () => {
+    risolviAnnoAgonisticoCorrenteMock.mockResolvedValue({ id: "anno-1" });
+    inserisciIscrizioneMock.mockResolvedValue(true);
+    elencaEmailPerRuoloMock.mockResolvedValue(["admin@example.it"]);
+    inviaEmailMock.mockRejectedValue(new Error("CONFIGURAZIONE_SMTP_MANCANTE"));
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await confermaIscrizione(undefined, "atleta-1");
+
+    expect(result).toEqual({ success: true });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/conferma-iscrizioni");
+    consoleErrorSpy.mockRestore();
   });
 
   it("returns a friendly error, no crash, when inserisciIscrizione fails", async () => {

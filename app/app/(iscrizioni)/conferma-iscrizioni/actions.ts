@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { createClient } from "@/lib/supabase/server";
 import { risolviAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
@@ -11,10 +12,14 @@ import {
 } from "@/lib/db-rls/iscrizione";
 import {
   annullaRimozioneAtleta,
+  elencaAtletePerIds,
   MOTIVI_RIMOZIONE_ATLETA,
   segnaAtletaRimossa,
   type DatiRimozioneAtleta,
 } from "@/lib/db-rls/atleta";
+import { elencaEmailPerRuolo } from "@/lib/utenti/email-per-ruolo";
+import { elencaNomiGruppiAtletaCorrenti } from "@/lib/nomi-gruppi-atleta";
+import { inviaEmail } from "@/lib/email/invia-email";
 
 export type ConfermaIscrizioneState =
   | { error: { code: string; message: string } }
@@ -47,14 +52,16 @@ export async function confermaIscrizione(
   const forbidden = await requireRuolo("SEGRETERIA");
   if (forbidden) return forbidden;
 
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  let nuovaIscrizione: boolean;
   try {
     // AC #3: find-or-create - mai da una pagina in sola lettura (vedi
     // Dev Notes), solo qui nel percorso di scrittura.
     const anno = await risolviAnnoAgonisticoCorrente();
 
-    const supabase = await createClient();
+    supabase = await createClient();
     // AC #2, #4: idempotente - vedi lib/db-rls/iscrizione.ts.
-    await inserisciIscrizione(supabase, atletaId, anno.id);
+    nuovaIscrizione = await inserisciIscrizione(supabase, atletaId, anno.id);
   } catch (err) {
     console.error(err);
     return {
@@ -65,8 +72,63 @@ export async function confermaIscrizione(
     };
   }
 
+  // Notifica a ogni Utente Admin attivo, cosi' sa chi tesserare o
+  // aggiungere a un Gruppo - solo se la conferma ha davvero creato/
+  // riattivato l'Iscrizione (un doppio clic non manda due mail). Fail-soft
+  // come la notifica Admin di caricaCertificato: un errore SMTP non fa
+  // mai fallire la conferma, gia' registrata.
+  if (nuovaIscrizione) {
+    await notificaAdminNuovaIscrizione(supabase, atletaId);
+  }
+
   revalidatePath("/app/conferma-iscrizioni");
   return { success: true };
+}
+
+async function notificaAdminNuovaIscrizione(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  atletaId: string
+): Promise<void> {
+  try {
+    const emailAdmin = await elencaEmailPerRuolo("ADMIN");
+    const destinatari = Array.from(
+      new Set(emailAdmin.map((e) => e.trim().toLowerCase()))
+    );
+    if (destinatari.length === 0) return;
+
+    const [atlete, gruppi, headersList] = await Promise.all([
+      elencaAtletePerIds(supabase, [atletaId]),
+      elencaNomiGruppiAtletaCorrenti(atletaId),
+      headers(),
+    ]);
+    const nome = atlete[0]?.nome ?? "non risolvibile";
+    const host = headersList.get("host");
+    const proto = headersList.get("x-forwarded-proto") ?? "https";
+    const link = `${proto}://${host}/app/conferma-iscrizioni`;
+    const data = new Intl.DateTimeFormat("it-IT", {
+      timeZone: "Europe/Rome",
+      dateStyle: "short",
+    }).format(new Date());
+
+    await inviaEmail({
+      destinatario: destinatari,
+      oggetto: `Nuova iscrizione confermata: ${nome}`,
+      testo:
+        `La Segreteria ha confermato una nuova iscrizione.
+
+` +
+        `Atleta: ${nome}
+` +
+        `Gruppo: ${gruppi.length > 0 ? gruppi.join(", ") : "nessun Gruppo nella stagione corrente"}
+` +
+        `Iscritta il: ${data}
+
+` +
+        `Elenco completo delle iscrizioni: ${link}`,
+    });
+  } catch (err) {
+    console.error(`[confermaIscrizione] notifica agli Admin fallita per ${atletaId}`, err);
+  }
 }
 
 // Story 1.8 AC #4: FR-23 nomina esplicitamente Admin, Dirigente e Segreteria

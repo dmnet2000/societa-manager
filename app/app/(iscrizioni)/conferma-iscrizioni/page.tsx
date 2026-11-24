@@ -6,6 +6,7 @@ import { trovaAnnoAgonisticoCorrente } from "@/lib/anno-agonistico";
 import { parseRuoli } from "@/lib/ruoli";
 import { contenutoPerRotta } from "@/lib/guida/contenuti";
 import { TitoloPagina } from "@/app/AiutoContestuale";
+import { PulsanteEsportaExcel } from "@/app/PulsanteEsportaExcel";
 import { IscrizioniElenco } from "./IscrizioniElenco";
 
 // Dati mutabili in tempo reale (conferme via Server Action sulla stessa
@@ -44,8 +45,8 @@ export default async function ConfermaIscrizioniPage() {
     : [];
   // Story 1.8: serve anche l'id della riga Iscrizione (non solo l'atletaId)
   // - la UI lo usa per chiamare escludiIscrizione (AC #4).
-  const iscrizioneIdPerAtleta = new Map(
-    iscrizioni.map((iscrizione) => [iscrizione.atletaId, iscrizione.id])
+  const iscrizionePerAtleta = new Map(
+    iscrizioni.map((iscrizione) => [iscrizione.atletaId, iscrizione])
   );
 
   // Story 1.9: Gruppo assegnato per l'Anno Agonistico corrente - mirror del
@@ -94,11 +95,15 @@ export default async function ConfermaIscrizioniPage() {
         titolo="Conferma Iscrizioni"
         contenuto={contenutoPerRotta("/app/conferma-iscrizioni", ruoli)}
       />
+
+      <PulsanteEsportaExcel href="/app/conferma-iscrizioni/export" />
+
       <IscrizioniElenco
         puoConfermare={puoConfermare}
         righe={atleteAttive.map((atleta) => ({
           atleta,
-          iscrizioneId: iscrizioneIdPerAtleta.get(atleta.id) ?? null,
+          iscrizioneId: iscrizionePerAtleta.get(atleta.id)?.id ?? null,
+          confermataIl: iscrizionePerAtleta.get(atleta.id)?.confermataIl ?? null,
           gruppi: gruppiPerAtleta.get(atleta.id) ?? [],
         }))}
         righeRimosse={atleteRimosse}

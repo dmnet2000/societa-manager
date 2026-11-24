@@ -1,3 +1,13 @@
+# last_updated: 2026-11-23 (Epic 29 Torneo - Form iscrizione squadre e gestione pasti aperto: analisi + 8 story in backlog, nessuna implementazione. Vedi epics.md#Epic 29.)
+# last_updated: 2026-11-15 (Story 11.6 aggiunta: elenco dei file leggibile da anon/tablet nei bucket pubblici foto-squadra-gruppo e volantino-torneo, emerso dalla verifica di sicurezza in produzione del referto elettronico (story 2.10). Solo la story, nessuna implementazione. Vedi epics.md#Story 11.6.)
+# last_updated: 2026-10-27 (Story 9.48 tesseramento in /app/conferma-certificati: review -> done, verificata dall'utente dal vivo.)
+# last_updated: 2026-10-25 (Code review Epic 28 a 4 livelli (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) sul diff 3fb0e8d..5ec4bb6: 7 patch applicati (pulsante senza attributo download, ordine Gruppi in memoria, reduce al posto di Math.max spread, escape U+FFFE/FFFF, 3 test aggiunti), 2 defer in deferred-work.md, 19 scartati. Story restano done.)
+# last_updated: 2026-10-25 (Epic 28 chiuso: Story 28.1-28.4 review -> done, verificate dall'utente dal vivo dopo il deploy (file aperti, export funzionanti).)
+# last_updated: 2026-10-25 (Story 28.4 implementata: nuova pagina /app/export-dati (solo Admin, ultima voce del gruppo Atleti) con Export completo + link ai tre export di sezione; rotta /app/export-dati/export, anagrafica da elencaAnagraficaAtleteExport (RLS, rimosse escluse); stato certificato/iscrizione/tesseramento dalle stesse funzioni delle 28.1-28.3 con test di coerenza. Guida aggiornata. backlog -> review. Epic 28: tutte le story in review.)
+# last_updated: 2026-10-25 (Story 28.3 implementata: export Tesseramenti su /app/conferma-tesseramenti/export (solo Admin/Dirigente), colonne Federazione da colonneTesseramento come in pagina, Tesseramento letto solo via lib/tesseramento.ts (grep pulito). Guida aggiornata. backlog -> review.)
+# last_updated: 2026-10-25 (Story 28.2 implementata: export Iscrizioni su /app/conferma-iscrizioni/export, riusa writer e pulsante della 28.1; data iscrizione riportata al giorno sul fuso di Roma come in pagina (giornoRomaDaIso). Guida aggiornata. backlog -> review.)
+# last_updated: 2026-10-25 (Story 28.1 implementata: writer .xlsx senza dipendenze (lib/export-xlsx.ts, zip stored scritto a mano), export Certificati su /app/conferma-certificati/export, pulsante condiviso app/PulsanteEsportaExcel.tsx, guida aggiornata. File validato con openpyxl; da aprire in Excel/LibreOffice dal vivo dopo il deploy. backlog -> review.)
+# last_updated: 2026-10-25 (Epic 28 Export dati aperto: 4 story in backlog, decisioni chiuse con l'utente.)
 # last_updated: 2026-10-15 (Epic 27 Iscrizione online tramite portale aperto: 6 story in backlog, divise in party mode. Epic 24 aggiornato in epics.md: la parte modulo passa al 27.)
 # last_updated: 2026-10-15 (10-10-sincronizzazione-calendario-fipav-fattibilita: backlog -> done su decisione dell'utente - studio di fattibilita' superato dalle Story 10.11/10.12 gia' implementate e verificate.)
 # last_updated: 2026-10-15 (Story 9.47 ordinamento /app/conferma-tesseramenti registrata direttamente done: implementata nella sessione del 2026-10-14, verificata dall'utente.)
@@ -829,6 +839,18 @@ development_status:
   # migrazione, nessuna spec dedicata. Verificata dall'utente 2026-10-15.
   9-47-ordinamento-conferma-tesseramenti: done
 
+  # Story 9.48 aggiunta 2026-10-27 su richiesta dell'utente ("nella gestione
+  # certificati vorrei vedere anche quando confermo il certificato l'atleta
+  # dove risulta essere tesserata"): badge "Tesserata · FIPAV, CSI" / "Non
+  # tesserata" sotto il nome in /app/conferma-certificati, sia in "Da
+  # confermare" sia in "Confermati". Decisioni utente: visibile a tutti i
+  # Ruoli della pagina, Segreteria compresa (prima pagina in cui la
+  # Segreteria vede il Tesseramento); "Non tesserata" neutro, non danger.
+  # Lettura via etichetteTesseramentoPerAtleta (lib/tesseramento.ts, vincolo
+  # Epic 26). Test del componente, guida in-app aggiornata. Nessuna
+  # migrazione. Verificata dall'utente dal vivo 2026-10-27.
+  9-48-tesseramento-in-conferma-certificati: done
+
   # Epic 10 (Gestione Partite e Campionati) inserito il 2026-07-25: epic
   # sostanzioso (nuove entita', piu' Ruoli coinvolti), a differenza di Epic 9.
   # Analisi completata e rotta in 5 storie il 2026-07-28 all'avvio dello
@@ -952,6 +974,7 @@ development_status:
   11-3-invalid-login-invio-email: done
   11-4-registrazione-safari-ios: done
   11-5-errore-console-widget-facebook: done
+  11-6-elenco-file-bucket-pubblici: backlog
 
   # Epic 12 (Permessi Configurabili da Admin) inserito il 2026-08-02 su
   # richiesta dell'utente, emersa discutendo la Story 9.22. Analisi di
@@ -2357,3 +2380,31 @@ development_status:
   27-4-caricamento-modulo-firmato: backlog
   27-5-verifica-domanda-segreteria: backlog
   27-6-nuovo-atleta-in-registrazione: backlog
+
+  # Epic 28 (Export dati Certificati, Iscrizioni, Tesseramenti) aperto
+  # 2026-10-25, richiesta esplicita dell'utente. Solo story scritte, nessuna
+  # implementazione. Decisioni chiuse con l'utente: formato .xlsx; export di
+  # sezione con gli stessi ruoli della pagina, export complessivo solo Admin;
+  # complessivo = una riga per Atleta; sempre tutte le Atlete dell'anno
+  # corrente (no filtri a schermo). Ordine 28.1 -> 28.4. Vedi
+  # epics.md#Epic 28.
+  epic-28: done
+  28-1-export-certificati-writer-excel: done
+  28-2-export-iscrizioni: done
+  28-3-export-tesseramenti: done
+  28-4-export-complessivo-admin: done
+
+  # Epic 29 (Torneo - Form di iscrizione squadre e gestione pasti) aperto
+  # 2026-11-23, richiesta esplicita dell'utente. Solo analisi + story
+  # scritte, nessuna implementazione. Assunzioni e decisioni aperte da
+  # chiudere con l'utente. Ordine 29.1 -> 29.8, MVP = 29.1-29.5. Vedi
+  # epics.md#Epic 29.
+  epic-29: backlog
+  29-1-apertura-iscrizioni-edizione: backlog
+  29-2-configurazione-pasti-edizione: backlog
+  29-3-form-pubblico-iscrizione-squadre: backlog
+  29-4-prenotazione-pasti-form: backlog
+  29-5-gestione-richieste-iscrizione: backlog
+  29-6-modifica-iscrizione-referente: backlog
+  29-7-riepilogo-pasti-cucina: backlog
+  29-8-riepilogo-economico-pagamenti: backlog

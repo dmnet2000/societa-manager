@@ -15,6 +15,7 @@ import { TitoloPagina } from "@/app/AiutoContestuale";
 import { GeneraCalendarioGironiForm } from "./GeneraCalendarioGironiForm";
 import { RisultatoPartitaTorneoForm } from "./RisultatoPartitaTorneoForm";
 import { CancellaPartiteTorneoForm } from "./CancellaPartiteTorneoForm";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "../../../torneo.module.css";
 
 // Story 20.3 (Epic 20, Torneo Memorial): mirror di
@@ -159,24 +160,32 @@ export default async function RisultatiTorneoPage({
               )}
 
               <h3>Classifica</h3>
-              <table className={styles.tabella}>
-                <thead>
-                  <tr>
-                    {/* Review fix (Blind Hunter, Story 20.16): scope="col"
-                        aggiunto a tutte le intestazioni per coerenza con
-                        .tabellaSquadreGironi (Story 20.15), che gia' lo usa. */}
-                    <th scope="col">Squadra</th>
-                    <th scope="col">Punti</th>
-                    <th scope="col">Partite giocate</th>
-                    <th scope="col">Set vinti</th>
-                    <th scope="col">Set persi</th>
-                    <th scope="col">Punti fatti</th>
-                    <th scope="col">Punti subiti</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classifica.map((riga) => (
-                    <tr key={riga.squadra.id}>
+              {/* Parte nell'ordine di classifica; le intestazioni
+                  riordinano per singola statistica. */}
+              <TabellaOrdinabile
+                className={styles.tabella}
+                colonne={[
+                  { etichetta: "Squadra" },
+                  { etichetta: "Punti" },
+                  { etichetta: "Partite giocate" },
+                  { etichetta: "Set vinti" },
+                  { etichetta: "Set persi" },
+                  { etichetta: "Punti fatti" },
+                  { etichetta: "Punti subiti" },
+                ]}
+                righe={classifica.map((riga) => ({
+                  chiave: riga.squadra.id,
+                  valori: [
+                    riga.squadra.nome,
+                    riga.punti,
+                    riga.partiteGiocate,
+                    riga.setVinti,
+                    riga.setPersi,
+                    riga.puntiFatti,
+                    riga.puntiSubiti,
+                  ],
+                  riga: (
+                    <tr>
                       <td>{riga.squadra.nome}</td>
                       <td>{riga.punti}</td>
                       <td>{riga.partiteGiocate}</td>
@@ -185,9 +194,9 @@ export default async function RisultatiTorneoPage({
                       <td>{riga.puntiFatti}</td>
                       <td>{riga.puntiSubiti}</td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  ),
+                }))}
+              />
             </section>
           );
         })

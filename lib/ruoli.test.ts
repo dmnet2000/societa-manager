@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { parseRuoli, RUOLI_VALIDI } from "./ruoli";
+import { eEmailTablet, eUtenteTablet, haRuoloTablet, parseRuoli, RUOLI_VALIDI } from "./ruoli";
+
+describe("eEmailTablet", () => {
+  it("riconosce il dominio riservato ai tablet, maiuscole e spazi compresi", () => {
+    expect(eEmailTablet("campo1@tablet.invalid")).toBe(true);
+    expect(eEmailTablet(" Campo1@TABLET.invalid ")).toBe(true);
+  });
+
+  it("non considera tablet le altre email", () => {
+    expect(eEmailTablet("mario@example.com")).toBe(false);
+    expect(eEmailTablet("mario@tablet.invalid.example.com")).toBe(false);
+    expect(eEmailTablet("mario@nontablet.invalid")).toBe(false);
+  });
+});
 
 // Story 19.1: settimo Ruolo del sistema - unico test diretto sulla fonte di
 // verità (RUOLI_VALIDI/parseRuoli) usata da assegnazione Admin,
@@ -38,5 +51,33 @@ describe("parseRuoli", () => {
 
   it("accepts SITE_MANAGER (Story 19.1)", () => {
     expect(parseRuoli(["SITE_MANAGER"])).toEqual(["SITE_MANAGER"]);
+  });
+
+  it("accepts DIRETTORE_TECNICO", () => {
+    expect(parseRuoli(["DIRETTORE_TECNICO"])).toEqual(["DIRETTORE_TECNICO"]);
+  });
+
+  it("accepts TABLET (referto elettronico, AD-12)", () => {
+    expect(parseRuoli(["TABLET"])).toEqual(["TABLET"]);
+  });
+});
+
+describe("eUtenteTablet", () => {
+  it("riconosce un utente tablet", () => {
+    expect(eUtenteTablet(["TABLET"])).toBe(true);
+    expect(eUtenteTablet(["ADMIN", "TABLET"])).toBe(true);
+  });
+
+  it("non considera tablet gli altri Ruoli", () => {
+    expect(eUtenteTablet([])).toBe(false);
+    expect(eUtenteTablet(["ADMIN", "ALLENATORE"])).toBe(false);
+  });
+});
+
+describe("haRuoloTablet", () => {
+  it("legge i ruoli nella forma della giunzione UtenteRuolo", () => {
+    expect(haRuoloTablet({ ruoli: [{ ruolo: "TABLET" }] })).toBe(true);
+    expect(haRuoloTablet({ ruoli: [{ ruolo: "ADMIN" }, { ruolo: "DIRIGENTE" }] })).toBe(false);
+    expect(haRuoloTablet({ ruoli: [] })).toBe(false);
   });
 });

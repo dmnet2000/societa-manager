@@ -23,6 +23,7 @@ import {
   costruisciGenitoriTutoriPerAtleta,
   type DatiGenitoriTutori,
 } from "./genitori-tutori-per-atleta";
+import { TabellaOrdinabile } from "@/app/TabellaOrdinabile";
 import styles from "./gruppi.module.css";
 
 // Dati mutabili in tempo reale (creazione Gruppo/assegnazione Allenatori
@@ -111,7 +112,10 @@ export default async function GruppiPage() {
       annoCorrente
         ? prisma.gruppo.findMany({
             where: { annoAgonisticoId: annoCorrente.id },
-            orderBy: { nome: "asc" },
+            // Richiesta utente 2026-11-09: ordine di visualizzazione scelto
+            // dall'Admin (campo "ordine", lo stesso di /app/ordine-squadre),
+            // a parita' alfabetico.
+            orderBy: [{ ordine: "asc" }, { nome: "asc" }],
             include: {
               allenatori: {
                 include: { allenatore: true },
@@ -285,18 +289,17 @@ export default async function GruppiPage() {
                         </p>
                       ) : (
                         <div className={styles.scrollWrapper}>
-                          <table className={styles.tabella}>
-                            <thead>
-                              <tr>
-                                <th>Atleta</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {atlete.map((atleta) => {
-                                const dati = datiAnagraficiPerId.get(atleta.id);
-                                const genitoriTutori = genitoriTutoriPerId.get(atleta.id);
-                                return (
-                                  <tr key={atleta.id}>
+                          <TabellaOrdinabile
+                            className={styles.tabella}
+                            colonne={[{ etichetta: "Atleta" }]}
+                            righe={atlete.map((atleta) => {
+                              const dati = datiAnagraficiPerId.get(atleta.id);
+                              const genitoriTutori = genitoriTutoriPerId.get(atleta.id);
+                              return {
+                                chiave: atleta.id,
+                                valori: [atleta.nome],
+                                riga: (
+                                  <tr>
                                     <td>
                                       {puoModificareAtleta && dati ? (
                                         <ModificaDatiAtletaForm
@@ -320,10 +323,10 @@ export default async function GruppiPage() {
                                       )}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                ),
+                              };
+                            })}
+                          />
                         </div>
                       )
                     }
@@ -349,61 +352,59 @@ export default async function GruppiPage() {
       <section className={styles.sezione}>
         <h2>Elenco Gruppi</h2>
         <div className={styles.scrollWrapper}>
-          <table className={styles.tabella}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Categoria</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gruppi.map((gruppo) => {
-                const atleteGruppo = gruppoAtleteRows
-                  .filter((riga) => riga.gruppoId === gruppo.id)
-                  // Story 9.35: "numero" vive sulla riga GruppoAtleta stessa
-                  // (riga), non su atletaPerId (proiezione di Atleta) -
-                  // unito qui insieme al lookup, invece di perderlo con un
-                  // semplice atletaPerId.get() come prima di questa storia.
-                  .map((riga) => {
-                    const atleta = atletaPerId.get(riga.atletaId);
-                    return atleta ? { ...atleta, numero: riga.numero } : undefined;
-                  })
-                  .filter(
-                    (
-                      atleta
-                    ): atleta is {
-                      id: string;
-                      nome: string;
-                      certificatoInScadenza: boolean;
-                      certificatoScaduto: boolean;
-                      dataFineValidita: string | null;
-                      numero: number | null;
-                    } => atleta !== undefined
-                  )
-                  // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento -
-                  // aggiunte qui invece che dentro atleteMinime perche' sono
-                  // specifiche di /gruppi (non richieste per /i-miei-gruppi,
-                  // stessa scelta di scope gia' fatta per certificatoScaduto in
-                  // Story 9.33 round 3, qui applicata evitando di ripetere la
-                  // duplicazione di tipo gia' segnalata in quella code review).
-                  .map((atleta) => ({
-                    ...atleta,
-                    iscritta: idAtleteIscritte.has(atleta.id),
-                    federazioniTesseramento: tesseramenti.get(atleta.id) ?? [],
-                    // Story 9.45: undefined per default (nessun ADMIN/
-                    // SEGRETERIA) - AtletaTabellaRiga.tsx mostra il testo
-                    // semplice in quel caso, mai il form.
-                    datiAnagrafici: datiAnagraficiPerId.get(atleta.id),
-                    // Story 27.1: solo minorenni, solo ADMIN/SEGRETERIA.
-                    genitoriTutori: genitoriTutoriPerId.get(atleta.id),
-                  }))
-                  .sort((a, b) => a.nome.localeCompare(b.nome));
+          <TabellaOrdinabile
+            className={styles.tabella}
+            colonne={[{ etichetta: "Nome" }, { etichetta: "Categoria" }]}
+            memoriaChiave="ordinamento-elenco-gruppi"
+            righe={gruppi.map((gruppo, indiceGruppo) => {
+              const atleteGruppo = gruppoAtleteRows
+                .filter((riga) => riga.gruppoId === gruppo.id)
+                // Story 9.35: "numero" vive sulla riga GruppoAtleta stessa
+                // (riga), non su atletaPerId (proiezione di Atleta) -
+                // unito qui insieme al lookup, invece di perderlo con un
+                // semplice atletaPerId.get() come prima di questa storia.
+                .map((riga) => {
+                  const atleta = atletaPerId.get(riga.atletaId);
+                  return atleta ? { ...atleta, numero: riga.numero } : undefined;
+                })
+                .filter(
+                  (
+                    atleta
+                  ): atleta is {
+                    id: string;
+                    nome: string;
+                    certificatoInScadenza: boolean;
+                    certificatoScaduto: boolean;
+                    dataFineValidita: string | null;
+                    numero: number | null;
+                  } => atleta !== undefined
+                )
+                // Richiesta utente 2026-08-07: colonne Iscrizione/Tesseramento -
+                // aggiunte qui invece che dentro atleteMinime perche' sono
+                // specifiche di /gruppi (non richieste per /i-miei-gruppi,
+                // stessa scelta di scope gia' fatta per certificatoScaduto in
+                // Story 9.33 round 3, qui applicata evitando di ripetere la
+                // duplicazione di tipo gia' segnalata in quella code review).
+                .map((atleta) => ({
+                  ...atleta,
+                  iscritta: idAtleteIscritte.has(atleta.id),
+                  federazioniTesseramento: tesseramenti.get(atleta.id) ?? [],
+                  // Story 9.45: undefined per default (nessun ADMIN/
+                  // SEGRETERIA) - AtletaTabellaRiga.tsx mostra il testo
+                  // semplice in quel caso, mai il form.
+                  datiAnagrafici: datiAnagraficiPerId.get(atleta.id),
+                  // Story 27.1: solo minorenni, solo ADMIN/SEGRETERIA.
+                  genitoriTutori: genitoriTutoriPerId.get(atleta.id),
+                }))
+                .sort((a, b) => a.nome.localeCompare(b.nome));
 
-                const fotoAggiornataIl = gruppiConFoto.get(gruppo.id) ?? null;
+              const fotoAggiornataIl = gruppiConFoto.get(gruppo.id) ?? null;
 
-                return (
+              return {
+                chiave: gruppo.id,
+                valori: [gruppo.nome, gruppo.categoria],
+                riga: (
                   <GruppoRow
-                    key={gruppo.id}
                     gruppo={{
                       id: gruppo.id,
                       nome: gruppo.nome,
@@ -417,11 +418,13 @@ export default async function GruppiPage() {
                     fotoUrl={urlPubblicoFotoSquadra(supabase, gruppo.id)}
                     fotoAggiornataIl={fotoAggiornataIl}
                     puoModificareAtleta={puoModificareAtleta}
+                    primo={indiceGruppo === 0}
+                    ultimo={indiceGruppo === gruppi.length - 1}
                   />
-                );
-              })}
-            </tbody>
-          </table>
+                ),
+              };
+            })}
+          />
         </div>
       </section>
     </main>

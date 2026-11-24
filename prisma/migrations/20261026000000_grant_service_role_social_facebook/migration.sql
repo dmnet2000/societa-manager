@@ -1,0 +1,12 @@
+-- Cambio Supabase dal 2026-10-30: le tabelle create in "public" non
+-- ricevono piu' in automatico i permessi della Data API. Le tabelle
+-- esistenti li conservano, ma uno schema ricreato dalle migrazioni (nuovo
+-- progetto, preview branch, reset locale) avrebbe solo i GRANT espliciti.
+-- lib/facebook-graph.ts legge e aggiorna (upsert) questa tabella con il
+-- client service-role, mentre la migrazione
+-- 20260814020000 concedeva i permessi al solo "authenticated": oggi
+-- funziona grazie al GRANT automatico dato alla creazione. Esplicitato
+-- qui, innocuo sulla tabella esistente. Le altre tabelle lette con il
+-- client service-role (atlete, certificati_medici, configurazione_smtp,
+-- pagine_pubbliche, permessi_rotte) hanno gia' il loro GRANT esplicito.
+GRANT SELECT, INSERT, UPDATE ON "configurazione_social_facebook" TO service_role;

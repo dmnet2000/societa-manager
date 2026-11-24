@@ -1,0 +1,110 @@
+/* Ruolo Direttore Tecnico - card per Gruppo, mirror dei token di
+   vista-dirigente.module.css (card/cardHeader) e dei badge di
+   gruppi.module.css (badgeSuccesso/badgeDanger per Iscrizione/Tesseramento,
+   eccezione "danger su singola riga" gia' registrata in DESIGN.md). */
+
+.lista {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 720px) {
+  .lista {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .lista {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.nomeGruppo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.categoria {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.riepilogo {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.messaggioVuoto {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.elencoAtlete {
+  margin-top: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+
+.rigaAtleta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.nomeAtleta {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.badgeSuccesso,
+.badgeDanger {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badgeSuccesso {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeDanger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}

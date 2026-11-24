@@ -182,6 +182,34 @@
   white-space: nowrap;
 }
 
+/* Tesseramento dell'Atleta (BadgeTesseramento): stessa forma dei badge di
+   stato, su una riga propria sotto il nome. "Non tesserata" neutro, non
+   danger: in questa pagina e' solo contesto. */
+.badgeTesserata,
+.badgeNonTesserata {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+}
+
+.badgeTesserata {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeNonTesserata {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.rigaTesseramento {
+  display: block;
+  margin-top: var(--space-1);
+}
+
 .badgeInRegola {
   background: var(--color-success-bg);
   color: var(--color-success);

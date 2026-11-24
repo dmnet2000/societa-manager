@@ -1,14 +1,20 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { conCompressioneCertificato } from "@/lib/comprimi-file-certificato";
 import { caricaCertificato } from "./actions";
 import styles from "./certificato-medico.module.css";
+
+// Il file viene ottimizzato nel browser prima dell'invio (PDF pesanti
+// rasterizzati, foto ridimensionate); pending di useActionState copre
+// compressione + upload. Fail-soft: in caso di errore parte l'originale.
+const caricaCertificatoCompresso = conCompressioneCertificato(caricaCertificato);
 
 // Stesso pattern di NuovoSlotForm.tsx (Story 2.5): reset del form dopo un
 // upload riuscito, cosi' l'input file non mostra piu' il vecchio nome.
 export function CaricaCertificatoForm({ atletaId }: { atletaId: string }) {
   const [state, formAction, pending] = useActionState(
-    caricaCertificato,
+    caricaCertificatoCompresso,
     undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
@@ -51,6 +57,9 @@ export function CaricaCertificatoForm({ atletaId }: { atletaId: string }) {
           accept=".pdf,.jpg,.jpeg,.png"
           required
         />
+        <p className={styles.aiuto}>
+          I file pesanti vengono ottimizzati automaticamente prima dell&apos;invio.
+        </p>
       </div>
       {state && "error" in state && (
         <p role="alert" className={styles.errore}>

@@ -2225,6 +2225,37 @@ Found null hrp, blocking mods: ExceptionDialog; non-blocking mods: ; response er
 **When** viene identificata
 **Then** viene corretta e la causa/correzione vengono documentate in questa storia
 
+### Story 11.6: Elenco dei file leggibile da chiunque nei bucket pubblici foto-squadra-gruppo e volantino-torneo
+
+As a Admin responsabile dei dati della società,
+I want che chi non è autenticato (o un tablet del referto) non possa elencare tutti i file dei bucket pubblici,
+so that restano visibili solo le immagini che il sito mostra, non file caricati e poi non più usati.
+
+**Note aggiuntive:** emerso il 2026-11-15 dalla verifica di sicurezza in produzione del referto elettronico (story 2.10 dell'initiative referto-elettronico, script `scripts/verifica-sicurezza-tablet.mjs`). Evidenza: con la sola chiave pubblica (anon) e con il JWT di un tablet, `POST /storage/v1/object/list/<bucket>` restituisce file per 5 bucket marcati `public`. Tutte le tabelle e i bucket privati (certificati medici, foto profilo) risultano invece protetti.
+
+Analisi già fatta (da confermare in sviluppo):
+- `foto-hero`, `logo-applicazione`, `logo-polisportiva`: la policy SELECT su `storage.objects` ammette **un solo nome fisso** (es. `name = 'foto-hero'`), già pubblico per URL. L'elenco non rivela altro: probabilmente nessuna correzione, solo da documentare e da far riconoscere allo script di verifica come atteso.
+- `foto-squadra-gruppo` (policy `foto_squadra_gruppo_select`, migrazione `20260813000000_add_foto_squadra_bucket`) e `volantino-torneo` (policy `volantino_torneo_select`, migrazione `20260824010000_add_volantino_torneo_bucket`): la SELECT vale per **tutto il bucket**, quindi chiunque elenca tutti i file, compresi quelli eventualmente sostituiti e non più mostrati.
+- **Attenzione:** il sito stesso usa `list()` su questi bucket con il client passato dal chiamante (`lib/storage/foto-squadra.ts:49`, `lib/storage/volantino-torneo.ts:59`, anche `foto-hero.ts`, `logo.ts`, `logo-polisportiva.ts`), anche dalle pagine pubbliche (`app/page.tsx`, `app/torneo/page.tsx`). Restringere la policy senza spostare quelle letture su un client lato server (service role) o su metadati nel database romperebbe la home e la pagina /torneo. Il download per URL pubblico (`/storage/v1/object/public/...`) non dipende dalla policy SELECT e continua a funzionare.
+
+**Acceptance Criteria:**
+
+**Given** un client con la sola chiave pubblica, o con il JWT di un tablet
+**When** chiede l'elenco dei file di `foto-squadra-gruppo` o `volantino-torneo`
+**Then** riceve un elenco vuoto o un rifiuto, mentre le immagini mostrate dal sito restano raggiungibili dal loro URL pubblico
+
+**Given** la home pubblica, la pagina /torneo e le pagine di amministrazione che mostrano o caricano foto di squadra e volantino
+**When** vengono aperte dopo la modifica
+**Then** funzionano come prima (stesse immagini, stesso caricamento e sostituzione)
+
+**Given** lo script `scripts/verifica-sicurezza-tablet.mjs`
+**When** viene rilanciato in produzione dopo la modifica
+**Then** non segnala più `foto-squadra-gruppo` e `volantino-torneo`, e i tre bucket a nome fisso sono riconosciuti come attesi (o la decisione di lasciarli così è documentata qui)
+
+**Given** la modifica richiede una migrazione
+**When** viene rilasciata
+**Then** la migrazione è applicata al database di produzione prima o insieme al merge su `main` (deploy automatico, vedi `docs/deploy-produzione.md` Fase 3bis)
+
 ## Epic 12: Permessi Configurabili da Admin
 
 *(Aggiunto in corso d'opera — 2026-08-02, richiesta esplicita dell'utente, emersa discutendo la Story 9.22. Analisi di apertura completata il 2026-08-04, stesso approccio già usato per Epic 10 — vedi decisioni sotto. Rotto in 4 story fondative + un elenco aperto di story di estensione (una rotta alla volta, deliberatamente incrementale, non un refactor big-bang).)*
@@ -4234,3 +4265,273 @@ so that posso iscriverla online senza dover passare prima dalla Segreteria.
 7. **And** guida in-app aggiornata, test Vitest sui due rami (CF trovato / non trovato)
 
 **Rimandato (fuori epic):** effetto del consenso immagini "Non autorizza" su foto squadre, sito pubblico e fotogallery - decisione utente 2026-10-15, da riprendere quando si chiariscono le regole operative della società.
+
+## Epic 28: Export dati Certificati, Iscrizioni, Tesseramenti
+
+*(Aperto 2026-10-25, richiesta esplicita dell'utente - SOLO story scritte, nessuna implementazione ora: "funzioni di export dati nelle funzioni: certificati, iscrizioni, tesseramenti + export complessivo." Decisioni chiuse con l'utente lo stesso giorno, vedi sotto.)*
+
+**Punto di partenza reale (verificato nel codice 2026-10-25):** nessuna funzione di export esiste nell'app e nessuna libreria Excel/CSV/zip è tra le dipendenze (`package.json`). Le tre pagine sorgente:
+- `/app/conferma-certificati` (Admin/Dirigente/Segreteria): `elencaAtlete` + `elencaCertificati` (`lib/db-rls/`, RLS), stato calcolato con `categorizzaStatoCertificato` (`vista-dirigente/categorizza-stato-certificato.ts`), righe divise in "da confermare" e "confermati".
+- `/app/conferma-iscrizioni` (Admin/Dirigente/Segreteria): `Iscrizione` per Atleta+stagione con `confermataIl` (data di iscrizione mostrata come "Iscritta il", 2026-10-25), gruppi correnti dell'Atleta.
+- `/app/conferma-tesseramenti` (Admin/Dirigente, Segreteria esclusa - Epic 13): `Tesseramento.federazioneIds`, letto **solo** tramite `lib/tesseramento.ts` (vincolo permanente Epic 26).
+
+`elencaAtlete` esclude per default le Atlete rimosse (`rimossaIl`, Story 9.43). L'app gira su Cloudflare Workers (OpenNext): il peso del bundle del Worker conta (vedi Story 27.2, PDF generato nel browser per lo stesso motivo).
+
+**Decisioni (chiuse con l'utente 2026-10-25):**
+- **Formato: Excel `.xlsx`** (non CSV): si apre direttamente in Excel con date e colonne corrette.
+- **Permessi: chi vede la pagina può esportarne i dati.** L'export Certificati/Iscrizioni è disponibile ad Admin/Dirigente/Segreteria, l'export Tesseramenti ad Admin/Dirigente - sempre gli stessi `ruoliAmmessi` della pagina in `lib/auth/route-guard.ts`, ricontrollati lato server sulla rotta di download (non solo pulsante nascosto). **L'export complessivo è solo Admin.**
+- **Export complessivo: una riga per Atleta** con anagrafica + Gruppo + stato e scadenza certificato + iscrizione e data + tesseramento e federazioni - il quadro completo della stagione in un solo foglio.
+- **Contenuto: sempre tutte le Atlete dell'anno agonistico corrente** (escluse le rimosse), indipendente da filtri e ordinamento a schermo. Ordine del file: per nome Atleta.
+
+**Decisioni tecniche (da confermare in create-story della 28.1):**
+- **Generazione lato server in una Route Handler `GET`** per ogni export (es. `/app/conferma-certificati/export`), così permessi e RLS restano quelli della pagina e il file arriva con `Content-Disposition: attachment`. Header `Cache-Control: no-store` (dati personali, anche di minori).
+- **Writer `.xlsx` minimale in `lib/export-xlsx.ts`** (SpreadsheetML scritto a mano + zip con una libreria leggera, es. `fflate`), non `exceljs`/SheetJS: peso nel bundle del Worker trascurabile. Da validare subito nella 28.1 aprendo il file in Excel e LibreOffice.
+- **Celle testo sempre come stringhe (`inlineStr`), mai formule**: un nome che inizia con `=`, `+`, `-`, `@` non diventa una formula (formula injection). Date come vere date Excel (formato `gg/mm/aaaa`), numeri come numeri.
+- **Composizione dei dati separata dal formato**: per ogni export una funzione pura "righe → colonne" testabile senza generare il file, riusata dall'export complessivo.
+- **Nome file**: `<sezione>-<anno agonistico>.xlsx` (es. `certificati-2026-2027.xlsx`, `export-completo-2026-2027.xlsx`).
+- **Guida in-app**: ogni story aggiorna `lib/guida/contenuti.ts` per le pagine toccate (regola permanente Epic 17), con un richiamo alla riservatezza del file scaricato.
+
+**Ordine di sviluppo:** 28.1 → 28.2 → 28.3 → 28.4. La 28.1 crea il writer e lo valida; la 28.4 riusa le composizioni delle tre precedenti.
+
+### Story 28.1: Export Certificati medici (e writer Excel condiviso)
+
+As a Admin/Dirigente/Segreteria,
+I want scaricare in Excel l'elenco dei certificati medici di tutte le Atlete,
+so that posso controllare scadenze e mancanti fuori dall'app o inoltrarli a chi li deve sollecitare.
+
+**Contesto tecnico:** crea `lib/export-xlsx.ts` (writer condiviso, vedi decisioni tecniche) e la Route Handler di `/app/conferma-certificati`. Pulsante "Esporta Excel" in testa alla pagina (link di download, touch target 44px).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin, Dirigente o Segreteria **When** clicco "Esporta Excel" su Conferma certificati **Then** scarico `certificati-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Gruppo/i, Stato (Da confermare / In regola / In scadenza / Scaduto / Senza certificato - stesse etichette e stessa logica della pagina), Inizio validità, Fine validità, Mesi di validità, File caricato (Sì/No)
+3. **And** le date sono vere date Excel, le celle testo non vengono mai interpretate come formule
+4. **And** il file si apre senza avvisi in Excel e LibreOffice
+5. **And** un Ruolo non ammesso alla pagina riceve un rifiuto dalla rotta di download (403/redirect), anche chiamandola direttamente
+6. **And** la risposta ha `Cache-Control: no-store`
+7. **And** guida in-app di "Conferma certificati" aggiornata
+8. **And** test Vitest: writer (struttura del file, escape XML, stringhe che iniziano con `=`, date, celle vuote), composizione delle righe, guard Ruoli della rotta
+
+### Story 28.2: Export Iscrizioni
+
+As a Admin/Dirigente/Segreteria,
+I want scaricare in Excel l'elenco delle iscrizioni della stagione con la data di iscrizione,
+so that so chi è iscritta, da quando, e chi manca ancora.
+
+**Contesto tecnico:** Route Handler su `/app/conferma-iscrizioni`, riuso di `lib/export-xlsx.ts`. Data di iscrizione = `Iscrizione.confermataIl`.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin, Dirigente o Segreteria **When** clicco "Esporta Excel" su Conferma iscrizioni **Then** scarico `iscrizioni-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Categoria, Gruppo/i, Iscritta (Sì/No), Data iscrizione, Email, Cellulare
+3. **And** sono considerate solo le Iscrizioni attive dell'Anno Agonistico corrente
+4. **And** permessi, `no-store` e formato come nella Story 28.1
+5. **And** guida in-app di "Conferma iscrizioni" aggiornata
+6. **And** test Vitest su composizione delle righe e guard Ruoli
+
+### Story 28.3: Export Tesseramenti
+
+As a Admin/Dirigente,
+I want scaricare in Excel lo stato dei tesseramenti per federazione,
+so that ho l'elenco da usare con le federazioni e vedo chi non è ancora tesserata.
+
+**Contesto tecnico:** Route Handler su `/app/conferma-tesseramenti`. Lettura del Tesseramento **solo** tramite `lib/tesseramento.ts` (vincolo Epic 26: nessun `prisma.tesseramento`/`federazioneIds` fuori da quel modulo).
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin o Dirigente **When** clicco "Esporta Excel" su Conferma tesseramenti **Then** scarico `tesseramenti-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: Atleta, Codice fiscale, Data di nascita, Gruppo/i, Iscritta (Sì/No), Tesserata (Sì/No), poi una colonna per ogni Federazione (stesse colonne e stesso ordine della pagina, comprese le disattivate ancora in uso) con "Sì" dove l'Atleta è tesserata
+3. **And** la Segreteria (esclusa dalla pagina) riceve un rifiuto dalla rotta di download
+4. **And** nessun accesso al Tesseramento fuori da `lib/tesseramento.ts` (grep)
+5. **And** permessi, `no-store` e formato come nella Story 28.1
+6. **And** guida in-app di "Conferma tesseramenti" aggiornata
+7. **And** test Vitest su composizione delle righe (colonne federazione dinamiche) e guard Ruoli
+
+### Story 28.4: Export complessivo per Atleta (solo Admin)
+
+As a Admin,
+I want scaricare un unico file Excel con una riga per Atleta e tutti i suoi dati della stagione,
+so that ho il quadro completo (anagrafica, gruppo, certificato, iscrizione, tesseramento) in un solo posto.
+
+**Contesto tecnico:** riusa le composizioni delle Story 28.1-28.3 (nessuna logica di stato duplicata). Il pulsante sta in una pagina visibile solo all'Admin - proposta: nuova voce "Export dati" nel gruppo "Atleti" del menu (`ruoliAmmessi: ["ADMIN"]`) che raccoglie anche i tre export di sezione; scelta finale in create-story.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin **When** clicco "Export completo" **Then** scarico `export-completo-<anno>.xlsx` con una riga per ogni Atleta non rimossa, ordinata per nome
+2. **And** le colonne sono: anagrafica (Atleta, Codice fiscale, Sesso, Data e luogo di nascita, Indirizzo, CAP, Località, Provincia, Email, Cellulare, Categoria, Matricola), Gruppo/i, Stato certificato, Fine validità certificato, Iscritta, Data iscrizione, Tesserata, Federazioni (sigle separate da virgola)
+3. **And** stato certificato, iscrizione e tesseramento coincidono con quelli dei singoli export (stessa funzione di composizione, test che lo verifica)
+4. **And** un Ruolo diverso da Admin riceve un rifiuto dalla rotta di download e non vede il pulsante
+5. **And** `no-store` e formato come nella Story 28.1
+6. **And** guida in-app aggiornata (nuova pagina o voce)
+7. **And** test Vitest su composizione e guard Ruoli
+
+## Epic 29: Torneo - Form di iscrizione squadre e gestione pasti
+
+*(Aperto 2026-11-23, richiesta esplicita dell'utente: "epica nuova Torneo -> Form Iscrizione e gestione pasti, fai solo analisi e le stories da sviluppare e fermati". SOLO analisi + story scritte, nessuna implementazione. Le assunzioni marcate **[DA CONFERMARE]** vanno chiuse con l'utente prima di avviare la story che le usa.)*
+
+**Punto di partenza reale (verificato nel codice 2026-11-23):**
+- Oggi le squadre del Torneo (`SquadraTorneo`: `nome`, `girone`, `referente?`, `contatto?`, `categoriaTorneoId`) le inserisce **a mano** Admin/Dirigente in `/app/torneo` (Story 20.2). Le società esterne non hanno nessun modo per iscriversi da sole: le iscrizioni arrivano fuori dal gestionale (telefono, email, WhatsApp) e vanno ricopiate.
+- `CategoriaTorneo.numeroMassimoSquadre` esiste già: è il limite naturale dei posti disponibili per Categoria.
+- `EdizioneTorneo` ha `anno` (unico), `nome`, `nomeSettimana1/2`; le Categorie hanno una `settimana` (due weekend). Non esiste un concetto di giornata/data dell'Edizione se non tramite gli `SlotTorneo` (`data`, `ora`).
+- **Nessuna gestione pasti** esiste nel progetto, in nessuna forma.
+- Il sito pubblico ha `/torneo` (Story 20.6) senza form: nel progetto non esiste nessun form pubblico anonimo, né un anti-spam (nessun Turnstile/captcha).
+- Invio email già pronto: `lib/email/invia-email.ts` (Nodemailer su SMTP configurato da Admin, Story 4.3/9.31), con allegati.
+- Export Excel già pronto: `lib/export-xlsx.ts` + `app/PulsanteEsportaExcel.tsx` (Epic 28).
+- Rosa giocatrici della squadra (`RosaSquadra`/`GiocatoreRosa`/`TesseratoRosa`) introdotta dal referto elettronico (Epic 25): oggi compilata dal gestionale/tablet, non dalla squadra.
+
+**Obiettivo:** le società partecipanti si iscrivono da sole al Torneo da un form pubblico, indicando squadre, categorie e pasti richiesti; l'organizzazione conferma o rifiuta ogni iscrizione (la conferma crea la `SquadraTorneo`, senza ricopiarla a mano) e ha in un'unica pagina il riepilogo pasti per la cucina e il dovuto per ogni società.
+
+**Assunzioni di analisi (proposte, [DA CONFERMARE] con l'utente):**
+1. **Form pubblico senza account** su `/torneo/iscrizione`: il referente di una società esterna non ha (né deve avere) un account del gestionale. Raggiungibile solo quando le iscrizioni dell'Edizione sono aperte.
+2. **Una richiesta = una società**, con una o più squadre (anche più squadre nella stessa Categoria, es. "Volley X Rossa" / "Volley X Blu").
+3. **Conferma manuale** dell'organizzazione: la richiesta nasce **in attesa**, nessuna `SquadraTorneo` viene creata finché Admin/Dirigente non conferma. Il girone lo sceglie l'organizzazione alla conferma, mai il referente.
+4. **Posti esauriti**: se una Categoria ha già `numeroMassimoSquadre` squadre confermate, nel form non è più selezionabile. Le richieste in attesa non occupano posto **[DA CONFERMARE: oppure lista d'attesa]**.
+5. **Pasti per quantità, non per nome**: per ogni pasto la società indica quanti pasti per atleti e quanti per accompagnatori/staff, più le esigenze alimentari (n. vegetariani, n. senza glutine, allergie in testo libero). Nessun nominativo di minore raccolto: dato minimo, nessun problema privacy oltre ai dati del referente.
+6. **Pasti configurati per Edizione** dall'organizzazione: elenco di "servizi pasto" (es. "Sabato 14 giugno - pranzo"), ciascuno con prezzo atleta, prezzo accompagnatore **[DA CONFERMARE: prezzo unico?]**, eventuale descrizione menù.
+7. **Modifica dopo l'invio tramite link personale** inviato per email al referente (token segreto, nessun login), consentita fino alla chiusura iscrizioni; dopo la chiusura modifica solo l'organizzazione.
+8. **Pagamenti fuori dal gestionale**: il sistema calcola il dovuto (quota iscrizione squadra + pasti) e mostra IBAN/causale; l'organizzazione segna a mano "pagato". Nessun pagamento online **[DA CONFERMARE]**.
+9. **Anti-spam**: Cloudflare Turnstile (il progetto è già su Cloudflare) + honeypot. **[DA CONFERMARE: basta honeypot?]**
+10. **Rosa giocatrici nel form: fuori perimetro** di questa epica (resta nel flusso del referto elettronico). **[DA CONFERMARE]**
+
+**Decisioni tecniche proposte:**
+- **Accesso ai dati:** il form pubblico scrive tramite Server Action con connessione privilegiata (Prisma), mai con `anon` via PostgREST. Tutte le nuove tabelle in `ENABLE ROW LEVEL SECURITY` + `REVOKE ALL ... FROM anon, authenticated` esplicito (regola permanente 2026-08-04); GRANT espliciti solo se una tabella viene letta via supabase-js (regola 2026-10-30).
+- **Nuovi model** (nomi indicativi): `IscrizioneTorneo` (edizione, società, referente nome/email/telefono, note, consenso privacy + data, stato `IN_ATTESA|CONFERMATA|RIFIUTATA|ANNULLATA`, motivo rifiuto, hash del token di modifica, pagato/data pagamento), `SquadraIscrizioneTorneo` (iscrizione, categoria, nome squadra, stato, `squadraTorneoId?` valorizzato alla conferma), `PastoTorneo` (edizione, data, tipo `PRANZO|CENA|ALTRO`, etichetta, prezzi, descrizione, ordine), `PrenotazionePastoTorneo` (iscrizione o riga manuale, pasto, n. atleti, n. accompagnatori, n. vegetariani, n. senza glutine; univoco per iscrizione+pasto). Campi nuovi su `EdizioneTorneo`: `iscrizioniAperte`, `chiusuraIscrizioni`, `quotaIscrizioneSquadra`, `emailOrganizzazione`, `infoPagamento` (IBAN/causale), `testoIscrizione`.
+- **Token di modifica:** generato casuale, in DB solo l'hash (mai il token in chiaro), confronto a tempo costante.
+- **Importi in centesimi** (`Int`), mai `Float`.
+- **Perimetro gestione:** `requireRuolo(["ADMIN","DIRIGENTE"])` come tutto `/app/torneo` (Epic 20), nessun nuovo Ruolo.
+- **Guida in-app** aggiornata in ogni story che tocca pagine del gestionale (regola permanente Epic 17).
+- **Sito pubblico:** form nello stile "Poster Sportivo" di `/torneo`, nessuno stile ad hoc, touch target 44px.
+
+**Ordine di sviluppo:** 29.1 → 29.2 → 29.3 → 29.4 → 29.5 → 29.6 → 29.7 → 29.8. Le 29.1-29.5 sono il minimo rilasciabile (iscrizione + pasti + conferma); 29.6-29.8 sono il completamento.
+
+### Story 29.1: Apertura iscrizioni dell'Edizione
+
+As an Admin o Dirigente,
+I want aprire e chiudere le iscrizioni di un'Edizione del Torneo e impostarne le condizioni,
+so that le società sappiano fino a quando e a quali condizioni possono iscriversi.
+
+**Acceptance Criteria:**
+
+1. **Given** sono Admin o Dirigente in `/app/torneo` **When** modifico un'Edizione **Then** posso impostare: iscrizioni aperte sì/no, data e ora di chiusura, quota di iscrizione per squadra (anche 0), email dell'organizzazione che riceve le notifiche, informazioni di pagamento (IBAN, causale), testo informativo per il form
+2. **And** le iscrizioni risultano aperte solo se il flag è attivo **e** la data di chiusura non è passata (fuso Europe/Rome)
+3. **And** al massimo un'Edizione alla volta ha le iscrizioni aperte (attivarle su una seconda Edizione è rifiutato con un messaggio chiaro)
+4. **And** la quota è salvata in centesimi, l'email è validata
+5. **And** migrazione additiva (Edizioni esistenti: iscrizioni chiuse), guida in-app aggiornata, test Vitest su validazione e calcolo "aperte"
+
+### Story 29.2: Configurazione dei pasti dell'Edizione
+
+As an Admin o Dirigente,
+I want definire i pasti offerti durante il Torneo con data, tipo e prezzo,
+so that le società possano prenotarli nel form di iscrizione.
+
+**Acceptance Criteria:**
+
+1. **Given** un'Edizione **When** gestisco i pasti **Then** posso aggiungere, modificare, riordinare (Su/Giù) ed eliminare pasti con: data, tipo (pranzo/cena/altro), etichetta, prezzo atleta, prezzo accompagnatore, descrizione menù facoltativa
+2. **And** un pasto con prenotazioni non è eliminabile (fail-closed come il resto dell'Epic 20), solo modificabile
+3. **And** prezzi in centesimi, non negativi
+4. **And** nuova tabella con RLS + REVOKE espliciti, guida in-app aggiornata, test Vitest
+
+### Story 29.3: Form pubblico di iscrizione squadre
+
+As a referente di una società,
+I want iscrivere le mie squadre al Torneo da un form sul sito,
+so that non debba mandare messaggi o email all'organizzazione.
+
+**Acceptance Criteria:**
+
+1. **Given** un'Edizione con iscrizioni aperte **When** apro `/torneo/iscrizione` **Then** vedo il testo informativo, la data di chiusura e il form: nome società, referente (nome, email, telefono), una o più squadre (Categoria + nome squadra), note, consenso privacy obbligatorio
+2. **And** sono selezionabili solo le Categorie con posti ancora liberi (squadre confermate < `numeroMassimoSquadre`); quelle piene compaiono come "posti esauriti"
+3. **And** all'invio la richiesta è salvata **in attesa**, vedo una pagina di conferma e ricevo un'email di riepilogo con il link personale di modifica (29.6); l'organizzazione riceve una notifica all'email dell'Edizione
+4. **And** se l'invio email fallisce la richiesta resta comunque salvata (errore registrato nei log, nessun messaggio di fallimento al referente)
+5. **And** anti-spam: Turnstile verificato lato server + campo honeypot; una richiesta che non li supera è rifiutata senza salvare nulla
+6. **And** a iscrizioni chiuse la pagina mostra "Iscrizioni chiuse" senza form; su `/torneo` il link "Iscriviti" compare solo quando le iscrizioni sono aperte
+7. **And** tutta la validazione è ripetuta lato server, errori nel formato `{ error: { code, message } }`
+8. **And** nuove tabelle con RLS + REVOKE espliciti, nessun accesso `anon`; test Vitest su validazione, posti disponibili, anti-spam
+
+### Story 29.4: Prenotazione pasti nel form di iscrizione
+
+As a referente di una società,
+I want indicare quanti pasti mi servono per ogni giornata,
+so that l'organizzazione sappia quanti coperti preparare e io conosca subito il costo.
+
+**Acceptance Criteria:**
+
+1. **Given** l'Edizione ha pasti configurati (29.2) **When** compilo il form **Then** per ogni pasto indico n. atleti e n. accompagnatori e, tra questi, n. vegetariani e n. senza glutine; un campo di testo per allergie e altre esigenze
+2. **And** vegetariani + senza glutine non possono superare il totale del pasto (errore chiaro)
+3. **And** il form mostra in tempo reale il totale stimato: quote squadre + pasti
+4. **And** se l'Edizione non ha pasti configurati la sezione non compare
+5. **And** le prenotazioni sono incluse nell'email di riepilogo e nella notifica all'organizzazione
+6. **And** il calcolo del totale è una funzione pura condivisa tra client e server, coperta da test Vitest
+
+### Story 29.5: Gestione delle richieste di iscrizione
+
+As an Admin o Dirigente,
+I want vedere le richieste arrivate e confermarle o rifiutarle,
+so that le squadre confermate entrino nel Torneo senza ricopiarle a mano.
+
+**Acceptance Criteria:**
+
+1. **Given** sono in `/app/torneo` **When** apro "Iscrizioni" dell'Edizione **Then** vedo l'elenco delle richieste con società, referente, squadre, stato, data di invio e totale dovuto, filtrabile per stato
+2. **And** per ogni squadra di una richiesta in attesa scelgo il girone e confermo: viene creata la `SquadraTorneo` (nome, girone, referente e contatto presi dalla richiesta) e collegata alla riga della richiesta
+3. **And** la conferma è rifiutata se la Categoria ha già raggiunto `numeroMassimoSquadre`
+4. **And** posso rifiutare una richiesta (o una sua singola squadra) indicando un motivo; il referente riceve un'email con l'esito, sia di conferma sia di rifiuto
+5. **And** una conferma doppia (due click o due utenti) non crea due `SquadraTorneo` (operazione transazionale e idempotente)
+6. **And** le squadre inserite a mano (flusso Story 20.2) continuano a funzionare come prima
+7. **And** guida in-app aggiornata, test Vitest su conferma, capienza, idempotenza
+
+### Story 29.6: Modifica dell'iscrizione da parte del referente
+
+As a referente di una società,
+I want correggere la mia iscrizione e i pasti dopo l'invio,
+so that possa aggiornare i numeri senza scrivere all'organizzazione.
+
+**Acceptance Criteria:**
+
+1. **Given** il link personale ricevuto via email **When** lo apro prima della chiusura iscrizioni **Then** vedo la mia richiesta e posso modificare referente, note, quantità pasti ed esigenze alimentari, e aggiungere squadre
+2. **And** non posso togliere o rinominare una squadra già confermata (solo l'organizzazione può farlo); posso annullare una squadra ancora in attesa
+3. **And** dopo la chiusura iscrizioni il link mostra il riepilogo in sola lettura
+4. **And** un token errato mostra un messaggio generico (non rivela se la richiesta esiste); in DB c'è solo l'hash del token
+5. **And** ogni modifica invia una notifica all'organizzazione con le differenze
+6. **And** Admin/Dirigente possono modificare le stesse informazioni dal gestionale anche dopo la chiusura
+7. **And** test Vitest su token, finestra temporale, regole di modifica
+
+### Story 29.7: Riepilogo pasti per la cucina
+
+As an Admin o Dirigente,
+I want un riepilogo dei pasti prenotati per giornata,
+so that sappia quanti coperti e quali esigenze alimentari preparare.
+
+**Acceptance Criteria:**
+
+1. **Given** un'Edizione con prenotazioni **When** apro "Pasti" **Then** vedo per ogni pasto: totale coperti (atleti + accompagnatori), vegetariani, senza glutine, elenco delle allergie con la società di provenienza
+2. **And** per ogni pasto posso espandere il dettaglio per società
+3. **And** contano solo le richieste in attesa o confermate (rifiutate e annullate escluse), indicando a parte quante sono ancora in attesa
+4. **And** posso aggiungere prenotazioni manuali non legate a una squadra (es. arbitri, staff, volontari), che entrano nei totali
+5. **And** export Excel con un foglio per pasto (riuso di `lib/export-xlsx.ts`) e vista stampabile
+6. **And** guida in-app aggiornata, test Vitest sul calcolo dei totali
+
+### Story 29.8: Riepilogo economico e pagamenti
+
+As an Admin o Dirigente,
+I want vedere quanto deve ogni società e segnare chi ha pagato,
+so that possa controllare gli incassi del Torneo.
+
+**Acceptance Criteria:**
+
+1. **Given** l'elenco iscrizioni **When** lo consulto **Then** per ogni società vedo: quote delle squadre confermate, importo pasti, totale dovuto, stato del pagamento
+2. **And** posso segnare una richiesta come pagata (con data) o togliere il segno
+3. **And** vedo il totale generale dell'Edizione: dovuto, incassato, da incassare
+4. **And** l'email di conferma (29.5) riporta il totale e le informazioni di pagamento dell'Edizione
+5. **And** export Excel del riepilogo economico
+6. **And** se un importo cambia dopo il pagamento (es. pasti modificati) la richiesta è evidenziata "da verificare"
+7. **And** guida in-app aggiornata, test Vitest sul calcolo degli importi
+
+**Decisioni aperte da chiudere con l'utente prima di iniziare:**
+1. Form pubblico senza account (assunzione 1): confermato?
+2. Conferma manuale di ogni squadra o accettazione automatica fino a esaurimento posti? Serve una lista d'attesa?
+3. Pasti: prezzo diverso per atleti e accompagnatori o unico? Servono altri dati (orario di arrivo, pernottamento)?
+4. Quota di iscrizione per squadra: c'è? Uguale per tutte le Categorie o diversa per Categoria?
+5. Pagamenti: solo segnati a mano (proposto) o serve il pagamento online?
+6. Anti-spam: Turnstile va bene (serve una chiave Cloudflare) o basta l'honeypot?
+7. Raccogliere già nel form la rosa giocatrici (collegamento al referto elettronico) o resta fuori?
+8. Le squadre della nostra società si iscrivono anche loro dal form o restano inserite a mano?

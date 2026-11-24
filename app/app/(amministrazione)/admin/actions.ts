@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/auth-admin/client";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sincronizzaRuoliAppMetadata } from "@/lib/auth-admin/sync-roles";
-import { parseRuoli } from "@/lib/ruoli";
+import { eEmailTablet, eUtenteTablet, haRuoloTablet, parseRuoli, RUOLO_TABLET } from "@/lib/ruoli";
+import { emailDaNomeTablet, normalizzaNomeTablet } from "@/lib/api-tablet/contratto";
 import { requireRuolo } from "@/lib/auth/require-ruolo";
 import { inviaEmail } from "@/lib/email/invia-email";
 import {
@@ -36,6 +37,19 @@ async function contaAltriAdminAttivi(utenteIdEscluso: string): Promise<number> {
   });
 }
 
+// Referto elettronico (AD-12): TABLET e' esclusivo - nasce solo da
+// creaUtenteTablet e non si aggiunge ne' si toglie da creaUtente/
+// aggiornaRuoliUtente.
+const ERRORE_TABLET_ESCLUSIVO = {
+  code: "VALIDATION",
+  message: "Il ruolo Tablet si assegna solo creando un nuovo tablet.",
+};
+
+const ERRORE_EMAIL_TABLET = {
+  code: "VALIDATION",
+  message: "Questo indirizzo è riservato ai tablet: usa un'email reale.",
+};
+
 // AC #1, #2: creazione utente da parte dell'Admin - usa admin.createUser
 // (service-role), non signUp: e' l'Admin a creare l'account, non l'utente
 // stesso (percorso distinto dall'auto-registrazione di Story 1.1).
@@ -54,10 +68,16 @@ export async function creaUtente(
       error: { code: "VALIDATION", message: "Email e password sono obbligatorie." },
     };
   }
+  if (eEmailTablet(email)) {
+    return { error: ERRORE_EMAIL_TABLET };
+  }
 
   const ruoli = parseRuoli(formData.getAll("ruoli"));
   if (ruoli.length === 0) {
     return { error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." } };
+  }
+  if (eUtenteTablet(ruoli)) {
+    return { error: ERRORE_TABLET_ESCLUSIVO };
   }
 
   const admin = createAdminClient();
@@ -131,10 +151,116 @@ export async function creaUtente(
   return { success: true };
 }
 
-// AC #3, #4: disattiva/riattiva un utente esistente. Nessuna scrittura su
-// Supabase Auth qui: il controllo di attivo avviene al login
+const ERRORE_NOME_TABLET_USATO = {
+  code: "VALIDATION",
+  message: "Nome già usato da un altro tablet.",
+} as const;
+
+const ERRORE_CREAZIONE_TABLET = {
+  code: "INTERNAL",
+  message: "Impossibile creare il tablet. Riprova.",
+};
+
+// Referto elettronico (AD-12): l'Admin crea l'utente dedicato a un tablet col
+// solo nome e una password. L'email e' sintetica (<nome>@tablet.invalid,
+// regola unica nel contratto lib/api-tablet/contratto.ts, la stessa usata
+// dall'app al login): nessuna email reale, nessun invio. Stesso schema di
+// creaUtente sopra (admin.createUser + Utente/UtenteRuolo + app_metadata).
+export async function creaUtenteTablet(
+  _prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const forbidden = await requireRuolo("ADMIN");
+  if (forbidden) return forbidden;
+
+  const nome = normalizzaNomeTablet(String(formData.get("nome") ?? ""));
+  const email = emailDaNomeTablet(nome);
+  const password = String(formData.get("password") ?? "");
+
+  if (nome === undefined || email === undefined) {
+    return {
+      error: {
+        code: "VALIDATION",
+        message:
+          "Nome del tablet non valido: da 3 a 30 caratteri tra lettere minuscole senza accenti, cifre e trattino, iniziando con una lettera.",
+      },
+    };
+  }
+  if (!password) {
+    return { error: { code: "VALIDATION", message: "La password è obbligatoria." } };
+  }
+
+  const admin = createAdminClient();
+
+  let data, error;
+  try {
+    ({ data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    }));
+  } catch (err) {
+    console.error(err);
+    return { error: ERRORE_CREAZIONE_TABLET };
+  }
+
+  if (error) {
+    if (error.code === "email_exists" || error.code === "user_already_exists") {
+      return { error: ERRORE_NOME_TABLET_USATO };
+    }
+    if (error.code === "weak_password") {
+      return {
+        error: { code: "VALIDATION", message: "Password troppo debole. Scegline una più lunga." },
+      };
+    }
+    console.error(error);
+    return { error: ERRORE_CREAZIONE_TABLET };
+  }
+
+  if (!data.user) {
+    return { error: ERRORE_CREAZIONE_TABLET };
+  }
+
+  if (data.user.identities && data.user.identities.length === 0) {
+    return { error: ERRORE_NOME_TABLET_USATO };
+  }
+
+  const ruoli = [RUOLO_TABLET];
+  try {
+    await prisma.utente.create({
+      data: {
+        supabaseAuthId: data.user.id,
+        email,
+        ruoli: { create: ruoli.map((ruolo) => ({ ruolo })) },
+      },
+    });
+
+    // AD-11: il Ruolo TABLET arriva in app_metadata come tutti gli altri.
+    await sincronizzaRuoliAppMetadata(data.user.id, ruoli);
+  } catch (err) {
+    // Stessa decisione di creaUtente: nessun rollback automatico.
+    console.error(err);
+    return { error: ERRORE_CREAZIONE_TABLET };
+  }
+
+  revalidatePath("/app/admin");
+  return { success: true };
+}
+
+// Story 2.4 (AD-12): ban "praticamente per sempre" (100 anni) per un tablet
+// disattivato; "none" lo toglie.
+const BAN_TABLET_DISATTIVATO = "876000h";
+
+// AC #3, #4: disattiva/riattiva un utente esistente. Per gli utenti normali
+// nessuna scrittura su Supabase Auth: il controllo di attivo avviene al login
 // (app/(auth)/accedi/actions.ts), non specchiato in app_metadata - vedi
 // Dev Notes della story sul perche' non e' come i Ruoli (AD-11).
+// Story 2.4 (AD-12): un tablet non passa da quel login, quindi oltre a
+// Utente.attivo (controllato da autenticaTablet a ogni richiesta) riceve
+// anche un ban in Supabase Auth, che blocca nuovi login e refresh. Ordine
+// sicuro: in disattivazione prima il DB, poi il ban; in riattivazione prima
+// si toglie il ban, poi il DB. Se il passo Supabase fallisce l'Admin vede un
+// errore INTERNAL e puo' ripetere l'azione (idempotente).
 export async function impostaAttivoUtente(
   _prevState: AdminActionState,
   utenteId: string,
@@ -143,13 +269,22 @@ export async function impostaAttivoUtente(
   const forbidden = await requireRuolo("ADMIN");
   if (forbidden) return forbidden;
 
+  const erroreStato = {
+    error: {
+      code: "INTERNAL",
+      message: "Impossibile aggiornare lo stato dell'utente. Riprova.",
+    },
+  };
+
   try {
+    const utente = await prisma.utente.findUniqueOrThrow({
+      where: { id: utenteId },
+      include: { ruoli: true },
+    });
+    const eTablet = haRuoloTablet(utente);
+
     if (!attivo) {
       // Decisione: impedire di disattivare l'unico Admin attivo rimasto.
-      const utente = await prisma.utente.findUniqueOrThrow({
-        where: { id: utenteId },
-        include: { ruoli: true },
-      });
       const eAdmin = utente.ruoli.some((r) => r.ruolo === "ADMIN");
       if (eAdmin && (await contaAltriAdminAttivi(utenteId)) === 0) {
         return {
@@ -161,21 +296,120 @@ export async function impostaAttivoUtente(
       }
     }
 
+    if (eTablet && attivo) {
+      const { error } = await createAdminClient().auth.admin.updateUserById(
+        utente.supabaseAuthId,
+        { ban_duration: "none" }
+      );
+      if (error) {
+        console.error(error);
+        return {
+          error: {
+            code: "INTERNAL",
+            message: "Impossibile sbloccare il tablet. Riprova.",
+          },
+        };
+      }
+    }
+
     await prisma.utente.update({
       where: { id: utenteId },
       data: { attivo },
     });
+
+    if (eTablet && !attivo) {
+      let errore: unknown = null;
+      try {
+        ({ error: errore } = await createAdminClient().auth.admin.updateUserById(
+          utente.supabaseAuthId,
+          { ban_duration: BAN_TABLET_DISATTIVATO }
+        ));
+      } catch (err) {
+        errore = err;
+      }
+      if (errore) {
+        console.error(errore);
+        // Il DB e' gia' attivo=false: l'API del tablet lo rifiuta comunque.
+        revalidatePath("/app/admin");
+        return {
+          error: {
+            code: "INTERNAL",
+            message:
+              "Tablet disattivato: l'app del referto non può più usarlo. Il blocco dell'accesso in Supabase non è riuscito: per riprovare premi \"Riattiva\" e poi di nuovo \"Disattiva\".",
+          },
+        };
+      }
+    }
   } catch (err) {
     console.error(err);
-    return {
-      error: {
-        code: "INTERNAL",
-        message: "Impossibile aggiornare lo stato dell'utente. Riprova.",
-      },
-    };
+    return erroreStato;
   }
 
   revalidatePath("/app/admin");
+}
+
+// Story 2.4 (AD-12): l'Admin sceglie una nuova password per un tablet (perso,
+// rubato o password nota a troppi). updateUserById({ password }) da solo
+// invalida access e refresh token esistenti (verificato sul progetto di
+// prova): il tablet torna al login. Mai la password fissa, mai email.
+export async function cambiaPasswordTablet(
+  _prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const forbidden = await requireRuolo("ADMIN");
+  if (forbidden) return forbidden;
+
+  const utenteId = String(formData.get("utenteId") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  if (!password) {
+    return { error: { code: "VALIDATION", message: "La password è obbligatoria." } };
+  }
+
+  const erroreCambio = {
+    error: { code: "INTERNAL", message: "Impossibile cambiare la password. Riprova." },
+  };
+
+  try {
+    // supabaseAuthId derivato da utenteId lato server, mai dal form.
+    const utente = await prisma.utente.findUniqueOrThrow({
+      where: { id: utenteId },
+      include: { ruoli: true },
+    });
+
+    if (!haRuoloTablet(utente)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Questa funzione cambia solo la password di un tablet.",
+        },
+      };
+    }
+
+    const { error } = await createAdminClient().auth.admin.updateUserById(
+      utente.supabaseAuthId,
+      { password }
+    );
+
+    if (error) {
+      if (error.code === "weak_password") {
+        return {
+          error: {
+            code: "VALIDATION",
+            message: "Password troppo debole. Scegline una più lunga.",
+          },
+        };
+      }
+      console.error(error);
+      return erroreCambio;
+    }
+  } catch (err) {
+    console.error(err);
+    return erroreCambio;
+  }
+
+  console.log(`[cambiaPasswordTablet] password del tablet cambiata su utenteId=${utenteId}`);
+  return { success: true };
 }
 
 // AC #5: assegna/rimuove Ruoli - sostituisce l'intero insieme UtenteRuolo
@@ -194,6 +428,9 @@ export async function aggiornaRuoliUtente(
   if (ruoli.length === 0) {
     return { error: { code: "VALIDATION", message: "Seleziona almeno un ruolo." } };
   }
+  if (eUtenteTablet(ruoli)) {
+    return { error: ERRORE_TABLET_ESCLUSIVO };
+  }
 
   try {
     // supabaseAuthId va derivato da utenteId lato server, mai accettato da un
@@ -203,6 +440,16 @@ export async function aggiornaRuoliUtente(
       where: { id: utenteId },
       include: { ruoli: true },
     });
+
+    // AD-12: un utente tablet ha solo il Ruolo TABLET, per sempre.
+    if (haRuoloTablet(utente)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "I ruoli di un utente tablet non si possono modificare.",
+        },
+      };
+    }
 
     const eraAdmin = utente.ruoli.some((r) => r.ruolo === "ADMIN");
     const restaAdmin = ruoli.includes("ADMIN");
@@ -283,6 +530,17 @@ export async function reimpostaPasswordFissaUtente(
       };
     }
 
+    // AD-12: la password fissa e' nota a tutti - su un tablet aprirebbe
+    // l'app a chiunque. Per i tablet c'e' cambiaPasswordTablet.
+    if (haRuoloTablet(utente)) {
+      return {
+        error: {
+          code: "VALIDATION",
+          message: "Non puoi reimpostare la password di un tablet con questa funzione.",
+        },
+      };
+    }
+
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.updateUserById(utente.supabaseAuthId, {
       password: PASSWORD_FISSA_RESET,
@@ -347,6 +605,9 @@ export async function correggiEmailUtenteAction(
     return {
       error: { code: "VALIDATION", message: "Inserisci un indirizzo email valido." },
     };
+  }
+  if (eEmailTablet(nuovaEmail)) {
+    return { error: ERRORE_EMAIL_TABLET };
   }
 
   let utente;

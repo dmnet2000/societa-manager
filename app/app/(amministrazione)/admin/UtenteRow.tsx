@@ -5,6 +5,7 @@ import type { Ruolo } from "@prisma/client";
 import {
   aggiornaRuoliUtente,
   aggiungiAtletaGenitoreAction,
+  cambiaPasswordTablet,
   correggiEmailUtenteAction,
   impostaAttivoUtente,
   reimpostaPasswordFissaUtente,
@@ -20,6 +21,7 @@ const RUOLI = [
   { value: "DIRIGENTE", label: "Dirigente" },
   { value: "ADMIN", label: "Admin" },
   { value: "SITE_MANAGER", label: "Site manager" },
+  { value: "DIRETTORE_TECNICO", label: "Direttore tecnico" },
 ];
 
 type Utente = {
@@ -91,6 +93,11 @@ export function UtenteRow({ utente }: { utente: Utente }) {
   const [aggiungiAtletaState, aggiungiAtletaAction, aggiungiAtletaPending] =
     useActionState(aggiungiAtletaGenitoreAction, undefined);
 
+  // Story 2.4 (AD-12): cambio password di un tablet - il form compare solo
+  // per un utente tablet (vedi JSX sotto), il server lo verifica comunque.
+  const [passwordTabletState, passwordTabletAction, passwordTabletPending] =
+    useActionState(cambiaPasswordTablet, undefined);
+
   function toggleAttivo() {
     setAttivoError(null);
     startToggleTransition(async () => {
@@ -140,6 +147,12 @@ export function UtenteRow({ utente }: { utente: Utente }) {
     utente.ruoli.includes(ruolo.value as Ruolo)
   );
 
+  // Referto elettronico (AD-12): TABLET non e' tra le caselle dei Ruoli -
+  // un utente tablet mostra solo l'etichetta "Tablet", senza modifica dei
+  // Ruoli ne' password fissa (rifiutate comunque lato server). Ha invece
+  // Disattiva/Riattiva e "Cambia password" (story 2.4).
+  const eTablet = utente.ruoli.includes("TABLET");
+
   return (
     <tr>
       <td>{utente.email}</td>
@@ -185,6 +198,10 @@ export function UtenteRow({ utente }: { utente: Utente }) {
               </button>
             </div>
           </form>
+        ) : eTablet ? (
+          <div className={styles.ruoliVista}>
+            <span>Tablet</span>
+          </div>
         ) : (
           <div className={styles.ruoliVista}>
             <span>
@@ -209,6 +226,7 @@ export function UtenteRow({ utente }: { utente: Utente }) {
       </td>
       <td>{utente.attivo ? "Attivo" : "Disattivato"}</td>
       <td className={styles.funzioni}>
+        {/* Tablet: Disattiva/Riattiva blocca anche l'app (ban + attivo, 2.4). */}
         <div>
           <button
             disabled={isTogglePending}
@@ -226,22 +244,68 @@ export function UtenteRow({ utente }: { utente: Utente }) {
             </p>
           )}
         </div>
-        <div>
-          <button
-            disabled={isResetPasswordPending}
-            onClick={reimpostaPassword}
-            type="button"
-            className={styles.bottoneSecondario}
-            aria-label={`Reimposta password di ${utente.email}`}
+        {eTablet && (
+          <form
+            action={passwordTabletAction}
+            onSubmit={(event) => {
+              // Stesso argine di reimpostaPassword(): il tablet torna subito
+              // al login, non deve partire da un click accidentale.
+              if (
+                !window.confirm(
+                  `Cambiare la password del tablet ${utente.email}? Il tablet tornerà al login e dovrà entrare con la nuova password.`
+                )
+              ) {
+                event.preventDefault();
+              }
+            }}
+            className={styles.formCompatto}
           >
-            Reimposta password
-          </button>
-          {resetPasswordError && (
-            <p role="alert" className={styles.errore}>
-              {resetPasswordError}
-            </p>
-          )}
-        </div>
+            <input type="hidden" name="utenteId" value={utente.id} />
+            <input
+              type="password"
+              name="password"
+              placeholder="Nuova password"
+              required
+              autoComplete="new-password"
+              aria-label={`Nuova password per il tablet ${utente.email}`}
+            />
+            {passwordTabletState && "error" in passwordTabletState && (
+              <p role="alert" className={styles.errore}>
+                {passwordTabletState.error.message}
+              </p>
+            )}
+            {passwordTabletState && "success" in passwordTabletState && (
+              <p role="status" className={styles.successo}>
+                Password cambiata.
+              </p>
+            )}
+            <button
+              disabled={passwordTabletPending}
+              type="submit"
+              className={styles.bottoneSecondario}
+            >
+              Cambia password
+            </button>
+          </form>
+        )}
+        {!eTablet && (
+          <div>
+            <button
+              disabled={isResetPasswordPending}
+              onClick={reimpostaPassword}
+              type="button"
+              className={styles.bottoneSecondario}
+              aria-label={`Reimposta password di ${utente.email}`}
+            >
+              Reimposta password
+            </button>
+            {resetPasswordError && (
+              <p role="alert" className={styles.errore}>
+                {resetPasswordError}
+              </p>
+            )}
+          </div>
+        )}
       </td>
       <td>
         {/* Story 9.38: solo per un Utente mai confermato - emailConfermata
