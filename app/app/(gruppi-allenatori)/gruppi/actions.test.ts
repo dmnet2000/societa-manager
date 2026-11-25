@@ -36,6 +36,9 @@ const atletaMaybeSingleMock = vi.fn();
 // .neq() sia stato invocato con gli argomenti attesi.
 const atletaEqMock = vi.fn();
 const atletaNeqMock = vi.fn();
+// Story 27.1: salvaTutoriAtletaAction.
+const genitoreAtletaFindManyMock = vi.fn();
+const salvaTutoriAtletaMock = vi.fn();
 
 vi.mock("@/lib/auth/require-ruolo", () => ({
   requireRuolo: requireRuoloMock,
@@ -65,7 +68,15 @@ vi.mock("@/lib/prisma", () => ({
       deleteMany: gruppoAtletaDeleteManyMock,
       updateMany: gruppoAtletaUpdateManyMock,
     },
+    genitoreAtleta: { findMany: genitoreAtletaFindManyMock },
   },
+}));
+
+// Story 27.1: salvaTutoriAtleta mockata come funzione intera (gia' testata
+// per conto proprio in lib/db-rls/tutore-atleta.test.ts).
+vi.mock("@/lib/db-rls/tutore-atleta", () => ({
+  salvaTutoriAtleta: salvaTutoriAtletaMock,
+  POSIZIONI_TUTORE: [1, 2],
 }));
 
 // Story 9.18: creaEAssegnaAtleta riusa creaAtleta/creaNotifica condivise -
@@ -144,6 +155,7 @@ const {
   creaEAssegnaAtleta,
   caricaFotoSquadraAction,
   aggiornaDatiAtletaAction,
+  salvaTutoriAtletaAction,
 } = await import("./actions");
 
 function buildFormData(fields: Record<string, string>, file?: File | null) {
@@ -195,6 +207,8 @@ beforeEach(() => {
   creaNotificaMock.mockReset();
   caricaFotoSquadraMock.mockReset();
   caricaFotoSquadraMock.mockResolvedValue(undefined);
+  genitoreAtletaFindManyMock.mockReset();
+  salvaTutoriAtletaMock.mockReset();
   revalidatePathMock.mockReset();
   // Default: sessione ADMIN, cosi' i test gia' esistenti (scritti prima di
   // Story 9.15) che non configurano esplicitamente getUserMock continuano a
@@ -2004,6 +2018,34 @@ describe("aggiornaDatiAtletaAction", () => {
     );
   });
 
+  it("salva la cittadinanza con trim e la passa null quando vuota (Story 27.1)", async () => {
+    atletaMaybeSingleMock
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    aggiornaAtletaMock.mockResolvedValue(undefined);
+
+    await aggiornaDatiAtletaAction(
+      undefined,
+      buildFormData({ ...campiValidi, cittadinanza: "  italiana " })
+    );
+    await aggiornaDatiAtletaAction(undefined, buildFormData({ ...campiValidi, cittadinanza: "" }));
+
+    expect(aggiornaAtletaMock).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({ cittadinanza: "italiana" })
+    );
+    expect(aggiornaAtletaMock).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      "atleta-1",
+      expect.objectContaining({ cittadinanza: null })
+    );
+  });
+
   it("treats email/cellulare as null when omitted", async () => {
     atletaMaybeSingleMock
       .mockResolvedValueOnce({ data: { dataPrimoTesseramento: null }, error: null })
@@ -2044,6 +2086,376 @@ describe("aggiornaDatiAtletaAction", () => {
     expect(result).toEqual({ success: true });
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
     expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+});
+
+describe("salvaTutoriAtletaAction", () => {
+  const CF_ATLETA = "VRDGLI14A41H501Z";
+  // Atleta di 12 anni circa rispetto a qualunque data di esecuzione realistica.
+  const ATLETA_MINORENNE = {
+    data: {
+      dataNascita: new Date(Date.now() - 12 * 365.25 * 864e5).toISOString(),
+      codiceFiscale: CF_ATLETA,
+      rimossaIl: null,
+    },
+    error: null,
+  };
+  const ATLETA_MAGGIORENNE = {
+    data: { dataNascita: "1990-01-01T00:00:00.000Z", codiceFiscale: CF_ATLETA, rimossaIl: null },
+    error: null,
+  };
+
+  const tutore1 = {
+    tutore1_nome: "Rossi Mario",
+    tutore1_codiceFiscale: "rssmra70a01h501u",
+    tutore1_dataNascita: "1970-01-01",
+    tutore1_email: " Mario@Example.com ",
+    tutore1_provinciaResidenza: "rm",
+  };
+  const tutore2 = {
+    tutore2_nome: "Bianchi Anna",
+    tutore2_codiceFiscale: "BNCNNA72B41H501X",
+  };
+
+  it("salva 2 tutori con un intestatario, normalizzando nome/CF/provincia/email (success)", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+    salvaTutoriAtletaMock.mockResolvedValue(undefined);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, ...tutore2, intestatarioRicevuta: "2" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(requireRuoloMock).toHaveBeenCalledWith(["ADMIN", "SEGRETERIA"]);
+    const [, atletaId, slot] = salvaTutoriAtletaMock.mock.calls[0];
+    expect(atletaId).toBe("atleta-1");
+    expect(slot).toHaveLength(2);
+    expect(slot[0]).toEqual({
+      posizione: 1,
+      dati: expect.objectContaining({
+        nome: "ROSSI MARIO",
+        codiceFiscale: "RSSMRA70A01H501U",
+        dataNascita: new Date("1970-01-01T00:00:00.000Z"),
+        email: "mario@example.com",
+        provinciaResidenza: "RM",
+        intestatarioRicevuta: false,
+        utenteId: null,
+      }),
+    });
+    expect(slot[1]).toEqual({
+      posizione: 2,
+      dati: expect.objectContaining({ nome: "BIANCHI ANNA", intestatarioRicevuta: true }),
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/gruppi");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/app/i-miei-gruppi");
+  });
+
+  it("slot 2 con nome vuoto -> passato come slot vuoto (riga eliminata), slot 1 invariato", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+    salvaTutoriAtletaMock.mockResolvedValue(undefined);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        ...tutore1,
+        tutore2_nome: "  ",
+        tutore2_codiceFiscale: "BNCNNA72B41H501X",
+      })
+    );
+
+    expect(result).toEqual({ success: true });
+    const slot = salvaTutoriAtletaMock.mock.calls[0][2];
+    expect(slot[1]).toEqual({ posizione: 2, dati: null });
+    expect(slot[0].dati).not.toBeNull();
+  });
+
+  it("rifiuta due intestatari, nulla scritto", async () => {
+    const formData = buildFormData({ atletaId: "atleta-1", ...tutore1, ...tutore2 });
+    formData.append("intestatarioRicevuta", "1");
+    formData.append("intestatarioRicevuta", "2");
+
+    const result = await salvaTutoriAtletaAction(undefined, formData);
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "È possibile indicare un solo intestatario ricevuta.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un intestatario su uno slot vuoto", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, intestatarioRicevuta: "2" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "L'intestatario ricevuta deve essere un Genitore/Tutore compilato.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un CF tutore non valido, nulla scritto", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, ...tutore2, tutore2_codiceFiscale: "corto" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Codice fiscale del Genitore/Tutore 2 non valido." },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un CF tutore mancante", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", tutore1_nome: "Rossi Mario" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il codice fiscale del Genitore/Tutore 1 è obbligatorio.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta una data di nascita inesistente", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, tutore1_dataNascita: "1970-02-30" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Data di nascita del Genitore/Tutore 1 non valida." },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta una data di nascita futura", async () => {
+    const futura = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, tutore1_dataNascita: futura })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "La data di nascita del Genitore/Tutore 1 non può essere futura.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un'email malformata", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, tutore1_email: "mario@" })
+    );
+
+    expect(result).toEqual({
+      error: { code: "VALIDATION", message: "Email del Genitore/Tutore 1 non valida." },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta lo stesso codice fiscale su entrambi gli slot", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        ...tutore1,
+        ...tutore2,
+        tutore2_codiceFiscale: "RSSMRA70A01H501U",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "I due Genitori/Tutori non possono avere lo stesso codice fiscale.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta lo stesso account collegato su entrambi gli slot", async () => {
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        ...tutore1,
+        ...tutore2,
+        tutore1_utenteId: "utente-genitore",
+        tutore2_utenteId: "utente-genitore",
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Lo stesso account non può essere collegato a entrambi i Genitori/Tutori.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un CF tutore uguale a quello dell'Atleta", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({
+        atletaId: "atleta-1",
+        ...tutore1,
+        ...tutore2,
+        tutore2_codiceFiscale: CF_ATLETA.toLowerCase(),
+      })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "Il codice fiscale del Genitore/Tutore 2 coincide con quello dell'Atleta.",
+      },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un'Atleta archiviata (rimossaIl valorizzato), nulla scritto", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce({
+      data: { ...ATLETA_MINORENNE.data, rimossaIl: "2026-09-01T00:00:00.000Z" },
+      error: null,
+    });
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1 })
+    );
+
+    expect(result).toEqual({ error: { code: "VALIDATION", message: "Atleta non trovata." } });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta dati per un'Atleta maggiorenne, nulla scritto", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MAGGIORENNE);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1 })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message:
+          "I Genitori/Tutori si indicano solo per un'Atleta minorenne: per un'Atleta maggiorenne è possibile solo rimuoverli.",
+      },
+    });
+    expect(atletaEqMock).toHaveBeenCalledWith("id", "atleta-1");
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta per un'Atleta maggiorenne un invio con tutti gli slot vuoti (sola rimozione)", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MAGGIORENNE);
+    salvaTutoriAtletaMock.mockResolvedValue(undefined);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaTutoriAtletaMock).toHaveBeenCalledWith(expect.anything(), "atleta-1", [
+      { posizione: 1, dati: null },
+      { posizione: 2, dati: null },
+    ]);
+  });
+
+  it("rifiuta un'Atleta non trovata", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce({ data: null, error: null });
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-x", ...tutore1 })
+    );
+
+    expect(result).toEqual({ error: { code: "VALIDATION", message: "Atleta non trovata." } });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un utenteId non tra i Genitori collegati (autoAggancio false), nulla scritto", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+    genitoreAtletaFindManyMock.mockResolvedValue([{ utenteId: "utente-genitore" }]);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, tutore1_utenteId: "utente-estraneo" })
+    );
+
+    expect(result).toEqual({
+      error: {
+        code: "VALIDATION",
+        message: "L'account collegato al Genitore/Tutore 1 non è un Genitore di questa Atleta.",
+      },
+    });
+    expect(genitoreAtletaFindManyMock).toHaveBeenCalledWith({
+      where: { atletaId: "atleta-1", autoAggancio: false },
+      select: { utenteId: true },
+    });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("accetta un utenteId tra i Genitori collegati", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+    genitoreAtletaFindManyMock.mockResolvedValue([{ utenteId: "utente-genitore" }]);
+    salvaTutoriAtletaMock.mockResolvedValue(undefined);
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1, tutore1_utenteId: "utente-genitore" })
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(salvaTutoriAtletaMock.mock.calls[0][2][0].dati.utenteId).toBe("utente-genitore");
+  });
+
+  it("returns FORBIDDEN per DIRIGENTE/ALLENATORE, nulla scritto", async () => {
+    requireRuoloMock.mockResolvedValue({
+      error: { code: "FORBIDDEN", message: "Non autorizzato." },
+    });
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1 })
+    );
+
+    expect(result).toEqual({ error: { code: "FORBIDDEN", message: "Non autorizzato." } });
+    expect(salvaTutoriAtletaMock).not.toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL quando la scrittura fallisce", async () => {
+    atletaMaybeSingleMock.mockResolvedValueOnce(ATLETA_MINORENNE);
+    salvaTutoriAtletaMock.mockRejectedValue(new Error("db down"));
+
+    const result = await salvaTutoriAtletaAction(
+      undefined,
+      buildFormData({ atletaId: "atleta-1", ...tutore1 })
+    );
+
+    expect(result).toEqual({
+      error: { code: "INTERNAL", message: "Impossibile salvare i Genitori/Tutori. Riprova." },
+    });
   });
 });
 

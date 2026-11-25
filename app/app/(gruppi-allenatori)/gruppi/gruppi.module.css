@@ -578,3 +578,80 @@
   background: var(--color-danger-bg);
   color: var(--color-danger);
 }
+
+/* Story 27.1: form Genitori/Tutori (GenitoriTutoriForm.tsx) - due fieldset
+   impilati, input/select/radio con area di tocco >= 44px e testo >= 16px
+   (uso da telefono). */
+.formTutori {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  max-width: 40rem;
+}
+
+.notaTutori {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.fieldsetTutore {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  margin: 0;
+}
+
+.fieldsetTutore legend {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 var(--space-1);
+}
+
+.campoTutore {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.campoTutore label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.campoTutore input,
+.campoTutore select {
+  font: inherit;
+  /* >= 16px: sotto questa soglia iOS Safari fa lo zoom al focus. */
+  font-size: 16px;
+  min-height: 44px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.campoTutore input:focus-visible,
+.campoTutore select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.opzioneRadio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.opzioneRadio input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}

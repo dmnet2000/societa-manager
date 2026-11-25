@@ -13,6 +13,8 @@ export type DatiAnagraficiAtleta = {
   codiceFiscale: string;
   email: string | null;
   cellulare: string | null;
+  // Story 27.1: richiesta dal modulo di iscrizione.
+  cittadinanza: string | null;
 };
 
 // Story 9.45: componente condiviso - usato sia nel ramo di gestione
@@ -115,6 +117,15 @@ export function ModificaDatiAtletaForm({
           name="cellulare"
           type="tel"
           defaultValue={dati.cellulare ?? ""}
+        />
+      </div>
+      <div className={styles.campo}>
+        <label htmlFor={`atleta-cittadinanza-${atletaId}`}>Cittadinanza (opzionale)</label>
+        <input
+          id={`atleta-cittadinanza-${atletaId}`}
+          name="cittadinanza"
+          type="text"
+          defaultValue={dati.cittadinanza ?? ""}
         />
       </div>
       {erroreVisibile && state && "error" in state && (
