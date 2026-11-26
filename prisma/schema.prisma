@@ -1267,6 +1267,7 @@ model PartitaTorneo {
   // Referto elettronico, story 4.1: risultati dei set chiusi (referto in
   // corso), una riga per set.
   risultatiSetReferto RisultatoSetReferto[]
+  backupReferto       BackupReferto?
 
   // Review fix (Edge Case Hunter, Story 20.3): rete di sicurezza a livello
   // DB contro la generazione duplicata della stessa coppia (la guardia di
@@ -1336,6 +1337,25 @@ model RisultatoSetReferto {
 
   @@unique([partitaTorneoId, numeroSet])
   @@map("risultati_set_referto")
+}
+
+// Referto elettronico, story 4.4 (AD-7, AD-11, AD-15, AD-17): backup opaco del
+// registro degli eventi del tablet. Una riga per gara; il server non
+// interpreta mai il blob. Regola di accettazione atomica in SQL raw (vedi
+// salvaBackup). RLS senza policy + REVOKE (migrazione).
+model BackupReferto {
+  id              String        @id @default(uuid())
+  partitaTorneoId String        @unique
+  partitaTorneo   PartitaTorneo @relation(fields: [partitaTorneoId], references: [id], onDelete: Cascade)
+  registroId      String
+  epoca           Int
+  ultimoSeq       Int
+  hash            String
+  blob            String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("backup_referto")
 }
 
 // Story 20.9 (Epic 20, Torneo Memorial): "prenotazione per fase" - permette

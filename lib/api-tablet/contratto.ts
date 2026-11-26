@@ -457,3 +457,92 @@ export function leggiRispostaRisultatoSet(corpo: unknown): RispostaRisultatoSet 
   }
   return { numeroSet, casa, ospite, seqFinale };
 }
+
+/** Lunghezza massima del `blob` del backup, in caratteri (story 4.4, AD-7). */
+export const LUNGHEZZA_MASSIMA_BLOB_BACKUP = 2_000_000;
+
+const HASH_SHA256 = /^[0-9a-f]{64}$/;
+
+/**
+ * Corpo di `PUT /api/tablet/v1/gare/{garaId}/backup?epoca=N` (story 4.4):
+ * backup opaco del registro degli eventi. `hash` e' lo SHA-256 (hex minuscolo)
+ * del `blob`; il server non interpreta mai il `blob` (AD-7).
+ */
+export interface RichiestaBackup {
+  readonly registroId: string;
+  readonly ultimoSeq: number;
+  readonly hash: string;
+  readonly blob: string;
+}
+
+/** Risposta dell'invio: il backup salvato sul server (puo' essere piu' recente di quello inviato). */
+export interface RispostaBackup {
+  readonly registroId: string;
+  readonly ultimoSeq: number;
+}
+
+/** Backup salvato, come lo restituisce `GET .../backup`. */
+export interface BackupSalvato {
+  readonly registroId: string;
+  readonly epoca: number;
+  readonly ultimoSeq: number;
+  readonly hash: string;
+  readonly blob: string;
+}
+
+/** Risposta di `GET /api/tablet/v1/gare/{garaId}/backup?epoca=N`. */
+export interface RispostaLeggiBackup {
+  readonly backup: BackupSalvato | null;
+}
+
+function eBlob(valore: unknown): valore is string {
+  return typeof valore === "string" && valore.length > 0 && valore.length <= LUNGHEZZA_MASSIMA_BLOB_BACKUP;
+}
+
+/** Legge un corpo JSON come richiesta di backup; `undefined` se non lo e'. */
+export function leggiRichiestaBackup(corpo: unknown): RichiestaBackup | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { registroId, ultimoSeq, hash, blob } = corpo;
+  if (
+    typeof registroId !== "string" ||
+    !UUID.test(registroId) ||
+    !eInteroPositivo(ultimoSeq) ||
+    typeof hash !== "string" ||
+    !HASH_SHA256.test(hash) ||
+    !eBlob(blob)
+  ) {
+    return undefined;
+  }
+  return { registroId, ultimoSeq, hash, blob };
+}
+
+/** Legge un corpo JSON come risposta dell'invio del backup; `undefined` se non lo e'. */
+export function leggiRispostaBackup(corpo: unknown): RispostaBackup | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { registroId, ultimoSeq } = corpo;
+  if (typeof registroId !== "string" || !UUID.test(registroId) || !eInteroPositivo(ultimoSeq)) {
+    return undefined;
+  }
+  return { registroId, ultimoSeq };
+}
+
+/** Legge un corpo JSON come risposta della lettura del backup; `undefined` se non lo e'. */
+export function leggiRispostaLeggiBackup(corpo: unknown): RispostaLeggiBackup | undefined {
+  if (!eOggetto(corpo)) return undefined;
+  const { backup } = corpo;
+  if (backup === null) return { backup: null };
+  if (!eOggetto(backup)) return undefined;
+  const { registroId, epoca, ultimoSeq, hash, blob } = backup;
+  if (
+    typeof registroId !== "string" ||
+    !UUID.test(registroId) ||
+    !eInteroNonNegativo(epoca) ||
+    !eInteroPositivo(ultimoSeq) ||
+    typeof hash !== "string" ||
+    !HASH_SHA256.test(hash) ||
+    !eBlob(blob)
+  ) {
+    return undefined;
+  }
+  return { backup: { registroId, epoca, ultimoSeq, hash, blob } };
+}
