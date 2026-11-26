@@ -8,7 +8,11 @@ import {
   leggiErrore,
   leggiGare,
   leggiParametri,
+  LUNGHEZZA_MASSIMA_BLOB_BACKUP,
+  leggiRichiestaBackup,
   leggiRichiestaRisultatoSet,
+  leggiRispostaBackup,
+  leggiRispostaLeggiBackup,
   leggiRichiestaSalvaRosa,
   leggiRispostaRisultatoSet,
   leggiRispostaSalvaRosa,
@@ -286,6 +290,54 @@ describe("contratto delle rose", () => {
       expect(leggiRispostaRisultatoSet({ ...riga, numeroSet: 0 })).toBeUndefined();
       expect(leggiRispostaRisultatoSet({ ...riga, casa: -1 })).toBeUndefined();
       expect(leggiRispostaRisultatoSet({})).toBeUndefined();
+    });
+  });
+
+  describe("backup del registro", () => {
+    const valida = {
+      registroId: "123e4567-e89b-42d3-a456-426614174000",
+      ultimoSeq: 42,
+      hash: "a".repeat(64),
+      blob: "{}",
+    };
+
+    it("leggiRichiestaBackup accetta una richiesta valida e il blob al limite", () => {
+      expect(leggiRichiestaBackup(valida)).toEqual(valida);
+      expect(leggiRichiestaBackup({ ...valida, blob: "x".repeat(LUNGHEZZA_MASSIMA_BLOB_BACKUP) })).toBeDefined();
+    });
+
+    it.each([
+      ["registroId non UUID", { ...valida, registroId: "x" }],
+      ["ultimoSeq 0", { ...valida, ultimoSeq: 0 }],
+      ["ultimoSeq non intero", { ...valida, ultimoSeq: 1.5 }],
+      ["ultimoSeq testo", { ...valida, ultimoSeq: "3" }],
+      ["hash corto", { ...valida, hash: "a".repeat(63) }],
+      ["hash maiuscolo", { ...valida, hash: "A".repeat(64) }],
+      ["blob vuoto", { ...valida, blob: "" }],
+      ["blob oltre il limite", { ...valida, blob: "x".repeat(LUNGHEZZA_MASSIMA_BLOB_BACKUP + 1) }],
+      ["blob non stringa", { ...valida, blob: {} }],
+      ["campo mancante", { registroId: valida.registroId, ultimoSeq: 1, hash: valida.hash }],
+      ["non oggetto", null],
+    ])("leggiRichiestaBackup rifiuta: %s", (_nome, corpo) => {
+      expect(leggiRichiestaBackup(corpo)).toBeUndefined();
+    });
+
+    it("leggiRispostaBackup legge il backup salvato e rifiuta il resto", () => {
+      const riga = { registroId: valida.registroId, ultimoSeq: 7 };
+      expect(leggiRispostaBackup(riga)).toEqual(riga);
+      expect(leggiRispostaBackup({ ...riga, ultimoSeq: 0 })).toBeUndefined();
+      expect(leggiRispostaBackup({ ...riga, registroId: "x" })).toBeUndefined();
+      expect(leggiRispostaBackup({})).toBeUndefined();
+    });
+
+    it("leggiRispostaLeggiBackup legge backup e null, rifiuta il resto", () => {
+      const backup = { ...valida, epoca: 2 };
+      expect(leggiRispostaLeggiBackup({ backup })).toEqual({ backup });
+      expect(leggiRispostaLeggiBackup({ backup: null })).toEqual({ backup: null });
+      expect(leggiRispostaLeggiBackup({})).toBeUndefined();
+      expect(leggiRispostaLeggiBackup({ backup: { ...backup, epoca: -1 } })).toBeUndefined();
+      expect(leggiRispostaLeggiBackup({ backup: { ...backup, hash: "x" } })).toBeUndefined();
+      expect(leggiRispostaLeggiBackup({ backup: { ...backup, ultimoSeq: 0 } })).toBeUndefined();
     });
   });
 });
